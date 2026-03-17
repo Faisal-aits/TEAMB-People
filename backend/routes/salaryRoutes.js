@@ -1,0 +1,44 @@
+// backend/routes/salaryRoutes.js
+const express = require('express');
+const salaryController = require('../controllers/salaryController');
+const authMiddleware = require('../middleware/authMiddleware');
+
+const router = express.Router();
+
+// All routes are protected
+router.use(authMiddleware.verifyToken);
+
+// GET /api/salary/records - Get all salary records
+router.get('/records', salaryController.getAllSalaryRecords);
+
+// GET /api/salary/employees - Get employees list
+router.get('/employees', salaryController.getEmployees);
+
+// GET /api/salary/departments - Get departments list
+router.get('/departments', salaryController.getDepartments);
+
+// GET /api/salary/stats - Get salary statistics
+router.get('/stats', salaryController.getSalaryStats);
+
+// GET /api/salary/records/:id - Get specific salary record
+router.get('/records/:id', salaryController.getSalaryRecord);
+
+// GET /api/salary/payslip/:id - Generate payslip
+router.get('/payslip/:id', salaryController.generatePayslip);
+
+// POST /api/salary/records - Create new salary record
+router.post('/records', salaryController.createSalaryRecord);
+
+// PUT /api/salary/records/:id - Update salary record
+router.put('/records/:id', salaryController.updateSalaryRecord);
+
+// DELETE /api/salary/records/:id - Delete salary record
+router.delete('/records/:id', salaryController.deleteSalaryRecord);
+
+// GET /api/salary/payslip/:id - Generate and download payslip PDF
+router.get('/payslip/:id', salaryController.generatePayslip);
+
+// GET /api/salary/payslip-preview/:id - Generate payslip preview (base64)
+router.get('/payslip-preview/:id', salaryController.generatePayslipPreview);
+
+module.exports = router;
