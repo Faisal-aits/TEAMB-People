@@ -56,7 +56,7 @@ PORT=5000
 MYSQL_HOST=localhost
 MYSQL_USER=root
 MYSQL_PASSWORD=your_password
-MYSQL_DB=work_desk
+MYSQL_DB=aits
 JWT_SECRET=your_jwt_secret
 NODE_ENV=development
 ```
