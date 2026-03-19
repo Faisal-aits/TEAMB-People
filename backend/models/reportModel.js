@@ -3,7 +3,7 @@ const pool = require('../config/database');
 
 const Report = {
     // Get all reports with user information - filtered by user role
-    getAll: async (userId, userRole) => {
+    getAll: async (tenantId, userId, userRole) => {
         console.log(`Model.getAll - User ID: ${userId}, Role: ${userRole}`);
         
         const isAdmin = userRole === 'admin' || 
@@ -19,8 +19,9 @@ const Report = {
                     CONCAT(u.first_name, ' ', u.last_name) as generated_by_name
                 FROM reports r
                 LEFT JOIN users u ON r.generated_by = u.id
+                WHERE r.tenant_id = ?
                 ORDER BY r.date_generated DESC
-            `);
+            `, [tenantId]);
             return rows;
         } else {
             // Regular user gets only their own reports
@@ -30,24 +31,24 @@ const Report = {
                     CONCAT(u.first_name, ' ', u.last_name) as generated_by_name
                 FROM reports r
                 LEFT JOIN users u ON r.generated_by = u.id
-                WHERE r.generated_by = ?
+                WHERE r.generated_by = ? AND r.tenant_id = ?
                 ORDER BY r.date_generated DESC
-            `, [userId]);
+            `, [userId, tenantId]);
             return rows;
         }
     },
 
     // Get report by ID - with access control
-    getById: async (id, userId, userRole) => {
+    getById: async (tenantId, id, userId, userRole) => {
         let query = `
             SELECT 
                 r.*,
                 CONCAT(u.first_name, ' ', u.last_name) as generated_by_name
             FROM reports r
             INNER JOIN users u ON r.generated_by = u.id
-            WHERE r.id = ?
+            WHERE r.id = ? AND r.tenant_id = ?
         `;
-        const params = [id];
+        const params = [id, tenantId];
 
         // If user is not admin (role_id = 1), only allow access to their own reports
         if (userRole !== 1 && userRole !== 'admin') {
@@ -60,21 +61,21 @@ const Report = {
     },
 
     // Create new report
-    create: async (reportData) => {
+    create: async (tenantId, reportData) => {
         const { date_generated, description, generated_by } = reportData;
         const [result] = await pool.execute(
-            'INSERT INTO reports (date_generated, description, generated_by, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())',
-            [date_generated, description, generated_by]
+            'INSERT INTO reports (tenant_id, date_generated, description, generated_by, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())',
+            [tenantId, date_generated, description, generated_by]
         );
         return result.insertId;
     },
 
     // Update report - with access control
-    update: async (id, reportData, userId, userRole) => {
+    update: async (tenantId, id, reportData, userId, userRole) => {
         const { date_generated, description } = reportData;
         
-        let query = 'UPDATE reports SET date_generated = ?, description = ?, updated_at = NOW() WHERE id = ?';
-        const params = [date_generated, description, id];
+        let query = 'UPDATE reports SET date_generated = ?, description = ?, updated_at = NOW() WHERE id = ? AND tenant_id = ?';
+        const params = [date_generated, description, id, tenantId];
 
         // If user is not admin (role_id = 1), only allow updating their own reports
         if (userRole !== 1 && userRole !== 'admin') {
@@ -87,9 +88,9 @@ const Report = {
     },
 
     // Delete report - with access control
-    delete: async (id, userId, userRole) => {
-        let query = 'DELETE FROM reports WHERE id = ?';
-        const params = [id];
+    delete: async (tenantId, id, userId, userRole) => {
+        let query = 'DELETE FROM reports WHERE id = ? AND tenant_id = ?';
+        const params = [id, tenantId];
 
         // If user is not admin (role_id = 1), only allow deleting their own reports
         if (userRole !== 1 && userRole !== 'admin') {
@@ -103,7 +104,7 @@ const Report = {
 
     // In reportModel.js - Add this method
 // Update the Report.getRecent method in reportModel.js
-getRecent: async (userId, userRole, limit = 3) => {
+getRecent: async (tenantId, userId, userRole, limit = 3) => {
     console.log('=== Model.getRecent ===');
     console.log('Parameters:', { userId, userRole, limit });
     console.log(`User role value: "${userRole}" (type: ${typeof userRole})`);
@@ -118,10 +119,10 @@ getRecent: async (userId, userRole, limit = 3) => {
             CONCAT(u.first_name, ' ', u.last_name) as generated_by_name
         FROM reports r
         INNER JOIN users u ON r.generated_by = u.id
-        WHERE 1=1
+        WHERE r.tenant_id = ?
     `;
     
-    const params = [];
+    const params = [tenantId];
     
     // Debug the role check logic
     console.log(`\nRole check logic:`);

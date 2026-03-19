@@ -1,11 +1,8 @@
 // backend/models/billingModel.js
 const pool = require('../config/database');
 
-// Helper function for safe JSON handling
 const safeStringify = (obj) => {
-    if (obj === null || obj === undefined) {
-        return null;
-    }
+    if (obj === null || obj === undefined) return null;
     try {
         return JSON.stringify(obj);
     } catch (error) {
@@ -17,30 +14,26 @@ const safeStringify = (obj) => {
 const safeParse = (str) => {
     if (!str) return null;
     try {
-        // If it's already an object, return it
         if (typeof str === 'object') return str;
         return JSON.parse(str);
     } catch (error) {
-        console.error('Error parsing JSON:', error);
         return null;
     }
 };
 
 const Billing = {
-    // Get connection from pool
     getConnection: () => pool.getConnection(),
 
-    // Get all invoices with items, GST details, and history
-    getAll: async (filters = {}) => {
+    getAll: async (tenantId, filters = {}) => {
         let query = `
             SELECT 
                 i.*,
                 COUNT(ih.id) as history_count
             FROM invoices i
             LEFT JOIN invoice_history ih ON i.id = ih.invoice_id
-            WHERE 1=1
+            WHERE i.tenant_id = ?
         `;
-        const params = [];
+        const params = [tenantId];
 
         if (filters.status) {
             query += ' AND i.status = ?';
@@ -56,34 +49,9 @@ const Billing = {
 
         const [invoices] = await pool.execute(query, params);
         
-        // Get complete data for each invoice
         for (let invoice of invoices) {
-            // Safely parse service settings
-            if (invoice.service_bank_details) {
-                try {
-                    if (typeof invoice.service_bank_details === 'string') {
-                        invoice.service_bank_details = JSON.parse(invoice.service_bank_details);
-                    }
-                } catch (error) {
-                    console.warn('Failed to parse service_bank_details JSON:', error.message);
-                    invoice.service_bank_details = null;
-                }
-            } else {
-                invoice.service_bank_details = null;
-            }
-
-            if (invoice.service_gst_details) {
-                try {
-                    if (typeof invoice.service_gst_details === 'string') {
-                        invoice.service_gst_details = JSON.parse(invoice.service_gst_details);
-                    }
-                } catch (error) {
-                    console.warn('Failed to parse service_gst_details JSON:', error.message);
-                    invoice.service_gst_details = null;
-                }
-            } else {
-                invoice.service_gst_details = null;
-            }
+            invoice.service_bank_details = safeParse(invoice.service_bank_details);
+            invoice.service_gst_details = safeParse(invoice.service_gst_details);
             
             const [items] = await pool.execute(
                 'SELECT * FROM invoice_items WHERE invoice_id = ? ORDER BY sr_no',
@@ -106,43 +74,18 @@ const Billing = {
         return invoices;
     },
 
-    // Get invoice by ID
-    getById: async (id) => {
+    getById: async (tenantId, id) => {
         const [invoices] = await pool.execute(
-            'SELECT * FROM invoices WHERE id = ?',
-            [id]
+            'SELECT * FROM invoices WHERE id = ? AND tenant_id = ?',
+            [id, tenantId]
         );
         
         if (invoices.length === 0) return null;
         
         const invoice = invoices[0];
         
-        // Safely parse service settings
-        if (invoice.service_bank_details) {
-            try {
-                if (typeof invoice.service_bank_details === 'string') {
-                    invoice.service_bank_details = JSON.parse(invoice.service_bank_details);
-                }
-            } catch (error) {
-                console.warn('Failed to parse service_bank_details JSON:', error.message);
-                invoice.service_bank_details = null;
-            }
-        } else {
-            invoice.service_bank_details = null;
-        }
-
-        if (invoice.service_gst_details) {
-            try {
-                if (typeof invoice.service_gst_details === 'string') {
-                    invoice.service_gst_details = JSON.parse(invoice.service_gst_details);
-                }
-            } catch (error) {
-                console.warn('Failed to parse service_gst_details JSON:', error.message);
-                invoice.service_gst_details = null;
-            }
-        } else {
-            invoice.service_gst_details = null;
-        }
+        invoice.service_bank_details = safeParse(invoice.service_bank_details);
+        invoice.service_gst_details = safeParse(invoice.service_gst_details);
         
         const [items] = await pool.execute(
             'SELECT * FROM invoice_items WHERE invoice_id = ? ORDER BY sr_no',
@@ -164,58 +107,48 @@ const Billing = {
         return invoice;
     },
 
-    // Get invoice by invoice number
-    getByInvoiceNo: async (invoice_no) => {
+    getByInvoiceNo: async (tenantId, invoice_no) => {
         const [rows] = await pool.execute(
-            'SELECT * FROM invoices WHERE invoice_no = ?',
-            [invoice_no]
+            'SELECT * FROM invoices WHERE invoice_no = ? AND tenant_id = ?',
+            [invoice_no, tenantId]
         );
         return rows[0];
     },
 
-    // Create new invoice
-    create: async (invoiceData) => {
+    create: async (tenantId, invoiceData) => {
         const {
-            invoice_no,
-            invoice_date,
-            ref_no,
-            buyer_gstin,
-            party_address,
-            total_before_discount,
-            round_off,
-            total_after_tax,
-            created_by,
-            service_bank_details,
-            service_gst_details
+            invoice_no, invoice_date, ref_no, buyer_gstin, party_address,
+            total_before_discount, round_off, total_after_tax, created_by,
+            service_bank_details, service_gst_details
         } = invoiceData;
 
         const [result] = await pool.execute(
             `INSERT INTO invoices (
-                invoice_no, invoice_date, ref_no, buyer_gstin, party_address, total_before_discount, round_off, total_after_tax, created_by,
+                tenant_id, invoice_no, invoice_date, ref_no, buyer_gstin, party_address, 
+                total_before_discount, round_off, total_after_tax, created_by,
                 service_bank_details, service_gst_details
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-                invoice_no, invoice_date, ref_no, buyer_gstin, party_address, total_before_discount, round_off, total_after_tax, created_by,
+                tenantId, invoice_no, invoice_date, ref_no, buyer_gstin, party_address, 
+                total_before_discount, round_off, total_after_tax, created_by,
                 safeStringify(service_bank_details), safeStringify(service_gst_details)
             ]
         );
         return result.insertId;
     },
 
-    // Create invoice item
-    createItem: async (itemData) => {
+    createItem: async (tenantId, itemData) => {
         const { invoice_id, sr_no, description, hsn_code, quantity, rate, total_amount } = itemData;
         const [result] = await pool.execute(
             `INSERT INTO invoice_items (
                 invoice_id, sr_no, description, hsn_code, quantity, rate, total_amount
             ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [invoice_id, sr_no, description, hsn_code, quantity, rate, total_amount]
+            [invoice_id, sr_no, description, hsn_code, quantity, rate, total_amount] // Assuming child records scoped implicitly by parent
         );
         return result.insertId;
     },
 
-    // Create GST detail
-    createGSTDetail: async (gstData) => {
+    createGSTDetail: async (tenantId, gstData) => {
         const { invoice_id, tax_type, percentage } = gstData;
         const [result] = await pool.execute(
             'INSERT INTO gst_details (invoice_id, tax_type, percentage) VALUES (?, ?, ?)',
@@ -224,8 +157,7 @@ const Billing = {
         return result.insertId;
     },
 
-    // Create history entry
-    createHistory: async (historyData) => {
+    createHistory: async (tenantId, historyData) => {
         const { invoice_id, date, action, user, follow_up } = historyData;
         const [result] = await pool.execute(
             'INSERT INTO invoice_history (invoice_id, date, action, user, follow_up) VALUES (?, ?, ?, ?, ?)',
@@ -234,19 +166,11 @@ const Billing = {
         return result.insertId;
     },
 
-    // Update invoice
-    update: async (id, invoiceData) => {
+    update: async (tenantId, id, invoiceData) => {
         const {
-            invoice_no,
-            invoice_date,
-            ref_no,
-            buyer_gstin,
-            party_address,
-            total_before_discount,
-            round_off,
-            total_after_tax,
-            service_bank_details,
-            service_gst_details
+            invoice_no, invoice_date, ref_no, buyer_gstin, party_address,
+            total_before_discount, round_off, total_after_tax,
+            service_bank_details, service_gst_details
         } = invoiceData;
 
         const [result] = await pool.execute(
@@ -255,47 +179,37 @@ const Billing = {
                 party_address = ?, total_before_discount = ?, round_off = ?, total_after_tax = ?,
                 updated_at = CURRENT_TIMESTAMP,
                 service_bank_details = ?, service_gst_details = ?
-            WHERE id = ?`,
+            WHERE id = ? AND tenant_id = ?`,
             [
                 invoice_no, invoice_date, ref_no, buyer_gstin,
                 party_address, total_before_discount, round_off, total_after_tax,
                 safeStringify(service_bank_details), safeStringify(service_gst_details),
-                id
+                id, tenantId
             ]
         );
         return result.affectedRows;
     },
 
-    // Update invoice status
-    updateStatus: async (id, status) => {
+    updateStatus: async (tenantId, id, status) => {
         const [result] = await pool.execute(
-            'UPDATE invoices SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-            [status, id]
+            'UPDATE invoices SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ?',
+            [status, id, tenantId]
         );
         return result.affectedRows;
     },
 
-    // Delete invoice items
-    deleteItems: async (invoice_id) => {
-        await pool.execute(
-            'DELETE FROM invoice_items WHERE invoice_id = ?',
-            [invoice_id]
-        );
+    deleteItems: async (tenantId, invoice_id) => {
+        await pool.execute('DELETE FROM invoice_items WHERE invoice_id = ?', [invoice_id]); // Safe if parent matched first
     },
 
-    // Delete GST details
-    deleteGSTDetails: async (invoice_id) => {
-        await pool.execute(
-            'DELETE FROM gst_details WHERE invoice_id = ?',
-            [invoice_id]
-        );
+    deleteGSTDetails: async (tenantId, invoice_id) => {
+        await pool.execute('DELETE FROM gst_details WHERE invoice_id = ?', [invoice_id]); // Safe if parent matched first
     },
 
-    // Delete invoice
-    delete: async (id) => {
+    delete: async (tenantId, id) => {
         const [result] = await pool.execute(
-            'DELETE FROM invoices WHERE id = ?',
-            [id]
+            'DELETE FROM invoices WHERE id = ? AND tenant_id = ?',
+            [id, tenantId]
         );
         return result.affectedRows;
     }

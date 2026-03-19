@@ -361,7 +361,7 @@ const studentAttendanceController = {
             console.log('Getting attendance for user ID:', userId);
 
             // First, get student_id from user_id
-            const studentId = await StudentAttendance.getStudentIdFromUserId(userId);
+            const studentId = await StudentAttendance.getStudentIdFromUserId(req.tenantId, userId);
             
             if (!studentId) {
                 console.log('Student profile not found for user ID:', userId);
@@ -374,7 +374,7 @@ const studentAttendanceController = {
             console.log('Found student ID:', studentId);
 
             // Get student details
-            const student = await StudentAttendance.getStudentDetails(studentId);
+            const student = await StudentAttendance.getStudentDetails(req.tenantId, studentId);
             if (!student) {
                 return res.status(404).json({ 
                     success: false,
@@ -391,7 +391,7 @@ const studentAttendanceController = {
             const limit = parseInt(req.query.limit) || 30;
             
             console.log('Fetching attendance with limit:', limit);
-            const attendance = await StudentAttendance.getStudentAttendanceSimple(studentId, limit);
+            const attendance = await StudentAttendance.getStudentAttendanceSimple(req.tenantId, studentId, limit);
             console.log('Attendance records found:', attendance.length);
             
             // Calculate statistics
@@ -450,7 +450,7 @@ const studentAttendanceController = {
             console.log('Getting today\'s attendance for user ID:', userId);
 
             // First, get student_id from user_id
-            const studentId = await StudentAttendance.getStudentIdFromUserId(userId);
+            const studentId = await StudentAttendance.getStudentIdFromUserId(req.tenantId, userId);
             
             if (!studentId) {
                 console.log('Student profile not found for user ID:', userId);
@@ -463,7 +463,7 @@ const studentAttendanceController = {
 
             console.log('Found student ID:', studentId);
             
-            const attendance = await StudentAttendance.getTodaysAttendance(studentId);
+            const attendance = await StudentAttendance.getTodaysAttendance(req.tenantId, studentId);
             console.log('Today\'s attendance:', attendance);
 
             res.json({ 
@@ -503,7 +503,7 @@ const studentAttendanceController = {
             }
 
             // First, get student_id from user_id
-            const studentId = await StudentAttendance.getStudentIdFromUserId(userId);
+            const studentId = await StudentAttendance.getStudentIdFromUserId(req.tenantId, userId);
             
             if (!studentId) {
                 return res.status(404).json({ 
@@ -515,7 +515,7 @@ const studentAttendanceController = {
             console.log('Found student ID:', studentId);
 
             // Get student details to get course_id
-            const student = await StudentAttendance.getStudentDetails(studentId);
+            const student = await StudentAttendance.getStudentDetails(req.tenantId, studentId);
             if (!student) {
                 return res.status(404).json({ 
                     success: false,
@@ -532,7 +532,7 @@ const studentAttendanceController = {
             });
 
             // Check if attendance already exists for today
-            const attendanceExists = await StudentAttendance.checkAttendanceExists(
+            const attendanceExists = await StudentAttendance.checkAttendanceExists(req.tenantId, 
                 studentId, 
                 today
             );
@@ -544,7 +544,7 @@ const studentAttendanceController = {
                 });
             }
 
-            const attendanceId = await StudentAttendance.create({
+            const attendanceId = await StudentAttendance.create(req.tenantId, {
                 student_id: studentId,
                 course_id: courseId,
                 attendance_date: today,
@@ -560,7 +560,7 @@ const studentAttendanceController = {
             console.log('Attendance created with ID:', attendanceId);
 
             // Get the created attendance record
-            const createdAttendance = await StudentAttendance.getTodaysAttendance(studentId);
+            const createdAttendance = await StudentAttendance.getTodaysAttendance(req.tenantId, studentId);
 
             res.status(201).json({ 
                 success: true,
@@ -593,7 +593,7 @@ const studentAttendanceController = {
             console.log('Attendance ID:', student_attendance_id);
 
             // First, get student_id from user_id
-            const studentId = await StudentAttendance.getStudentIdFromUserId(userId);
+            const studentId = await StudentAttendance.getStudentIdFromUserId(req.tenantId, userId);
             
             if (!studentId) {
                 return res.status(404).json({ 
@@ -605,7 +605,7 @@ const studentAttendanceController = {
             console.log('Found student ID:', studentId);
 
             // Get attendance record
-            const attendance = await StudentAttendance.getStudentAttendanceById(student_attendance_id);
+            const attendance = await StudentAttendance.getStudentAttendanceById(req.tenantId, student_attendance_id);
             
             if (!attendance) {
                 return res.status(404).json({ 
@@ -641,7 +641,7 @@ const studentAttendanceController = {
                 totalHours = diffMs / (1000 * 60 * 60);
             }
 
-            const affectedRows = await StudentAttendance.update(student_attendance_id, {
+            const affectedRows = await StudentAttendance.update(req.tenantId, student_attendance_id, {
                 student_id: attendance.student_id,
                 course_id: attendance.course_id,
                 attendance_date: attendance.attendance_date,
@@ -661,7 +661,7 @@ const studentAttendanceController = {
             }
 
             // Get updated attendance record
-            const updatedAttendance = await StudentAttendance.getStudentAttendanceById(student_attendance_id);
+            const updatedAttendance = await StudentAttendance.getStudentAttendanceById(req.tenantId, student_attendance_id);
 
             res.json({ 
                 success: true,

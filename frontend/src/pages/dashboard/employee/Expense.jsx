@@ -64,7 +64,7 @@ const ExpenseTable = () => {
         'Processed Date': expense.approved_at ? formatDate(expense.approved_at) : 'Not Processed',
         'Receipt URL': expense.receipt_url || 'No Receipt',
         'Employee Name': currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : 'Unknown',
-        'Employee ID': currentUser?.employee_id || 'N/A'
+        'Employee ID': currentUser?.employee_id || `UID-${currentUser?.id || 'N/A'}`
       }));
 
       // Create worksheet

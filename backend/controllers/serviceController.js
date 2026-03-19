@@ -12,7 +12,7 @@ const serviceController = {
         search: req.query.search
       };
 
-      const services = await Service.getAll(filters);
+      const services = await Service.getAll(req.tenantId, filters);
       res.json(services);
     } catch (error) {
       console.error('Get services error:', error);
@@ -26,7 +26,7 @@ const serviceController = {
   // Get service by ID
   getServiceById: async (req, res) => {
     try {
-      const service = await Service.getById(req.params.id);
+      const service = await Service.getById(req.tenantId, req.params.id);
       
       if (!service) {
         return res.status(404).json({ message: 'Service not found' });
@@ -74,7 +74,7 @@ const serviceController = {
         progress: progress || 0
       };
 
-      const newService = await Service.create(serviceData);
+      const newService = await Service.create(req.tenantId, serviceData);
 
       res.status(201).json(newService);
     } catch (error) {
@@ -103,7 +103,7 @@ const serviceController = {
       } = req.body;
 
       // Check if service exists
-      const existingService = await Service.getById(id);
+      const existingService = await Service.getById(req.tenantId, id);
       if (!existingService) {
         return res.status(404).json({ message: 'Service not found' });
       }
@@ -120,7 +120,7 @@ const serviceController = {
         progress: progress || 0
       };
 
-      const updatedService = await Service.update(id, serviceData);
+      const updatedService = await Service.update(req.tenantId, id, serviceData);
 
       res.json(updatedService);
     } catch (error) {
@@ -138,12 +138,12 @@ const serviceController = {
       const { id } = req.params;
 
       // Check if service exists
-      const existingService = await Service.getById(id);
+      const existingService = await Service.getById(req.tenantId, id);
       if (!existingService) {
         return res.status(404).json({ message: 'Service not found' });
       }
 
-      const deleted = await Service.delete(id);
+      const deleted = await Service.delete(req.tenantId, id);
       
       if (!deleted) {
         return res.status(500).json({ message: 'Failed to delete service' });
@@ -166,7 +166,7 @@ const serviceController = {
       const { assigned_department, service_manager, team } = req.body;
 
       // Check if service exists
-      const existingService = await Service.getById(id);
+      const existingService = await Service.getById(req.tenantId, id);
       if (!existingService) {
         return res.status(404).json({ message: 'Service not found' });
       }
@@ -177,7 +177,7 @@ const serviceController = {
         team: team || []
       };
 
-      const updatedService = await Service.assignTeam(id, teamData);
+      const updatedService = await Service.assignTeam(req.tenantId, id, teamData);
 
       res.json(updatedService);
     } catch (error) {
@@ -192,7 +192,7 @@ const serviceController = {
   // Get service types
   getServiceTypes: async (req, res) => {
     try {
-      const serviceTypes = await Service.getServiceTypes();
+      const serviceTypes = await Service.getServiceTypes(req.tenantId);
       res.json(serviceTypes);
     } catch (error) {
       console.error('Get service types error:', error);
@@ -206,7 +206,7 @@ const serviceController = {
   // Get status types
   getStatusTypes: async (req, res) => {
     try {
-      const statusTypes = await Service.getStatusTypes();
+      const statusTypes = await Service.getStatusTypes(req.tenantId);
       res.json(statusTypes);
     } catch (error) {
       console.error('Get status types error:', error);
@@ -220,7 +220,7 @@ const serviceController = {
   // Get employees for dropdown
   getEmployees: async (req, res) => {
     try {
-      const employees = await Service.getEmployeesForDropdown();
+      const employees = await Service.getEmployeesForDropdown(req.tenantId);
       res.json(employees);
     } catch (error) {
       console.error('Get employees error:', error);

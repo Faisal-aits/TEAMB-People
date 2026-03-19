@@ -11,7 +11,7 @@ const quotationController = {
             if (req.query.status) filters.status = req.query.status;
             if (req.query.month) filters.month = req.query.month;
 
-            const quotations = await Quotation.getAll(filters);
+            const quotations = await Quotation.getAll(req.tenantId, filters);
             
             res.json({ 
                 success: true,
@@ -30,7 +30,7 @@ const quotationController = {
     getQuotation: async (req, res) => {
         try {
             console.log('🔄 Getting quotation by ID:', req.params.id);
-            const quotation = await Quotation.getById(req.params.id);
+            const quotation = await Quotation.getById(req.tenantId, req.params.id);
             
             if (!quotation) {
                 return res.status(404).json({ 
@@ -54,7 +54,7 @@ const quotationController = {
 
     // Create new quotation
 createQuotation: async (req, res) => {
-    const connection = await Quotation.getConnection();
+    const connection = await Quotation.getConnection(req.tenantId);
     try {
         await connection.beginTransaction();
 
@@ -84,7 +84,7 @@ createQuotation: async (req, res) => {
         }
 
         // Check if quotation number already exists
-        const existingQuotation = await Quotation.getByQuotationNo(quotation_no);
+        const existingQuotation = await Quotation.getByQuotationNo(req.tenantId, quotation_no);
         if (existingQuotation) {
             return res.status(400).json({ 
                 success: false,
@@ -92,7 +92,7 @@ createQuotation: async (req, res) => {
             });
         }
 
-        const quotationId = await Quotation.create({
+        const quotationId = await Quotation.create(req.tenantId, {
             quotation_no,
             quotation_date,
             ref_no,
@@ -110,7 +110,7 @@ createQuotation: async (req, res) => {
 
         // Insert items
         for (const item of items) {
-            await Quotation.createItem({
+            await Quotation.createItem(req.tenantId, {
                 quotation_id: quotationId,
                 sr_no: item.sr_no,
                 description: item.description,
@@ -122,7 +122,7 @@ createQuotation: async (req, res) => {
 
         // Insert GST details
         for (const gst of gst_details) {
-            await Quotation.createGSTDetail({
+            await Quotation.createGSTDetail(req.tenantId, {
                 quotation_id: quotationId,
                 tax_type: gst.tax_type,
                 percentage: gst.percentage
@@ -130,7 +130,7 @@ createQuotation: async (req, res) => {
         }
 
         // Insert initial history
-        await Quotation.createHistory({
+        await Quotation.createHistory(req.tenantId, {
             quotation_id: quotationId,
             date: new Date().toISOString().split('T')[0],
             action: 'Quotation created',
@@ -141,7 +141,7 @@ createQuotation: async (req, res) => {
         await connection.commit();
 
         // Return the created quotation
-        const newQuotation = await Quotation.getById(quotationId);
+        const newQuotation = await Quotation.getById(req.tenantId, quotationId);
         
         console.log('✅ Quotation created successfully:', quotationId);
         
@@ -163,7 +163,7 @@ createQuotation: async (req, res) => {
 },
     // Update quotation
 updateQuotation: async (req, res) => {
-  const connection = await Quotation.getConnection();
+  const connection = await Quotation.getConnection(req.tenantId);
   try {
     await connection.beginTransaction();
 
@@ -186,7 +186,7 @@ updateQuotation: async (req, res) => {
     } = req.body;
 
     // Check if quotation exists
-    const existingQuotation = await Quotation.getById(quotationId);
+    const existingQuotation = await Quotation.getById(req.tenantId, quotationId);
     if (!existingQuotation) {
       return res.status(404).json({ 
         success: false,
@@ -224,12 +224,12 @@ updateQuotation: async (req, res) => {
     }
 
     // Delete existing items and GST details
-    await Quotation.deleteItems(quotationId);
-    await Quotation.deleteGSTDetails(quotationId);
+    await Quotation.deleteItems(req.tenantId, quotationId);
+    await Quotation.deleteGSTDetails(req.tenantId, quotationId);
 
     // Insert updated items
     for (const item of items) {
-      await Quotation.createItem({
+      await Quotation.createItem(req.tenantId, {
         quotation_id: quotationId,
         sr_no: item.sr_no,
         description: item.description,
@@ -241,7 +241,7 @@ updateQuotation: async (req, res) => {
 
     // Insert updated GST details
     for (const gst of gst_details) {
-      await Quotation.createGSTDetail({
+      await Quotation.createGSTDetail(req.tenantId, {
         quotation_id: quotationId,
         tax_type: gst.tax_type,
         percentage: gst.percentage
@@ -249,7 +249,7 @@ updateQuotation: async (req, res) => {
     }
 
     // Add history entry
-    await Quotation.createHistory({
+    await Quotation.createHistory(req.tenantId, {
       quotation_id: quotationId,
       date: new Date().toISOString().split('T')[0],
       action: 'Quotation updated',
@@ -259,7 +259,7 @@ updateQuotation: async (req, res) => {
 
     await connection.commit();
 
-    const updatedQuotation = await Quotation.getById(quotationId);
+    const updatedQuotation = await Quotation.getById(req.tenantId, quotationId);
     
     console.log('✅ Quotation updated successfully:', quotationId);
     
@@ -285,7 +285,7 @@ updateQuotation: async (req, res) => {
         try {
             const quotationId = req.params.id;
 
-            const affectedRows = await Quotation.delete(quotationId);
+            const affectedRows = await Quotation.delete(req.tenantId, quotationId);
             if (affectedRows === 0) {
                 return res.status(404).json({ 
                     success: false,
@@ -322,7 +322,7 @@ updateQuotation: async (req, res) => {
                 });
             }
 
-            const affectedRows = await Quotation.updateStatus(quotationId, status);
+            const affectedRows = await Quotation.updateStatus(req.tenantId, quotationId, status);
             if (affectedRows === 0) {
                 return res.status(404).json({ 
                     success: false,
@@ -331,7 +331,7 @@ updateQuotation: async (req, res) => {
             }
 
             // Add history entry
-            await Quotation.createHistory({
+            await Quotation.createHistory(req.tenantId, {
                 quotation_id: quotationId,
                 date: new Date().toISOString().split('T')[0],
                 action: `Status changed to ${status}`,
@@ -367,7 +367,7 @@ updateQuotation: async (req, res) => {
                 });
             }
 
-            await Quotation.createHistory({
+            await Quotation.createHistory(req.tenantId, {
                 quotation_id: quotationId,
                 date: new Date().toISOString().split('T')[0],
                 action: 'Follow-up added',

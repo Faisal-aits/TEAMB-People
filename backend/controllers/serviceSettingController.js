@@ -6,7 +6,7 @@ const serviceSettingController = {
     getBankDetails: async (req, res) => {
         try {
             console.log('🔄 Getting bank details...');
-            const bankDetails = await ServiceSetting.getBankDetails();
+            const bankDetails = await ServiceSetting.getBankDetails(req.tenantId);
             
             res.json({
                 success: true,
@@ -35,7 +35,7 @@ const serviceSettingController = {
     getGstDetails: async (req, res) => {
         try {
             console.log('🔄 Getting GST details...');
-            const gstDetails = await ServiceSetting.getGstDetails();
+            const gstDetails = await ServiceSetting.getGstDetails(req.tenantId);
             
             res.json({
                 success: true,
@@ -67,7 +67,7 @@ const serviceSettingController = {
         try {
             console.log('🔄 Getting quotation settings...');
             
-            const settings = await ServiceSetting.getQuotationSettings();
+            const settings = await ServiceSetting.getQuotationSettings(req.tenantId);
             
             res.json({
                 success: true,
@@ -137,7 +137,7 @@ const serviceSettingController = {
                 account_type: account_type || 'Current'
             };
 
-            await ServiceSetting.updateBankDetails(bankData);
+            await ServiceSetting.updateBankDetails(req.tenantId, bankData);
 
             console.log('✅ Bank details updated successfully');
 
@@ -188,7 +188,7 @@ const serviceSettingController = {
                 igst_rate: parseFloat(igst_rate) || 18
             };
 
-            await ServiceSetting.updateGstDetails(gstData);
+            await ServiceSetting.updateGstDetails(req.tenantId, gstData);
 
             console.log('✅ GST details updated successfully');
 

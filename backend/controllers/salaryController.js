@@ -11,7 +11,7 @@ const salaryController = {
             const { employee, department, month, year, status } = req.query;
             const filters = { employee, department, month, year, status };
             
-            const salaryRecords = await Salary.getAll(filters);
+            const salaryRecords = await Salary.getAll(req.tenantId, filters);
             res.json({ salaryRecords });
         } catch (error) {
             console.error('Get salary records error:', error);
@@ -22,7 +22,7 @@ const salaryController = {
     // Get salary record by ID
     getSalaryRecord: async (req, res) => {
         try {
-            const salaryRecord = await Salary.getById(req.params.id);
+            const salaryRecord = await Salary.getById(req.tenantId, req.params.id);
             
             if (!salaryRecord) {
                 return res.status(404).json({ message: 'Salary record not found' });
@@ -58,12 +58,12 @@ const salaryController = {
             }
 
             // Check if salary record already exists for this employee and period
-            const recordExists = await Salary.checkRecordExists(employee_id, month, year);
+            const recordExists = await Salary.checkRecordExists(req.tenantId, employee_id, month, year);
             if (recordExists) {
                 return res.status(400).json({ message: 'Salary record already exists for this employee and period' });
             }
 
-            const salaryId = await Salary.create({
+            const salaryId = await Salary.create(req.tenantId, {
                 employee_id,
                 department_id,
                 basic_salary,
@@ -111,18 +111,18 @@ const salaryController = {
             }
 
             // Check if salary record exists
-            const existingRecord = await Salary.getById(salaryId);
+            const existingRecord = await Salary.getById(req.tenantId, salaryId);
             if (!existingRecord) {
                 return res.status(404).json({ message: 'Salary record not found' });
             }
 
             // Check if salary record already exists for this employee and period (excluding current record)
-            const recordExists = await Salary.checkRecordExists(employee_id, month, year, salaryId);
+            const recordExists = await Salary.checkRecordExists(req.tenantId, employee_id, month, year, salaryId);
             if (recordExists) {
                 return res.status(400).json({ message: 'Salary record already exists for this employee and period' });
             }
 
-            const affectedRows = await Salary.update(salaryId, {
+            const affectedRows = await Salary.update(req.tenantId, salaryId, {
                 employee_id,
                 department_id,
                 basic_salary,
@@ -153,12 +153,12 @@ const salaryController = {
             const salaryId = req.params.id;
 
             // Check if salary record exists
-            const existingRecord = await Salary.getById(salaryId);
+            const existingRecord = await Salary.getById(req.tenantId, salaryId);
             if (!existingRecord) {
                 return res.status(404).json({ message: 'Salary record not found' });
             }
 
-            const affectedRows = await Salary.delete(salaryId);
+            const affectedRows = await Salary.delete(req.tenantId, salaryId);
 
             if (affectedRows === 0) {
                 return res.status(404).json({ message: 'Salary record not found' });
@@ -174,7 +174,7 @@ const salaryController = {
     // Get employees for dropdown
     getEmployees: async (req, res) => {
         try {
-            const employees = await Salary.getEmployees();
+            const employees = await Salary.getEmployees(req.tenantId);
             res.json({ employees });
         } catch (error) {
             console.error('Get employees error:', error);
@@ -185,7 +185,7 @@ const salaryController = {
     // Get departments for dropdown
     getDepartments: async (req, res) => {
         try {
-            const departments = await Salary.getDepartments();
+            const departments = await Salary.getDepartments(req.tenantId);
             res.json({ departments });
         } catch (error) {
             console.error('Get departments error:', error);
@@ -199,7 +199,7 @@ const salaryController = {
     //         const salaryId = req.params.id;
             
     //         // Check if salary record exists
-    //         const salaryRecord = await Salary.getById(salaryId);
+    //         const salaryRecord = await Salary.getById(req.tenantId, salaryId);
     //         if (!salaryRecord) {
     //             return res.status(404).json({ message: 'Salary record not found' });
     //         }
@@ -219,7 +219,7 @@ const salaryController = {
     // Get salary statistics
     getSalaryStats: async (req, res) => {
         try {
-            const stats = await Salary.getStatistics();
+            const stats = await Salary.getStatistics(req.tenantId);
             res.json({ stats });
         } catch (error) {
             console.error('Get salary stats error:', error);
@@ -233,7 +233,7 @@ const salaryController = {
             const salaryId = req.params.id;
             
             // Get salary record with complete details
-            const salaryRecord = await Salary.getById(salaryId);
+            const salaryRecord = await Salary.getById(req.tenantId, salaryId);
             if (!salaryRecord) {
                 return res.status(404).json({ message: 'Salary record not found' });
             }
@@ -266,7 +266,7 @@ const salaryController = {
         try {
             const salaryId = req.params.id;
             
-            const salaryRecord = await Salary.getById(salaryId);
+            const salaryRecord = await Salary.getById(req.tenantId, salaryId);
             if (!salaryRecord) {
                 return res.status(404).json({ message: 'Salary record not found' });
             }

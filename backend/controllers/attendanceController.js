@@ -15,8 +15,8 @@ const attendanceController = {
                 status: req.query.status || 'all'
             };
 
-            const attendanceData = await Attendance.getAll(filters);
-            const stats = await Attendance.getStatistics(filters.date);
+            const attendanceData = await Attendance.getAll(req.tenantId, filters);
+            const stats = await Attendance.getStatistics(req.tenantId, filters.date);
 
             res.json({
                 attendance: attendanceData,
@@ -33,8 +33,8 @@ const attendanceController = {
         try {
             const { employeeId } = req.params;
             
-            const history = await Attendance.getEmployeeHistory(employeeId);
-            const stats = await Attendance.getEmployeeHistoryStats(employeeId);
+            const history = await Attendance.getEmployeeHistory(req.tenantId, employeeId);
+            const stats = await Attendance.getEmployeeHistoryStats(req.tenantId, employeeId);
 
             res.json({
                 history: history,
@@ -74,7 +74,7 @@ approveAttendance: async (req, res) => {
         });
 
         // Approve the attendance using employee.id (the employee_details id)
-        await Attendance.approve(attendanceId, employee.id);
+        await Attendance.approve(req.tenantId, attendanceId, employee.id);
 
         res.json({ 
             success: true,
@@ -127,7 +127,7 @@ rejectAttendance: async (req, res) => {
         });
 
         // Reject the attendance using employee.id (the employee_details id)
-        await Attendance.reject(attendanceId, employee.id, remarks);
+        await Attendance.reject(req.tenantId, attendanceId, employee.id, remarks);
 
         res.json({ 
             success: true,
@@ -153,7 +153,7 @@ rejectAttendance: async (req, res) => {
     // Get shifts
     getShifts: async (req, res) => {
         try {
-            const shifts = await Attendance.getShifts();
+            const shifts = await Attendance.getShifts(req.tenantId);
             res.json({ shifts });
         } catch (error) {
             console.error('Get shifts error:', error);
@@ -165,7 +165,7 @@ rejectAttendance: async (req, res) => {
     getAttendanceStats: async (req, res) => {
         try {
             const { date } = req.query;
-            const stats = await Attendance.getStatistics(date);
+            const stats = await Attendance.getStatistics(req.tenantId, date);
             res.json({ statistics: stats });
         } catch (error) {
             console.error('Get attendance stats error:', error);
@@ -190,13 +190,13 @@ rejectAttendance: async (req, res) => {
             const today = date || new Date().toISOString().split('T')[0];
             const currentDateTime = new Date();
             
-            const attendanceExists = await Attendance.checkExists(employee_id, today);
+            const attendanceExists = await Attendance.checkExists(req.tenantId, employee_id, today);
             
             let result;
             
             if (attendanceExists) {
                 if (type === 'check_out') {
-                    result = await Attendance.updateCheckOut(employee_id, today, currentDateTime);
+                    result = await Attendance.updateCheckOut(req.tenantId, employee_id, today, currentDateTime);
                     console.log('✅ Updated check-out:', result);
                 } else {
                     return res.status(400).json({
@@ -206,7 +206,7 @@ rejectAttendance: async (req, res) => {
                 }
             } else {
                 if (type === 'check_in') {
-                    result = await Attendance.create({
+                    result = await Attendance.create(req.tenantId, {
                         employee_id,
                         date: today,
                         check_in: currentDateTime,
@@ -255,8 +255,8 @@ rejectAttendance: async (req, res) => {
             const today = date || new Date().toISOString().split('T')[0];
             console.log('📅 Looking for attendance on:', today, 'for employee:', employee.employee_id);
             
-            const allAttendance = await Attendance.getAll({ date: today });
-            const myAttendance = allAttendance.find(record => record.employee_id === employee.employee_id);
+            const allAttendance = await Attendance.getAll(req.tenantId, { date: today });
+            const myAttendance = allAttendance.find(req.tenantId, record => record.employee_id === employee.employee_id);
             
             res.json({ 
                 success: true,
@@ -292,7 +292,7 @@ rejectAttendance: async (req, res) => {
             }
             
             console.log('🔍 Getting history for employee:', employee.employee_id);
-            const history = await Attendance.getEmployeeHistory(employee.employee_id);
+            const history = await Attendance.getEmployeeHistory(req.tenantId, employee.employee_id);
             
             res.json({ 
                 success: true,
@@ -335,13 +335,13 @@ rejectAttendance: async (req, res) => {
             
             console.log('💾 Creating attendance for:', { employeeId, type, today });
             
-            const attendanceExists = await Attendance.checkExists(employeeId, today);
+            const attendanceExists = await Attendance.checkExists(req.tenantId, employeeId, today);
             
             let result;
             
             if (attendanceExists) {
                 if (type === 'check_out') {
-                    result = await Attendance.updateCheckOut(employeeId, today, currentDateTime);
+                    result = await Attendance.updateCheckOut(req.tenantId, employeeId, today, currentDateTime);
                     console.log('✅ Updated check-out:', result);
                 } else {
                     return res.status(400).json({
@@ -351,7 +351,7 @@ rejectAttendance: async (req, res) => {
                 }
             } else {
                 if (type === 'check_in') {
-                    result = await Attendance.create({
+                    result = await Attendance.create(req.tenantId, {
                         employee_id: employeeId,
                         date: today,
                         check_in: currentDateTime,
@@ -462,7 +462,7 @@ rejectAttendance: async (req, res) => {
             }
 
             // Step 5: Check if attendance already exists for today
-            const existingAttendance = await Attendance.getByEmployeeAndDate(identifiedEmployee.employee_id, today);
+            const existingAttendance = await Attendance.getByEmployeeAndDate(req.tenantId, identifiedEmployee.employee_id, today);
             
             if (existingAttendance && existingAttendance.check_in) {
                 return res.json({
@@ -498,7 +498,7 @@ rejectAttendance: async (req, res) => {
                 remarks: `Auto-marked via face recognition (Similarity: ${(highestSimilarity * 100).toFixed(1)}%)`
             };
 
-            const attendanceResult = await Attendance.create(attendanceData);
+            const attendanceResult = await Attendance.create(req.tenantId, attendanceData);
 
             // Step 8: Create attendance history record
             const historyData = {
@@ -508,7 +508,7 @@ rejectAttendance: async (req, res) => {
                 status: status
             };
 
-            await Attendance.createHistory(historyData);
+            await Attendance.createHistory(req.tenantId, historyData);
 
             console.log(`✅ Attendance marked for ${identifiedEmployee.employee_id}: ${status}`);
 
@@ -641,7 +641,7 @@ console.log(`✅ Found shift: ${employeeShift.shift_name} (${employeeShift.check
             }
 
             // Check existing attendance
-            const existingAttendance = await Attendance.getByEmployeeAndDate(employee.employee_id, today);
+            const existingAttendance = await Attendance.getByEmployeeAndDate(req.tenantId, employee.employee_id, today);
             
             if (existingAttendance && existingAttendance.check_in) {
                 return res.json({
@@ -673,10 +673,10 @@ console.log(`✅ Found shift: ${employeeShift.shift_name} (${employeeShift.check
                 remarks: `Face verified (${similarityPercent} confidence)`
             };
 
-            await Attendance.create(attendanceData);
+            await Attendance.create(req.tenantId, attendanceData);
 
             // Create history
-            await Attendance.createHistory({
+            await Attendance.createHistory(req.tenantId, {
                 employee_id: employee.employee_id,
                 date: today,
                 description: `Face verified attendance - ${status}`,
@@ -724,7 +724,7 @@ console.log(`✅ Found shift: ${employeeShift.shift_name} (${employeeShift.check
             }
             
             // Use the new model method
-            const percentage = await Attendance.getMonthlyPercentage(employeeId, month, year);
+            const percentage = await Attendance.getMonthlyPercentage(req.tenantId, employeeId, month, year);
             
             res.json({
                 success: true,

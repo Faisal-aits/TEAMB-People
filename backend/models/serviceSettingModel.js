@@ -3,11 +3,11 @@ const pool = require('../config/database');
 
 const ServiceSetting = {
     // Get bank details
-    getBankDetails: async () => {
+    getBankDetails: async (tenantId) => {
         try {
             const [rows] = await pool.execute(
-                'SELECT * FROM service_settings WHERE setting_type = ? ORDER BY updated_at DESC LIMIT 1',
-                ['bank']
+                'SELECT * FROM service_settings WHERE setting_type = ? AND tenant_id = ? ORDER BY updated_at DESC LIMIT 1',
+                ['bank', tenantId]
             );
             
             if (!rows[0]) return null;
@@ -31,11 +31,11 @@ const ServiceSetting = {
     },
 
     // Get GST details
-    getGstDetails: async () => {
+    getGstDetails: async (tenantId) => {
         try {
             const [rows] = await pool.execute(
-                'SELECT * FROM service_settings WHERE setting_type = ? ORDER BY updated_at DESC LIMIT 1',
-                ['gst']
+                'SELECT * FROM service_settings WHERE setting_type = ? AND tenant_id = ? ORDER BY updated_at DESC LIMIT 1',
+                ['gst', tenantId]
             );
             
             if (!rows[0]) return null;
@@ -61,11 +61,11 @@ const ServiceSetting = {
     },
 
     // Get quotation settings
-    getQuotationSettings: async () => {
+    getQuotationSettings: async (tenantId) => {
         try {
             // Get both bank and GST details
-            const bankDetails = await ServiceSetting.getBankDetails();
-            const gstDetails = await ServiceSetting.getGstDetails();
+            const bankDetails = await ServiceSetting.getBankDetails(tenantId);
+            const gstDetails = await ServiceSetting.getGstDetails(tenantId);
             
             return {
                 bankDetails: bankDetails || {
@@ -126,7 +126,7 @@ const ServiceSetting = {
     },
 
     // Update bank details
-    updateBankDetails: async (bankData) => {
+    updateBankDetails: async (tenantId, bankData) => {
         const connection = await pool.getConnection();
         
         try {
@@ -134,8 +134,8 @@ const ServiceSetting = {
 
             // Check if bank settings exist
             const [existing] = await connection.execute(
-                'SELECT id FROM service_settings WHERE setting_type = ?',
-                ['bank']
+                'SELECT id FROM service_settings WHERE setting_type = ? AND tenant_id = ?',
+                ['bank', tenantId]
             );
 
             if (existing.length > 0) {
@@ -144,7 +144,7 @@ const ServiceSetting = {
                     `UPDATE service_settings SET 
                      account_holder = ?, account_number = ?, bank_name = ?, ifsc_code = ?, 
                      branch = ?, account_type = ?, updated_at = CURRENT_TIMESTAMP
-                     WHERE setting_type = ?`,
+                     WHERE setting_type = ? AND tenant_id = ?`,
                     [
                         bankData.account_holder,
                         bankData.account_number,
@@ -152,16 +152,18 @@ const ServiceSetting = {
                         bankData.ifsc_code,
                         bankData.branch,
                         bankData.account_type,
-                        'bank'
+                        'bank',
+                        tenantId
                     ]
                 );
             } else {
                 // Insert new
                 await connection.execute(
                     `INSERT INTO service_settings 
-                     (setting_type, account_holder, account_number, bank_name, ifsc_code, branch, account_type)
-                     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                     (tenant_id, setting_type, account_holder, account_number, bank_name, ifsc_code, branch, account_type)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
                     [
+                        tenantId,
                         'bank',
                         bankData.account_holder,
                         bankData.account_number,
@@ -186,7 +188,7 @@ const ServiceSetting = {
     },
 
     // Update GST details
-    updateGstDetails: async (gstData) => {
+    updateGstDetails: async (tenantId, gstData) => {
         const connection = await pool.getConnection();
         
         try {
@@ -194,8 +196,8 @@ const ServiceSetting = {
 
             // Check if GST settings exist
             const [existing] = await connection.execute(
-                'SELECT id FROM service_settings WHERE setting_type = ?',
-                ['gst']
+                'SELECT id FROM service_settings WHERE setting_type = ? AND tenant_id = ?',
+                ['gst', tenantId]
             );
 
             if (existing.length > 0) {
@@ -205,7 +207,7 @@ const ServiceSetting = {
                      gstin = ?, pan_number = ?, hsn_code = ?, tax_rate = ?, 
                      is_gst_applicable = ?, sgst_rate = ?, cgst_rate = ?, igst_rate = ?, 
                      updated_at = CURRENT_TIMESTAMP
-                     WHERE setting_type = ?`,
+                     WHERE setting_type = ? AND tenant_id = ?`,
                     [
                         gstData.gstin,
                         gstData.pan_number,
@@ -215,16 +217,18 @@ const ServiceSetting = {
                         gstData.sgst_rate,
                         gstData.cgst_rate,
                         gstData.igst_rate,
-                        'gst'
+                        'gst',
+                        tenantId
                     ]
                 );
             } else {
                 // Insert new
                 await connection.execute(
                     `INSERT INTO service_settings 
-                     (setting_type, gstin, pan_number, hsn_code, tax_rate, is_gst_applicable, sgst_rate, cgst_rate, igst_rate)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                     (tenant_id, setting_type, gstin, pan_number, hsn_code, tax_rate, is_gst_applicable, sgst_rate, cgst_rate, igst_rate)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                     [
+                        tenantId,
                         'gst',
                         gstData.gstin,
                         gstData.pan_number,

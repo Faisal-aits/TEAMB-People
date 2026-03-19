@@ -46,7 +46,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     try {
-      
+      // credentials now includes { email, password, tenant_slug }
       const response = await authAPI.login(credentials);
       const { token, user } = response.data;
       

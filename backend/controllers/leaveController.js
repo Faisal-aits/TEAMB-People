@@ -10,8 +10,8 @@ const leaveController = {
                 status: req.query.status || 'all'
             };
 
-            const leaveData = await Leave.getAll(filters);
-            const stats = await Leave.getStatistics();
+            const leaveData = await Leave.getAll(req.tenantId, filters);
+            const stats = await Leave.getStatistics(req.tenantId);
 
             res.json({
                 leaves: leaveData,
@@ -45,7 +45,7 @@ const leaveController = {
             const employee_id = employeeRows[0].employee_id;
             console.log('Found employee_id for leaves:', employee_id);
             
-            const leaves = await Leave.getByEmployeeId(employee_id);
+            const leaves = await Leave.getByEmployeeId(req.tenantId, employee_id);
             console.log('Retrieved leaves:', leaves);
             
             res.json({ 
@@ -101,7 +101,7 @@ const leaveController = {
             }
 
             console.log('Calling Leave.create with:', { employee_id, description, start_date, end_date });
-            const leaveId = await Leave.create({
+            const leaveId = await Leave.create(req.tenantId, {
                 employee_id,
                 description,
                 start_date,
@@ -127,8 +127,8 @@ const leaveController = {
         try {
             const { employeeId } = req.params;
             
-            const history = await Leave.getEmployeeAttendanceHistory(employeeId);
-            const stats = await Leave.getEmployeeAttendanceStats(employeeId);
+            const history = await Leave.getEmployeeAttendanceHistory(req.tenantId, employeeId);
+            const stats = await Leave.getEmployeeAttendanceStats(req.tenantId, employeeId);
 
             res.json({
                 history: history,
@@ -171,7 +171,7 @@ const leaveController = {
             console.log('✅ Found admin employee_id for approval:', approved_by);
 
             console.log('Calling Leave.approve with:', { leaveId, approved_by });
-            await Leave.approve(leaveId, approved_by);
+            await Leave.approve(req.tenantId, leaveId, approved_by);
 
             console.log('✅ Leave approved successfully');
             console.log('=== APPROVE LEAVE REQUEST END ===');
@@ -220,7 +220,7 @@ const leaveController = {
             console.log('✅ Found admin employee_id for rejection:', approved_by);
 
             console.log('Calling Leave.reject with:', { leaveId, approved_by });
-            await Leave.reject(leaveId, approved_by);
+            await Leave.reject(req.tenantId, leaveId, approved_by);
 
             console.log('✅ Leave rejected successfully');
             console.log('=== REJECT LEAVE REQUEST END ===');
@@ -242,7 +242,7 @@ const leaveController = {
         try {
             const { leaveId } = req.params;
 
-            await Leave.delete(leaveId);
+            await Leave.delete(req.tenantId, leaveId);
 
             res.json({ message: 'Leave request deleted successfully!' });
         } catch (error) {
@@ -259,7 +259,7 @@ const leaveController = {
     // Get leave statistics
     getLeaveStats: async (req, res) => {
         try {
-            const stats = await Leave.getStatistics();
+            const stats = await Leave.getStatistics(req.tenantId);
             res.json({ statistics: stats });
         } catch (error) {
             console.error('Get leave stats error:', error);
