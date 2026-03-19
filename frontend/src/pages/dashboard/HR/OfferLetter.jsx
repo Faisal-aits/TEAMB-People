@@ -5,12 +5,16 @@ import companyLogo from "../../../assets/img/company.png";
 import stampPng from "../../../assets/img/stamp.png";
 import { TbWorld } from "react-icons/tb";
 import { TfiEmail } from "react-icons/tfi";
-import { HiOutlineDocumentText, HiOutlineUserGroup, HiOutlineBriefcase } from "react-icons/hi2";
+import { HiOutlineDocumentText, HiOutlineUserGroup, HiOutlineBriefcase, HiOutlineArrowDownOnSquare, HiOutlineEye, HiOutlineArrowDownTray } from "react-icons/hi2";
+import offerLetterAPI from "../../../services/offerLetterAPI";
 
 const OfferLetter = () => {
   const [employees, setEmployees] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState("");
+  const [selectedUserId, setSelectedUserId] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   const [formData, setFormData] = useState({
     issueDate: new Date().toISOString().split('T')[0],
@@ -38,13 +42,27 @@ const OfferLetter = () => {
       }
     };
     fetchEmployees();
+    fetchHistory();
   }, []);
+
+  const fetchHistory = async () => {
+    setIsLoadingHistory(true);
+    try {
+      const res = await offerLetterAPI.getAll();
+      setHistory(res.data.data || []);
+    } catch (err) {
+      console.error("Error fetching history:", err);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
 
   const handleSelect = async (e) => {
     const empId = e.target.value;
     setSelectedEmployee(empId);
 
     if (!empId) {
+      setSelectedUserId(null);
       setFormData({
         issueDate: new Date().toISOString().split('T')[0],
         fullName: "",
@@ -63,6 +81,7 @@ const OfferLetter = () => {
       const res = await employeeAPI.getById(empId);
       const emp = res.data.employee || res.data;
 
+      setSelectedUserId(emp.user_id);
       setFormData((prev) => ({
         ...prev,
         fullName: `${emp.first_name || ""} ${emp.last_name || ""}`.trim(),
@@ -86,7 +105,31 @@ const OfferLetter = () => {
     try {
       await offerLetterPDFService.downloadOfferLetter(formData);
     } catch (err) {
-      alert("Failed to generate PDF. Please try again.");
+      console.error("Error in generation:", err);
+      alert("Failed to download PDF. Please try again.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!selectedUserId) {
+      alert("Please select an existing employee from the search list to save to their dashboard.");
+      return;
+    }
+    
+    setIsGenerating(true);
+    try {
+      await offerLetterAPI.save({
+        employee_id: selectedUserId,
+        form_data: formData,
+        issue_date: formData.issueDate
+      });
+      alert("Offer letter successfully saved to employee's dashboard!");
+      fetchHistory(); // Refresh history
+    } catch (err) {
+      console.error("Error saving to database:", err);
+      alert("Failed to save. Please try again.");
     } finally {
       setIsGenerating(false);
     }
@@ -138,24 +181,52 @@ const OfferLetter = () => {
     <div style={{ padding: "20px", background: "#f4f7f6", minHeight: "100vh" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "30px" }}>
         <h1 style={{ margin: 0, color: "#2c3e50", fontSize: "28px" }}>Offer Letter Generator</h1>
-        <button
-          onClick={handleDownload}
-          disabled={isGenerating}
-          style={{
-            padding: "12px 24px",
-            background: "#2ecc71",
-            color: "white",
-            border: "none",
-            borderRadius: "8px",
-            cursor: "pointer",
-            fontWeight: "bold",
-            boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-            transition: "all 0.3s ease",
-            opacity: isGenerating ? 0.7 : 1
-          }}
-        >
-          {isGenerating ? "Generating..." : "Download Original PDF"}
-        </button>
+        <div style={{ display: "flex", gap: "12px" }}>
+          <button
+            onClick={handleSave}
+            disabled={isGenerating}
+            style={{
+              padding: "12px 24px",
+              background: "#4f46e5",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+              fontWeight: "bold",
+              boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              transition: "all 0.3s ease",
+              opacity: isGenerating ? 0.7 : 1
+            }}
+          >
+            <HiOutlineArrowDownOnSquare size={20} />
+            {isGenerating ? "Saving..." : "Save to Dashboard"}
+          </button>
+          <button
+            onClick={handleDownload}
+            disabled={isGenerating}
+            style={{
+              padding: "12px 24px",
+              background: "#2ecc71",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+              fontWeight: "bold",
+              boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              transition: "all 0.3s ease",
+              opacity: isGenerating ? 0.7 : 1
+            }}
+          >
+            <HiOutlineArrowDownTray size={20} />
+            {isGenerating ? "Processing..." : "Download PDF"}
+          </button>
+        </div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "400px 1fr", gap: "30px" }}>
@@ -334,19 +405,78 @@ const OfferLetter = () => {
           </div>
         </div>
       </div>
+
+      {/* 🔥 BOTTOM SECTION: HISTORY */}
+      <div style={{ marginTop: "40px", background: "white", padding: "30px", borderRadius: "16px", boxShadow: "0 10px 25px -5px rgba(0,0,0,0.05)", border: "1px solid #f1f5f9" }}>
+        <h3 style={{ ...sectionHeaderStyle, borderBottom: "none", marginBottom: "20px" }}>
+          <HiOutlineDocumentText size={24} /> Recent Offer Letters
+        </h3>
+        
+        {isLoadingHistory ? (
+          <div style={{ textAlign: "center", padding: "40px", color: "#64748b" }}>Loading history...</div>
+        ) : history.length > 0 ? (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+              <thead>
+                <tr style={{ borderBottom: "2px solid #f1f5f9", color: "#64748b", fontSize: "13px" }}>
+                  <th style={{ padding: "12px 16px", fontWeight: "600" }}>Employee Name</th>
+                  <th style={{ padding: "12px 16px", fontWeight: "600" }}>Employee ID</th>
+                  <th style={{ padding: "12px 16px", fontWeight: "600" }}>Designation</th>
+                  <th style={{ padding: "12px 16px", fontWeight: "600" }}>Issue Date</th>
+                  <th style={{ padding: "12px 16px", fontWeight: "600", textAlign: "right" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map((item) => (
+                  <tr key={item.id} style={{ borderBottom: "1px solid #f1f5f9", fontSize: "14px", transition: "background 0.2s" }}>
+                    <td style={{ padding: "16px" }}>
+                      <div style={{ fontWeight: "600", color: "#1e293b" }}>{item.first_name} {item.last_name}</div>
+                      <div style={{ fontSize: "12px", color: "#64748b" }}>{item.email}</div>
+                    </td>
+                    <td style={{ padding: "16px", color: "#64748b" }}>{item.employee_display_id || "N/A"}</td>
+                    <td style={{ padding: "16px", color: "#1e293b" }}>{item.form_data.designation}</td>
+                    <td style={{ padding: "16px", color: "#64748b" }}>{new Date(item.issue_date).toLocaleDateString('en-GB')}</td>
+                    <td style={{ padding: "16px", textAlign: "right" }}>
+                      <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+                        <button 
+                          onClick={() => offerLetterPDFService.viewOfferLetter(item.form_data)}
+                          title="View"
+                          style={{ padding: "6px", background: "#f1f5f9", border: "none", borderRadius: "4px", cursor: "pointer", color: "#4f46e5" }}
+                        >
+                          <HiOutlineEye size={18} />
+                        </button>
+                        <button 
+                          onClick={() => offerLetterPDFService.downloadOfferLetter(item.form_data)}
+                          title="Download"
+                          style={{ padding: "6px", background: "#f1f5f9", border: "none", borderRadius: "4px", cursor: "pointer", color: "#2ecc71" }}
+                        >
+                          <HiOutlineArrowDownTray size={18} />
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setFormData(item.form_data);
+                            setSelectedEmployee(item.employee_display_id);
+                            setSelectedUserId(item.employee_id);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                          title="Edit"
+                          style={{ padding: "6px", background: "#f1f5f9", border: "none", borderRadius: "4px", cursor: "pointer", color: "#64748b" }}
+                        >
+                          <HiOutlineArrowDownOnSquare size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div style={{ textAlign: "center", padding: "40px", color: "#64748b" }}>No offer letters found in history.</div>
+        )}
+      </div>
     </div>
   );
-};
-
-const inputStyle = {
-  width: "100%",
-  padding: "10px",
-  marginBottom: "12px",
-  borderRadius: "6px",
-  border: "1px solid #ddd",
-  fontSize: "14px",
-  display: "block",
-  boxSizing: "border-box"
 };
 
 export default OfferLetter;

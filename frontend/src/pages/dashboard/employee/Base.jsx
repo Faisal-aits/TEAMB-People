@@ -11,6 +11,7 @@ import Projects from './Projects.jsx';
 import Reports from './Reports.jsx';
 import ReportsHistory from './ReportsHistory.jsx'
 import Settings from './Settings.jsx';
+import MyDocuments from './MyDocuments.jsx';
 
 const Base = () => {
 const [activeTab, setActiveTab] = useState(() => {
@@ -127,8 +128,10 @@ useEffect(() => {
         return <Projects {...contentProps} />;
       case 'reports':
         return <Reports {...contentProps} />;
-    case 'report_history':
-      return <ReportsHistory {...contentProps} />; 
+      case 'report_history':
+        return <ReportsHistory {...contentProps} />;
+      case 'myDocuments':
+        return <MyDocuments {...contentProps} />;
       case 'settings':
         return <Settings {...contentProps} />;
       default:
@@ -279,7 +282,20 @@ const ChevronRightIcon = () => (
       </li>
     </ul>
   )}
-</li>
+            </li>
+
+              {/* My Documents */}
+              <li className={activeTab === 'myDocuments' ? 'active' : ''}>
+                <button onClick={() => setActiveTab('myDocuments')}>
+                  <span className="nav-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" fill="currentColor"/>
+                    </svg>
+                  </span>
+                  {sidebarOpen && <span className="nav-text">My Documents</span>}
+                </button>
+              </li>
+
               {/* Settings */}
               <li className={activeTab === 'settings' ? 'active' : ''}>
                 <button onClick={() => setActiveTab('settings')}>

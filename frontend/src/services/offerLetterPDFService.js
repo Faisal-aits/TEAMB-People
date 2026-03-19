@@ -29,6 +29,33 @@ export const offerLetterPDFService = {
       console.error('Error generating offer letter:', error);
       throw error;
     }
+  },
+
+  viewOfferLetter: async (formData) => {
+    try {
+      console.log('👁️ Previewing PDF for Offer Letter:', formData.fullName);
+      
+      const pdfData = {
+        formData,
+        company: {
+          name: "Arham IT Solution",
+          address: "Above Being Healthy Gym, Near Surbhi Hospital, Nagar Sambhajjnagar Road, Ahliyanagar 414003",
+          email: "info@arhamitsolution.in",
+          website: "www.arhamitsolution.in",
+          phone: "9322195628"
+        },
+        logo: companyLogo,
+        stamp: stampPng
+      };
+
+      const pdf = await generatePDF(pdfData);
+      const blobUrl = pdf.output('bloburl');
+      window.open(blobUrl, '_blank');
+
+    } catch (error) {
+      console.error('Error previewing offer letter:', error);
+      throw error;
+    }
   }
 };
 

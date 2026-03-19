@@ -25,6 +25,7 @@ const quotationRoutes = require('./routes/quotationRoutes');
 const deliveryRoutes = require('./routes/deliveryRoutes');
 const serviceSettingRoutes = require('./routes/serviceSettingRoutes');
 const studentAttendanceRoutes = require('./routes/studentAttendanceRoutes');
+const offerLetterRoutes = require('./routes/offerLetterRoutes');
 const { scheduleAutoAbsentCron } = require('./cron/attendanceCron');
 scheduleAutoAbsentCron();
 
@@ -82,6 +83,7 @@ app.use('/api/quotations', quotationRoutes);
 app.use('/api/delivery', deliveryRoutes);
 app.use('/api/service-settings', serviceSettingRoutes);
 app.use('/api/student-attendance', studentAttendanceRoutes);
+app.use('/api/offer-letters', offerLetterRoutes);
 
 
 
