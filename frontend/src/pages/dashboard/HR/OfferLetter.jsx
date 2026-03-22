@@ -317,33 +317,18 @@ const OfferLetter = () => {
         </div>
 
         {/* 🔥 RIGHT COLUMN: LIVE PREVIEW */}
-        <div style={{ background: "white", padding: "40px", borderRadius: "12px", boxShadow: "0 8px 30px rgba(0,0,0,0.12)", position: "sticky", top: "20px", maxHeight: "calc(100vh - 40px)", overflowY: "auto" }}>
+        <div style={{ background: "white", padding: "40px", borderRadius: "12px", boxShadow: "0 8px 30px rgba(0,0,0,0.12)", position: "sticky", top: "20px", maxHeight: "calc(100vh - 40px)", overflowY: "auto", display: "flex", flexDirection: "column", gap: "30px" }}>
+          {/* PAGE 1 PREVIEW */}
           <div style={{ border: "1px solid #eee", minHeight: "1000px", background: "white", color: "#000", fontSize: "11pt", lineHeight: "1.6", display: "flex", flexDirection: "column", boxShadow: "0 0 10px rgba(0,0,0,0.05)" }}>
+            <div style={{ padding: "5px 10px", background: "#f8fafc", borderBottom: "1px solid #eee", fontSize: "10pt", color: "#64748b", fontWeight: "bold" }}>Page 1</div>
             {/* Header */}
             <div style={{
-              display: "flex",
-              justifyContent: "flex-start",
-              alignItems: "center",
-              gap: "50px",
-              borderBottom: "5px solid #000",
-              padding: "20px 40px 10px 40px",
-              marginBottom: "30px",
-              boxSizing: "border-box",
-              width: "100%"
+              display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "50px", borderBottom: "5px solid #000", padding: "20px 40px 10px 40px", marginBottom: "30px", boxSizing: "border-box", width: "100%"
             }}>
               <div style={{ flex: "0 0 auto" }}>
                 <img src={companyLogo} alt="Logo" style={{ height: "120px", width: "auto", maxWidth: "300px", objectFit: "contain", display: "block", padding: "0 2px" }} />
               </div>
-              <div style={{
-                textAlign: "left",
-                display: "flex",
-                flexDirection: "column",
-                gap: "10px",
-                justifyContent: "center",
-                maxWidth: "60%",
-                flex: "0 0 auto",
-                wordBreak: "break-all"
-              }}>
+              <div style={{ textAlign: "left", display: "flex", flexDirection: "column", gap: "10px", justifyContent: "center", maxWidth: "60%", flex: "0 0 auto", wordBreak: "break-all" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: "10px" }}>
                   <div style={{ background: "#000", color: "#fff", borderRadius: "50%", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <TbWorld size={18} />
@@ -359,9 +344,8 @@ const OfferLetter = () => {
               </div>
             </div>
 
-            {/* Content area with margins */}
-            <div style={{ padding: "0 40px 60px 40px", flexGrow: 1 }}>
-              {/* Date & Address */}
+            {/* Content area Page 1 */}
+            <div style={{ padding: "0 40px 40px 40px", flexGrow: 1 }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "30px" }}>
                 <div style={{ textAlign: "left" }}>
                   <p style={{ margin: "0 0 5px 0", fontWeight: "bold" }}>To,</p>
@@ -374,34 +358,132 @@ const OfferLetter = () => {
                   Date :- {formatDate(formData.issueDate)}
                 </div>
               </div>
-
               <h3 style={{ textAlign: "center", marginBottom: "15px", fontSize: "12pt", fontWeight: "bold" }}>Subject : Offer Letter</h3>
-
-              {/* Content */}
               <div style={{ textAlign: "justify", fontFamily: "'Times New Roman', Times, serif", fontSize: "11pt", marginTop: "27px" }}>
                 <p>Congratulations!</p>
-                <br/>
                 <p>We are pleased to offer you the position of <strong>{formData.designation || "________________"}</strong> with the Company. The effective date of your appointment is agreed as <strong>{formatDate(formData.joiningDate)}</strong>.</p>
-                <p>Your annual compensation (CTC) will be <strong>Rs. {formData.ctc || "________"} ({formData.ctcInWords || "________________"} only)</strong> per annum, subject to statutory deductions. Performance assessment will be conducted periodically.</p>
+                <p>Your annual compensation (CTC) will be <strong>Rs. {formData.ctc || "________"} ({formData.ctcInWords || "________________"} only)</strong> per annum.</p>
                 <p>Your continued employment is contingent upon your satisfactorily meeting the Company's expectations.</p>
-                <p>On your first day of work, you will be required to sign the <strong>Employment Agreement</strong>, which will contain detailed terms and conditions of your employment with the Company. You are expected to follow the policies, rules, and regulations laid out by the Company. On your first day of employment, you will be given additional information about the Company, its procedures, policies, benefit programs, and more.</p>
-                <p>Any female employee who has conceived prior to joining the Company is expected to inform the Company of her pregnancy before signing the Offer Letter and the Employee Agreement.</p>
-                <p>This Letter of Offer is contingent upon the successful completion of all background and reference checks and required documentation. On your first day, please bring the documents as provided in <strong>Annexure 1</strong>.</p>
+                <p>On your first day, please bring the documents as provided in <strong>Annexure 1</strong>.</p>
               </div>
+            </div>
+          </div>
 
-              {/* Stamp & Signature */}
-              <div style={{ marginTop: "40px", display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
-                <div style={{ textAlign: "center", marginRight: "0px" }}>
-                  <img src={stampPng} alt="Stamp" style={{ width: "120px", marginBottom: "10px" }} />
-                  <div style={{ fontWeight: "bold", fontSize: "11pt" }}>Best Regards,</div>
-                  <div style={{ fontWeight: "bold", fontSize: "11pt" }}>Sharjeel iqbal,</div>
-                  <div style={{ fontSize: "10pt" }}>HR and BDE Executive,</div>
-                  <div style={{ fontWeight: "bold", fontSize: "11pt" }}>Arham It Solution</div>
+          {/* PAGE 2 PREVIEW */}
+          <div style={{ border: "1px solid #eee", minHeight: "1000px", background: "white", color: "#000", fontSize: "11pt", lineHeight: "1.6", display: "flex", flexDirection: "column", boxShadow: "0 0 10px rgba(0,0,0,0.05)" }}>
+            <div style={{ padding: "5px 10px", background: "#f8fafc", borderBottom: "1px solid #eee", fontSize: "10pt", color: "#64748b", fontWeight: "bold" }}>Page 2</div>
+            {/* Header Mirror */}
+            <div style={{
+              display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "50px", borderBottom: "5px solid #000", padding: "20px 40px 10px 40px", marginBottom: "30px", boxSizing: "border-box", width: "100%"
+            }}>
+              <div style={{ flex: "0 0 auto" }}>
+                <img src={companyLogo} alt="Logo" style={{ height: "120px", width: "auto", maxWidth: "300px", objectFit: "contain", display: "block", padding: "0 2px" }} />
+              </div>
+              <div style={{ textAlign: "left", display: "flex", flexDirection: "column", gap: "10px", justifyContent: "center", maxWidth: "60%", flex: "0 0 auto", wordBreak: "break-all" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: "10px" }}>
+                  <div style={{ background: "#000", color: "#fff", borderRadius: "50%", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <TbWorld size={18} />
+                  </div>
+                  <span style={{ fontWeight: "bold", fontSize: "11pt" }}>www.arhamitsolution.in</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: "10px" }}>
+                  <div style={{ background: "#000", color: "#fff", borderRadius: "50%", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <TfiEmail size={16} />
+                  </div>
+                  <span style={{ fontWeight: "bold", fontSize: "11pt" }}>info@arhamitsolution.in</span>
                 </div>
               </div>
             </div>
-            {/* Blank space for stamp */}
-            <div style={{ height: "150px" }}></div>
+
+            {/* Content area Page 2 */}
+            <div style={{ padding: "0 40px 60px 40px", flexGrow: 1 }}>
+              <div style={{ textAlign: "justify", fontFamily: "'Times New Roman', Times, serif", fontSize: "11pt", marginTop: "20px" }}>
+                <p>Note that this Letter of Offer is valid for <strong>two (2) working days</strong> from the date of receipt.</p>
+                <p style={{ marginTop: "30px" }}>We look forward to you joining <strong>Arham IT Solution</strong> and to a mutually rewarding working relationship.</p>
+              </div>
+
+              {/* Stamp & Signature */}
+              <div style={{ marginTop: "40px", display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+                <div style={{ textAlign: "center" }}>
+                  <img src={stampPng} alt="Stamp" style={{ width: "120px", marginBottom: "5px" }} />
+                  <div style={{ textAlign: "left" }}>
+                    <div style={{ fontWeight: "bold", fontSize: "11pt" }}>Best Regards,</div>
+                    <div style={{ fontWeight: "bold", fontSize: "11pt" }}>Sharjeel Iqbal,</div>
+                    <div style={{ fontSize: "10pt" }}>HR and BDE Executive,</div>
+                    <div style={{ fontWeight: "bold", fontSize: "11pt" }}>Arham IT Solution</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Acceptance Section */}
+              <div style={{ marginTop: "60px", fontFamily: "'Times New Roman', Times, serif", fontSize: "11pt" }}>
+                <p>I agree and accept this Letter of Offer which has been read, understood and accepted by me.</p>
+                <div style={{ marginTop: "30px" }}>Signature : ____________________</div>
+                <div style={{ marginTop: "20px" }}>Name :- {formData.salutation} {formData.fullName || "________________"}</div>
+                <div style={{ marginTop: "20px" }}>Date : </div>
+              </div>
+            </div>
+          </div>
+
+          {/* PAGE 3 PREVIEW (Annexure 1) */}
+          <div style={{ border: "1px solid #eee", minHeight: "1000px", background: "white", color: "#000", fontSize: "11pt", lineHeight: "1.6", display: "flex", flexDirection: "column", boxShadow: "0 0 10px rgba(0,0,0,0.05)" }}>
+            <div style={{ padding: "5px 10px", background: "#f8fafc", borderBottom: "1px solid #eee", fontSize: "10pt", color: "#64748b", fontWeight: "bold" }}>Page 3 (Annexure 1)</div>
+            {/* Header Mirror */}
+            <div style={{
+              display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "50px", borderBottom: "5px solid #000", padding: "20px 40px 10px 40px", marginBottom: "30px", boxSizing: "border-box", width: "100%"
+            }}>
+              <div style={{ flex: "0 0 auto" }}>
+                <img src={companyLogo} alt="Logo" style={{ height: "120px", width: "auto", maxWidth: "300px", objectFit: "contain", display: "block", padding: "0 2px" }} />
+              </div>
+              <div style={{ textAlign: "left", display: "flex", flexDirection: "column", gap: "10px", justifyContent: "center", maxWidth: "60%", flex: "0 0 auto", wordBreak: "break-all" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: "10px" }}>
+                  <div style={{ background: "#000", color: "#fff", borderRadius: "50%", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <TbWorld size={18} />
+                  </div>
+                  <span style={{ fontWeight: "bold", fontSize: "11pt" }}>www.arhamitsolution.in</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: "10px" }}>
+                  <div style={{ background: "#000", color: "#fff", borderRadius: "50%", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <TfiEmail size={16} />
+                  </div>
+                  <span style={{ fontWeight: "bold", fontSize: "11pt" }}>info@arhamitsolution.in</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ padding: "0 40px 40px 40px", flexGrow: 1 }}>
+              <div style={{ fontWeight: "bold", marginBottom: "15px" }}>Annexure 1 - Documents required at the time of joining</div>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9pt", border: "1px solid #000" }}>
+                <thead>
+                  <tr style={{ background: "#f1f5f9" }}>
+                    <th style={{ border: "1px solid #000", padding: "8px" }}>S. No.</th>
+                    <th style={{ border: "1px solid #000", padding: "8px" }}>Documents Required</th>
+                    <th style={{ border: "1px solid #000", padding: "8px" }}>Format</th>
+                    <th style={{ border: "1px solid #000", padding: "8px" }}>Document Type</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { id: 1, req: "Proof of Age and ID", fmt: "Photocopy", type: "Aadhar Card/ Driver License/10th Certificate/PAN Card" },
+                    { id: 2, req: "Proof of Residence", fmt: "Photocopy", type: "Aadhar/Phone Bill/Ration Card/Voter ID/Electricity Bill/Rent Agreement" },
+                    { id: 3, req: "Educational Qualifications", fmt: "Photocopy", type: "Graduation, Post-Graduation" },
+                    { id: 4, req: "Experience Certificate/s", fmt: "Photocopy", type: "On the letterhead of the previous company" },
+                    { id: 5, req: "Last 3 months' payslip/Bank Statement", fmt: "Original", type: "Letter with Stamp of the previous company/bank" },
+                    { id: 6, req: "Relieving Letter", fmt: "Photocopy", type: "On the letterhead of the previous company" },
+                    { id: 7, req: "Updated Resume", fmt: "", type: "" },
+                    { id: 9, req: "Cancelled Cheque", fmt: "Soft Copy", type: "" },
+                    { id: 10, req: "EPF Details", fmt: "", type: "EPF number" }
+                  ].map(row => (
+                    <tr key={row.id}>
+                      <td style={{ border: "1px solid #000", padding: "6px", textAlign: "center" }}>{row.id}.</td>
+                      <td style={{ border: "1px solid #000", padding: "6px" }}>{row.req}</td>
+                      <td style={{ border: "1px solid #000", padding: "6px", textAlign: "center" }}>{row.fmt}</td>
+                      <td style={{ border: "1px solid #000", padding: "6px" }}>{row.type}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
