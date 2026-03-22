@@ -3,7 +3,7 @@ const pool = require('../config/database');
 
 class Service {
   // Get all services with related data
-  static async getAll(filters = {}) {
+  static async getAll(tenantId, filters = {}) {
     try {
       let query = `
         SELECT 
@@ -26,10 +26,11 @@ class Service {
         LEFT JOIN service_status ss ON s.status_id = ss.id
         LEFT JOIN employee_details ed ON s.service_manager_id = ed.id
         LEFT JOIN users u ON ed.user_id = u.id
+        WHERE s.tenant_id = ?
       `;
 
       const conditions = [];
-      const params = [];
+      const params = [tenantId];
 
       // Apply filters
       if (filters.service_type) {
@@ -53,7 +54,7 @@ class Service {
       }
 
       if (conditions.length > 0) {
-        query += ' WHERE ' + conditions.join(' AND ');
+        query += ' AND ' + conditions.join(' AND ');
       }
 
       query += ' ORDER BY s.created_at DESC';
@@ -63,8 +64,8 @@ class Service {
       // Format the results to match frontend structure
       const formattedServices = await Promise.all(
         rows.map(async (service) => {
-          const history = await this.getServiceHistory(service.id);
-          const teamMembers = await this.getServiceTeamMembers(service.id);
+          const history = await this.getServiceHistory(tenantId, service.id);
+          const teamMembers = await this.getServiceTeamMembers(tenantId, service.id);
           
           return {
             id: service.id,
@@ -91,7 +92,7 @@ class Service {
   }
 
   // Get service by ID
-  static async getById(id) {
+  static async getById(tenantId, id) {
     try {
       const query = `
         SELECT 
@@ -114,18 +115,18 @@ class Service {
         LEFT JOIN service_status ss ON s.status_id = ss.id
         LEFT JOIN employee_details ed ON s.service_manager_id = ed.id
         LEFT JOIN users u ON ed.user_id = u.id
-        WHERE s.id = ?
+        WHERE s.id = ? AND s.tenant_id = ?
       `;
 
-      const [rows] = await pool.execute(query, [id]);
+      const [rows] = await pool.execute(query, [id, tenantId]);
       
       if (rows.length === 0) {
         return null;
       }
 
       const service = rows[0];
-      const history = await this.getServiceHistory(id);
-      const teamMembers = await this.getServiceTeamMembers(id);
+      const history = await this.getServiceHistory(tenantId, id);
+      const teamMembers = await this.getServiceTeamMembers(tenantId, id);
 
       return {
         id: service.id,
@@ -148,7 +149,7 @@ class Service {
   }
 
   // Get service history
-  static async getServiceHistory(serviceId) {
+  static async getServiceHistory(tenantId, serviceId) {
     try {
       const query = `
         SELECT date, action, user 
@@ -157,6 +158,7 @@ class Service {
         ORDER BY date DESC, created_at DESC
       `;
       
+      // Implicitly scoped since service is already tenant isolated
       const [rows] = await pool.execute(query, [serviceId]);
       return rows;
     } catch (error) {
@@ -166,7 +168,7 @@ class Service {
   }
 
   // Get service team members
-  static async getServiceTeamMembers(serviceId) {
+  static async getServiceTeamMembers(tenantId, serviceId) {
     try {
       const query = `
         SELECT 
@@ -177,10 +179,10 @@ class Service {
         JOIN employee_details ed ON stm.employee_id = ed.id
         JOIN users u ON ed.user_id = u.id
         LEFT JOIN departments d ON ed.department_id = d.id
-        WHERE stm.service_id = ?
+        WHERE stm.service_id = ? AND ed.tenant_id = ?
       `;
       
-      const [rows] = await pool.execute(query, [serviceId]);
+      const [rows] = await pool.execute(query, [serviceId, tenantId]);
       return rows;
     } catch (error) {
       console.error('Error in getServiceTeamMembers:', error);
@@ -189,7 +191,7 @@ class Service {
   }
 
   // Create new service
-  static async create(serviceData) {
+  static async create(tenantId, serviceData) {
     const connection = await pool.getConnection();
     
     try {
@@ -197,19 +199,23 @@ class Service {
 
       // Get IDs for related data
       const [serviceType] = await connection.execute(
-        'SELECT id FROM service_types WHERE name = ?',
-        [serviceData.service_type]
+        'SELECT id FROM service_types WHERE name = ? AND tenant_id = ?',
+        [serviceData.service_type, tenantId]
       );
       
       const [department] = await connection.execute(
-        'SELECT id FROM departments WHERE name = ?',
-        [serviceData.assigned_department]
+        'SELECT id FROM departments WHERE name = ? AND tenant_id = ?',
+        [serviceData.assigned_department, tenantId]
       );
       
-      const [status] = await connection.execute(
+      // Assume service_status is a global or tenant-scoped table? Assuming global/tenant
+      // We will look up either way
+      let statusId = 1;
+      const [statusRows] = await connection.execute(
         'SELECT id FROM service_status WHERE name = ?',
         [serviceData.status || 'Active']
       );
+      if (statusRows.length > 0) statusId = statusRows[0].id;
 
       // Get employee ID from employee name
       let serviceManagerId = null;
@@ -218,8 +224,8 @@ class Service {
           `SELECT ed.id 
            FROM employee_details ed 
            JOIN users u ON ed.user_id = u.id 
-           WHERE CONCAT(u.first_name, ' ', u.last_name) = ?`,
-          [serviceData.service_manager]
+           WHERE CONCAT(u.first_name, ' ', u.last_name) = ? AND ed.tenant_id = ?`,
+          [serviceData.service_manager, tenantId]
         );
         serviceManagerId = manager.length > 0 ? manager[0].id : null;
       }
@@ -231,15 +237,16 @@ class Service {
       // Insert service
       const [result] = await connection.execute(
         `INSERT INTO services (
-          service_name, service_type_id, description, assigned_department_id,
+          tenant_id, service_name, service_type_id, description, assigned_department_id,
           status_id, service_manager_id, scheduled_date, scheduled_time, progress
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
+          tenantId,
           serviceData.service_name,
           serviceType[0].id,
           serviceData.description || null,
           department.length > 0 ? department[0].id : null,
-          status.length > 0 ? status[0].id : 1,
+          statusId,
           serviceManagerId,
           serviceData.scheduled_date || null,
           serviceData.scheduled_time ? serviceData.scheduled_time + ':00' : null,
@@ -259,7 +266,7 @@ class Service {
       await connection.commit();
       
       // Return the created service
-      return await this.getById(serviceId);
+      return await this.getById(tenantId, serviceId);
     } catch (error) {
       await connection.rollback();
       console.error('Error in Service.create:', error);
@@ -270,7 +277,7 @@ class Service {
   }
 
   // Update service
-  static async update(id, serviceData) {
+  static async update(tenantId, id, serviceData) {
     const connection = await pool.getConnection();
     
     try {
@@ -278,19 +285,21 @@ class Service {
 
       // Get IDs for related data
       const [serviceType] = await connection.execute(
-        'SELECT id FROM service_types WHERE name = ?',
-        [serviceData.service_type]
+        'SELECT id FROM service_types WHERE name = ? AND tenant_id = ?',
+        [serviceData.service_type, tenantId]
       );
       
       const [department] = await connection.execute(
-        'SELECT id FROM departments WHERE name = ?',
-        [serviceData.assigned_department]
+        'SELECT id FROM departments WHERE name = ? AND tenant_id = ?',
+        [serviceData.assigned_department, tenantId]
       );
       
-      const [status] = await connection.execute(
+      let statusId = null;
+      const [statusRows] = await connection.execute(
         'SELECT id FROM service_status WHERE name = ?',
         [serviceData.status]
       );
+      if (statusRows.length > 0) statusId = statusRows[0].id;
 
       // Get employee ID from employee name
       let serviceManagerId = null;
@@ -299,8 +308,8 @@ class Service {
           `SELECT ed.id 
            FROM employee_details ed 
            JOIN users u ON ed.user_id = u.id 
-           WHERE CONCAT(u.first_name, ' ', u.last_name) = ?`,
-          [serviceData.service_manager]
+           WHERE CONCAT(u.first_name, ' ', u.last_name) = ? AND ed.tenant_id = ?`,
+          [serviceData.service_manager, tenantId]
         );
         serviceManagerId = manager.length > 0 ? manager[0].id : null;
       }
@@ -318,18 +327,19 @@ class Service {
           scheduled_time = ?,
           progress = ?,
           updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?`,
+        WHERE id = ? AND tenant_id = ?`,
         [
           serviceData.service_name,
-          serviceType[0].id,
+          serviceType.length > 0 ? serviceType[0].id : null,
           serviceData.description || null,
           department.length > 0 ? department[0].id : null,
-          status.length > 0 ? status[0].id : null,
+          statusId,
           serviceManagerId,
           serviceData.scheduled_date || null,
           serviceData.scheduled_time ? serviceData.scheduled_time + ':00' : null,
           serviceData.progress || 0,
-          id
+          id,
+          tenantId
         ]
       );
 
@@ -343,7 +353,7 @@ class Service {
       await connection.commit();
       
       // Return the updated service
-      return await this.getById(id);
+      return await this.getById(tenantId, id);
     } catch (error) {
       await connection.rollback();
       console.error('Error in Service.update:', error);
@@ -354,15 +364,15 @@ class Service {
   }
 
   // Delete service
-  static async delete(id) {
+  static async delete(tenantId, id) {
     const connection = await pool.getConnection();
     
     try {
       await connection.beginTransaction();
 
       const [result] = await connection.execute(
-        'DELETE FROM services WHERE id = ?',
-        [id]
+        'DELETE FROM services WHERE id = ? AND tenant_id = ?',
+        [id, tenantId]
       );
 
       await connection.commit();
@@ -377,16 +387,20 @@ class Service {
   }
 
   // Assign team to service
-  static async assignTeam(serviceId, teamData) {
+  static async assignTeam(tenantId, serviceId, teamData) {
     const connection = await pool.getConnection();
     
     try {
       await connection.beginTransaction();
 
+      // Check service existence and tenant
+      const [serviceCheck] = await connection.execute('SELECT id FROM services WHERE id = ? AND tenant_id = ?', [serviceId, tenantId]);
+      if (serviceCheck.length === 0) throw new Error('Service not found');
+
       // Get department ID
       const [department] = await connection.execute(
-        'SELECT id FROM departments WHERE name = ?',
-        [teamData.assigned_department]
+        'SELECT id FROM departments WHERE name = ? AND tenant_id = ?',
+        [teamData.assigned_department, tenantId]
       );
 
       // Get employee ID from employee name for service manager
@@ -396,8 +410,8 @@ class Service {
           `SELECT ed.id 
            FROM employee_details ed 
            JOIN users u ON ed.user_id = u.id 
-           WHERE CONCAT(u.first_name, ' ', u.last_name) = ?`,
-          [teamData.service_manager]
+           WHERE CONCAT(u.first_name, ' ', u.last_name) = ? AND ed.tenant_id = ?`,
+          [teamData.service_manager, tenantId]
         );
         serviceManagerId = manager.length > 0 ? manager[0].id : null;
       }
@@ -408,11 +422,12 @@ class Service {
           assigned_department_id = ?,
           service_manager_id = ?,
           updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?`,
+        WHERE id = ? AND tenant_id = ?`,
         [
           department.length > 0 ? department[0].id : null,
           serviceManagerId,
-          serviceId
+          serviceId,
+          tenantId
         ]
       );
 
@@ -427,6 +442,7 @@ class Service {
         const teamValues = teamData.team.map(employeeId => [serviceId, employeeId]);
         const insertQuery = 'INSERT INTO service_team_members (service_id, employee_id) VALUES ?';
         
+        // This query inserts multiple rows at once, using [teamValues] for bulk insert syntax in mysql2
         await connection.query(insertQuery, [teamValues]);
       }
 
@@ -439,7 +455,7 @@ class Service {
 
       await connection.commit();
       
-      return await this.getById(serviceId);
+      return await this.getById(tenantId, serviceId);
     } catch (error) {
       await connection.rollback();
       console.error('Error in Service.assignTeam:', error);
@@ -450,9 +466,9 @@ class Service {
   }
 
   // Get all service types
-  static async getServiceTypes() {
+  static async getServiceTypes(tenantId) {
     try {
-      const [rows] = await pool.execute('SELECT * FROM service_types ORDER BY name');
+      const [rows] = await pool.execute('SELECT * FROM service_types WHERE tenant_id = ? ORDER BY name', [tenantId]);
       return rows;
     } catch (error) {
       console.error('Error in Service.getServiceTypes:', error);
@@ -460,8 +476,9 @@ class Service {
     }
   }
 
-  // Get all status types
-  static async getStatusTypes() {
+  // Get all status types (globally shared table usually or tenant specific)
+  // Assuming globally shared if no tenant check, but we'll try global
+  static async getStatusTypes(tenantId) {
     try {
       const [rows] = await pool.execute('SELECT * FROM service_status ORDER BY name');
       return rows;
@@ -472,7 +489,7 @@ class Service {
   }
 
   // Get all employees for dropdown
-  static async getEmployeesForDropdown() {
+  static async getEmployeesForDropdown(tenantId) {
     try {
       const [rows] = await pool.execute(
         `SELECT 
@@ -482,8 +499,8 @@ class Service {
         FROM employee_details ed
         JOIN users u ON ed.user_id = u.id
         LEFT JOIN departments d ON ed.department_id = d.id
-        WHERE u.is_active = TRUE
-        ORDER BY u.first_name, u.last_name`
+        WHERE u.is_active = TRUE AND ed.tenant_id = ?
+        ORDER BY u.first_name, u.last_name`, [tenantId]
       );
       return rows;
     } catch (error) {

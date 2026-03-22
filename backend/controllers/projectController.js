@@ -4,7 +4,7 @@ const projectController = {
   // Get all projects
   getAllProjects: async (req, res) => {
     try {
-      const projects = await Project.getAll();
+      const projects = await Project.getAll(req.tenantId);
       res.json({ 
         success: true,
         data: projects,
@@ -23,7 +23,7 @@ const projectController = {
   // Get project by ID
   getProjectById: async (req, res) => {
     try {
-      const project = await Project.getById(req.params.id);
+      const project = await Project.getById(req.tenantId, req.params.id);
       
       if (!project) {
         return res.status(404).json({ 
@@ -64,7 +64,7 @@ const projectController = {
       }
 
       // Check if project name already exists
-      const nameExists = await Project.checkNameExists(name);
+      const nameExists = await Project.checkNameExists(req.tenantId, name);
       if (nameExists) {
         return res.status(400).json({ 
           success: false,
@@ -72,7 +72,7 @@ const projectController = {
         });
       }
 
-      const newProject = await Project.create({
+      const newProject = await Project.create(req.tenantId, {
         name,
         department,
         manager,
@@ -116,7 +116,7 @@ const projectController = {
       }
 
       // Check if project exists
-      const existingProject = await Project.getById(projectId);
+      const existingProject = await Project.getById(req.tenantId, projectId);
       if (!existingProject) {
         return res.status(404).json({ 
           success: false,
@@ -125,7 +125,7 @@ const projectController = {
       }
 
       // Check if project name already exists (excluding current project)
-      const nameExists = await Project.checkNameExists(name, projectId);
+      const nameExists = await Project.checkNameExists(req.tenantId, name, projectId);
       if (nameExists) {
         return res.status(400).json({ 
           success: false,
@@ -133,7 +133,7 @@ const projectController = {
         });
       }
 
-      const updatedProject = await Project.update(projectId, {
+      const updatedProject = await Project.update(req.tenantId, projectId, {
         name,
         department,
         manager,
@@ -172,7 +172,7 @@ const projectController = {
       const projectId = req.params.id;
 
       // Check if project exists
-      const existingProject = await Project.getById(projectId);
+      const existingProject = await Project.getById(req.tenantId, projectId);
       if (!existingProject) {
         return res.status(404).json({ 
           success: false,
@@ -180,7 +180,7 @@ const projectController = {
         });
       }
 
-      const affectedRows = await Project.delete(projectId);
+      const affectedRows = await Project.delete(req.tenantId, projectId);
 
       if (affectedRows === 0) {
         return res.status(404).json({ 
@@ -210,7 +210,7 @@ const projectController = {
       const { status, progress, comments } = req.body;
 
       // Check if project exists
-      const existingProject = await Project.getById(projectId);
+      const existingProject = await Project.getById(req.tenantId, projectId);
       if (!existingProject) {
         return res.status(404).json({ 
           success: false,
@@ -218,7 +218,7 @@ const projectController = {
         });
       }
 
-      const updatedProject = await Project.updatePhase(projectId, phaseName, {
+      const updatedProject = await Project.updatePhase(req.tenantId, projectId, phaseName, {
         status: status || 'Not Started',
         progress: parseInt(progress) || 0,
         comments: comments || ''
@@ -249,7 +249,7 @@ const projectController = {
   // Get dashboard statistics
   getDashboardStats: async (req, res) => {
     try {
-      const stats = await Project.getDashboardStats();
+      const stats = await Project.getDashboardStats(req.tenantId);
       
       res.json({ 
         success: true,
@@ -269,7 +269,7 @@ const projectController = {
   // Get managers list
   getManagers: async (req, res) => {
     try {
-      const managers = await Project.getManagers();
+      const managers = await Project.getManagers(req.tenantId);
       res.json({ 
         success: true,
         data: managers,
@@ -288,7 +288,7 @@ const projectController = {
   // Get departments list
   getDepartments: async (req, res) => {
     try {
-      const departments = await Project.getDepartments();
+      const departments = await Project.getDepartments(req.tenantId);
       res.json({ 
         success: true,
         data: departments,
@@ -311,7 +311,7 @@ const projectController = {
       const { assigned_department, manager_name, team } = req.body;
 
       // Check if project exists
-      const existingProject = await Project.getById(projectId);
+      const existingProject = await Project.getById(req.tenantId, projectId);
       if (!existingProject) {
         return res.status(404).json({ 
           success: false,
@@ -325,7 +325,7 @@ const projectController = {
         team: team || []
       };
 
-      const updatedProject = await Project.assignTeam(projectId, teamData);
+      const updatedProject = await Project.assignTeam(req.tenantId, projectId, teamData);
 
       res.json({ 
         success: true,
@@ -345,7 +345,7 @@ const projectController = {
   // Get employees for dropdown
   getProjectEmployees: async (req, res) => {
     try {
-      const employees = await Project.getEmployeesForDropdown();
+      const employees = await Project.getEmployeesForDropdown(req.tenantId);
       res.json({ 
         success: true,
         data: employees,

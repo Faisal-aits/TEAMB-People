@@ -1,6 +1,6 @@
 
 Admin Credentials->
 
-Email: admin@arhamitsolutions.com
+Email: superadmin@workdesk.com
 
-Password: Admin123!
+Password: superadmin123

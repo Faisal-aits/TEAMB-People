@@ -6,9 +6,9 @@ const shiftController = {
     getAllShifts: async (req, res) => {
         try {
             // Auto-assign default shift to employees without assignments for today
-            await Shift.assignDefaultShiftForToday();
+            await Shift.assignDefaultShiftForToday(req.tenantId);
             
-            const shifts = await Shift.getAll();
+            const shifts = await Shift.getAll(req.tenantId);
             res.json({
                 shifts: shifts,
                 success: true
@@ -26,7 +26,7 @@ const shiftController = {
     getShiftById: async (req, res) => {
         try {
             const { shiftId } = req.params;
-            const shift = await Shift.getById(shiftId);
+            const shift = await Shift.getById(req.tenantId, shiftId);
             
             if (!shift) {
                 return res.status(404).json({ 
@@ -60,7 +60,7 @@ const shiftController = {
                 });
             }
 
-            const shiftId = await Shift.create({
+            const shiftId = await Shift.create(req.tenantId, {
                 shift_name,
                 check_in_time,
                 check_out_time,
@@ -95,7 +95,7 @@ const shiftController = {
                 });
             }
 
-            await Shift.update(shiftId, {
+            await Shift.update(req.tenantId, shiftId, {
                 shift_name,
                 check_in_time,
                 check_out_time,
@@ -128,7 +128,7 @@ const shiftController = {
         try {
             const { shiftId } = req.params;
             
-            await Shift.setAsDefault(shiftId);
+            await Shift.setAsDefault(req.tenantId, shiftId);
 
             res.json({
                 message: 'Shift set as default successfully! All employees without specific assignments will use this shift.',
@@ -155,7 +155,7 @@ const shiftController = {
     deleteShift: async (req, res) => {
         try {
             const { shiftId } = req.params;
-            await Shift.delete(shiftId);
+            await Shift.delete(req.tenantId, shiftId);
 
             res.json({
                 message: 'Shift deleted successfully!',
@@ -189,7 +189,7 @@ const shiftController = {
     getShiftEmployees: async (req, res) => {
         try {
             const { shiftId } = req.params;
-            const employees = await Shift.getEmployees(shiftId);
+            const employees = await Shift.getEmployees(req.tenantId, shiftId);
 
             res.json({
                 employees: employees,
@@ -207,7 +207,7 @@ const shiftController = {
     // Get default shift
     getDefaultShift: async (req, res) => {
         try {
-            const defaultShift = await Shift.getDefaultShift();
+            const defaultShift = await Shift.getDefaultShift(req.tenantId);
             
             res.json({
                 defaultShift: defaultShift,

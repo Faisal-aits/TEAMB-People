@@ -11,7 +11,7 @@ const billingController = {
             if (req.query.status) filters.status = req.query.status;
             if (req.query.month) filters.month = req.query.month;
 
-            const invoices = await Billing.getAll(filters);
+            const invoices = await Billing.getAll(req.tenantId, filters);
             res.json({ invoices });
         } catch (error) {
             console.error('Get invoices error:', error);
@@ -22,7 +22,7 @@ const billingController = {
     // Get invoice by ID
     getInvoice: async (req, res) => {
         try {
-            const invoice = await Billing.getById(req.params.id);
+            const invoice = await Billing.getById(req.tenantId, req.params.id);
             
             if (!invoice) {
                 return res.status(404).json({ message: 'Invoice not found' });
@@ -37,7 +37,7 @@ const billingController = {
 
     // Create new invoice
     createInvoice: async (req, res) => {
-        const connection = await Billing.getConnection();
+        const connection = await Billing.getConnection(req.tenantId);
         try {
             await connection.beginTransaction();
 
@@ -60,7 +60,7 @@ const billingController = {
             }
 
             // Check if invoice number already exists
-            const existingInvoice = await Billing.getByInvoiceNo(invoice_no);
+            const existingInvoice = await Billing.getByInvoiceNo(req.tenantId, invoice_no);
             if (existingInvoice) {
                 return res.status(400).json({ message: 'Invoice number already exists' });
             }
@@ -68,7 +68,7 @@ const billingController = {
             // Get service settings for billing
             const serviceSettings = await ServiceSetting.getQuotationSettings();
             
-            const invoiceId = await Billing.create({
+            const invoiceId = await Billing.create(req.tenantId, {
                 invoice_no,
                 invoice_date,
                 ref_no,
@@ -84,7 +84,7 @@ const billingController = {
 
             // Insert items
             for (const item of items) {
-                await Billing.createItem({
+                await Billing.createItem(req.tenantId, {
                     invoice_id: invoiceId,
                     sr_no: item.sr_no,
                     description: item.description,
@@ -97,7 +97,7 @@ const billingController = {
 
             // Insert GST details
             for (const gst of gst_details) {
-                await Billing.createGSTDetail({
+                await Billing.createGSTDetail(req.tenantId, {
                     invoice_id: invoiceId,
                     tax_type: gst.tax_type,
                     percentage: gst.percentage
@@ -105,7 +105,7 @@ const billingController = {
             }
 
             // Insert initial history
-            await Billing.createHistory({
+            await Billing.createHistory(req.tenantId, {
                 invoice_id: invoiceId,
                 date: new Date().toISOString().split('T')[0],
                 action: 'Invoice created',
@@ -116,7 +116,7 @@ const billingController = {
             await connection.commit();
 
             // Return the created invoice
-            const newInvoice = await Billing.getById(invoiceId);
+            const newInvoice = await Billing.getById(req.tenantId, invoiceId);
             res.status(201).json({ 
                 message: 'Invoice created successfully', 
                 invoice: newInvoice 
@@ -132,7 +132,7 @@ const billingController = {
 
     // Update invoice
     updateInvoice: async (req, res) => {
-        const connection = await Billing.getConnection();
+        const connection = await Billing.getConnection(req.tenantId);
         try {
             await connection.beginTransaction();
 
@@ -151,13 +151,13 @@ const billingController = {
             } = req.body;
 
             // Check if invoice exists
-            const existingInvoice = await Billing.getById(invoiceId);
+            const existingInvoice = await Billing.getById(req.tenantId, invoiceId);
             if (!existingInvoice) {
                 return res.status(404).json({ message: 'Invoice not found' });
             }
 
             // Update invoice - preserve existing service settings
-            await Billing.update(invoiceId, {
+            await Billing.update(req.tenantId, invoiceId, {
                 invoice_no,
                 invoice_date,
                 ref_no,
@@ -171,12 +171,12 @@ const billingController = {
             });
 
             // Delete existing items and GST details
-            await Billing.deleteItems(invoiceId);
-            await Billing.deleteGSTDetails(invoiceId);
+            await Billing.deleteItems(req.tenantId, invoiceId);
+            await Billing.deleteGSTDetails(req.tenantId, invoiceId);
 
             // Insert updated items
             for (const item of items) {
-                await Billing.createItem({
+                await Billing.createItem(req.tenantId, {
                     invoice_id: invoiceId,
                     sr_no: item.sr_no,
                     description: item.description,
@@ -189,7 +189,7 @@ const billingController = {
 
             // Insert updated GST details
             for (const gst of gst_details) {
-                await Billing.createGSTDetail({
+                await Billing.createGSTDetail(req.tenantId, {
                     invoice_id: invoiceId,
                     tax_type: gst.tax_type,
                     percentage: gst.percentage
@@ -197,7 +197,7 @@ const billingController = {
             }
 
             // Add history entry
-            await Billing.createHistory({
+            await Billing.createHistory(req.tenantId, {
                 invoice_id: invoiceId,
                 date: new Date().toISOString().split('T')[0],
                 action: 'Invoice updated',
@@ -207,7 +207,7 @@ const billingController = {
 
             await connection.commit();
 
-            const updatedInvoice = await Billing.getById(invoiceId);
+            const updatedInvoice = await Billing.getById(req.tenantId, invoiceId);
             res.json({ 
                 message: 'Invoice updated successfully', 
                 invoice: updatedInvoice 
@@ -226,7 +226,7 @@ const billingController = {
         try {
             const invoiceId = req.params.id;
 
-            const affectedRows = await Billing.delete(invoiceId);
+            const affectedRows = await Billing.delete(req.tenantId, invoiceId);
             if (affectedRows === 0) {
                 return res.status(404).json({ message: 'Invoice not found' });
             }
@@ -249,13 +249,13 @@ const billingController = {
                 return res.status(400).json({ message: 'Invalid status' });
             }
 
-            const affectedRows = await Billing.updateStatus(invoiceId, status);
+            const affectedRows = await Billing.updateStatus(req.tenantId, invoiceId, status);
             if (affectedRows === 0) {
                 return res.status(404).json({ message: 'Invoice not found' });
             }
 
             // Add history entry
-            await Billing.createHistory({
+            await Billing.createHistory(req.tenantId, {
                 invoice_id: invoiceId,
                 date: new Date().toISOString().split('T')[0],
                 action: `Status changed to ${status}`,
@@ -280,7 +280,7 @@ const billingController = {
                 return res.status(400).json({ message: 'Follow-up note is required' });
             }
 
-            await Billing.createHistory({
+            await Billing.createHistory(req.tenantId, {
                 invoice_id: invoiceId,
                 date: new Date().toISOString().split('T')[0],
                 action: 'Follow-up added',

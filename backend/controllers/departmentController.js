@@ -2,10 +2,9 @@
 const Department = require('../models/departmentModel');
 
 const departmentController = {
-    // Get all departments
     getAllDepartments: async (req, res) => {
         try {
-            const departments = await Department.getAll();
+            const departments = await Department.getAll(req.tenantId);
             res.json({ departments });
         } catch (error) {
             console.error('Get departments error:', error);
@@ -13,15 +12,12 @@ const departmentController = {
         }
     },
 
-    // Get department by ID
     getDepartment: async (req, res) => {
         try {
-            const department = await Department.getById(req.params.id);
-            
+            const department = await Department.getById(req.tenantId, req.params.id);
             if (!department) {
                 return res.status(404).json({ message: 'Department not found' });
             }
-
             res.json({ department });
         } catch (error) {
             console.error('Get department error:', error);
@@ -29,67 +25,46 @@ const departmentController = {
         }
     },
 
-    // Create new department
     createDepartment: async (req, res) => {
         try {
             const { name, description, manager } = req.body;
-
-            // Validation
             if (!name || !manager) {
                 return res.status(400).json({ message: 'Department name and manager are required' });
             }
 
-            // Check if department name already exists
-            const nameExists = await Department.checkNameExists(name);
+            const nameExists = await Department.checkNameExists(req.tenantId, name);
             if (nameExists) {
                 return res.status(400).json({ message: 'Department name already exists' });
             }
 
-            const departmentId = await Department.create({
-                name,
-                description: description || '',
-                manager
-            });
-
-            res.status(201).json({ 
-                message: 'Department created successfully', 
-                department_id: departmentId 
-            });
+            const departmentId = await Department.create(req.tenantId, { name, description: description || '', manager });
+            res.status(201).json({ message: 'Department created successfully', department_id: departmentId });
         } catch (error) {
             console.error('Create department error:', error);
             res.status(500).json({ message: 'Server error' });
         }
     },
 
-    // Update department
     updateDepartment: async (req, res) => {
         try {
             const { name, description, manager } = req.body;
             const departmentId = req.params.id;
 
-            // Validation
             if (!name || !manager) {
                 return res.status(400).json({ message: 'Department name and manager are required' });
             }
 
-            // Check if department exists
-            const existingDepartment = await Department.getById(departmentId);
+            const existingDepartment = await Department.getById(req.tenantId, departmentId);
             if (!existingDepartment) {
                 return res.status(404).json({ message: 'Department not found' });
             }
 
-            // Check if department name already exists (excluding current department)
-            const nameExists = await Department.checkNameExists(name, departmentId);
+            const nameExists = await Department.checkNameExists(req.tenantId, name, departmentId);
             if (nameExists) {
                 return res.status(400).json({ message: 'Department name already exists' });
             }
 
-            const affectedRows = await Department.update(departmentId, {
-                name,
-                description: description || '',
-                manager
-            });
-
+            const affectedRows = await Department.update(req.tenantId, departmentId, { name, description: description || '', manager });
             if (affectedRows === 0) {
                 return res.status(404).json({ message: 'Department not found' });
             }
@@ -101,26 +76,19 @@ const departmentController = {
         }
     },
 
-    // Delete department
     deleteDepartment: async (req, res) => {
         try {
             const departmentId = req.params.id;
-
-            // Check if department exists
-            const existingDepartment = await Department.getById(departmentId);
+            const existingDepartment = await Department.getById(req.tenantId, departmentId);
             if (!existingDepartment) {
                 return res.status(404).json({ message: 'Department not found' });
             }
 
-            // Check if department has employees
             if (existingDepartment.employee_count > 0) {
-                return res.status(400).json({ 
-                    message: 'Cannot delete department with assigned employees. Please reassign employees first.' 
-                });
+                return res.status(400).json({ message: 'Cannot delete department with assigned employees.' });
             }
 
-            const affectedRows = await Department.delete(departmentId);
-
+            const affectedRows = await Department.delete(req.tenantId, departmentId);
             if (affectedRows === 0) {
                 return res.status(404).json({ message: 'Department not found' });
             }
@@ -132,18 +100,15 @@ const departmentController = {
         }
     },
 
-    // Get department employees
     getDepartmentEmployees: async (req, res) => {
         try {
             const departmentId = req.params.id;
-            
-            // Check if department exists
-            const department = await Department.getById(departmentId);
+            const department = await Department.getById(req.tenantId, departmentId);
             if (!department) {
                 return res.status(404).json({ message: 'Department not found' });
             }
 
-            const employees = await Department.getEmployees(departmentId);
+            const employees = await Department.getEmployees(req.tenantId, departmentId);
             res.json({ employees });
         } catch (error) {
             console.error('Get department employees error:', error);
@@ -151,10 +116,9 @@ const departmentController = {
         }
     },
 
-    // Get managers list
     getManagers: async (req, res) => {
         try {
-            const managers = await Department.getManagers();
+            const managers = await Department.getManagers(req.tenantId);
             res.json({ managers });
         } catch (error) {
             console.error('Get managers error:', error);

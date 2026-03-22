@@ -2,7 +2,7 @@ const pool = require('../config/database');
 
 const Internship = {
     // Get all internships
-    getAll: async (filters = {}) => {
+    getAll: async (tenantId, filters = {}) => {
         try {
             let query = `
                 SELECT 
@@ -10,9 +10,9 @@ const Internship = {
                     d.name as department_name
                 FROM internships i
                 LEFT JOIN departments d ON i.department_id = d.id
-                WHERE 1=1
+                WHERE i.tenant_id = ?
             `;
-            const params = [];
+            const params = [tenantId];
 
             if (filters.department) {
                 query += ' AND i.department_id = ?';
@@ -35,7 +35,7 @@ const Internship = {
     },
 
     // Get internship by ID
-    getById: async (id) => {
+    getById: async (tenantId, id) => {
         try {
             const [rows] = await pool.execute(
                 `SELECT 
@@ -43,8 +43,8 @@ const Internship = {
                     d.name as department_name
                 FROM internships i
                 LEFT JOIN departments d ON i.department_id = d.id
-                WHERE i.id = ?`,
-                [id]
+                WHERE i.id = ? AND i.tenant_id = ?`,
+                [id, tenantId]
             );
             return rows[0];
         } catch (error) {
@@ -54,14 +54,15 @@ const Internship = {
     },
 
     // Create new internship
-    create: async (internshipData) => {
+    create: async (tenantId, internshipData) => {
         try {
             const [result] = await pool.execute(
                 `INSERT INTO internships 
-                (program_name, department_id, duration, start_date, end_date,
+                (tenant_id, program_name, department_id, duration, start_date, end_date,
                  positions, status, description, requirements) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
+                    tenantId,
                     internshipData.program_name,
                     internshipData.department_id || null,
                     internshipData.duration || null,
@@ -82,13 +83,13 @@ const Internship = {
     },
 
     // Update internship
-    update: async (id, internshipData) => {
+    update: async (tenantId, id, internshipData) => {
         try {
             await pool.execute(
                 `UPDATE internships 
                  SET program_name = ?, department_id = ?, duration = ?, start_date = ?,
                      end_date = ?, positions = ?, status = ?, description = ?, requirements = ?
-                 WHERE id = ?`,
+                 WHERE id = ? AND tenant_id = ?`,
                 [
                     internshipData.program_name,
                     internshipData.department_id,
@@ -99,7 +100,7 @@ const Internship = {
                     internshipData.status,
                     internshipData.description,
                     internshipData.requirements,
-                    id
+                    id, tenantId
                 ]
             );
 
@@ -111,9 +112,9 @@ const Internship = {
     },
 
     // Delete internship
-    delete: async (id) => {
+    delete: async (tenantId, id) => {
         try {
-            await pool.execute('DELETE FROM internships WHERE id = ?', [id]);
+            await pool.execute('DELETE FROM internships WHERE id = ? AND tenant_id = ?', [id, tenantId]);
             return true;
         } catch (error) {
             console.error('Error in Internship.delete:', error);
@@ -122,7 +123,7 @@ const Internship = {
     },
 
     // Get applicants for internship
-    getApplicants: async (internshipId) => {
+    getApplicants: async (tenantId, internshipId) => {
         try {
             const [rows] = await pool.execute(
                 `SELECT 
@@ -144,7 +145,7 @@ const Internship = {
     },
 
     // Get assigned interns
-    getAssignedInterns: async (internshipId) => {
+    getAssignedInterns: async (tenantId, internshipId) => {
         try {
             const [rows] = await pool.execute(
                 `SELECT 
@@ -166,7 +167,7 @@ const Internship = {
     },
 
     // Get tasks for internship (using separate internship_tasks table)
-    getTasks: async (internshipId) => {
+    getTasks: async (tenantId, internshipId) => {
         try {
             const [rows] = await pool.execute(
                 `SELECT 
@@ -188,7 +189,7 @@ const Internship = {
     },
 
     // Create task for internship
-    createTask: async (taskData) => {
+    createTask: async (tenantId, taskData) => {
         try {
             const [result] = await pool.execute(
                 `INSERT INTO internship_tasks 
@@ -211,7 +212,7 @@ const Internship = {
     },
 
     // Update task status
-    updateTaskStatus: async (taskId, status) => {
+    updateTaskStatus: async (tenantId, taskId, status) => {
         try {
             await pool.execute(
                 'UPDATE internship_tasks SET status = ?, updated_at = NOW() WHERE id = ?',
@@ -225,7 +226,7 @@ const Internship = {
     },
 
     // Delete task
-    deleteTask: async (taskId) => {
+    deleteTask: async (tenantId, taskId) => {
         try {
             await pool.execute('DELETE FROM internship_tasks WHERE id = ?', [taskId]);
             return true;
@@ -236,7 +237,7 @@ const Internship = {
     },
 
     // Update applicant status
-    updateApplicantStatus: async (applicationId, status) => {
+    updateApplicantStatus: async (tenantId, applicationId, status) => {
         try {
             await pool.execute(
                 'UPDATE internship_applications SET status = ? WHERE id = ?',
@@ -250,7 +251,7 @@ const Internship = {
     },
 
     // Add applicant
-    addApplicant: async (applicantData) => {
+    addApplicant: async (tenantId, applicantData) => {
         try {
             const [result] = await pool.execute(
                 `INSERT INTO internship_applications 
@@ -270,7 +271,7 @@ const Internship = {
     },
 
     // Add assigned intern
-    addAssignedIntern: async (internData) => {
+    addAssignedIntern: async (tenantId, internData) => {
         try {
             const [result] = await pool.execute(
                 `INSERT INTO assigned_interns 

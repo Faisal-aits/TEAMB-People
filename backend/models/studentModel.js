@@ -3,7 +3,7 @@ const pool = require('../config/database');
 const Student = {
     
     // Get all students
-    getAll: async (filters = {}) => {
+    getAll: async (tenantId, filters = {}) => {
         try {
             let query = `
                 SELECT 
@@ -18,9 +18,9 @@ const Student = {
                 FROM students s
                 LEFT JOIN users u ON s.user_id = u.id
                 LEFT JOIN courses c ON s.course_id = c.id
-                WHERE 1=1
+                WHERE s.tenant_id = ?
             `;
-            const params = [];
+            const params = [tenantId];
 
             if (filters.course) {
                 query += ' AND s.course_id = ?';
@@ -41,7 +41,7 @@ const Student = {
 
             const [rows] = await pool.execute(query, params);
             
-            // REMOVE THE DATE FORMATTING - return raw dates
+            // Return raw dates
             return rows;
             
         } catch (error) {
@@ -51,7 +51,7 @@ const Student = {
     },
 
     // Get student by ID
-    getById: async (id) => {
+    getById: async (tenantId, id) => {
         try {
             const [rows] = await pool.execute(
                 `SELECT 
@@ -66,13 +66,12 @@ const Student = {
                 FROM students s
                 LEFT JOIN users u ON s.user_id = u.id
                 LEFT JOIN courses c ON s.course_id = c.id
-                WHERE s.id = ?`,
-                [id]
+                WHERE s.id = ? AND s.tenant_id = ?`,
+                [id, tenantId]
             );
             
             if (rows.length === 0) return null;
             
-            // REMOVE THE DATE FORMATTING - return raw dates
             return rows[0];
             
         } catch (error) {
@@ -82,7 +81,7 @@ const Student = {
     },
 
     // Create new student with user account
-    create: async (studentData) => {
+    create: async (tenantId, studentData) => {
         const connection = await pool.getConnection();
         
         try {
@@ -90,9 +89,10 @@ const Student = {
 
             // Create user account first
             const [userResult] = await connection.execute(
-                `INSERT INTO users (role_id, first_name, last_name, email, password_hash, phone, is_active) 
-                 VALUES (?, ?, ?, ?, NULL, ?, TRUE)`,
+                `INSERT INTO users (tenant_id, role_id, first_name, last_name, email, password_hash, phone, is_active) 
+                 VALUES (?, ?, ?, ?, ?, NULL, ?, TRUE)`,
                 [
+                    tenantId,
                     4, // student role_id
                     studentData.first_name, 
                     studentData.last_name, 
@@ -106,10 +106,11 @@ const Student = {
             // Create student record
             const [studentResult] = await connection.execute(
                 `INSERT INTO students 
-                (first_name, last_name, email, phone, user_id, student_id, course_id, 
+                (tenant_id, first_name, last_name, email, phone, user_id, student_id, course_id, 
                  batch_timing, date_of_birth, year, enrollment_date, address, status) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
+                    tenantId,
                     studentData.first_name,
                     studentData.last_name,
                     studentData.email,
@@ -156,7 +157,7 @@ const Student = {
     },
 
     // Update student
-    update: async (id, studentData) => {
+    update: async (tenantId, id, studentData) => {
         const connection = await pool.getConnection();
         
         try {
@@ -164,8 +165,8 @@ const Student = {
 
             // Get user_id from student
             const [student] = await connection.execute(
-                'SELECT user_id FROM students WHERE id = ?',
-                [id]
+                'SELECT user_id FROM students WHERE id = ? AND tenant_id = ?',
+                [id, tenantId]
             );
 
             if (student.length === 0) {
@@ -178,13 +179,13 @@ const Student = {
             await connection.execute(
                 `UPDATE users 
                  SET first_name = ?, last_name = ?, email = ?, phone = ?
-                 WHERE id = ?`,
+                 WHERE id = ? AND tenant_id = ?`,
                 [
                     studentData.first_name,
                     studentData.last_name,
                     studentData.email,
                     studentData.phone,
-                    userId
+                    userId, tenantId
                 ]
             );
 
@@ -195,7 +196,7 @@ const Student = {
                      student_id = ?, course_id = ?, batch_timing = ?,
                      date_of_birth = ?, year = ?, enrollment_date = ?,
                      address = ?, status = ?
-                 WHERE id = ?`,
+                 WHERE id = ? AND tenant_id = ?`,
                 [
                     studentData.first_name,
                     studentData.last_name,
@@ -209,7 +210,7 @@ const Student = {
                     studentData.enrollment_date,
                     studentData.address,
                     studentData.status,
-                    id
+                    id, tenantId
                 ]
             );
 
@@ -245,7 +246,7 @@ const Student = {
     },
 
     // Delete student
-    delete: async (id) => {
+    delete: async (tenantId, id) => {
         const connection = await pool.getConnection();
         
         try {
@@ -253,8 +254,8 @@ const Student = {
 
             // Get user_id from student
             const [student] = await connection.execute(
-                'SELECT user_id FROM students WHERE id = ?',
-                [id]
+                'SELECT user_id FROM students WHERE id = ? AND tenant_id = ?',
+                [id, tenantId]
             );
 
             if (student.length === 0) {
@@ -267,10 +268,10 @@ const Student = {
             await connection.execute('DELETE FROM course_enrollments WHERE student_id = ?', [id]);
             
             // Delete student record
-            await connection.execute('DELETE FROM students WHERE id = ?', [id]);
+            await connection.execute('DELETE FROM students WHERE id = ? AND tenant_id = ?', [id, tenantId]);
             
             // Then delete user account
-            await connection.execute('DELETE FROM users WHERE id = ?', [userId]);
+            await connection.execute('DELETE FROM users WHERE id = ? AND tenant_id = ?', [userId, tenantId]);
 
             await connection.commit();
             return true;
@@ -285,7 +286,7 @@ const Student = {
     },
 
     // Get student courses
-    getCourses: async (studentId) => {
+    getCourses: async (tenantId, studentId) => {
         try {
             const [rows] = await pool.execute(
                 `SELECT c.*, ce.enrollment_date, ce.status as enrollment_status

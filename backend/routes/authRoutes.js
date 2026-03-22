@@ -3,22 +3,31 @@ const express = require('express');
 const authController = require('../controllers/authController');
 const authMiddleware = require('../middleware/authMiddleware');
 
-
 const router = express.Router();
 
 // @route   POST /api/auth/login
-// @desc    User login
+// @desc    User login (requires tenant_slug)
 // @access  Public
 router.post('/login', authController.login);
 
 // @route   POST /api/auth/register
-// @desc    Register new user (Admin only - we'll add middleware later)
-// @access  Public (temporarily)
-router.post('/register', authController.register);
+// @desc    Register new user (Admin only)
+// @access  Private
+router.post('/register', authMiddleware.verifyToken, authController.register);
 
 // @route   GET /api/auth/profile
 // @desc    Get current user profile
 // @access  Private
 router.get('/profile', authMiddleware.verifyToken, authController.getProfile);
+
+// @route   PUT /api/auth/change-password
+// @desc    Change user password
+// @access  Private
+router.put('/change-password', authMiddleware.verifyToken, authController.changePassword);
+
+// @route   GET /api/auth/tenant/:slug
+// @desc    Get tenant info by slug (for login page)
+// @access  Public
+router.get('/tenant/:slug', authController.getTenantBySlug);
 
 module.exports = router;

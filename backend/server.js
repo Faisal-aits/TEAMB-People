@@ -26,6 +26,7 @@ const deliveryRoutes = require('./routes/deliveryRoutes');
 const serviceSettingRoutes = require('./routes/serviceSettingRoutes');
 const studentAttendanceRoutes = require('./routes/studentAttendanceRoutes');
 const offerLetterRoutes = require('./routes/offerLetterRoutes');
+const superAdminRoutes = require('./routes/superAdminRoutes');
 const { scheduleAutoAbsentCron } = require('./cron/attendanceCron');
 scheduleAutoAbsentCron();
 
@@ -51,15 +52,20 @@ app.use(cors()); // 1. CORS first
 app.use(express.json({ limit: '10mb' })); // 2. JSON parsing with limit
 app.use(express.urlencoded({ extended: true, limit: '10mb' })); // 3. URL encoded
 
-// REMOVE THIS DUPLICATE LINE: app.use(express.json());
-
 // Log all requests
 app.use((req, res, next) => {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
     next();
 });
 
-// Routes
+// ============================================================
+// SUPER ADMIN ROUTES (completely separate, no tenant context)
+// ============================================================
+app.use('/api/super-admin', superAdminRoutes);
+
+// ============================================================
+// TENANT ROUTES (all tenant-scoped)
+// ============================================================
 app.use('/api/auth', authRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/employees', employeeRoutes);
@@ -89,7 +95,7 @@ app.use('/api/offer-letters', offerLetterRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
-    res.json({ message: 'Arham IT Solutions API is running!' });
+    res.json({ message: 'Work Desk Multi-Tenant API is running!' });
 });
 
 // Health check route
@@ -97,13 +103,15 @@ app.get('/api/health', (req, res) => {
     res.json({ 
         status: 'OK', 
         timestamp: new Date().toISOString(),
-        service: 'Arham IT Solutions API'
+        service: 'Work Desk Multi-Tenant API',
+        version: '2.0.0'
     });
 });
 
-// Start server - FIXED: Listen on 0.0.0.0
+// Start server
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server is running on port ${PORT}`);
     console.log(`🌐 Access via: http://localhost:${PORT} or http://YOUR_IP:${PORT}`);
     console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+    console.log(`🔒 Super Admin API: http://localhost:${PORT}/api/super-admin`);
 });

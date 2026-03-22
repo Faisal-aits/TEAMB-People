@@ -3,7 +3,7 @@ const pool = require('../config/database');
 
 const Dashboard = {
     // Get dashboard statistics
-    getStats: async () => {
+    getStats: async (tenantId) => {
         // You'll need to replace these with actual database queries
         // For now, returning mock data structure
         return [
@@ -51,7 +51,7 @@ const Dashboard = {
     },
 
     // Get students enrollment data (you'll need to create this table)
-    getStudentsChart: async () => {
+    getStudentsChart: async (tenantId) => {
         // Example query - you'll need to adjust based on your actual table structure
         /*
         const query = `
@@ -79,7 +79,7 @@ const Dashboard = {
     },
 
     // Get projects overview
-    getProjectsOverview: async () => {
+    getProjectsOverview: async (tenantId) => {
         return {
             projects: {
                 segments: [
@@ -109,7 +109,7 @@ const Dashboard = {
     },
 
     // Get recent projects
-    getRecentProjects: async () => {
+    getRecentProjects: async (tenantId) => {
         return [
             { 
                 name: 'Website Redesign', 
@@ -124,7 +124,7 @@ const Dashboard = {
     },
 
     // Get notifications
-    getNotifications: async (userId) => {
+    getNotifications: async (tenantId, userId) => {
         return [
             { id: 1, message: 'New project assigned to you', read: false },
             { id: 2, message: 'Meeting with client in 30 minutes', read: false },
@@ -133,7 +133,7 @@ const Dashboard = {
     },
 
     // Mark notification as read
-    markNotificationAsRead: async (notificationId) => {
+    markNotificationAsRead: async (tenantId, notificationId) => {
         // Implementation for marking notification as read
         return true;
     }

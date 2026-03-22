@@ -2,123 +2,68 @@
 const pool = require('../config/database');
 
 const Department = {
-    // Get all departments with employee count
-    getAll: async () => {
-        const query = `
-            SELECT 
+    // Get all departments with employee count (tenant-scoped)
+    getAll: async (tenantId) => {
+        const [rows] = await pool.execute(
+            `SELECT 
                 d.*,
                 COUNT(e.id) as employee_count
             FROM departments d
-            LEFT JOIN employee_details e ON d.id = e.department_id
+            LEFT JOIN employee_details e ON d.id = e.department_id AND e.tenant_id = ?
+            WHERE d.tenant_id = ?
             GROUP BY d.id 
-            ORDER BY d.name
-        `;
-
-        const [rows] = await pool.execute(query);
+            ORDER BY d.name`,
+            [tenantId, tenantId]
+        );
         return rows;
     },
 
-    // Get department by ID with employee count
-    getById: async (id) => {
+    // Get department by ID (tenant-scoped)
+    getById: async (tenantId, id) => {
         const [rows] = await pool.execute(
             `SELECT 
                 d.*,
                 COUNT(e.id) as employee_count
             FROM departments d
             LEFT JOIN employee_details e ON d.id = e.department_id
-            WHERE d.id = ?
+            WHERE d.id = ? AND d.tenant_id = ?
             GROUP BY d.id`,
-            [id]
+            [id, tenantId]
         );
         return rows[0];
     },
 
-    // Create new department
-    create: async (departmentData) => {
+    // Create new department (tenant-scoped)
+    create: async (tenantId, departmentData) => {
         const { name, description, manager } = departmentData;
         const [result] = await pool.execute(
-            'INSERT INTO departments (name, description, manager, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())',
-            [name, description, manager]
+            'INSERT INTO departments (tenant_id, name, description, manager, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())',
+            [tenantId, name, description, manager]
         );
         return result.insertId;
     },
 
-    // Update department
-    update: async (id, departmentData) => {
+    // Update department (tenant-scoped)
+    update: async (tenantId, id, departmentData) => {
         const { name, description, manager } = departmentData;
         const [result] = await pool.execute(
-            'UPDATE departments SET name = ?, description = ?, manager = ?, updated_at = NOW() WHERE id = ?',
-            [name, description, manager, id]
+            'UPDATE departments SET name = ?, description = ?, manager = ?, updated_at = NOW() WHERE id = ? AND tenant_id = ?',
+            [name, description, manager, id, tenantId]
         );
         return result.affectedRows;
     },
 
-    // Delete department
-delete: async (id) => {
-        const connection = await pool.getConnection();
-        
-        try {
-            await connection.beginTransaction();
-
-            console.log(`Starting deletion process for department: ${id}`);
-
-            // Discover all foreign key constraints for departments
-            const constraintsQuery = `
-                SELECT 
-                    TABLE_NAME, 
-                    COLUMN_NAME, 
-                    CONSTRAINT_NAME
-                FROM information_schema.KEY_COLUMN_USAGE 
-                WHERE REFERENCED_TABLE_SCHEMA = 'arham_it_solutions'
-                AND REFERENCED_TABLE_NAME = 'departments'
-                AND REFERENCED_COLUMN_NAME = 'id'
-            `;
-
-            const [constraints] = await connection.execute(constraintsQuery);
-            console.log('Found department constraints:', constraints);
-
-            // Handle all constrained tables
-            for (const constraint of constraints) {
-                try {
-                    // Delete related records from each constrained table
-                    const [result] = await connection.execute(
-                        `DELETE FROM ${constraint.TABLE_NAME} WHERE ${constraint.COLUMN_NAME} = ?`,
-                        [id]
-                    );
-                    if (result.affectedRows > 0) {
-                        console.log(`Deleted ${result.affectedRows} records from ${constraint.TABLE_NAME}`);
-                    }
-                } catch (error) {
-                    console.log(`Error with ${constraint.TABLE_NAME}:`, error.message);
-                    // Continue with deletion even if some tables fail
-                }
-            }
-
-            // Now delete the department
-            const [result] = await connection.execute(
-                'DELETE FROM departments WHERE id = ?',
-                [id]
-            );
-
-            if (result.affectedRows === 0) {
-                throw new Error('Department not found');
-            }
-
-            await connection.commit();
-            console.log(`Department ${id} deleted successfully`);
-            return result.affectedRows;
-
-        } catch (error) {
-            await connection.rollback();
-            console.error('Error in Department.delete:', error);
-            throw error;
-        } finally {
-            connection.release();
-        }
+    // Delete department (tenant-scoped)
+    delete: async (tenantId, id) => {
+        const [result] = await pool.execute(
+            'DELETE FROM departments WHERE id = ? AND tenant_id = ?',
+            [id, tenantId]
+        );
+        return result.affectedRows;
     },
 
-    // Get department employees
-    getEmployees: async (departmentId) => {
+    // Get department employees (tenant-scoped)
+    getEmployees: async (tenantId, departmentId) => {
         const [rows] = await pool.execute(
             `SELECT 
                 ed.id, 
@@ -128,46 +73,40 @@ delete: async (id) => {
                 u.phone
             FROM employee_details ed
             INNER JOIN users u ON ed.user_id = u.id
-            WHERE ed.department_id = ? 
+            WHERE ed.department_id = ? AND ed.tenant_id = ?
             AND u.is_active = 1
             ORDER BY u.first_name, u.last_name`,
-            [departmentId]
+            [departmentId, tenantId]
         );
         return rows;
     },
 
-    // Get managers from employee_details table
-    getManagers: async () => {
+    // Get managers (tenant-scoped)
+    getManagers: async (tenantId) => {
         const [rows] = await pool.execute(
             `SELECT 
-                ed.id,
-                ed.user_id,
-                u.first_name,
-                u.last_name,
+                ed.id, ed.user_id,
+                u.first_name, u.last_name,
                 CONCAT(u.first_name, ' ', u.last_name) as name,
-                u.email,
-                ed.position,
-                u.phone
+                u.email, ed.position, u.phone
             FROM employee_details ed
             INNER JOIN users u ON ed.user_id = u.id
-            WHERE (ed.position LIKE '%manager%' OR 
-                   ed.position LIKE '%lead%' OR 
-                   ed.position LIKE '%head%' OR 
-                   ed.position LIKE '%director%' OR
-                   ed.position LIKE '%Administrator%' OR
-                   ed.position LIKE '%Senior%' OR
-                   ed.position LIKE '%chief%' OR
-                   ed.position LIKE '%vp%')
+            WHERE ed.tenant_id = ? AND (
+                ed.position LIKE '%manager%' OR ed.position LIKE '%lead%' OR 
+                ed.position LIKE '%head%' OR ed.position LIKE '%director%' OR
+                ed.position LIKE '%Administrator%' OR ed.position LIKE '%Senior%' OR
+                ed.position LIKE '%chief%' OR ed.position LIKE '%vp%')
             AND u.is_active = 1
-            ORDER BY u.first_name, u.last_name`
+            ORDER BY u.first_name, u.last_name`,
+            [tenantId]
         );
         return rows;
     },
 
-    // Check if department name already exists
-    checkNameExists: async (name, excludeId = null) => {
-        let query = 'SELECT id FROM departments WHERE name = ?';
-        const params = [name];
+    // Check if department name exists (tenant-scoped)
+    checkNameExists: async (tenantId, name, excludeId = null) => {
+        let query = 'SELECT id FROM departments WHERE name = ? AND tenant_id = ?';
+        const params = [name, tenantId];
 
         if (excludeId) {
             query += ' AND id != ?';
@@ -178,14 +117,15 @@ delete: async (id) => {
         return rows.length > 0;
     },
 
-    // Get department statistics
-    getStatistics: async () => {
+    // Get department statistics (tenant-scoped)
+    getStatistics: async (tenantId) => {
         const [rows] = await pool.execute(
             `SELECT 
                 COUNT(*) as total_departments,
                 COUNT(*) as active_departments,
                 0 as inactive_departments
-            FROM departments`
+            FROM departments WHERE tenant_id = ?`,
+            [tenantId]
         );
         return rows[0];
     }

@@ -29,16 +29,16 @@ const DeliveryChallan = {
     getConnection: () => pool.getConnection(),
 
     // Get all delivery challans with filters
-    getAll: async (filters = {}) => {
+    getAll: async (tenantId, filters = {}) => {
         let query = `
             SELECT 
                 dc.*,
                 COUNT(dch.id) as history_count
             FROM delivery_challans dc
             LEFT JOIN delivery_challan_history dch ON dc.id = dch.challan_id
-            WHERE 1=1
+            WHERE dc.tenant_id = ?
         `;
-        const params = [];
+        const params = [tenantId];
 
         if (filters.month) {
             query += ' AND MONTH(dc.challan_date) = ? AND YEAR(dc.challan_date) = YEAR(CURDATE())';
@@ -73,10 +73,10 @@ const DeliveryChallan = {
     },
 
     // Get challan by ID
-    getById: async (id) => {
+    getById: async (tenantId, id) => {
         const [challans] = await pool.execute(
-            'SELECT * FROM delivery_challans WHERE id = ?',
-            [id]
+            'SELECT * FROM delivery_challans WHERE id = ? AND tenant_id = ?',
+            [id, tenantId]
         );
         
         if (challans.length === 0) return null;
@@ -99,16 +99,16 @@ const DeliveryChallan = {
     },
 
     // Get challan by challan number
-    getByChallanNo: async (challan_no) => {
+    getByChallanNo: async (tenantId, challan_no) => {
         const [rows] = await pool.execute(
-            'SELECT * FROM delivery_challans WHERE challan_no = ?',
-            [challan_no]
+            'SELECT * FROM delivery_challans WHERE challan_no = ? AND tenant_id = ?',
+            [challan_no, tenantId]
         );
         return rows[0];
     },
 
     // Create new delivery challan
-    create: async (challanData) => {
+    create: async (tenantId, challanData) => {
         const {
             challan_no,
             challan_date,
@@ -123,11 +123,11 @@ const DeliveryChallan = {
 
         const [result] = await pool.execute(
             `INSERT INTO delivery_challans (
-                challan_no, challan_date, destination, dispatched_through, 
+                tenant_id, challan_no, challan_date, destination, dispatched_through, 
                 to_address, from_address, contact_info, payment_info, created_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-                challan_no, challan_date, destination, dispatched_through,
+                tenantId, challan_no, challan_date, destination, dispatched_through,
                 to_address, from_address, contact_info, payment_info, created_by
             ]
         );
@@ -135,7 +135,7 @@ const DeliveryChallan = {
     },
 
     // Create challan item
-    createItem: async (itemData) => {
+    createItem: async (tenantId, itemData) => {
         const { challan_id, sr_no, description, quantity } = itemData;
         const [result] = await pool.execute(
             `INSERT INTO delivery_challan_items (
@@ -147,7 +147,7 @@ const DeliveryChallan = {
     },
 
     // Create history entry
-    createHistory: async (historyData) => {
+    createHistory: async (tenantId, historyData) => {
         const { challan_id, date, action, user, follow_up } = historyData;
         const [result] = await pool.execute(
             'INSERT INTO delivery_challan_history (challan_id, date, action, user, follow_up) VALUES (?, ?, ?, ?, ?)',
@@ -157,7 +157,7 @@ const DeliveryChallan = {
     },
 
     // Update delivery challan
-    update: async (id, challanData) => {
+    update: async (tenantId, id, challanData) => {
         const {
             challan_no,
             challan_date,
@@ -174,17 +174,17 @@ const DeliveryChallan = {
                 challan_no = ?, challan_date = ?, destination = ?, dispatched_through = ?,
                 to_address = ?, from_address = ?, contact_info = ?, payment_info = ?,
                 updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?`,
+            WHERE id = ? AND tenant_id = ?`,
             [
                 challan_no, challan_date, destination, dispatched_through,
-                to_address, from_address, contact_info, payment_info, id
+                to_address, from_address, contact_info, payment_info, id, tenantId
             ]
         );
         return result.affectedRows;
     },
 
     // Delete challan items
-    deleteItems: async (challan_id) => {
+    deleteItems: async (tenantId, challan_id) => {
         await pool.execute(
             'DELETE FROM delivery_challan_items WHERE challan_id = ?',
             [challan_id]
@@ -192,19 +192,19 @@ const DeliveryChallan = {
     },
 
     // Delete delivery challan
-    delete: async (id) => {
+    delete: async (tenantId, id) => {
         const [result] = await pool.execute(
-            'DELETE FROM delivery_challans WHERE id = ?',
-            [id]
+            'DELETE FROM delivery_challans WHERE id = ? AND tenant_id = ?',
+            [id, tenantId]
         );
         return result.affectedRows;
     },
 
     // Get recent challans
-    getRecent: async (limit = 10) => {
+    getRecent: async (tenantId, limit = 10) => {
         const [challans] = await pool.execute(
-            'SELECT * FROM delivery_challans ORDER BY created_at DESC LIMIT ?',
-            [limit]
+            'SELECT * FROM delivery_challans WHERE tenant_id = ? ORDER BY created_at DESC LIMIT ?',
+            [tenantId, limit]
         );
         return challans;
     }

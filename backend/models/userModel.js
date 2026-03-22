@@ -2,12 +2,15 @@
 const pool = require('../config/database');
 
 const User = {
-    // Find user by email
-    findByEmail: async (email) => {
+    // Find user by email within a specific tenant
+    findByEmail: async (email, tenantId) => {
         try {   
             const [rows] = await pool.execute(
-                'SELECT u.*, r.name as role_name FROM users u JOIN roles r ON u.role_id = r.id WHERE u.email = ? AND u.is_active = true',
-                [email]
+                `SELECT u.*, r.name as role_name 
+                 FROM users u 
+                 JOIN roles r ON u.role_id = r.id 
+                 WHERE u.email = ? AND u.tenant_id = ? AND u.is_active = true`,
+                [email, tenantId]
             );
             return rows[0];
         } catch (error) {
@@ -16,12 +19,15 @@ const User = {
         }
     },
 
-    // Find user by ID
-    findById: async (id) => {
+    // Find user by ID within a specific tenant
+    findById: async (id, tenantId) => {
         try {
             const [rows] = await pool.execute(
-                'SELECT u.*, r.name as role_name FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = ? AND u.is_active = true',
-                [id]
+                `SELECT u.*, r.name as role_name 
+                 FROM users u 
+                 JOIN roles r ON u.role_id = r.id 
+                 WHERE u.id = ? AND u.tenant_id = ? AND u.is_active = true`,
+                [id, tenantId]
             );
             return rows[0];
         } catch (error) {
@@ -30,17 +36,17 @@ const User = {
         }
     },
 
-    // Create new user
+    // Create new user with tenant_id
     create: async (userData) => {
-        const { role_id, first_name, last_name, email, password_hash, phone } = userData;
+        const { tenant_id, role_id, first_name, last_name, email, password_hash, phone } = userData;
         const [result] = await pool.execute(
-            'INSERT INTO users (role_id, first_name, last_name, email, password_hash, phone) VALUES (?, ?, ?, ?, ?, ?)',
-            [role_id, first_name, last_name, email, password_hash, phone]
+            'INSERT INTO users (tenant_id, role_id, first_name, last_name, email, password_hash, phone) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [tenant_id, role_id, first_name, last_name, email, password_hash, phone]
         );
         return result.insertId;
     },
 
-    // Update user password - ADD THIS METHOD
+    // Update user password
     updatePassword: async (userId, passwordHash) => {
         try {
             const [result] = await pool.execute(

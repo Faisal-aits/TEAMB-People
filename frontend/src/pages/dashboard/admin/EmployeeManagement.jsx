@@ -393,7 +393,7 @@ const EmployeeManagement = () => {
 
       // Prepare data for export
       const exportData = filteredEmployees.map(employee => ({
-        'User ID': employee.employee_id || 'N/A',
+        'User ID': employee.employee_id || `UID-${employee.user_id}`,
         'First Name': employee.first_name,
         'Last Name': employee.last_name,
         'Email': employee.email,
@@ -614,7 +614,7 @@ const EmployeeManagement = () => {
                 <tr key={employee.employee_id}>
                   <td>
                     <div className="employee-id-cell">
-                      {employee.employee_id || 'N/A'}
+                      {employee.employee_id || `UID-${employee.user_id}`}
                     </div>
                   </td>
                   <td>
@@ -973,7 +973,7 @@ const EmployeeManagement = () => {
                 <div className="details-grid">
                   <div className="detail-item">
                     <label>User ID</label>
-                    <span>{selectedEmployee.employee_id || 'N/A'}</span>
+                    <span>{selectedEmployee.employee_id || `UID-${selectedEmployee.user_id}`}</span>
                   </div>
                   <div className="detail-item">
                     <label>Full Name</label>

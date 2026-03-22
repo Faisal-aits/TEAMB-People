@@ -10,7 +10,7 @@ const deliveryController = {
             if (req.query.month) filters.month = req.query.month;
             if (req.query.destination) filters.destination = req.query.destination;
 
-            const challans = await DeliveryChallan.getAll(filters);
+            const challans = await DeliveryChallan.getAll(req.tenantId, filters);
             res.json({ challans });
         } catch (error) {
             console.error('Get delivery challans error:', error);
@@ -21,7 +21,7 @@ const deliveryController = {
     // Get challan by ID
     getChallan: async (req, res) => {
         try {
-            const challan = await DeliveryChallan.getById(req.params.id);
+            const challan = await DeliveryChallan.getById(req.tenantId, req.params.id);
             
             if (!challan) {
                 return res.status(404).json({ message: 'Delivery challan not found' });
@@ -36,7 +36,7 @@ const deliveryController = {
 
     // Create new delivery challan
     createChallan: async (req, res) => {
-        const connection = await DeliveryChallan.getConnection();
+        const connection = await DeliveryChallan.getConnection(req.tenantId);
         try {
             await connection.beginTransaction();
 
@@ -60,12 +60,12 @@ const deliveryController = {
             }
 
             // Check if challan number already exists
-            const existingChallan = await DeliveryChallan.getByChallanNo(challan_no);
+            const existingChallan = await DeliveryChallan.getByChallanNo(req.tenantId, challan_no);
             if (existingChallan) {
                 return res.status(400).json({ message: 'Challan number already exists' });
             }
 
-            const challanId = await DeliveryChallan.create({
+            const challanId = await DeliveryChallan.create(req.tenantId, {
                 challan_no,
                 challan_date,
                 destination,
@@ -79,7 +79,7 @@ const deliveryController = {
 
             // Insert items
             for (const item of items) {
-                await DeliveryChallan.createItem({
+                await DeliveryChallan.createItem(req.tenantId, {
                     challan_id: challanId,
                     sr_no: item.sr_no,
                     description: item.description,
@@ -88,7 +88,7 @@ const deliveryController = {
             }
 
             // Insert initial history
-            await DeliveryChallan.createHistory({
+            await DeliveryChallan.createHistory(req.tenantId, {
                 challan_id: challanId,
                 date: new Date().toISOString().split('T')[0],
                 action: 'Delivery challan created',
@@ -99,7 +99,7 @@ const deliveryController = {
             await connection.commit();
 
             // Return the created challan
-            const newChallan = await DeliveryChallan.getById(challanId);
+            const newChallan = await DeliveryChallan.getById(req.tenantId, challanId);
             res.status(201).json({ 
                 message: 'Delivery challan created successfully', 
                 challan: newChallan 
@@ -115,7 +115,7 @@ const deliveryController = {
 
     // Update delivery challan
     updateChallan: async (req, res) => {
-        const connection = await DeliveryChallan.getConnection();
+        const connection = await DeliveryChallan.getConnection(req.tenantId);
         try {
             await connection.beginTransaction();
 
@@ -133,13 +133,13 @@ const deliveryController = {
             } = req.body;
 
             // Check if challan exists
-            const existingChallan = await DeliveryChallan.getById(challanId);
+            const existingChallan = await DeliveryChallan.getById(req.tenantId, challanId);
             if (!existingChallan) {
                 return res.status(404).json({ message: 'Delivery challan not found' });
             }
 
             // Update challan
-            await DeliveryChallan.update(challanId, {
+            await DeliveryChallan.update(req.tenantId, challanId, {
                 challan_no,
                 challan_date,
                 destination,
@@ -151,11 +151,11 @@ const deliveryController = {
             });
 
             // Delete existing items
-            await DeliveryChallan.deleteItems(challanId);
+            await DeliveryChallan.deleteItems(req.tenantId, challanId);
 
             // Insert updated items
             for (const item of items) {
-                await DeliveryChallan.createItem({
+                await DeliveryChallan.createItem(req.tenantId, {
                     challan_id: challanId,
                     sr_no: item.sr_no,
                     description: item.description,
@@ -164,7 +164,7 @@ const deliveryController = {
             }
 
             // Add history entry
-            await DeliveryChallan.createHistory({
+            await DeliveryChallan.createHistory(req.tenantId, {
                 challan_id: challanId,
                 date: new Date().toISOString().split('T')[0],
                 action: 'Delivery challan updated',
@@ -174,7 +174,7 @@ const deliveryController = {
 
             await connection.commit();
 
-            const updatedChallan = await DeliveryChallan.getById(challanId);
+            const updatedChallan = await DeliveryChallan.getById(req.tenantId, challanId);
             res.json({ 
                 message: 'Delivery challan updated successfully', 
                 challan: updatedChallan 
@@ -193,7 +193,7 @@ const deliveryController = {
         try {
             const challanId = req.params.id;
 
-            const affectedRows = await DeliveryChallan.delete(challanId);
+            const affectedRows = await DeliveryChallan.delete(req.tenantId, challanId);
             if (affectedRows === 0) {
                 return res.status(404).json({ message: 'Delivery challan not found' });
             }
@@ -215,7 +215,7 @@ const deliveryController = {
                 return res.status(400).json({ message: 'Follow-up note is required' });
             }
 
-            await DeliveryChallan.createHistory({
+            await DeliveryChallan.createHistory(req.tenantId, {
                 challan_id: challanId,
                 date: new Date().toISOString().split('T')[0],
                 action: 'Follow-up added',
@@ -233,7 +233,7 @@ const deliveryController = {
     // Download delivery challan PDF
     downloadChallanPDF: async (req, res) => {
         try {
-            const challan = await DeliveryChallan.getById(req.params.id);
+            const challan = await DeliveryChallan.getById(req.tenantId, req.params.id);
             
             if (!challan) {
                 return res.status(404).json({ message: 'Delivery challan not found' });

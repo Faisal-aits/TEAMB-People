@@ -6,6 +6,7 @@ import './Login.css';
 const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
+    tenant_slug: '',
     email: '',         
     password: '',
     regEmail: '',
@@ -20,14 +21,12 @@ const Login = () => {
 
   // Redirect if already authenticated
   useEffect(() => {
-    debugger;
     if (user) {
       redirectToDashboard(user.role);
     }
   }, [isAuthenticated, user, navigate]);
 
   const redirectToDashboard = (role) => {
-    debugger;
     switch (role) {
       case 'admin':
         navigate('/admin');
@@ -60,17 +59,17 @@ const Login = () => {
     setLoading(true);
     setError('');
 
-    const { email, password } = formData;
+    const { tenant_slug, email, password } = formData;
     
-    if (!email || !password) {
-      setError('Please fill in all fields');
+    if (!tenant_slug || !email || !password) {
+      setError('Please fill in all fields including Organization ID');
       setLoading(false);
       return;
     }
 
     try {
-      console.log('Attempting login with:', { email, password });
-      const result = await login({ email, password });
+      console.log('Attempting login with:', { tenant_slug, email });
+      const result = await login({ email, password, tenant_slug });
       
       if (result.success) {
         console.log('Login successful, redirecting...');
@@ -118,10 +117,10 @@ const handleRegisterSubmit = async (e) => {
       {/* Left Side - Company Content */}
       <div className="company-content">
         <div className="company-text">
-          <h1 className="company-title">ARHAM IT SOLUTION</h1>
+          <h1 className="company-title">WORK DESK</h1>
           
           <div className="company-quote">
-            <p className="quote-text">Transforming clicks into clients</p>
+            <p className="quote-text">Multi-Tenant Workforce Management</p>
           </div>
         </div>
       </div>
@@ -149,9 +148,24 @@ const handleRegisterSubmit = async (e) => {
           className={`form-wrapper glass-form ${isLogin ? 'active' : 'hidden'}`}
         >
           <h2 className="form-title">Welcome Back</h2>
-          <p className="form-subtitle">Sign in to continue your journey</p>
+          <p className="form-subtitle">Sign in to your organization</p>
           
           <form className="form" onSubmit={handleLoginSubmit}>
+            <div className="form-group">
+              <label htmlFor="tenant_slug" className="form-label">
+                Organization ID
+              </label>
+              <input 
+                type="text" 
+                id="tenant_slug" 
+                placeholder="e.g. arham-it" 
+                className="form-input glass-input"
+                value={formData.tenant_slug}
+                onChange={handleInputChange}
+                disabled={loading}
+              />
+            </div>
+
             <div className="form-group">
               <label htmlFor="email" className="form-label">
                 Email

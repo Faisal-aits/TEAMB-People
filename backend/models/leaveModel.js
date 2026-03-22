@@ -4,7 +4,7 @@ const pool = require('../config/database');
 const Leave = {
 
    // Create new leave request
-    create: async (leaveData) => {
+    create: async (tenantId, leaveData) => {
         try {
             const { employee_id, description, start_date, end_date } = leaveData;
             
@@ -15,9 +15,9 @@ const Leave = {
             const total_days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
             const [result] = await pool.execute(
-                `INSERT INTO leave_requests (employee_id, description, start_date, end_date, status) 
-                 VALUES (?, ?, ?, ?, 'Pending')`,
-                [employee_id, description, start_date, end_date]
+                `INSERT INTO leave_requests (tenant_id, employee_id, description, start_date, end_date, status) 
+                 VALUES (?, ?, ?, ?, ?, 'Pending')`,
+                [tenantId, employee_id, description, start_date, end_date]
             );
 
             return result.insertId;
@@ -28,7 +28,7 @@ const Leave = {
     },
 
     // Get leaves by employee ID
-    getByEmployeeId: async (employeeId) => {
+    getByEmployeeId: async (tenantId, employeeId) => {
         try {
             const query = `
                 SELECT 
@@ -44,11 +44,11 @@ const Leave = {
                     lr.created_at,
                     lr.updated_at
                 FROM leave_requests lr
-                WHERE lr.employee_id = ?
+                WHERE lr.employee_id = ? AND lr.tenant_id = ?
                 ORDER BY lr.created_at DESC
             `;
             
-            const [rows] = await pool.execute(query, [employeeId]);
+            const [rows] = await pool.execute(query, [employeeId, tenantId]);
             return rows;
         } catch (error) {
             console.error('Error in Leave.getByEmployeeId:', error);
@@ -57,7 +57,7 @@ const Leave = {
     },
 
     // Get all leave requests
-    getAll: async (filters = {}) => {
+    getAll: async (tenantId, filters = {}) => {
         try {
             let query = `
                 SELECT 
@@ -76,10 +76,10 @@ const Leave = {
                 FROM leave_requests lr
                 JOIN employee_details ed ON lr.employee_id = ed.id
                 JOIN users u ON ed.user_id = u.id
-                WHERE 1=1
+                WHERE 1=1 AND lr.tenant_id = ?
             `;
             
-            const params = [];
+            const params = [tenantId];
 
             // Add status filter if provided
             if (filters.status && filters.status !== 'all') {
@@ -98,7 +98,7 @@ const Leave = {
     },
 
     // Get leave statistics
-    getStatistics: async () => {
+    getStatistics: async (tenantId) => {
         try {
             const query = `
                 SELECT 
@@ -107,9 +107,10 @@ const Leave = {
                     SUM(CASE WHEN status = 'Approved' THEN 1 ELSE 0 END) as approved,
                     SUM(CASE WHEN status = 'Rejected' THEN 1 ELSE 0 END) as rejected
                 FROM leave_requests
+                WHERE tenant_id = ?
             `;
             
-            const [rows] = await pool.execute(query);
+            const [rows] = await pool.execute(query, [tenantId]);
             return rows[0] || { total: 0, pending: 0, approved: 0, rejected: 0 };
         } catch (error) {
             console.error('Error in Leave.getStatistics:', error);
@@ -118,7 +119,7 @@ const Leave = {
     },
 
     // Get employee attendance history for leave context
-    getEmployeeAttendanceHistory: async (employeeId) => {
+    getEmployeeAttendanceHistory: async (tenantId, employeeId) => {
         try {
             const query = `
                 SELECT 
@@ -129,12 +130,12 @@ const Leave = {
                     ah.status,
                     DATE_FORMAT(ah.created_at, '%Y-%m-%d') as created_date
                 FROM attendance_history ah
-                WHERE ah.employee_id = ?
+                WHERE ah.employee_id = ? AND ah.tenant_id = ?
                 ORDER BY ah.date DESC
                 LIMIT 30
             `;
             
-            const [rows] = await pool.execute(query, [employeeId]);
+            const [rows] = await pool.execute(query, [employeeId, tenantId]);
             return rows;
         } catch (error) {
             console.error('Error in Leave.getEmployeeAttendanceHistory:', error);
@@ -143,7 +144,7 @@ const Leave = {
     },
 
     // Get employee attendance statistics
-    getEmployeeAttendanceStats: async (employeeId) => {
+    getEmployeeAttendanceStats: async (tenantId, employeeId) => {
         try {
             const query = `
                 SELECT 
@@ -152,10 +153,10 @@ const Leave = {
                     SUM(CASE WHEN status = 'Delayed' THEN 1 ELSE 0 END) as \`delayed\`,
                     SUM(CASE WHEN status = 'On Leave' THEN 1 ELSE 0 END) as on_leave
                 FROM attendance_history 
-                WHERE employee_id = ?
+                WHERE employee_id = ? AND tenant_id = ?
             `;
             
-            const [rows] = await pool.execute(query, [employeeId]);
+            const [rows] = await pool.execute(query, [employeeId, tenantId]);
             return rows[0] || { total: 0, present: 0, delayed: 0, on_leave: 0 };
         } catch (error) {
             console.error('Error in Leave.getEmployeeAttendanceStats:', error);
@@ -164,7 +165,7 @@ const Leave = {
     },
 
 // In leaveModel.js - update the approve method date handling
-    approve: async (leaveId, approvedBy) => {
+    approve: async (tenantId, leaveId, approvedBy) => {
         const connection = await pool.getConnection();
         
         try {
@@ -174,8 +175,8 @@ const Leave = {
             const [updateResult] = await connection.execute(
                 `UPDATE leave_requests 
                 SET status = 'Approved', approved_by = ?, approved_at = NOW() 
-                WHERE leave_id = ?`,
-                [approvedBy, leaveId]
+                WHERE leave_id = ? AND tenant_id = ?`,
+                [approvedBy, leaveId, tenantId]
             );
 
             if (updateResult.affectedRows === 0) {
@@ -184,8 +185,8 @@ const Leave = {
 
             // Get the leave request details
             const [leave] = await connection.execute(
-                `SELECT employee_id, start_date, end_date, description FROM leave_requests WHERE leave_id = ?`,
-                [leaveId]
+                `SELECT employee_id, start_date, end_date, description FROM leave_requests WHERE leave_id = ? AND tenant_id = ?`,
+                [leaveId, tenantId]
             );
 
             if (leave.length > 0) {
@@ -209,10 +210,10 @@ const Leave = {
                     const dateStr = formatDateLocal(currentDate);
                     
                     await connection.execute(
-                        `INSERT INTO attendance_history (employee_id, date, description, status)
-                        VALUES (?, ?, ?, 'On Leave')
+                        `INSERT INTO attendance_history (tenant_id, employee_id, date, description, status)
+                        VALUES (?, ?, ?, ?, 'On Leave')
                         ON DUPLICATE KEY UPDATE description = VALUES(description), status = VALUES(status)`,
-                        [employee_id, dateStr, description || 'Approved Leave']
+                        [tenantId, employee_id, dateStr, description || 'Approved Leave']
                     );
                     
                     currentDate.setDate(currentDate.getDate() + 1);
@@ -231,7 +232,7 @@ const Leave = {
     },
 
     // Reject leave request
-    reject: async (leaveId, approvedBy) => {
+    reject: async (tenantId, leaveId, approvedBy) => {
         const connection = await pool.getConnection();
         
         try {
@@ -241,8 +242,8 @@ const Leave = {
             const [updateResult] = await connection.execute(
                 `UPDATE leave_requests 
                  SET status = 'Rejected', approved_by = ?, approved_at = NOW() 
-                 WHERE leave_id = ?`,
-                [approvedBy, leaveId]
+                 WHERE leave_id = ? AND tenant_id = ?`,
+                [approvedBy, leaveId, tenantId]
             );
 
             if (updateResult.affectedRows === 0) {
@@ -261,11 +262,11 @@ const Leave = {
     },
 
     // Delete leave request
-    delete: async (leaveId) => {
+    delete: async (tenantId, leaveId) => {
         try {
             const [result] = await pool.execute(
-                'DELETE FROM leave_requests WHERE leave_id = ?',
-                [leaveId]
+                'DELETE FROM leave_requests WHERE leave_id = ? AND tenant_id = ?',
+                [leaveId, tenantId]
             );
 
             if (result.affectedRows === 0) {
@@ -280,7 +281,7 @@ const Leave = {
     },
 
     // Get leave request by ID
-    getById: async (leaveId) => {
+    getById: async (tenantId, leaveId) => {
         try {
             const query = `
                 SELECT 
@@ -299,10 +300,10 @@ const Leave = {
                 FROM leave_requests lr
                 JOIN employee_details ed ON lr.employee_id = ed.id
                 JOIN users u ON ed.user_id = u.id
-                WHERE lr.leave_id = ?
+                WHERE lr.leave_id = ? AND lr.tenant_id = ?
             `;
             
-            const [rows] = await pool.execute(query, [leaveId]);
+            const [rows] = await pool.execute(query, [leaveId, tenantId]);
             return rows[0];
         } catch (error) {
             console.error('Error in Leave.getById:', error);

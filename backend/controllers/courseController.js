@@ -22,7 +22,7 @@ const courseController = {
                 filters.status = req.query.status;
             }
 
-            const courses = await Course.getAll(filters);
+            const courses = await Course.getAll(req.tenantId, filters);
             res.json({ courses });
         } catch (error) {
             console.error('Get courses error:', error);
@@ -33,7 +33,7 @@ const courseController = {
     // Get course by ID
     getCourse: async (req, res) => {
         try {
-            const course = await Course.getById(req.params.id);
+            const course = await Course.getById(req.tenantId, req.params.id);
             
             if (!course) {
                 return res.status(404).json({ message: 'Course not found' });
@@ -74,7 +74,7 @@ const courseController = {
                 end_date: end_date || null
             };
 
-            const courseId = await Course.create(courseData);
+            const courseId = await Course.create(req.tenantId, courseData);
 
             res.status(201).json({ 
                 message: 'Course created successfully!',
@@ -102,7 +102,7 @@ const courseController = {
             } = req.body;
 
             // Check if course exists
-            const existingCourse = await Course.getById(id);
+            const existingCourse = await Course.getById(req.tenantId, id);
             if (!existingCourse) {
                 return res.status(404).json({ message: 'Course not found' });
             }
@@ -122,7 +122,7 @@ const courseController = {
                 end_date: end_date || null
             };
 
-            await Course.update(id, courseData);
+            await Course.update(req.tenantId, id, courseData);
 
             res.json({ message: 'Course updated successfully' });
 
@@ -138,12 +138,12 @@ const courseController = {
             const { id } = req.params;
 
             // Check if course exists
-            const existingCourse = await Course.getById(id);
+            const existingCourse = await Course.getById(req.tenantId, id);
             if (!existingCourse) {
                 return res.status(404).json({ message: 'Course not found' });
             }
 
-            await Course.delete(id);
+            await Course.delete(req.tenantId, id);
 
             res.json({ message: 'Course deleted successfully' });
 
@@ -156,7 +156,7 @@ const courseController = {
     // Get enrolled students
     getEnrolledStudents: async (req, res) => {
         try {
-            const students = await Course.getEnrolledStudents(req.params.id);
+            const students = await Course.getEnrolledStudents(req.tenantId, req.params.id);
             res.json({ students });
         } catch (error) {
             console.error('Get enrolled students error:', error);

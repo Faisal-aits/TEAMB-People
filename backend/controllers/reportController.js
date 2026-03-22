@@ -9,7 +9,7 @@ const reportController = {
             const userId = req.user.id;
             const userRole = req.user.role; // Make sure role is available in req.user
 
-            const reports = await Report.getAll(userId, userRole);
+            const reports = await Report.getAll(req.tenantId, userId, userRole);
             res.json({ reports });
         } catch (error) {
             console.error('Get reports error:', error);
@@ -23,7 +23,7 @@ const reportController = {
             const userId = req.user.id;
             const userRole = req.user.role;
 
-            const report = await Report.getById(req.params.id, userId, userRole);
+            const report = await Report.getById(req.tenantId, req.params.id, userId, userRole);
             
             if (!report) {
                 return res.status(404).json({ message: 'Report not found or access denied' });
@@ -46,7 +46,7 @@ const reportController = {
                 return res.status(400).json({ message: 'Date and description are required' });
             }
 
-            const reportId = await Report.create({
+            const reportId = await Report.create(req.tenantId, {
                 date_generated,
                 description,
                 generated_by: req.user.id // From auth middleware
@@ -75,7 +75,7 @@ const reportController = {
                 return res.status(400).json({ message: 'Date and description are required' });
             }
 
-            const affectedRows = await Report.update(reportId, {
+            const affectedRows = await Report.update(req.tenantId, reportId, {
                 date_generated,
                 description
             }, userId, userRole);
@@ -98,7 +98,7 @@ const reportController = {
             const userId = req.user.id;
             const userRole = req.user.role;
 
-            const affectedRows = await Report.delete(reportId, userId, userRole);
+            const affectedRows = await Report.delete(req.tenantId, reportId, userId, userRole);
 
             if (affectedRows === 0) {
                 return res.status(404).json({ message: 'Report not found or access denied' });

@@ -14,7 +14,7 @@ const internshipController = {
                 filters.status = req.query.status;
             }
 
-            const internships = await Internship.getAll(filters);
+            const internships = await Internship.getAll(req.tenantId, filters);
             res.json({ internships });
         } catch (error) {
             console.error('Get internships error:', error);
@@ -25,7 +25,7 @@ const internshipController = {
     // Get internship by ID
     getInternship: async (req, res) => {
         try {
-            const internship = await Internship.getById(req.params.id);
+            const internship = await Internship.getById(req.tenantId, req.params.id);
             
             if (!internship) {
                 return res.status(404).json({ message: 'Internship not found' });
@@ -63,7 +63,7 @@ const internshipController = {
                 requirements: requirements || null
             };
 
-            const internshipId = await Internship.create(internshipData);
+            const internshipId = await Internship.create(req.tenantId, internshipData);
 
             res.status(201).json({ 
                 message: 'Internship program created successfully!',
@@ -86,7 +86,7 @@ const internshipController = {
             } = req.body;
 
             // Check if internship exists
-            const existingInternship = await Internship.getById(id);
+            const existingInternship = await Internship.getById(req.tenantId, id);
             if (!existingInternship) {
                 return res.status(404).json({ message: 'Internship not found' });
             }
@@ -103,7 +103,7 @@ const internshipController = {
                 requirements: requirements || null
             };
 
-            await Internship.update(id, internshipData);
+            await Internship.update(req.tenantId, id, internshipData);
 
             res.json({ message: 'Internship program updated successfully' });
 
@@ -119,12 +119,12 @@ const internshipController = {
             const { id } = req.params;
 
             // Check if internship exists
-            const existingInternship = await Internship.getById(id);
+            const existingInternship = await Internship.getById(req.tenantId, id);
             if (!existingInternship) {
                 return res.status(404).json({ message: 'Internship not found' });
             }
 
-            await Internship.delete(id);
+            await Internship.delete(req.tenantId, id);
 
             res.json({ message: 'Internship program deleted successfully' });
 
@@ -137,7 +137,7 @@ const internshipController = {
     // Get applicants
     getApplicants: async (req, res) => {
         try {
-            const applicants = await Internship.getApplicants(req.params.id);
+            const applicants = await Internship.getApplicants(req.tenantId, req.params.id);
             res.json({ applicants });
         } catch (error) {
             console.error('Get applicants error:', error);
@@ -148,7 +148,7 @@ const internshipController = {
     // Get assigned interns
     getAssignedInterns: async (req, res) => {
         try {
-            const interns = await Internship.getAssignedInterns(req.params.id);
+            const interns = await Internship.getAssignedInterns(req.tenantId, req.params.id);
             res.json({ interns });
         } catch (error) {
             console.error('Get assigned interns error:', error);
@@ -159,7 +159,7 @@ const internshipController = {
     // Get tasks
     getTasks: async (req, res) => {
         try {
-            const tasks = await Internship.getTasks(req.params.id);
+            const tasks = await Internship.getTasks(req.tenantId, req.params.id);
             res.json({ tasks });
         } catch (error) {
             console.error('Get tasks error:', error);
@@ -185,7 +185,7 @@ const internshipController = {
                 due_date: due_date || null
             };
 
-            const taskId = await Internship.createTask(taskData);
+            const taskId = await Internship.createTask(req.tenantId, taskData);
 
             res.status(201).json({ 
                 message: 'Task created successfully',
@@ -204,7 +204,7 @@ const internshipController = {
             const { taskId } = req.params;
             const { status } = req.body;
 
-            await Internship.updateTaskStatus(taskId, status);
+            await Internship.updateTaskStatus(req.tenantId, taskId, status);
 
             res.json({ message: 'Task status updated successfully' });
 
@@ -219,7 +219,7 @@ const internshipController = {
         try {
             const { taskId } = req.params;
 
-            await Internship.deleteTask(taskId);
+            await Internship.deleteTask(req.tenantId, taskId);
 
             res.json({ message: 'Task deleted successfully' });
 
@@ -235,7 +235,7 @@ const internshipController = {
             const { applicationId } = req.params;
             const { status } = req.body;
 
-            await Internship.updateApplicantStatus(applicationId, status);
+            await Internship.updateApplicantStatus(req.tenantId, applicationId, status);
 
             res.json({ message: 'Applicant status updated successfully' });
 
@@ -260,7 +260,7 @@ const internshipController = {
                 status: status || 'applied'
             };
 
-            const applicationId = await Internship.addApplicant(applicantData);
+            const applicationId = await Internship.addApplicant(req.tenantId, applicantData);
 
             res.status(201).json({ 
                 message: 'Applicant added successfully',
@@ -289,7 +289,7 @@ const internshipController = {
                 progress: progress || '0%'
             };
 
-            const assignedInternId = await Internship.addAssignedIntern(internData);
+            const assignedInternId = await Internship.addAssignedIntern(req.tenantId, internData);
 
             res.status(201).json({ 
                 message: 'Intern assigned successfully',

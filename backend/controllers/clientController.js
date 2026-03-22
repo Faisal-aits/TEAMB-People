@@ -14,7 +14,7 @@ const clientController = {
                 location: req.query.location
             };
 
-            const clients = await Client.getAll(filters);
+            const clients = await Client.getAll(req.tenantId, filters);
             res.json({ clients });
         } catch (error) {
             console.error('Get clients error:', error);
@@ -25,7 +25,7 @@ const clientController = {
     // Get client by ID
     getClient: async (req, res) => {
         try {
-            const client = await Client.getById(req.params.id);
+            const client = await Client.getById(req.tenantId, req.params.id);
             
             if (!client) {
                 return res.status(404).json({ message: 'Client not found' });
@@ -33,9 +33,9 @@ const clientController = {
 
             // Get related data
             const [interactions, projects, documents] = await Promise.all([
-                Client.getInteractions(req.params.id),
-                Client.getProjects(req.params.id),
-                Client.getDocuments(req.params.id)
+                Client.getInteractions(req.tenantId, req.params.id),
+                Client.getProjects(req.tenantId, req.params.id),
+                Client.getDocuments(req.tenantId, req.params.id)
             ]);
 
             const clientWithDetails = {
@@ -78,12 +78,12 @@ const clientController = {
             }
 
             // Check if email already exists
-            const emailExists = await Client.checkEmailExists(contact_email);
+            const emailExists = await Client.checkEmailExists(req.tenantId, contact_email);
             if (emailExists) {
                 return res.status(400).json({ message: 'Client email already exists' });
             }
 
-            const clientId = await Client.create({
+            const clientId = await Client.create(req.tenantId, {
                 name,
                 industry: industry || '',
                 contact_person,
@@ -128,18 +128,18 @@ const clientController = {
             }
 
             // Check if client exists
-            const existingClient = await Client.getById(clientId);
+            const existingClient = await Client.getById(req.tenantId, clientId);
             if (!existingClient) {
                 return res.status(404).json({ message: 'Client not found' });
             }
 
             // Check if email already exists (excluding current client)
-            const emailExists = await Client.checkEmailExists(contact_email, clientId);
+            const emailExists = await Client.checkEmailExists(req.tenantId, contact_email, clientId);
             if (emailExists) {
                 return res.status(400).json({ message: 'Client email already exists' });
             }
 
-            const affectedRows = await Client.update(clientId, {
+            const affectedRows = await Client.update(req.tenantId, clientId, {
                 name,
                 industry: industry || '',
                 contact_person,
@@ -175,12 +175,12 @@ const clientController = {
             const clientId = req.params.id;
 
             // Check if client exists
-            const existingClient = await Client.getById(clientId);
+            const existingClient = await Client.getById(req.tenantId, clientId);
             if (!existingClient) {
                 return res.status(404).json({ message: 'Client not found' });
             }
 
-            const affectedRows = await Client.delete(clientId);
+            const affectedRows = await Client.delete(req.tenantId, clientId);
 
             if (affectedRows === 0) {
                 return res.status(404).json({ message: 'Client not found' });
@@ -205,12 +205,12 @@ const clientController = {
             }
 
             // Check if client exists
-            const existingClient = await Client.getById(clientId);
+            const existingClient = await Client.getById(req.tenantId, clientId);
             if (!existingClient) {
                 return res.status(404).json({ message: 'Client not found' });
             }
 
-            const interactionId = await Client.addInteraction({
+            const interactionId = await Client.addInteraction(req.tenantId, {
                 client_id: clientId,
                 type,
                 date,
@@ -232,7 +232,7 @@ const clientController = {
     // Get managers list
     getManagers: async (req, res) => {
         try {
-            const managers = await Client.getManagers();
+            const managers = await Client.getManagers(req.tenantId);
             res.json({ managers });
         } catch (error) {
             console.error('Get managers error:', error);
@@ -277,7 +277,7 @@ getIndustries: async (req, res) => {
             }
 
             // Add industry (this will just validate and return success since we don't have a separate table)
-            await Client.addIndustry(industryName);
+            await Client.addIndustry(req.tenantId, industryName);
 
             res.json({ 
                 message: 'Industry added successfully',

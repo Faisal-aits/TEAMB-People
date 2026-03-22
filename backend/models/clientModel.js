@@ -3,7 +3,7 @@ const pool = require('../config/database');
 
 const Client = {
     // Get all clients with counts
-    getAll: async (filters = {}) => {
+    getAll: async (tenantId, filters = {}) => {
         let query = `
             SELECT 
                 c.*,
@@ -14,10 +14,11 @@ const Client = {
             LEFT JOIN client_interactions ci ON c.id = ci.client_id
             LEFT JOIN client_projects cp ON c.id = cp.client_id
             LEFT JOIN client_documents cd ON c.id = cd.client_id
+            WHERE c.tenant_id = ?
         `;
 
         const whereConditions = [];
-        const params = [];
+        const params = [tenantId];
 
         if (filters.search) {
             whereConditions.push(`
@@ -49,7 +50,7 @@ const Client = {
         }
 
         if (whereConditions.length > 0) {
-            query += ' WHERE ' + whereConditions.join(' AND ');
+            query += ' AND ' + whereConditions.join(' AND ');
         }
 
         query += ' GROUP BY c.id ORDER BY c.name';
@@ -59,16 +60,16 @@ const Client = {
     },
 
     // Get client by ID
-    getById: async (id) => {
+    getById: async (tenantId, id) => {
         const [rows] = await pool.execute(
-            `SELECT * FROM clients WHERE id = ?`,
-            [id]
+            `SELECT * FROM clients WHERE id = ? AND tenant_id = ?`,
+            [id, tenantId]
         );
         return rows[0];
     },
 
     // Create new client
-    create: async (clientData) => {
+    create: async (tenantId, clientData) => {
         const {
             name, industry, contact_person, contact_email, contact_phone,
             location, assigned_manager, status, founded_year, employees_count,
@@ -77,12 +78,12 @@ const Client = {
 
         const [result] = await pool.execute(
             `INSERT INTO clients (
-                name, industry, contact_person, contact_email, contact_phone,
+                tenant_id, name, industry, contact_person, contact_email, contact_phone,
                 location, assigned_manager, status, founded_year, employees_count,
                 revenue, website, notes, preferred_contact, follow_up_frequency, next_follow_up
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-                name, industry, contact_person, contact_email, contact_phone,
+                tenantId, name, industry, contact_person, contact_email, contact_phone,
                 location, assigned_manager, status, founded_year, employees_count,
                 revenue, website, notes, preferred_contact, follow_up_frequency, next_follow_up
             ]
@@ -91,7 +92,7 @@ const Client = {
     },
 
     // Update client
-    update: async (id, clientData) => {
+    update: async (tenantId, id, clientData) => {
         const {
             name, industry, contact_person, contact_email, contact_phone,
             location, assigned_manager, status, founded_year, employees_count,
@@ -104,65 +105,65 @@ const Client = {
                 location = ?, assigned_manager = ?, status = ?, founded_year = ?, employees_count = ?,
                 revenue = ?, website = ?, notes = ?, preferred_contact = ?, follow_up_frequency = ?, next_follow_up = ?,
                 updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?`,
+            WHERE id = ? AND tenant_id = ?`,
             [
                 name, industry, contact_person, contact_email, contact_phone,
                 location, assigned_manager, status, founded_year, employees_count,
-                revenue, website, notes, preferred_contact, follow_up_frequency, next_follow_up, id
+                revenue, website, notes, preferred_contact, follow_up_frequency, next_follow_up, id, tenantId
             ]
         );
         return result.affectedRows;
     },
 
     // Delete client
-    delete: async (id) => {
+    delete: async (tenantId, id) => {
         const [result] = await pool.execute(
-            'DELETE FROM clients WHERE id = ?',
-            [id]
+            'DELETE FROM clients WHERE id = ? AND tenant_id = ?',
+            [id, tenantId]
         );
         return result.affectedRows;
     },
 
     // Get client interactions
-    getInteractions: async (clientId) => {
+    getInteractions: async (tenantId, clientId) => {
         const [rows] = await pool.execute(
-            'SELECT * FROM client_interactions WHERE client_id = ? ORDER BY date DESC',
-            [clientId]
+            'SELECT * FROM client_interactions WHERE client_id = ? AND tenant_id = ? ORDER BY date DESC',
+            [clientId, tenantId]
         );
         return rows;
     },
 
     // Add interaction
-    addInteraction: async (interactionData) => {
+    addInteraction: async (tenantId, interactionData) => {
         const { client_id, type, date, title, description, participants } = interactionData;
         
         const [result] = await pool.execute(
-            'INSERT INTO client_interactions (client_id, type, date, title, description, participants) VALUES (?, ?, ?, ?, ?, ?)',
-            [client_id, type, date, title, description, JSON.stringify(participants)]
+            'INSERT INTO client_interactions (tenant_id, client_id, type, date, title, description, participants) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [tenantId, client_id, type, date, title, description, JSON.stringify(participants)]
         );
         return result.insertId;
     },
 
     // Get client projects
-    getProjects: async (clientId) => {
+    getProjects: async (tenantId, clientId) => {
         const [rows] = await pool.execute(
-            'SELECT * FROM client_projects WHERE client_id = ? ORDER BY created_at DESC',
-            [clientId]
+            'SELECT * FROM client_projects WHERE client_id = ? AND tenant_id = ? ORDER BY created_at DESC',
+            [clientId, tenantId]
         );
         return rows;
     },
 
     // Get client documents
-    getDocuments: async (clientId) => {
+    getDocuments: async (tenantId, clientId) => {
         const [rows] = await pool.execute(
-            'SELECT * FROM client_documents WHERE client_id = ? ORDER BY upload_date DESC',
-            [clientId]
+            'SELECT * FROM client_documents WHERE client_id = ? AND tenant_id = ? ORDER BY upload_date DESC',
+            [clientId, tenantId]
         );
         return rows;
     },
 
     // Get managers list
-    getManagers: async () => {
+    getManagers: async (tenantId) => {
         const [rows] = await pool.execute(
             `SELECT 
                 ed.id,
@@ -183,18 +184,18 @@ const Client = {
                    ed.position LIKE '%Senior%' OR
                    ed.position LIKE '%chief%' OR
                    ed.position LIKE '%vp%')
-            AND u.is_active = 1
-            ORDER BY u.first_name, u.last_name`
+            AND u.is_active = 1 AND ed.tenant_id = ? AND u.tenant_id = ?
+            ORDER BY u.first_name, u.last_name`, [tenantId, tenantId]
         );
         return rows;
     },
 
-        // Add new industry
-    addIndustry: async (industryName) => {
+    // Add new industry
+    addIndustry: async (tenantId, industryName) => {
         // First check if industry already exists
         const [existing] = await pool.execute(
-            'SELECT id FROM clients WHERE industry = ? LIMIT 1',
-            [industryName]
+            'SELECT id FROM clients WHERE industry = ? AND tenant_id = ? LIMIT 1',
+            [industryName, tenantId]
         );
         
         if (existing.length > 0) {
@@ -207,9 +208,9 @@ const Client = {
     },
 
     // Check if client email already exists
-    checkEmailExists: async (email, excludeId = null) => {
-        let query = 'SELECT id FROM clients WHERE contact_email = ?';
-        const params = [email];
+    checkEmailExists: async (tenantId, email, excludeId = null) => {
+        let query = 'SELECT id FROM clients WHERE contact_email = ? AND tenant_id = ?';
+        const params = [email, tenantId];
 
         if (excludeId) {
             query += ' AND id != ?';

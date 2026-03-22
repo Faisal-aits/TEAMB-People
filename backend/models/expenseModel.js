@@ -3,7 +3,7 @@ const pool = require('../config/database');
 
 const Expense = {
     // Get all expenses with user and category details
-    getAll: async (filters = {}) => {
+    getAll: async (tenantId, filters = {}) => {
         let query = `
             SELECT 
                 e.*,
@@ -17,9 +17,9 @@ const Expense = {
             JOIN users u ON e.user_id = u.id
             JOIN roles r ON u.role_id = r.id
             JOIN expense_categories ec ON e.category_id = ec.id
-            WHERE 1=1
+            WHERE e.tenant_id = ?
         `;
-        const params = [];
+        const params = [tenantId];
 
         // Add filters based on user role
         if (filters.user_id) {
@@ -44,7 +44,7 @@ const Expense = {
     },
 
     // Get expense by ID
-    getById: async (id) => {
+    getById: async (tenantId, id) => {
         const [rows] = await pool.execute(
             `SELECT 
                 e.*,
@@ -58,34 +58,34 @@ const Expense = {
             JOIN users u ON e.user_id = u.id
             JOIN roles r ON u.role_id = r.id
             JOIN expense_categories ec ON e.category_id = ec.id
-            WHERE e.id = ?`,
-            [id]
+            WHERE e.id = ? AND e.tenant_id = ?`,
+            [id, tenantId]
         );
         return rows[0];
     },
 
     // Create new expense
-    create: async (expenseData) => {
+    create: async (tenantId, expenseData) => {
         const { user_id, category_id, amount, description, receipt_url } = expenseData;
         const [result] = await pool.execute(
-            'INSERT INTO expenses (user_id, category_id, amount, description, receipt_url, status) VALUES (?, ?, ?, ?, ?, ?)',
-            [user_id, category_id, amount, description, receipt_url, 'pending']
+            'INSERT INTO expenses (tenant_id, user_id, category_id, amount, description, receipt_url, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [tenantId, user_id, category_id, amount, description, receipt_url, 'pending']
         );
         return result.insertId;
     },
 
     // Update expense status
-    updateStatus: async (id, status, approved_by = null) => {
+    updateStatus: async (tenantId, id, status, approved_by = null) => {
         const approved_at = status !== 'pending' ? 'CURRENT_TIMESTAMP' : 'NULL';
         const [result] = await pool.execute(
-            `UPDATE expenses SET status = ?, approved_by = ?, approved_at = ${approved_at}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-            [status, approved_by, id]
+            `UPDATE expenses SET status = ?, approved_by = ?, approved_at = ${approved_at}, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ?`,
+            [status, approved_by, id, tenantId]
         );
         return result.affectedRows;
     },
 
     // Get expenses by user ID
-    getByUserId: async (user_id) => {
+    getByUserId: async (tenantId, user_id) => {
         const [rows] = await pool.execute(
             `SELECT 
                 e.*,
@@ -93,26 +93,26 @@ const Expense = {
                 ec.limit_amount as category_limit
             FROM expenses e
             JOIN expense_categories ec ON e.category_id = ec.id
-            WHERE e.user_id = ?
+            WHERE e.user_id = ? AND e.tenant_id = ?
             ORDER BY e.submitted_at DESC`,
-            [user_id]
+            [user_id, tenantId]
         );
         return rows;
     },
 
     // Get all expense categories
-    getCategories: async () => {
+    getCategories: async (tenantId) => {
         const [rows] = await pool.execute(
-            'SELECT * FROM expense_categories ORDER BY name'
+            'SELECT * FROM expense_categories WHERE tenant_id = ? ORDER BY name', [tenantId]
         );
         return rows;
     },
 
     // Get category by ID
-    getCategoryById: async (id) => {
+    getCategoryById: async (tenantId, id) => {
         const [rows] = await pool.execute(
-            'SELECT * FROM expense_categories WHERE id = ?',
-            [id]
+            'SELECT * FROM expense_categories WHERE id = ? AND tenant_id = ?',
+            [id, tenantId]
         );
         return rows[0];
     }

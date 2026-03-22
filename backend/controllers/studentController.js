@@ -18,7 +18,7 @@ const studentController = {
                 filters.status = req.query.status;
             }
 
-            const students = await Student.getAll(filters);
+            const students = await Student.getAll(req.tenantId, filters);
             res.json({ students });
         } catch (error) {
             console.error('Get students error:', error);
@@ -29,7 +29,7 @@ const studentController = {
     // Get student by ID
     getStudent: async (req, res) => {
         try {
-            const student = await Student.getById(req.params.id);
+            const student = await Student.getById(req.tenantId, req.params.id);
             
             if (!student) {
                 return res.status(404).json({ message: 'Student not found' });
@@ -71,7 +71,7 @@ const studentController = {
                 status: status || 'active'
             };
 
-            const result = await Student.create(studentData);
+            const result = await Student.create(req.tenantId, studentData);
 
             res.status(201).json({ 
                 message: 'Student created successfully! They can now login with their email and set their password.', 
@@ -101,7 +101,7 @@ const studentController = {
             } = req.body;
 
             // Check if student exists
-            const existingStudent = await Student.getById(id);
+            const existingStudent = await Student.getById(req.tenantId, id);
             if (!existingStudent) {
                 return res.status(404).json({ message: 'Student not found' });
             }
@@ -121,7 +121,7 @@ const studentController = {
                 status: status || 'active'
             };
 
-            await Student.update(id, studentData);
+            await Student.update(req.tenantId, id, studentData);
 
             res.json({ message: 'Student updated successfully' });
 
@@ -137,12 +137,12 @@ const studentController = {
             const { id } = req.params;
 
             // Check if student exists
-            const existingStudent = await Student.getById(id);
+            const existingStudent = await Student.getById(req.tenantId, id);
             if (!existingStudent) {
                 return res.status(404).json({ message: 'Student not found' });
             }
 
-            await Student.delete(id);
+            await Student.delete(req.tenantId, id);
 
             res.json({ message: 'Student deleted successfully' });
 
@@ -155,7 +155,7 @@ const studentController = {
     // Get student courses
     getStudentCourses: async (req, res) => {
         try {
-            const courses = await Student.getCourses(req.params.id);
+            const courses = await Student.getCourses(req.tenantId, req.params.id);
             res.json({ courses });
         } catch (error) {
             console.error('Get student courses error:', error);

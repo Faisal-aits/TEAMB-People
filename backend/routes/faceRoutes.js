@@ -5,6 +5,9 @@ const employeeController = require('../controllers/employeeController');
 const authMiddleware = require('../middleware/authMiddleware');
 
 const router = express.Router();
+
+// All routes require authentication and tenant context
+router.use(authMiddleware.verifyToken);
 const upload = multer({ storage: multer.memoryStorage() });
 
 // Face validation endpoint

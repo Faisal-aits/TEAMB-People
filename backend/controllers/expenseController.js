@@ -16,7 +16,7 @@ const expenseController = {
             if (req.query.status) filters.status = req.query.status;
             if (req.query.category_id) filters.category_id = req.query.category_id;
 
-            const expenses = await Expense.getAll(filters);
+            const expenses = await Expense.getAll(req.tenantId, filters);
             res.json({ expenses });
         } catch (error) {
             console.error('Get expenses error:', error);
@@ -27,7 +27,7 @@ const expenseController = {
     // Get expense categories
     getCategories: async (req, res) => {
         try {
-            const categories = await Expense.getCategories();
+            const categories = await Expense.getCategories(req.tenantId);
             res.json({ categories });
         } catch (error) {
             console.error('Get categories error:', error);
@@ -38,7 +38,7 @@ const expenseController = {
     // Get expense by ID
     getExpense: async (req, res) => {
         try {
-            const expense = await Expense.getById(req.params.id);
+            const expense = await Expense.getById(req.tenantId, req.params.id);
             
             if (!expense) {
                 return res.status(404).json({ message: 'Expense not found' });
@@ -71,7 +71,7 @@ const expenseController = {
             }
 
             // Check if category exists
-            const category = await Expense.getCategoryById(category_id);
+            const category = await Expense.getCategoryById(req.tenantId, category_id);
             if (!category) {
                 return res.status(400).json({ message: 'Invalid expense category' });
             }
@@ -83,7 +83,7 @@ const expenseController = {
                 });
             }
 
-            const expenseId = await Expense.create({
+            const expenseId = await Expense.create(req.tenantId, {
                 user_id: req.user.id,
                 category_id,
                 amount,
@@ -117,7 +117,7 @@ const expenseController = {
                 return res.status(400).json({ message: 'Status must be either "approved" or "rejected"' });
             }
 
-            const affectedRows = await Expense.updateStatus(expenseId, status, req.user.id);
+            const affectedRows = await Expense.updateStatus(req.tenantId, expenseId, status, req.user.id);
 
             if (affectedRows === 0) {
                 return res.status(404).json({ message: 'Expense not found' });
@@ -133,7 +133,7 @@ const expenseController = {
     // Get user's own expenses
     getMyExpenses: async (req, res) => {
         try {
-            const expenses = await Expense.getByUserId(req.user.id);
+            const expenses = await Expense.getByUserId(req.tenantId, req.user.id);
             res.json({ expenses });
         } catch (error) {
             console.error('Get my expenses error:', error);
