@@ -1,0 +1,160 @@
+.my-docs-container {
+  padding: 30px;
+  background: #f8fafc;
+  min-height: calc(100vh - 80px);
+}
+
+.docs-header {
+  margin-bottom: 30px;
+}
+
+.docs-header h1 {
+  font-size: 24px;
+  color: #1e293b;
+  margin-bottom: 8px;
+}
+
+.docs-header p {
+  color: #64748b;
+  font-size: 14px;
+}
+
+.docs-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+}
+
+.doc-card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  border: 1px solid #f1f5f9;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.doc-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.doc-icon-container {
+  background: #eef2ff;
+  color: #4f46e5;
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.doc-icon {
+  font-size: 24px;
+}
+
+.doc-info {
+  flex: 1;
+}
+
+.doc-info h3 {
+  font-size: 16px;
+  color: #1e293b;
+  margin-bottom: 4px;
+}
+
+.doc-info p {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.doc-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.doc-view-btn {
+  background: white;
+  color: #4f46e5;
+  border: 1.5px solid #4f46e5;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.doc-view-btn:hover {
+  background: #f5f3ff;
+  border-color: #4338ca;
+  color: #4338ca;
+}
+
+.doc-download-btn {
+  background: #4f46e5;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background 0.2s ease;
+}
+
+.doc-download-btn:hover {
+  background: #4338ca;
+}
+
+.no-docs {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 100px 20px;
+  background: white;
+  border-radius: 16px;
+  border: 2px dashed #e2e8f0;
+}
+
+.no-docs h3 {
+  margin-top: 15px;
+  color: #1e293b;
+}
+
+.no-docs p {
+  color: #64748b;
+  margin-top: 8px;
+}
+
+.docs-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 100px;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #4f46e5;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
