@@ -19,6 +19,18 @@ const salaryController = {
         }
     },
 
+    // Get salary records for the logged-in employee
+    getMySalaryRecords: async (req, res) => {
+        try {
+            const { month, year } = req.query;
+            const salaryRecords = await Salary.getByUserId(req.user.id, { month, year });
+            res.json({ salaryRecords });
+        } catch (error) {
+            console.error('Get my salary records error:', error);
+            res.status(500).json({ message: 'Server error' });
+        }
+    },
+
     // Get salary record by ID
     getSalaryRecord: async (req, res) => {
         try {

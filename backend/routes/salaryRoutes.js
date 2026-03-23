@@ -11,6 +11,9 @@ router.use(authMiddleware.verifyToken);
 // GET /api/salary/records - Get all salary records
 router.get('/records', salaryController.getAllSalaryRecords);
 
+// GET /api/salary/my-records - Get salary records for logged-in employee
+router.get('/my-records', salaryController.getMySalaryRecords);
+
 // GET /api/salary/employees - Get employees list
 router.get('/employees', salaryController.getEmployees);
 
