@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import './HRDashboard.css';
 import dashboardAPI from '../../../services/dashboardAPI';
-import { 
-  HiOutlineDocumentText, 
-  HiOutlineCurrencyDollar, 
-  HiOutlineClipboardDocumentList, 
+import {
+  HiOutlineDocumentText,
+  HiOutlineCurrencyDollar,
+  HiOutlineClipboardDocumentList,
   HiOutlineUsers,
   HiOutlineBriefcase,
   HiOutlineArrowRight
@@ -24,14 +24,14 @@ const HRDashboard = ({ setActiveTab }) => {
       try {
         const res = await dashboardAPI.getStats();
         const stats = res.data.stats || [];
-        
+
         // Find specific stats from the array
         const empStat = stats.find(s => s.title === 'EMPLOYEES');
         const internStat = stats.find(s => s.title === 'INTERNSHIPS');
-        
+
         setStatsData({
           employees: empStat ? empStat.value : "0",
-          offersSent: "12", 
+          offersSent: "12",
           activeJobs: internStat ? internStat.value : "0",
           pendingTasks: internStat ? internStat.secondaryValue : "0"
         });
@@ -44,12 +44,12 @@ const HRDashboard = ({ setActiveTab }) => {
 
     fetchStats();
   }, []);
-  
+
   const stats = [
-    { label: "Total Employees", value: statsData.employees, icon: <HiOutlineUsers />, color: "#6366f1" },
-    { label: "Offers Sent", value: statsData.offersSent, icon: <HiOutlineDocumentText />, color: "#10b981" },
-    { label: "Active Jobs", value: statsData.activeJobs, icon: <HiOutlineBriefcase />, color: "#f59e0b" },
-    { label: "Pending Tasks", value: statsData.pendingTasks, icon: <HiOutlineClipboardDocumentList />, color: "#ef4444" },
+    // { label: "Total Employees", value: statsData.employees, icon: <HiOutlineUsers />, color: "#6366f1" },
+    // { label: "Offers Sent", value: statsData.offersSent, icon: <HiOutlineDocumentText />, color: "#10b981" },
+    // { label: "Active Jobs", value: statsData.activeJobs, icon: <HiOutlineBriefcase />, color: "#f59e0b" },
+    // { label: "Pending Tasks", value: statsData.pendingTasks, icon: <HiOutlineClipboardDocumentList />, color: "#ef4444" },
   ];
 
   return (
@@ -108,7 +108,7 @@ const HRDashboard = ({ setActiveTab }) => {
 
 
         {/* Resignation Card */}
-        <div className="hr-tool-card">
+        {/* <div className="hr-tool-card">
           <div className="tool-icon-wrapper resign">
             <HiOutlineClipboardDocumentList />
           </div>
@@ -119,7 +119,7 @@ const HRDashboard = ({ setActiveTab }) => {
           <div className="tool-action">
             <HiOutlineArrowRight />
           </div>
-        </div>
+        </div> */}
 
         {/* Employees Card */}
         <div className="hr-tool-card" onClick={() => setActiveTab('hr-employee-directory')}>
