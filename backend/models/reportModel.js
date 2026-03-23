@@ -5,12 +5,12 @@ const Report = {
     // Get all reports with user information - filtered by user role
     getAll: async (tenantId, userId, userRole) => {
         console.log(`Model.getAll - User ID: ${userId}, Role: ${userRole}`);
-        
-        const isAdmin = userRole === 'admin' || 
-                        userRole === 'Admin' || 
-                        userRole === 'ADMIN' ||
-                        userRole == 1;
-        
+
+        const isAdmin = userRole === 'admin' ||
+            userRole === 'Admin' ||
+            userRole === 'ADMIN' ||
+            userRole == 1;
+
         if (isAdmin) {
             // Admin gets all reports
             const [rows] = await pool.execute(`
@@ -73,7 +73,7 @@ const Report = {
     // Update report - with access control
     update: async (tenantId, id, reportData, userId, userRole) => {
         const { date_generated, description } = reportData;
-        
+
         let query = 'UPDATE reports SET date_generated = ?, description = ?, updated_at = NOW() WHERE id = ? AND tenant_id = ?';
         const params = [date_generated, description, id, tenantId];
 
@@ -103,17 +103,12 @@ const Report = {
     },
 
     // In reportModel.js - Add this method
-// Update the Report.getRecent method in reportModel.js
-getRecent: async (tenantId, userId, userRole, limit = 3) => {
-    console.log('=== Model.getRecent ===');
-    console.log('Parameters:', { userId, userRole, limit });
-    console.log(`User role value: "${userRole}" (type: ${typeof userRole})`);
-    
-    // Convert role to number for comparison
-    const roleNum = Number(userRole);
-    console.log(`Role as number: ${roleNum}`);
-    
-    let query = `
+    getRecent: async (tenantId, userId, userRole, limit = 3) => {
+        // Sanitize limit — must be a plain integer, cannot be a bound parameter
+        // because mysql2's prepared statements don't support LIMIT ?
+        const safeLimit = parseInt(limit, 10) || 3;
+
+        let query = `
         SELECT 
             r.*,
             CONCAT(u.first_name, ' ', u.last_name) as generated_by_name
@@ -121,44 +116,22 @@ getRecent: async (tenantId, userId, userRole, limit = 3) => {
         INNER JOIN users u ON r.generated_by = u.id
         WHERE r.tenant_id = ?
     `;
-    
-    const params = [tenantId];
-    
-    // Debug the role check logic
-    console.log(`\nRole check logic:`);
-    console.log(`- userRole == 1: ${userRole == 1}`);
-    console.log(`- userRole === 1: ${userRole === 1}`);
-    console.log(`- roleNum === 1: ${roleNum === 1}`);
-    console.log(`- userRole === 'admin': ${userRole === 'admin'}`);
-    console.log(`- userRole === '1': ${userRole === '1'}`);
-    
-    // FIXED: Handle both string and number roles
-    const isAdmin = userRole == 1 || userRole === 1 || userRole === 'admin' || roleNum === 1;
-    console.log(`isAdmin calculated as: ${isAdmin}`);
-    
-    if (!isAdmin) {
-        query += ' AND r.generated_by = ?';
-        params.push(userId);
-        console.log(`Adding user filter: generated_by = ${userId}`);
-    } else {
-        console.log('Admin user - showing all reports');
+
+        const params = [tenantId];
+
+        const isAdmin = userRole == 1 || userRole === 1 || userRole === 'admin';
+
+        if (!isAdmin) {
+            query += ' AND r.generated_by = ?';
+            params.push(userId);
+        }
+
+        // Embed limit as integer literal — NOT as a bound parameter
+        query += ` ORDER BY r.date_generated DESC, r.created_at DESC LIMIT ${safeLimit}`;
+
+        const [rows] = await pool.execute(query, params);
+        return rows;
     }
-    
-    query += ' ORDER BY r.date_generated DESC, r.created_at DESC LIMIT ?';
-    params.push(limit);
-    
-    console.log('\nFinal query:', query);
-    console.log('Query params:', params);
-    
-    const [rows] = await pool.execute(query, params);
-    console.log(`Query returned ${rows.length} rows`);
-    
-    if (rows.length > 0) {
-        console.log('First report:', JSON.stringify(rows[0], null, 2));
-    }
-    
-    return rows;
-}
 };
 
 module.exports = Report;

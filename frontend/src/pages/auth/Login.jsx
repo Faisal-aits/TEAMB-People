@@ -7,13 +7,13 @@ const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     tenant_slug: '',
-    email: '',         
+    email: '',
     password: '',
     regEmail: '',
     regPassword: '',
     confirmPassword: ''
   });
-  const [loading, setLoading] = useState(false); 
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const { login, isAuthenticated, user } = useAuth();
@@ -60,7 +60,7 @@ const Login = () => {
     setError('');
 
     const { tenant_slug, email, password } = formData;
-    
+
     if (!tenant_slug || !email || !password) {
       setError('Please fill in all fields including Organization ID');
       setLoading(false);
@@ -70,7 +70,7 @@ const Login = () => {
     try {
       console.log('Attempting login with:', { tenant_slug, email });
       const result = await login({ email, password, tenant_slug });
-      
+
       if (result.success) {
         console.log('Login successful, redirecting...');
         // The useEffect will handle the redirect automatically
@@ -85,14 +85,14 @@ const Login = () => {
     }
   };
 
-const handleRegisterSubmit = async (e) => {
+  const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     const { regEmail, regPassword, confirmPassword } = formData;
-    
-    
+
+
     if (regPassword !== confirmPassword) {
       setError('Passwords do not match');
       setLoading(false);
@@ -103,7 +103,7 @@ const handleRegisterSubmit = async (e) => {
     // You can add registration API call later
     setError('Registration feature coming soon! Please contact administrator.');
     setLoading(false);
-    
+
     // alert('Registration successful! Please check your email for verification.');
   };
 
@@ -118,13 +118,13 @@ const handleRegisterSubmit = async (e) => {
       <div className="company-content">
         <div className="company-text">
           <h1 className="company-title">WORK DESK</h1>
-          
+
           <div className="company-quote">
             <p className="quote-text">Multi-Tenant Workforce Management</p>
           </div>
         </div>
       </div>
-      
+
       {/* Right Side - Forms */}
       <div className="forms-container">
         {/* Error Message */}
@@ -144,21 +144,21 @@ const handleRegisterSubmit = async (e) => {
         )}
 
         {/* Login Form */}
-        <div 
+        <div
           className={`form-wrapper glass-form ${isLogin ? 'active' : 'hidden'}`}
         >
           <h2 className="form-title">Welcome Back</h2>
           <p className="form-subtitle">Sign in to your organization</p>
-          
+
           <form className="form" onSubmit={handleLoginSubmit}>
             <div className="form-group">
               <label htmlFor="tenant_slug" className="form-label">
                 Organization ID
               </label>
-              <input 
-                type="text" 
-                id="tenant_slug" 
-                placeholder="e.g. arham-it" 
+              <input
+                type="text"
+                id="tenant_slug"
+                placeholder="e.g. arham-it"
                 className="form-input glass-input"
                 value={formData.tenant_slug}
                 onChange={handleInputChange}
@@ -170,17 +170,17 @@ const handleRegisterSubmit = async (e) => {
               <label htmlFor="email" className="form-label">
                 Email
               </label>
-              <input 
-                type="email" 
-                id="email" 
-                placeholder="Enter your email" 
+              <input
+                type="email"
+                id="email"
+                placeholder="Enter your email"
                 className="form-input glass-input"
                 value={formData.email}
                 onChange={handleInputChange}
                 disabled={loading}
               />
             </div>
-            
+
             <div className="form-group">
               <div className="password-header">
                 <label htmlFor="password" className="form-label">
@@ -190,27 +190,27 @@ const handleRegisterSubmit = async (e) => {
                   Forgot password?
                 </a>
               </div>
-              <input 
-                type="password" 
-                id="password" 
-                placeholder="********" 
+              <input
+                type="password"
+                id="password"
+                placeholder="********"
                 className="form-input glass-input"
                 value={formData.password}
                 onChange={handleInputChange}
                 disabled={loading}
               />
             </div>
-            
-            <button 
-              type="submit" 
+
+            <button
+              type="submit"
               className="submit-btn btn-travel"
               disabled={loading}
             >
               {loading ? 'SIGNING IN...' : 'SIGN IN'}
             </button>
           </form>
-          
-          <div className="form-footer">
+
+          {/*<div className="form-footer">
             <p className="footer-text">
               Are you new?{' '}
               <button 
@@ -221,75 +221,75 @@ const handleRegisterSubmit = async (e) => {
                 Create an Account
               </button>
             </p>
-          </div>
+          </div>*/}
         </div>
-        
+
         {/* Registration Form */}
-        <div 
+        <div
           className={`form-wrapper glass-form ${!isLogin ? 'active' : 'hidden'}`}
         >
           <h2 className="form-title">Create Account</h2>
           <p className="form-subtitle">Join us to start your journey</p>
-          
-          <form className="form" onSubmit={handleRegisterSubmit}> 
+
+          <form className="form" onSubmit={handleRegisterSubmit}>
             <div className="form-group">
               <label htmlFor="regEmail" className="form-label">
                 Email
               </label>
-              <input 
-                type="email" 
-                id="regEmail" 
-                placeholder="Enter your email" 
+              <input
+                type="email"
+                id="regEmail"
+                placeholder="Enter your email"
                 className="form-input glass-input"
                 value={formData.regEmail}
                 onChange={handleInputChange}
                 disabled={loading}
               />
             </div>
-            
+
             <div className="form-group">
               <label htmlFor="regPassword" className="form-label">
                 Password
               </label>
-              <input 
-                type="password" 
-                id="regPassword" 
-                placeholder="********" 
+              <input
+                type="password"
+                id="regPassword"
+                placeholder="********"
                 className="form-input glass-input"
                 value={formData.regPassword}
                 onChange={handleInputChange}
                 disabled={loading}
               />
             </div>
-            
+
             <div className="form-group">
               <label htmlFor="confirmPassword" className="form-label">
                 Confirm Password
               </label>
-              <input 
-                type="password" 
-                id="confirmPassword" 
-                placeholder="********" 
+              <input
+                type="password"
+                id="confirmPassword"
+                placeholder="********"
                 className="form-input glass-input"
                 value={formData.confirmPassword}
                 onChange={handleInputChange}
                 disabled={loading}
               />
             </div>
-            
-            <button 
-              type="submit" 
+
+            <button
+              type="submit"
               className="submit-btn btn-travel"
               disabled={loading}
             >
               {loading ? 'CREATING ACCOUNT...' : 'CREATE ACCOUNT'}
             </button>
           </form>
-          
+
           <div className="form-footer">
             <p className="footer-text">
               Already have an account?{' '}
-              <button 
+              <button
                 onClick={toggleForm}
                 className="form-toggle-btn"
                 disabled={loading}

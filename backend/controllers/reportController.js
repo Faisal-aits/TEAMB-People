@@ -7,7 +7,7 @@ const reportController = {
     getAllReports: async (req, res) => {
         try {
             const userId = req.user.id;
-            const userRole = req.user.role; // Make sure role is available in req.user
+            const userRole = req.user.role_name; // ← was req.user.role
 
             const reports = await Report.getAll(req.tenantId, userId, userRole);
             res.json({ reports });
@@ -21,10 +21,10 @@ const reportController = {
     getReport: async (req, res) => {
         try {
             const userId = req.user.id;
-            const userRole = req.user.role;
+            const userRole = req.user.role_name; // ← was req.user.role
 
             const report = await Report.getById(req.tenantId, req.params.id, userId, userRole);
-            
+
             if (!report) {
                 return res.status(404).json({ message: 'Report not found or access denied' });
             }
@@ -41,7 +41,6 @@ const reportController = {
         try {
             const { date_generated, description } = req.body;
 
-            // Validation
             if (!date_generated || !description) {
                 return res.status(400).json({ message: 'Date and description are required' });
             }
@@ -49,12 +48,12 @@ const reportController = {
             const reportId = await Report.create(req.tenantId, {
                 date_generated,
                 description,
-                generated_by: req.user.id // From auth middleware
+                generated_by: req.user.id
             });
 
-            res.status(201).json({ 
-                message: 'Report created successfully', 
-                report_id: reportId 
+            res.status(201).json({
+                message: 'Report created successfully',
+                report_id: reportId
             });
         } catch (error) {
             console.error('Create report error:', error);
@@ -68,17 +67,15 @@ const reportController = {
             const { date_generated, description } = req.body;
             const reportId = req.params.id;
             const userId = req.user.id;
-            const userRole = req.user.role;
+            const userRole = req.user.role_name; // ← was req.user.role
 
-            // Validation
             if (!date_generated || !description) {
                 return res.status(400).json({ message: 'Date and description are required' });
             }
 
-            const affectedRows = await Report.update(req.tenantId, reportId, {
-                date_generated,
-                description
-            }, userId, userRole);
+            const affectedRows = await Report.update(
+                req.tenantId, reportId, { date_generated, description }, userId, userRole
+            );
 
             if (affectedRows === 0) {
                 return res.status(404).json({ message: 'Report not found or access denied' });
@@ -96,7 +93,7 @@ const reportController = {
         try {
             const reportId = req.params.id;
             const userId = req.user.id;
-            const userRole = req.user.role;
+            const userRole = req.user.role_name; // ← was req.user.role
 
             const affectedRows = await Report.delete(req.tenantId, reportId, userId, userRole);
 
@@ -110,79 +107,30 @@ const reportController = {
             res.status(500).json({ message: 'Server error while deleting report' });
         }
     },
-    //...................................For dashboard...........................
-// In reportController.js - Keep ONLY this getRecentReports function
-getRecentReports: async (req, res) => {
-    try {
-        console.log('=== WORKING VERSION - Hardcoded limit ===');
-        
-        const limit = parseInt(req.query.limit) || 5;
-        console.log(`Requested limit: ${limit}, Using: 5 (hardcoded)`);
-        
-        const pool = require('../config/database');
-        
-        // HARDCODE the limit to avoid parameter binding issue
-        const query = `
-            SELECT 
-                r.*,
-                CONCAT(u.first_name, ' ', u.last_name) as generated_by_name
-            FROM reports r
-            LEFT JOIN users u ON r.generated_by = u.id
-            ORDER BY r.date_generated DESC 
-            LIMIT 5
-        `;
-        
-        console.log('Executing query without parameters...');
-        const [reports] = await pool.execute(query); // No parameters!
-        
-        console.log(`Found ${reports.length} reports`);
-        
-        // DEBUG: Check what fields we have
-        if (reports.length > 0) {
-            console.log('First report has these fields:', Object.keys(reports[0]));
-            console.log('generated_by_name value:', reports[0].generated_by_name);
-        }
-        
-        res.json({ 
-            success: true,
-            reports: reports,
-            count: reports.length
-        });
-        
-    } catch (error) {
-        console.error('Error in getRecentReports:', error);
-        
-        // Try even simpler query
+
+    // Get recent reports for dashboard
+    getRecentReports: async (req, res) => {
         try {
-            const pool = require('../config/database');
-            const [reports] = await pool.execute(`
-                SELECT 
-                    id,
-                    date_generated,
-                    description,
-                    generated_by,
-                    created_at,
-                    updated_at
-                FROM reports 
-                ORDER BY date_generated DESC 
-                LIMIT 5
-            `);
-            
-            res.json({ 
+            const limit = parseInt(req.query.limit) || 5;
+            const userId = req.user.id;
+            const userRole = req.user.role_name; // ← was missing entirely
+
+            // Use the model — it handles tenant isolation + role-based filtering
+            const reports = await Report.getRecent(req.tenantId, userId, userRole, limit);
+
+            res.json({
                 success: true,
-                reports: reports,
-                message: 'Used simplest query'
+                reports,
+                count: reports.length
             });
-        } catch (simpleError) {
-            console.error('Simple query also failed:', simpleError);
-            res.status(500).json({ 
+        } catch (error) {
+            console.error('Get recent reports error:', error);
+            res.status(500).json({
                 success: false,
-                message: 'Server error',
-                error: simpleError.message 
+                message: 'Server error while fetching recent reports'
             });
         }
     }
-}
 };
 
 module.exports = reportController;

@@ -1,12 +1,12 @@
 // backend/controllers/attendanceController.js
 const Attendance = require('../models/attendanceModel');
 const Employee = require('../models/employeeModel');
-const FaceRecognition = require('../utils/faceRecognition'); 
-const Shift = require('../models/shiftModel'); 
+const FaceRecognition = require('../utils/faceRecognition');
+const Shift = require('../models/shiftModel');
 const pool = require('../config/database');
 const attendanceController = {
     // ==================== EXISTING METHODS ====================
-    
+
     // Get all attendance records
     getAllAttendance: async (req, res) => {
         try {
@@ -32,7 +32,7 @@ const attendanceController = {
     getEmployeeHistory: async (req, res) => {
         try {
             const { employeeId } = req.params;
-            
+
             const history = await Attendance.getEmployeeHistory(req.tenantId, employeeId);
             const stats = await Attendance.getEmployeeHistoryStats(req.tenantId, employeeId);
 
@@ -46,110 +46,110 @@ const attendanceController = {
         }
     },
 
-// Approve attendance - UPDATED WITH FLEXIBLE APPROACH
-approveAttendance: async (req, res) => {
-    try {
-        const { attendanceId } = req.params;
-        const userId = req.user.id;
+    // Approve attendance - UPDATED WITH FLEXIBLE APPROACH
+    approveAttendance: async (req, res) => {
+        try {
+            const { attendanceId } = req.params;
+            const userId = req.user.id;
 
-        console.log('👤 Approving attendance - User ID:', userId);
+            console.log('👤 Approving attendance - User ID:', userId);
 
-        // ✅ FIXED: Find employee by user_id, not id
-        const [employees] = await pool.execute(
-            'SELECT id, user_id FROM employee_details WHERE user_id = ?',
-            [userId]
-        );
+            // ✅ FIXED: Find employee by user_id, not id
+            const [employees] = await pool.execute(
+                'SELECT id, user_id FROM employee_details WHERE user_id = ?',
+                [userId]
+            );
 
-        if (employees.length === 0) {
-            return res.status(400).json({ 
+            if (employees.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Your user account is not linked to an employee record.'
+                });
+            }
+
+            const employee = employees[0];
+            console.log('✅ Found employee record:', {
+                employeeId: employee.id,
+                userId: employee.user_id
+            });
+
+            // Approve the attendance using employee.id (the employee_details id)
+            await Attendance.approve(req.tenantId, attendanceId, employee.id);
+
+            res.json({
+                success: true,
+                message: 'Attendance approved successfully!'
+            });
+
+        } catch (error) {
+            console.error('Approve attendance error:', error);
+
+            if (error.message === 'Attendance record not found') {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Attendance record not found'
+                });
+            }
+
+            res.status(500).json({
                 success: false,
-                message: 'Your user account is not linked to an employee record.' 
+                message: 'Server error while approving attendance'
             });
         }
+    },
 
-        const employee = employees[0];
-        console.log('✅ Found employee record:', { 
-            employeeId: employee.id, 
-            userId: employee.user_id 
-        });
+    // Reject attendance - FIXED with correct logic
+    rejectAttendance: async (req, res) => {
+        try {
+            const { attendanceId } = req.params;
+            const { remarks } = req.body;
+            const userId = req.user.id;
 
-        // Approve the attendance using employee.id (the employee_details id)
-        await Attendance.approve(req.tenantId, attendanceId, employee.id);
+            console.log('👤 Rejecting attendance - User ID:', userId);
 
-        res.json({ 
-            success: true,
-            message: 'Attendance approved successfully!' 
-        });
+            // ✅ FIXED: Find employee by user_id, not id
+            const [employees] = await pool.execute(
+                'SELECT id, user_id FROM employee_details WHERE user_id = ?',
+                [userId]
+            );
 
-    } catch (error) {
-        console.error('Approve attendance error:', error);
-        
-        if (error.message === 'Attendance record not found') {
-            return res.status(404).json({ 
+            if (employees.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Your user account is not linked to an employee record.'
+                });
+            }
+
+            const employee = employees[0];
+            console.log('✅ Found employee record:', {
+                employeeId: employee.id,
+                userId: employee.user_id
+            });
+
+            // Reject the attendance using employee.id (the employee_details id)
+            await Attendance.reject(req.tenantId, attendanceId, employee.id, remarks);
+
+            res.json({
+                success: true,
+                message: 'Attendance marked as leave!'
+            });
+
+        } catch (error) {
+            console.error('Reject attendance error:', error);
+
+            if (error.message === 'Attendance record not found') {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Attendance record not found'
+                });
+            }
+
+            res.status(500).json({
                 success: false,
-                message: 'Attendance record not found' 
+                message: 'Server error while rejecting attendance'
             });
         }
-        
-        res.status(500).json({ 
-            success: false,
-            message: 'Server error while approving attendance' 
-        });
-    }
-},
-
-// Reject attendance - FIXED with correct logic
-rejectAttendance: async (req, res) => {
-    try {
-        const { attendanceId } = req.params;
-        const { remarks } = req.body;
-        const userId = req.user.id;
-
-        console.log('👤 Rejecting attendance - User ID:', userId);
-
-        // ✅ FIXED: Find employee by user_id, not id
-        const [employees] = await pool.execute(
-            'SELECT id, user_id FROM employee_details WHERE user_id = ?',
-            [userId]
-        );
-
-        if (employees.length === 0) {
-            return res.status(400).json({ 
-                success: false,
-                message: 'Your user account is not linked to an employee record.' 
-            });
-        }
-
-        const employee = employees[0];
-        console.log('✅ Found employee record:', { 
-            employeeId: employee.id, 
-            userId: employee.user_id 
-        });
-
-        // Reject the attendance using employee.id (the employee_details id)
-        await Attendance.reject(req.tenantId, attendanceId, employee.id, remarks);
-
-        res.json({ 
-            success: true,
-            message: 'Attendance marked as leave!' 
-        });
-
-    } catch (error) {
-        console.error('Reject attendance error:', error);
-        
-        if (error.message === 'Attendance record not found') {
-            return res.status(404).json({ 
-                success: false,
-                message: 'Attendance record not found' 
-            });
-        }
-        
-        res.status(500).json({ 
-            success: false,
-            message: 'Server error while rejecting attendance' 
-        });
-    }
-},
+    },
     // Get shifts
     getShifts: async (req, res) => {
         try {
@@ -177,23 +177,23 @@ rejectAttendance: async (req, res) => {
     markAttendance: async (req, res) => {
         try {
             const { employee_id, type, date } = req.body;
-            
+
             console.log('🎯 Marking attendance:', { employee_id, type, date });
 
             if (!employee_id || !type) {
-                return res.status(400).json({ 
+                return res.status(400).json({
                     success: false,
-                    message: 'Employee ID and type are required' 
+                    message: 'Employee ID and type are required'
                 });
             }
 
             const today = date || new Date().toISOString().split('T')[0];
             const currentDateTime = new Date();
-            
+
             const attendanceExists = await Attendance.checkExists(req.tenantId, employee_id, today);
-            
+
             let result;
-            
+
             if (attendanceExists) {
                 if (type === 'check_out') {
                     result = await Attendance.updateCheckOut(req.tenantId, employee_id, today, currentDateTime);
@@ -221,44 +221,46 @@ rejectAttendance: async (req, res) => {
                 }
             }
 
-            res.json({ 
-                success: true, 
+            res.json({
+                success: true,
                 message: `Attendance ${type} marked successfully`,
                 attendance: result
             });
 
         } catch (error) {
             console.error('❌ Mark attendance error:', error);
-            res.status(500).json({ 
+            res.status(500).json({
                 success: false,
-                message: 'Error marking attendance: ' + error.message 
+                message: 'Error marking attendance: ' + error.message
             });
         }
     },
 
-    // ✅ EMPLOYEE-SPECIFIC METHODS
     getMyTodayAttendance: async (req, res) => {
         try {
             const { date } = req.query;
             const userId = req.user.id;
-            
+
             console.log('👤 Getting today attendance for user:', userId);
-            
-            const employee = await Employee.getByUserId(userId);
+
+            // ✅ Pass req.tenantId as first argument
+            const employee = await Employee.getByUserId(req.tenantId, userId);
             if (!employee || !employee.employee_id) {
-                return res.status(404).json({ 
+                return res.status(404).json({
                     success: false,
-                    message: 'Employee record not found' 
+                    message: 'Employee record not found'
                 });
             }
-            
+
             const today = date || new Date().toISOString().split('T')[0];
             console.log('📅 Looking for attendance on:', today, 'for employee:', employee.employee_id);
-            
+
             const allAttendance = await Attendance.getAll(req.tenantId, { date: today });
-            const myAttendance = allAttendance.find(req.tenantId, record => record.employee_id === employee.employee_id);
-            
-            res.json({ 
+
+            // ✅ Fix .find() — remove the stray req.tenantId argument
+            const myAttendance = allAttendance.find(record => record.employee_id === employee.employee_id);
+
+            res.json({
                 success: true,
                 attendance: myAttendance || {
                     employee_id: employee.employee_id,
@@ -270,9 +272,9 @@ rejectAttendance: async (req, res) => {
             });
         } catch (error) {
             console.error('Get my today attendance error:', error);
-            res.status(500).json({ 
+            res.status(500).json({
                 success: false,
-                message: 'Server error while fetching attendance' 
+                message: 'Server error while fetching attendance'
             });
         }
     },
@@ -280,29 +282,30 @@ rejectAttendance: async (req, res) => {
     getMyHistory: async (req, res) => {
         try {
             const userId = req.user.id;
-            
+
             console.log('📖 Getting history for user:', userId);
-            
-            const employee = await Employee.getByUserId(userId);
+
+            // ✅ Pass req.tenantId as first argument
+            const employee = await Employee.getByUserId(req.tenantId, userId);
             if (!employee || !employee.employee_id) {
-                return res.status(404).json({ 
+                return res.status(404).json({
                     success: false,
-                    message: 'Employee record not found' 
+                    message: 'Employee record not found'
                 });
             }
-            
+
             console.log('🔍 Getting history for employee:', employee.employee_id);
             const history = await Attendance.getEmployeeHistory(req.tenantId, employee.employee_id);
-            
-            res.json({ 
+
+            res.json({
                 success: true,
-                history: history 
+                history: history
             });
         } catch (error) {
             console.error('Get my history error:', error);
-            res.status(500).json({ 
+            res.status(500).json({
                 success: false,
-                message: 'Server error while fetching history' 
+                message: 'Server error while fetching history'
             });
         }
     },
@@ -311,34 +314,34 @@ rejectAttendance: async (req, res) => {
         try {
             const { type, date } = req.body;
             const userId = req.user.id;
-            
+
             console.log('🎯 Marking attendance for user:', userId, 'type:', type);
-            
+
             if (!type) {
-                return res.status(400).json({ 
+                return res.status(400).json({
                     success: false,
-                    message: 'Type (check_in/check_out) is required' 
+                    message: 'Type (check_in/check_out) is required'
                 });
             }
 
-            const employee = await Employee.getByUserId(userId);
+            const employee = await Employee.getByUserId(req.tenantId, userId);
             if (!employee || !employee.employee_id) {
-                return res.status(404).json({ 
+                return res.status(404).json({
                     success: false,
-                    message: 'Employee record not found' 
+                    message: 'Employee record not found'
                 });
             }
 
             const employeeId = employee.employee_id;
             const today = date || new Date().toISOString().split('T')[0];
             const currentDateTime = new Date();
-            
+
             console.log('💾 Creating attendance for:', { employeeId, type, today });
-            
+
             const attendanceExists = await Attendance.checkExists(req.tenantId, employeeId, today);
-            
+
             let result;
-            
+
             if (attendanceExists) {
                 if (type === 'check_out') {
                     result = await Attendance.updateCheckOut(req.tenantId, employeeId, today, currentDateTime);
@@ -366,32 +369,32 @@ rejectAttendance: async (req, res) => {
                 }
             }
 
-            res.json({ 
-                success: true, 
+            res.json({
+                success: true,
                 message: `Attendance ${type} marked successfully`,
                 attendance: result
             });
 
         } catch (error) {
             console.error('❌ Mark my attendance error:', error);
-            res.status(500).json({ 
+            res.status(500).json({
                 success: false,
-                message: 'Error marking attendance: ' + error.message 
+                message: 'Error marking attendance: ' + error.message
             });
         }
     },
 
-    
-   
-// Identify employee by face and mark attendance
+
+
+    // Identify employee by face and mark attendance
     identifyAndMarkAttendance: async (req, res) => {
         try {
             const file = req.file;
 
             if (!file) {
-                return res.status(400).json({ 
+                return res.status(400).json({
                     success: false,
-                    message: 'Face image is required' 
+                    message: 'Face image is required'
                 });
             }
 
@@ -399,16 +402,15 @@ rejectAttendance: async (req, res) => {
 
             // Step 1: Extract face encoding from captured image
             const faceEncoding = await FaceRecognition.extractFaceEncoding(file.buffer);
-            
+
             if (!faceEncoding) {
-                return res.json({ 
+                return res.json({
                     success: false,
-                    message: 'No face detected in the image. Please ensure face is clearly visible.' 
+                    message: 'No face detected in the image. Please ensure face is clearly visible.'
                 });
             }
 
-            // Step 2: Find matching employee from database
-            const employees = await Employee.getAllWithFaceEncodings();
+            const employees = await Employee.getAllWithFaceEncodings(req.tenantId);
             let identifiedEmployee = null;
             let highestSimilarity = 0;
 
@@ -419,12 +421,12 @@ rejectAttendance: async (req, res) => {
                     try {
                         const storedData = JSON.parse(employee.face_encoding);
                         const storedEncoding = storedData.encoding;
-                        
+
                         // ✅ UPDATED: 40% similarity threshold (more lenient)
                         const similarity = FaceRecognition.compareFaceSimilarity(storedEncoding, faceEncoding);
-                        
+
                         console.log(`📊 ${employee.employee_id}: ${(similarity * 100).toFixed(1)}% similarity`);
-                        
+
                         // ✅ UPDATED: Find best match above 53% threshold
                         if (similarity > highestSimilarity && similarity > 0.53) {
                             highestSimilarity = similarity;
@@ -439,9 +441,9 @@ rejectAttendance: async (req, res) => {
 
             if (!identifiedEmployee) {
                 console.log('❌ No employee found with similarity > 53%');
-                return res.json({ 
+                return res.json({
                     success: false,
-                    message: 'No matching employee found. Please ensure you are enrolled in the system.' 
+                    message: 'No matching employee found. Please ensure you are enrolled in the system.'
                 });
             }
 
@@ -452,8 +454,8 @@ rejectAttendance: async (req, res) => {
             const currentTime = new Date();
 
             // Step 4: Get employee's shift for today
-            const employeeShift = await Shift.getEmployeeShiftForDate(identifiedEmployee.employee_id, today);
-            
+            const employeeShift = await Shift.getEmployeeShiftForDate(req.tenantId, identifiedEmployee.employee_id, today);
+
             if (!employeeShift) {
                 return res.json({
                     success: false,
@@ -463,7 +465,7 @@ rejectAttendance: async (req, res) => {
 
             // Step 5: Check if attendance already exists for today
             const existingAttendance = await Attendance.getByEmployeeAndDate(req.tenantId, identifiedEmployee.employee_id, today);
-            
+
             if (existingAttendance && existingAttendance.check_in) {
                 return res.json({
                     success: false,
@@ -532,42 +534,41 @@ rejectAttendance: async (req, res) => {
 
         } catch (error) {
             console.error('❌ Identify and mark attendance error:', error);
-            res.status(500).json({ 
+            res.status(500).json({
                 success: false,
-                message: 'Server error during face recognition attendance: ' + error.message 
+                message: 'Server error during face recognition attendance: ' + error.message
             });
         }
     },
-// ==================== NEW FACE RECOGNITION METHOD ====================
+    // ==================== NEW FACE RECOGNITION METHOD ====================
     // attendanceController.js - ADD THIS METHOD
     verifyMyFaceAndMarkAttendance: async (req, res) => {
         try {
             const file = req.file;
             const userId = req.user.id; // From auth middleware
-            
+
             if (!file) {
-                return res.status(400).json({ 
+                return res.status(400).json({
                     success: false,
-                    message: 'Face image is required' 
+                    message: 'Face image is required'
                 });
             }
 
             console.log(`🔍 Verifying face for logged-in user: ${userId}`);
 
-            // Step 1: Get ONLY the logged-in employee
-            const employee = await Employee.getByUserId(userId);
+            const employee = await Employee.getByUserId(req.tenantId, userId);
             if (!employee || !employee.employee_id) {
-                return res.status(404).json({ 
+                return res.status(404).json({
                     success: false,
-                    message: 'Employee record not found' 
+                    message: 'Employee record not found'
                 });
             }
 
             console.log(`👤 Found employee: ${employee.employee_id}`);
-            
+
             // Step 2: Check if employee has face enrolled
             if (!employee.face_encoding) {
-                return res.json({ 
+                return res.json({
                     success: false,
                     message: 'Face not enrolled. Please enroll first.',
                     redirectTo: '/profile/face-enrollment'
@@ -576,34 +577,34 @@ rejectAttendance: async (req, res) => {
 
             // Step 3: Extract face encoding from captured image
             const faceEncoding = await FaceRecognition.extractFaceEncoding(file.buffer);
-            
+
             if (!faceEncoding) {
-                return res.json({ 
+                return res.json({
                     success: false,
-                    message: 'No face detected. Please ensure face is clearly visible.' 
+                    message: 'No face detected. Please ensure face is clearly visible.'
                 });
             }
 
             // Step 4: Parse ONLY logged-in user's encoding (not thousands!)
             const storedData = JSON.parse(employee.face_encoding);
             const storedEncoding = storedData.encoding;
-            
+
             // Step 5: Compare ONLY with logged-in user
             const similarity = FaceRecognition.compareFaceSimilarity(
-                storedEncoding, 
+                storedEncoding,
                 faceEncoding
             );
-            
+
             const similarityPercent = (similarity * 100).toFixed(1);
             console.log(`📊 Similarity for ${employee.employee_id}: ${similarityPercent}%`);
-            
+
             // Step 6: Check threshold (53% - as you requested)
             const REQUIRED_SIMILARITY = 0.53;
-            
+
             if (similarity < REQUIRED_SIMILARITY) {
                 console.log(`❌ Face verification failed: ${similarityPercent}% < 53%`);
-                
-                return res.json({ 
+
+                return res.json({
                     success: false,
                     message: `Face verification failed (${similarityPercent}% match). Please try again.`,
                     confidence: similarity,
@@ -617,22 +618,20 @@ rejectAttendance: async (req, res) => {
             const today = new Date().toISOString().split('T')[0];
             const currentTime = new Date();
 
-            // Get shift
-          // Get shift - First try to get today's assigned shift
-console.log(`🔍 Getting shift for employee ${employee.employee_id} on date ${today}`);
+            console.log(`🔍 Getting shift for employee ${employee.employee_id} on date ${today}`);
 
-let employeeShift = await Shift.getEmployeeShiftForDate(employee.employee_id, today);
+            let employeeShift = await Shift.getEmployeeShiftForDate(req.tenantId, employee.employee_id, today);
 
-if (!employeeShift) {
-    console.log('⚠️ No shift found, checking default...');
-    return res.json({
-        success: false,
-        message: 'No shift assigned for today. Please contact administrator.'
-    });
-}
+            if (!employeeShift) {
+                console.log('⚠️ No shift found, checking default...');
+                return res.json({
+                    success: false,
+                    message: 'No shift assigned for today. Please contact administrator.'
+                });
+            }
 
-console.log(`✅ Found shift: ${employeeShift.shift_name} (${employeeShift.check_in_time} - ${employeeShift.check_out_time})`);
-            
+            console.log(`✅ Found shift: ${employeeShift.shift_name} (${employeeShift.check_in_time} - ${employeeShift.check_out_time})`);
+
             if (!employeeShift) {
                 return res.json({
                     success: false,
@@ -642,7 +641,7 @@ console.log(`✅ Found shift: ${employeeShift.shift_name} (${employeeShift.check
 
             // Check existing attendance
             const existingAttendance = await Attendance.getByEmployeeAndDate(req.tenantId, employee.employee_id, today);
-            
+
             if (existingAttendance && existingAttendance.check_in) {
                 return res.json({
                     success: false,
@@ -701,31 +700,31 @@ console.log(`✅ Found shift: ${employeeShift.shift_name} (${employeeShift.check
 
         } catch (error) {
             console.error('❌ Face verification error:', error);
-            res.status(500).json({ 
+            res.status(500).json({
                 success: false,
-                message: 'Error during face verification: ' + error.message 
+                message: 'Error during face verification: ' + error.message
             });
         }
     },
 
-// Add this in attendanceController.js (at the end, before module.exports)
+    // Add this in attendanceController.js (at the end, before module.exports)
     getEmployeeAttendancePercentage: async (req, res) => {
         try {
             const { employeeId } = req.params;
             const { month, year } = req.query;
-            
+
             console.log('📊 Getting attendance percentage for:', employeeId);
-            
+
             if (!employeeId) {
                 return res.status(400).json({
                     success: false,
                     message: 'Employee ID is required'
                 });
             }
-            
+
             // Use the new model method
             const percentage = await Attendance.getMonthlyPercentage(req.tenantId, employeeId, month, year);
-            
+
             res.json({
                 success: true,
                 attendance_percentage: percentage,
@@ -733,7 +732,7 @@ console.log(`✅ Found shift: ${employeeShift.shift_name} (${employeeShift.check
                 month: month || new Date().getMonth() + 1,
                 year: year || new Date().getFullYear()
             });
-            
+
         } catch (error) {
             console.error('❌ Error in getEmployeeAttendancePercentage:', error);
             res.status(500).json({

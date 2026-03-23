@@ -18,14 +18,14 @@ router.get('/default', shiftController.getDefaultShift);
 router.get('/employees', async (req, res) => {
     try {
         const Shift = require('../models/shiftModel');
-        const employees = await Shift.getAvailableEmployees();
+        const employees = await Shift.getAvailableEmployees(req.tenantId);
         res.json({
             employees: employees,
             success: true
         });
     } catch (error) {
         console.error('Get employees error:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             message: 'Server error while fetching employees',
             success: false
         });

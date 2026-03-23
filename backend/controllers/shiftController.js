@@ -7,7 +7,7 @@ const shiftController = {
         try {
             // Auto-assign default shift to employees without assignments for today
             await Shift.assignDefaultShiftForToday(req.tenantId);
-            
+
             const shifts = await Shift.getAll(req.tenantId);
             res.json({
                 shifts: shifts,
@@ -15,7 +15,7 @@ const shiftController = {
             });
         } catch (error) {
             console.error('Get shifts error:', error);
-            res.status(500).json({ 
+            res.status(500).json({
                 message: 'Server error while fetching shift data',
                 success: false
             });
@@ -27,9 +27,9 @@ const shiftController = {
         try {
             const { shiftId } = req.params;
             const shift = await Shift.getById(req.tenantId, shiftId);
-            
+
             if (!shift) {
-                return res.status(404).json({ 
+                return res.status(404).json({
                     message: 'Shift not found',
                     success: false
                 });
@@ -41,7 +41,7 @@ const shiftController = {
             });
         } catch (error) {
             console.error('Get shift error:', error);
-            res.status(500).json({ 
+            res.status(500).json({
                 message: 'Server error while fetching shift',
                 success: false
             });
@@ -54,7 +54,7 @@ const shiftController = {
             const { shift_name, check_in_time, check_out_time, employees, is_default } = req.body;
 
             if (!shift_name || !check_in_time || !check_out_time) {
-                return res.status(400).json({ 
+                return res.status(400).json({
                     message: 'Shift name, check-in time, and check-out time are required',
                     success: false
                 });
@@ -75,7 +75,7 @@ const shiftController = {
             });
         } catch (error) {
             console.error('Create shift error:', error);
-            res.status(500).json({ 
+            res.status(500).json({
                 message: 'Server error while creating shift',
                 success: false
             });
@@ -89,7 +89,7 @@ const shiftController = {
             const { shift_name, check_in_time, check_out_time, employees } = req.body;
 
             if (!shift_name || !check_in_time || !check_out_time) {
-                return res.status(400).json({ 
+                return res.status(400).json({
                     message: 'Shift name, check-in time, and check-out time are required',
                     success: false
                 });
@@ -108,15 +108,15 @@ const shiftController = {
             });
         } catch (error) {
             console.error('Update shift error:', error);
-            
+
             if (error.message === 'Shift not found') {
-                return res.status(404).json({ 
+                return res.status(404).json({
                     message: 'Shift not found',
                     success: false
                 });
             }
-            
-            res.status(500).json({ 
+
+            res.status(500).json({
                 message: 'Server error while updating shift',
                 success: false
             });
@@ -127,7 +127,7 @@ const shiftController = {
     setShiftAsDefault: async (req, res) => {
         try {
             const { shiftId } = req.params;
-            
+
             await Shift.setAsDefault(req.tenantId, shiftId);
 
             res.json({
@@ -136,15 +136,15 @@ const shiftController = {
             });
         } catch (error) {
             console.error('Set default shift error:', error);
-            
+
             if (error.message === 'Shift not found') {
-                return res.status(404).json({ 
+                return res.status(404).json({
                     message: 'Shift not found',
                     success: false
                 });
             }
-            
-            res.status(500).json({ 
+
+            res.status(500).json({
                 message: 'Server error while setting default shift',
                 success: false
             });
@@ -163,22 +163,22 @@ const shiftController = {
             });
         } catch (error) {
             console.error('Delete shift error:', error);
-            
+
             if (error.message === 'Shift not found') {
-                return res.status(404).json({ 
+                return res.status(404).json({
                     message: 'Shift not found',
                     success: false
                 });
             }
-            
+
             if (error.message === 'Cannot delete default shift. Please set another shift as default first.') {
-                return res.status(400).json({ 
+                return res.status(400).json({
                     message: error.message,
                     success: false
                 });
             }
-            
-            res.status(500).json({ 
+
+            res.status(500).json({
                 message: 'Server error while deleting shift',
                 success: false
             });
@@ -197,7 +197,7 @@ const shiftController = {
             });
         } catch (error) {
             console.error('Get shift employees error:', error);
-            res.status(500).json({ 
+            res.status(500).json({
                 message: 'Server error while fetching shift employees',
                 success: false
             });
@@ -208,14 +208,14 @@ const shiftController = {
     getDefaultShift: async (req, res) => {
         try {
             const defaultShift = await Shift.getDefaultShift(req.tenantId);
-            
+
             res.json({
                 defaultShift: defaultShift,
                 success: true
             });
         } catch (error) {
             console.error('Get default shift error:', error);
-            res.status(500).json({ 
+            res.status(500).json({
                 message: 'Server error while fetching default shift',
                 success: false
             });
