@@ -1,25 +1,36 @@
-// src/services/offerLetterPDFService.js
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import companyLogo from '../assets/img/company.png';
-import stampPng from '../assets/img/stamp.png';
+import fallbackLogo from '../assets/img/company.png';
+import fallbackStamp from '../assets/img/stamp.png';
+import { brandingAPI } from './brandingAPI';
 
 export const offerLetterPDFService = {
   downloadOfferLetter: async (formData) => {
     try {
       console.log('📄 Generating PDF for Offer Letter:', formData.fullName);
       
+      let branding = {};
+      try {
+        const res = await brandingAPI.get();
+        if (res.data?.success && res.data?.branding) branding = res.data.branding;
+      } catch (err) { console.error("Failed to load branding", err); }
+      
       const pdfData = {
         formData,
         company: {
-          name: "Arham IT Solution",
-          address: "Above Being Healthy Gym, Near Surbhi Hospital, Nagar Sambhajjnagar Road, Ahliyanagar 414003",
-          email: "info@arhamitsolution.in",
-          website: "www.arhamitsolution.in",
+          name: branding.company_name || "Arham IT Solution",
+          address: branding.company_address || "Above Being Healthy Gym, Near Surbhi Hospital, Nagar Sambhajjnagar Road, Ahliyanagar 414003",
+          email: branding.company_email || "info@arhamitsolution.in",
+          website: branding.company_website || "www.arhamitsolution.in",
           phone: "9322195628"
         },
-        logo: companyLogo,
-        stamp: stampPng
+        hr: {
+          name: branding.hr_name || "Sharjeel Iqbal",
+          designation: branding.hr_designation || "HR and BDE Executive",
+          signature: branding.signature_url ? brandingAPI.getImageUrl(branding.signature_url) : null
+        },
+        logo: branding.logo_url ? brandingAPI.getImageUrl(branding.logo_url) : fallbackLogo,
+        stamp: branding.stamp_url ? brandingAPI.getImageUrl(branding.stamp_url) : fallbackStamp
       };
 
       const pages = [
@@ -41,17 +52,28 @@ export const offerLetterPDFService = {
     try {
       console.log('👁️ Previewing PDF for Offer Letter:', formData.fullName);
       
+      let branding = {};
+      try {
+        const res = await brandingAPI.get();
+        if (res.data?.success && res.data?.branding) branding = res.data.branding;
+      } catch (err) { console.error("Failed to load branding", err); }
+
       const pdfData = {
         formData,
         company: {
-          name: "Arham IT Solution",
-          address: "Above Being Healthy Gym, Near Surbhi Hospital, Nagar Sambhajjnagar Road, Ahliyanagar 414003",
-          email: "info@arhamitsolution.in",
-          website: "www.arhamitsolution.in",
+          name: branding.company_name || "Arham IT Solution",
+          address: branding.company_address || "Above Being Healthy Gym, Near Surbhi Hospital, Nagar Sambhajjnagar Road, Ahliyanagar 414003",
+          email: branding.company_email || "info@arhamitsolution.in",
+          website: branding.company_website || "www.arhamitsolution.in",
           phone: "9322195628"
         },
-        logo: companyLogo,
-        stamp: stampPng
+        hr: {
+          name: branding.hr_name || "Sharjeel Iqbal",
+          designation: branding.hr_designation || "HR and BDE Executive",
+          signature: branding.signature_url ? brandingAPI.getImageUrl(branding.signature_url) : null
+        },
+        logo: branding.logo_url ? brandingAPI.getImageUrl(branding.logo_url) : fallbackLogo,
+        stamp: branding.stamp_url ? brandingAPI.getImageUrl(branding.stamp_url) : fallbackStamp
       };
 
       const pages = [
@@ -170,7 +192,7 @@ const formatDate = (dateString) => {
   }).replace(/\//g, '-');
 };
 
-const generatePage1HTML = ({ formData, company, logo, stamp }) => `
+const generatePage1HTML = ({ formData, company, hr, logo, stamp }) => `
   <div style="font-family: Arial, sans-serif; color: #000; line-height: 1.6; min-height: 297mm; display: flex; flex-direction: column;">
     ${commonHeader(logo, company.website, company.email)}
     <div style="padding: 15mm 20mm 40mm 20mm; flex-grow: 1;">
@@ -202,7 +224,7 @@ const generatePage1HTML = ({ formData, company, logo, stamp }) => `
   </div>
 `;
 
-const generatePage2HTML = ({ formData, company, logo, stamp }) => `
+const generatePage2HTML = ({ formData, company, hr, logo, stamp }) => `
   <div style="font-family: Arial, sans-serif; color: #000; line-height: 1.6; min-height: 297mm; display: flex; flex-direction: column;">
     ${commonHeader(logo, company.website, company.email)}
     <div style="padding: 15mm 20mm 40mm 20mm; flex-grow: 1;">
@@ -214,11 +236,12 @@ const generatePage2HTML = ({ formData, company, logo, stamp }) => `
 
       <div style="margin-top: 40px; display: flex; flex-direction: column; align-items: flex-start;">
         <div style="text-align: center; font-family: Arial, sans-serif;">
-          <img src="${stamp}" alt="Stamp" style="width: 130px; margin-bottom: 5px;">
+          ${hr.signature ? `<img src="${hr.signature}" alt="Signature" style="height: 50px; margin-bottom: 5px; object-fit: contain;">` : ''}
+          ${stamp ? `<img src="${stamp}" alt="Stamp" style="height: 80px; width: auto; max-width: 130px; object-fit: contain; margin-bottom: 5px;">` : ''}
           <div style="text-align: left;">
             <div style="font-weight: bold; font-size: 11pt; margin-bottom: 2px;">Best Regards,</div>
-            <div style="font-weight: bold; font-size: 11pt; margin-bottom: 1pt;">Sharjeel Iqbal,</div>
-            <div style="font-size: 10pt; margin-bottom: 1pt;">HR and BDE Executive,</div>
+            <div style="font-weight: bold; font-size: 11pt; margin-bottom: 1pt;">${hr.name},</div>
+            <div style="font-size: 10pt; margin-bottom: 1pt;">${hr.designation},</div>
             <div style="font-weight: bold; font-size: 10pt;">${company.name}</div>
           </div>
         </div>
@@ -240,7 +263,7 @@ const generatePage2HTML = ({ formData, company, logo, stamp }) => `
   </div>
 `;
 
-const generatePage3HTML = ({ formData, company, logo, stamp }) => `
+const generatePage3HTML = ({ formData, company, hr, logo, stamp }) => `
   <div style="font-family: Arial, sans-serif; color: #000; line-height: 1.6; min-height: 297mm; display: flex; flex-direction: column;">
     ${commonHeader(logo, company.website, company.email)}
     <div style="padding: 10mm 20mm 40mm 20mm; flex-grow: 1;">

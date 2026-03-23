@@ -3,24 +3,53 @@ import offerLetterAPI from '../../../services/offerLetterAPI';
 import { salaryAPI } from '../../../services/salaryAPI';
 import { offerLetterPDFService } from '../../../services/offerLetterPDFService';
 import { salarySlipPDFService } from '../../../services/salarySlipPDFService';
-import { HiOutlineDocumentText, HiOutlineArrowDownTray, HiOutlineEye, HiOutlineCurrencyDollar } from "react-icons/hi2";
+import { resignationAPI } from '../../../services/resignationAPI';
+import { experienceLetterAPI } from '../../../services/experienceLetterAPI';
+import { incrementLetterAPI } from '../../../services/incrementLetterAPI';
+
+import { 
+  HiOutlineDocumentText, 
+  HiOutlineArrowDownTray, 
+  HiOutlineEye, 
+  HiOutlineCurrencyDollar,
+  HiOutlineClipboardDocumentList,
+  HiOutlineBriefcase,
+  HiOutlineArrowTrendingUp,
+  HiOutlinePlus
+} from "react-icons/hi2";
 import './MyDocuments.css';
 
 const MyDocuments = () => {
   const [letters, setLetters] = useState([]);
   const [slips, setSlips] = useState([]);
+  const [resignations, setResignations] = useState([]);
+  const [experiences, setExperiences] = useState([]);
+  const [increments, setIncrements] = useState([]);
+  
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('offer'); // 'offer' or 'salary'
+  const [activeTab, setActiveTab] = useState('offer'); 
   const [slipFilters, setSlipFilters] = useState({ month: '', year: '' });
+  
+  // Resignation Modal
+  const [showResignModal, setShowResignModal] = useState(false);
+  const [resignData, setResignData] = useState({ requested_last_day: '', reason: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchDocs = async () => {
     try {
-      const [letterRes, slipRes] = await Promise.all([
+      setLoading(true);
+      const [letterRes, slipRes, resigRes, expRes, incRes] = await Promise.all([
         offerLetterAPI.getMyOfferLetters(),
-        salaryAPI.getMySalaryRecords(slipFilters)
+        salaryAPI.getMySalaryRecords(slipFilters),
+        resignationAPI.getMyRequests(),
+        experienceLetterAPI.getMyLetters(),
+        incrementLetterAPI.getMyLetters()
       ]);
       setLetters(letterRes.data.letters || []);
       setSlips(slipRes.data.salaryRecords || []);
+      setResignations(resigRes.data?.data || []);
+      setExperiences(expRes.data?.data || []);
+      setIncrements(incRes.data?.data || []);
     } catch (err) {
       console.error("Error fetching documents:", err);
     } finally {
@@ -56,17 +85,43 @@ const MyDocuments = () => {
       if (type === 'offer') {
         if (action === 'view') await offerLetterPDFService.viewOfferLetter(doc.form_data);
         else await offerLetterPDFService.downloadOfferLetter(doc.form_data);
-      } else {
+      } else if (type === 'salary') {
         const formData = mapRecordToFormData(doc);
         if (action === 'view') await salarySlipPDFService.viewSalarySlip(formData);
         else await salarySlipPDFService.downloadSalarySlip(formData);
+      } else if (type === 'backend-pdf') {
+        // Direct URL open for backend-generated PDFs (Resign, Exp, Inc)
+        window.open('http://localhost:3000' + doc.letter_url, "_blank");
       }
     } catch (err) {
       alert("Failed to process document. Please try again.");
     }
   };
 
-  if (loading) {
+  const handleResignationSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      await resignationAPI.submitRequest(resignData);
+      setShowResignModal(false);
+      setResignData({ requested_last_day: '', reason: '' });
+      fetchDocs();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to submit resignation request');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const StatusBadge = ({ status }) => {
+    switch(status) {
+      case 'accepted': return <span style={{ color: "#15803d", background: "#dcfce7", padding: "4px 8px", borderRadius: "4px", fontSize: "0.8rem", fontWeight: "bold" }}>Accepted</span>;
+      case 'rejected': return <span style={{ color: "#b91c1c", background: "#fee2e2", padding: "4px 8px", borderRadius: "4px", fontSize: "0.8rem", fontWeight: "bold" }}>Rejected</span>;
+      default: return <span style={{ color: "#b45309", background: "#fef3c7", padding: "4px 8px", borderRadius: "4px", fontSize: "0.8rem", fontWeight: "bold" }}>Pending</span>;
+    }
+  };
+
+  if (loading && letters.length === 0 && slips.length === 0) {
     return (
       <div className="docs-loading">
         <div className="spinner"></div>
@@ -77,107 +132,155 @@ const MyDocuments = () => {
 
   return (
     <div className="my-docs-container">
-      <div className="docs-header">
-        <h1>My Documents</h1>
-        <p>View and download your official company documents.</p>
+      <div className="docs-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1>My Documents</h1>
+          <p>View and download your official company documents.</p>
+        </div>
+        {activeTab === 'resignation' && !resignations.some(r => r.status === 'pending') && (
+          <button onClick={() => setShowResignModal(true)} style={{ background: "#ef4444", color: "white", padding: "10px 16px", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
+            <HiOutlinePlus size={20} /> Apply Resignation
+          </button>
+        )}
       </div>
 
-      <div className="docs-tabs">
-        <button 
-          className={`tab-btn ${activeTab === 'offer' ? 'active' : ''}`}
-          onClick={() => setActiveTab('offer')}
-        >
+      <div className="docs-tabs" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+        <button className={`tab-btn ${activeTab === 'offer' ? 'active' : ''}`} onClick={() => setActiveTab('offer')}>
           <HiOutlineDocumentText /> Offer Letters
         </button>
-        <button 
-          className={`tab-btn ${activeTab === 'salary' ? 'active' : ''}`}
-          onClick={() => setActiveTab('salary')}
-        >
+        <button className={`tab-btn ${activeTab === 'salary' ? 'active' : ''}`} onClick={() => setActiveTab('salary')}>
           <HiOutlineCurrencyDollar /> Salary Slips
+        </button>
+        <button className={`tab-btn ${activeTab === 'experience' ? 'active' : ''}`} onClick={() => setActiveTab('experience')}>
+          <HiOutlineBriefcase /> Experience Letters
+        </button>
+        <button className={`tab-btn ${activeTab === 'increment' ? 'active' : ''}`} onClick={() => setActiveTab('increment')}>
+          <HiOutlineArrowTrendingUp /> Increment Letters
+        </button>
+        <button className={`tab-btn ${activeTab === 'resignation' ? 'active' : ''}`} onClick={() => setActiveTab('resignation')}>
+          <HiOutlineClipboardDocumentList /> Resignation
         </button>
       </div>
 
       <div className="docs-list">
-        {activeTab === 'offer' ? (
-          letters.length > 0 ? (
-            letters.map((letter) => (
-              <div key={letter.id} className="doc-card">
-                <div className="doc-icon-container">
-                  <HiOutlineDocumentText className="doc-icon" />
-                </div>
-                <div className="doc-info">
-                  <h3>Offer Letter</h3>
-                  <p>Issued on: {new Date(letter.issue_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
-                </div>
-                <div className="doc-actions">
-                  <button className="doc-view-btn" onClick={() => handleDocAction('offer', 'view', letter)} title="View PDF">
-                    <HiOutlineEye size={20} /> <span>View</span>
-                  </button>
-                  <button className="doc-download-btn" onClick={() => handleDocAction('offer', 'download', letter)} title="Download PDF">
-                    <HiOutlineArrowDownTray size={20} /> <span>Download</span>
-                  </button>
-                </div>
+        {activeTab === 'offer' && (
+          letters.length > 0 ? letters.map((letter) => (
+            <div key={letter.id} className="doc-card">
+              <div className="doc-icon-container"><HiOutlineDocumentText className="doc-icon" /></div>
+              <div className="doc-info">
+                <h3>Offer Letter</h3>
+                <p>Issued on: {new Date(letter.issue_date).toLocaleDateString('en-GB')}</p>
               </div>
-            ))
-          ) : (
-            <div className="no-docs">
-              <HiOutlineDocumentText size={48} />
-              <h3>No offer letters found</h3>
+              <div className="doc-actions">
+                <button className="doc-view-btn" onClick={() => handleDocAction('offer', 'view', letter)}><HiOutlineEye size={20} /> <span>View</span></button>
+                <button className="doc-download-btn" onClick={() => handleDocAction('offer', 'download', letter)}><HiOutlineArrowDownTray size={20} /> <span>Download</span></button>
+              </div>
             </div>
-          )
-        ) : (
+          )) : <div className="no-docs"><HiOutlineDocumentText size={48} /><h3>No offer letters found</h3></div>
+        )}
+
+        {activeTab === 'salary' && (
           <>
             <div className="slips-filter-bar">
-              <select 
-                value={slipFilters.month} 
-                onChange={(e) => setSlipFilters({ ...slipFilters, month: e.target.value })}
-                className="filter-select"
-              >
+              <select value={slipFilters.month} onChange={(e) => setSlipFilters({ ...slipFilters, month: e.target.value })} className="filter-select">
                 <option value="">All Months</option>
-                {["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].map(m => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
+                {["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].map(m => <option key={m} value={m}>{m}</option>)}
               </select>
-              <select 
-                value={slipFilters.year} 
-                onChange={(e) => setSlipFilters({ ...slipFilters, year: e.target.value })}
-                className="filter-select"
-              >
+              <select value={slipFilters.year} onChange={(e) => setSlipFilters({ ...slipFilters, year: e.target.value })} className="filter-select">
                 <option value="">All Years</option>
-                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
+                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
-            {slips.length > 0 ? (
-              slips.map((slip) => (
-                <div key={slip.id} className="doc-card">
-                  <div className="doc-icon-container salary-icon-bg">
-                    <HiOutlineCurrencyDollar className="doc-icon" />
-                  </div>
-                  <div className="doc-info">
-                    <h3>Salary Slip</h3>
-                    <p>Period: {slip.month} {slip.year}</p>
-                  </div>
-                  <div className="doc-actions">
-                    <button className="doc-view-btn" onClick={() => handleDocAction('salary', 'view', slip)} title="View PDF">
-                      <HiOutlineEye size={20} /> <span>View</span>
-                    </button>
-                    <button className="doc-download-btn" onClick={() => handleDocAction('salary', 'download', slip)} title="Download PDF">
-                      <HiOutlineArrowDownTray size={20} /> <span>Download</span>
-                    </button>
-                  </div>
+            {slips.length > 0 ? slips.map((slip) => (
+              <div key={slip.id} className="doc-card">
+                <div className="doc-icon-container salary-icon-bg"><HiOutlineCurrencyDollar className="doc-icon" /></div>
+                <div className="doc-info">
+                  <h3>Salary Slip</h3>
+                  <p>Period: {slip.month} {slip.year}</p>
                 </div>
-              ))
-            ) : (
-              <div className="no-docs">
-                <HiOutlineCurrencyDollar size={48} />
-                <h3>No salary slips found</h3>
+                <div className="doc-actions">
+                  <button className="doc-view-btn" onClick={() => handleDocAction('salary', 'view', slip)}><HiOutlineEye size={20} /> <span>View</span></button>
+                  <button className="doc-download-btn" onClick={() => handleDocAction('salary', 'download', slip)}><HiOutlineArrowDownTray size={20} /> <span>Download</span></button>
+                </div>
               </div>
-            )}
+            )) : <div className="no-docs"><HiOutlineCurrencyDollar size={48} /><h3>No salary slips found</h3></div>}
           </>
         )}
+
+        {activeTab === 'experience' && (
+          experiences.length > 0 ? experiences.map((doc) => (
+            <div key={doc.id} className="doc-card">
+              <div className="doc-icon-container" style={{ background: '#fef3c7', color: '#d97706' }}><HiOutlineBriefcase className="doc-icon" /></div>
+              <div className="doc-info">
+                <h3>Experience Letter</h3>
+                <p>Issued on: {new Date(doc.date_of_issue).toLocaleDateString('en-GB')}  |  Ref: {doc.ref_number}</p>
+              </div>
+              <div className="doc-actions">
+                <button className="doc-view-btn" onClick={() => handleDocAction('backend-pdf', 'view', doc)}><HiOutlineEye size={20} /> <span>View</span></button>
+              </div>
+            </div>
+          )) : <div className="no-docs"><HiOutlineBriefcase size={48} /><h3>No experience letters found</h3></div>
+        )}
+
+        {activeTab === 'increment' && (
+          increments.length > 0 ? increments.map((doc) => (
+            <div key={doc.id} className="doc-card">
+              <div className="doc-icon-container" style={{ background: '#dcfce7', color: '#15803d' }}><HiOutlineArrowTrendingUp className="doc-icon" /></div>
+              <div className="doc-info">
+                <h3>Increment Letter</h3>
+                <p>Effective: {new Date(doc.effective_date).toLocaleDateString('en-GB')}  |  {doc.increment_percentage}% Inc.</p>
+              </div>
+              <div className="doc-actions">
+                <button className="doc-view-btn" onClick={() => handleDocAction('backend-pdf', 'view', doc)}><HiOutlineEye size={20} /> <span>View</span></button>
+              </div>
+            </div>
+          )) : <div className="no-docs"><HiOutlineArrowTrendingUp size={48} /><h3>No increment letters found</h3></div>
+        )}
+
+        {activeTab === 'resignation' && (
+          resignations.length > 0 ? resignations.map((doc) => (
+            <div key={doc.id} className="doc-card">
+              <div className="doc-icon-container" style={{ background: '#fee2e2', color: '#b91c1c' }}><HiOutlineClipboardDocumentList className="doc-icon" /></div>
+              <div className="doc-info">
+                <h3>Resignation Request</h3>
+                <p>Applied: {new Date(doc.created_at).toLocaleDateString('en-GB')}  |  Last Day: {new Date(doc.requested_last_day).toLocaleDateString('en-GB')}</p>
+                <div style={{ marginTop: '8px' }}><StatusBadge status={doc.status} /> {doc.status === 'rejected' && <span style={{ fontSize: '0.8rem', color: '#64748b', marginLeft: '5px' }}>{doc.rejection_reason}</span>}</div>
+              </div>
+              <div className="doc-actions">
+                {doc.status === 'accepted' && doc.letter_url && (
+                  <button className="doc-view-btn" onClick={() => handleDocAction('backend-pdf', 'view', doc)}><HiOutlineEye size={20} /> <span>View Letter</span></button>
+                )}
+              </div>
+            </div>
+          )) : <div className="no-docs"><HiOutlineClipboardDocumentList size={48} /><h3>No resignation records.</h3></div>
+        )}
       </div>
+
+      {showResignModal && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999 }}>
+          <div style={{ background: "white", padding: "24px", borderRadius: "12px", width: "400px", maxWidth: "90%" }}>
+            <h3 style={{ margin: "0 0 16px 0", color: "#1e293b" }}>Apply for Resignation</h3>
+            <form onSubmit={handleResignationSubmit}>
+              <div style={{ marginBottom: "16px" }}>
+                <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", fontSize: "14px" }}>Requested Last Working Day *</label>
+                <input type="date" required style={{ width: "100%", padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1" }} 
+                       value={resignData.requested_last_day} onChange={e => setResignData({...resignData, requested_last_day: e.target.value})} />
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", fontSize: "14px" }}>Reason *</label>
+                <textarea required rows="4" style={{ width: "100%", padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1" }}
+                          value={resignData.reason} onChange={e => setResignData({...resignData, reason: e.target.value})}></textarea>
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+                <button type="button" onClick={() => setShowResignModal(false)} style={{ padding: "8px 16px", background: "#f1f5f9", color: "#475569", border: "none", borderRadius: "6px", cursor: "pointer" }}>Cancel</button>
+                <button type="submit" disabled={isSubmitting} style={{ padding: "8px 16px", background: "#ef4444", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", opacity: isSubmitting ? 0.7 : 1 }}>
+                  {isSubmitting ? 'Submitting...' : 'Submit Request'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

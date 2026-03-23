@@ -7,6 +7,7 @@ import { TbWorld } from "react-icons/tb";
 import { TfiEmail } from "react-icons/tfi";
 import { HiOutlineDocumentText, HiOutlineUserGroup, HiOutlineBriefcase, HiOutlineArrowDownOnSquare, HiOutlineEye, HiOutlineArrowDownTray } from "react-icons/hi2";
 import offerLetterAPI from "../../../services/offerLetterAPI";
+import brandingAPI from "../../../services/brandingAPI";
 
 const OfferLetter = () => {
   const [employees, setEmployees] = useState([]);
@@ -29,6 +30,18 @@ const OfferLetter = () => {
     ctcInWords: ""
   });
 
+  const [branding, setBranding] = useState({
+    company_name: "Arham IT Solution",
+    company_address: "Above Being Healthy Gym, Near Surbhi Hospital, Nagar Sambhajjnagar Road, Ahliyanagar 414003",
+    company_email: "info@arhamitsolution.in",
+    company_website: "www.arhamitsolution.in",
+    hr_name: "Sharjeel Iqbal",
+    hr_designation: "HR and BDE Executive",
+    logo_url: companyLogo,
+    stamp_url: stampPng,
+    signature_url: null
+  });
+
   // Fetch employees on mount
   useEffect(() => {
     const fetchEmployees = async () => {
@@ -41,8 +54,30 @@ const OfferLetter = () => {
         console.error("Error fetching employees:", err);
       }
     };
+    const fetchBranding = async () => {
+      try {
+        const res = await brandingAPI.get();
+        if (res.data?.success && res.data?.branding) {
+          const b = res.data.branding;
+          setBranding({
+            company_name: b.company_name || "Arham IT Solution",
+            company_address: b.company_address || "Above Being Healthy Gym, Near Surbhi Hospital, Nagar Sambhajjnagar Road, Ahliyanagar 414003",
+            company_email: b.company_email || "info@arhamitsolution.in",
+            company_website: b.company_website || "www.arhamitsolution.in",
+            hr_name: b.hr_name || "Sharjeel Iqbal",
+            hr_designation: b.hr_designation || "HR and BDE Executive",
+            logo_url: b.logo_url ? brandingAPI.getImageUrl(b.logo_url) : companyLogo,
+            stamp_url: b.stamp_url ? brandingAPI.getImageUrl(b.stamp_url) : stampPng,
+            signature_url: b.signature_url ? brandingAPI.getImageUrl(b.signature_url) : null
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching branding:", err);
+      }
+    };
     fetchEmployees();
     fetchHistory();
+    fetchBranding();
   }, []);
 
   const fetchHistory = async () => {
@@ -117,7 +152,7 @@ const OfferLetter = () => {
       alert("Please select an existing employee from the search list to save to their dashboard.");
       return;
     }
-    
+
     setIsGenerating(true);
     try {
       await offerLetterAPI.save({
@@ -232,7 +267,7 @@ const OfferLetter = () => {
       <div style={{ display: "grid", gridTemplateColumns: "400px 1fr", gap: "30px" }}>
         {/* 🔥 LEFT COLUMN: FORM */}
         <div style={{ background: "white", padding: "30px", borderRadius: "16px", boxShadow: "0 10px 25px -5px rgba(0,0,0,0.05)", border: "1px solid #f1f5f9" }}>
-          
+
           <section style={{ marginBottom: "25px" }}>
             <h3 style={sectionHeaderStyle}>
               <HiOutlineDocumentText size={20} /> General Info
@@ -269,7 +304,7 @@ const OfferLetter = () => {
                     setFormData({ ...formData, fullName: val });
 
                     // Auto-populate search
-                    const match = employees.find(emp => 
+                    const match = employees.find(emp =>
                       `${emp.first_name} ${emp.last_name}`.trim().toLowerCase() === val.trim().toLowerCase()
                     );
                     if (match) {
@@ -288,10 +323,10 @@ const OfferLetter = () => {
             </div>
             <label style={labelStyle}>Address</label>
             <input placeholder="Enter full address" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} style={inputStyle} />
-            
+
             <label style={labelStyle}>Phone Number</label>
             <input placeholder="e.g. +91 98765 43210" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} style={inputStyle} />
-            
+
             <label style={labelStyle}>Email Address</label>
             <input placeholder="e.g. employee@example.com" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} style={inputStyle} />
           </section>
@@ -302,7 +337,7 @@ const OfferLetter = () => {
             </h3>
             <label style={labelStyle}>Designation</label>
             <input placeholder="e.g. Full Stack Developer" value={formData.designation} onChange={(e) => setFormData({ ...formData, designation: e.target.value })} style={inputStyle} />
-            
+
             <div style={{ marginBottom: "12px" }}>
               <label style={labelStyle}>Joining Date</label>
               <input type="date" value={formData.joiningDate} onChange={(e) => setFormData({ ...formData, joiningDate: e.target.value })} style={inputStyle} />
@@ -310,7 +345,7 @@ const OfferLetter = () => {
 
             <label style={labelStyle}>Annual CTC</label>
             <input placeholder="e.g. 96,000" value={formData.ctc} onChange={(e) => setFormData({ ...formData, ctc: e.target.value })} style={inputStyle} />
-            
+
             <label style={labelStyle}>CTC in Words</label>
             <input placeholder="e.g. Ninety Six Thousand" value={formData.ctcInWords} onChange={(e) => setFormData({ ...formData, ctcInWords: e.target.value })} style={inputStyle} />
           </section>
@@ -326,20 +361,20 @@ const OfferLetter = () => {
               display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "50px", borderBottom: "5px solid #000", padding: "20px 40px 10px 40px", marginBottom: "30px", boxSizing: "border-box", width: "100%"
             }}>
               <div style={{ flex: "0 0 auto" }}>
-                <img src={companyLogo} alt="Logo" style={{ height: "120px", width: "auto", maxWidth: "300px", objectFit: "contain", display: "block", padding: "0 2px" }} />
+                {branding.logo_url && <img src={branding.logo_url} alt="Logo" style={{ height: "120px", width: "auto", maxWidth: "300px", objectFit: "contain", display: "block", padding: "0 2px" }} />}
               </div>
               <div style={{ textAlign: "left", display: "flex", flexDirection: "column", gap: "10px", justifyContent: "center", maxWidth: "60%", flex: "0 0 auto", wordBreak: "break-all" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: "10px" }}>
                   <div style={{ background: "#000", color: "#fff", borderRadius: "50%", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <TbWorld size={18} />
                   </div>
-                  <span style={{ fontWeight: "bold", fontSize: "11pt" }}>www.arhamitsolution.in</span>
+                  <span style={{ fontWeight: "bold", fontSize: "11pt" }}>{branding.company_website}</span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: "10px" }}>
                   <div style={{ background: "#000", color: "#fff", borderRadius: "50%", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <TfiEmail size={16} />
                   </div>
-                  <span style={{ fontWeight: "bold", fontSize: "11pt" }}>info@arhamitsolution.in</span>
+                  <span style={{ fontWeight: "bold", fontSize: "11pt" }}>{branding.company_email}</span>
                 </div>
               </div>
             </div>
@@ -377,20 +412,20 @@ const OfferLetter = () => {
               display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "50px", borderBottom: "5px solid #000", padding: "20px 40px 10px 40px", marginBottom: "30px", boxSizing: "border-box", width: "100%"
             }}>
               <div style={{ flex: "0 0 auto" }}>
-                <img src={companyLogo} alt="Logo" style={{ height: "120px", width: "auto", maxWidth: "300px", objectFit: "contain", display: "block", padding: "0 2px" }} />
+                {branding.logo_url && <img src={branding.logo_url} alt="Logo" style={{ height: "120px", width: "auto", maxWidth: "300px", objectFit: "contain", display: "block", padding: "0 2px" }} />}
               </div>
               <div style={{ textAlign: "left", display: "flex", flexDirection: "column", gap: "10px", justifyContent: "center", maxWidth: "60%", flex: "0 0 auto", wordBreak: "break-all" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: "10px" }}>
                   <div style={{ background: "#000", color: "#fff", borderRadius: "50%", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <TbWorld size={18} />
                   </div>
-                  <span style={{ fontWeight: "bold", fontSize: "11pt" }}>www.arhamitsolution.in</span>
+                  <span style={{ fontWeight: "bold", fontSize: "11pt" }}>{branding.company_website}</span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: "10px" }}>
                   <div style={{ background: "#000", color: "#fff", borderRadius: "50%", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <TfiEmail size={16} />
                   </div>
-                  <span style={{ fontWeight: "bold", fontSize: "11pt" }}>info@arhamitsolution.in</span>
+                  <span style={{ fontWeight: "bold", fontSize: "11pt" }}>{branding.company_email}</span>
                 </div>
               </div>
             </div>
@@ -399,18 +434,19 @@ const OfferLetter = () => {
             <div style={{ padding: "0 40px 60px 40px", flexGrow: 1 }}>
               <div style={{ textAlign: "justify", fontFamily: "'Times New Roman', Times, serif", fontSize: "11pt", marginTop: "20px" }}>
                 <p>Note that this Letter of Offer is valid for <strong>two (2) working days</strong> from the date of receipt.</p>
-                <p style={{ marginTop: "30px" }}>We look forward to you joining <strong>Arham IT Solution</strong> and to a mutually rewarding working relationship.</p>
+                <p style={{ marginTop: "30px" }}>We look forward to you joining <strong>{branding.company_name}</strong> and to a mutually rewarding working relationship.</p>
               </div>
 
               {/* Stamp & Signature */}
               <div style={{ marginTop: "40px", display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
-                <div style={{ textAlign: "center" }}>
-                  <img src={stampPng} alt="Stamp" style={{ width: "120px", marginBottom: "5px" }} />
+                <div style={{ textAlign: "center", display: "contents" }}>
+                  {branding.signature_url ? <img src={branding.signature_url} alt="Signature" style={{ height: "50px", marginBottom: "5px", objectFit: "contain" }} /> : <div style={{ height: "55px" }} />}
+                  {branding.stamp_url && <img src={branding.stamp_url} alt="Stamp" style={{ height: "80px", maxWidth: "130px", marginBottom: "5px", objectFit: "contain" }} />}
                   <div style={{ textAlign: "left" }}>
-                    <div style={{ fontWeight: "bold", fontSize: "11pt" }}>Best Regards,</div>
-                    <div style={{ fontWeight: "bold", fontSize: "11pt" }}>Sharjeel Iqbal,</div>
-                    <div style={{ fontSize: "10pt" }}>HR and BDE Executive,</div>
-                    <div style={{ fontWeight: "bold", fontSize: "11pt" }}>Arham IT Solution</div>
+                    <div style={{ fontWeight: "bold", fontSize: "11pt", marginBottom: "2px" }}>Best Regards,</div>
+                    <div style={{ fontWeight: "bold", fontSize: "11pt", marginBottom: "1pt" }}>{branding.hr_name},</div>
+                    <div style={{ fontSize: "10pt", marginBottom: "1pt" }}>{branding.hr_designation},</div>
+                    <div style={{ fontWeight: "bold", fontSize: "10pt" }}>{branding.company_name}</div>
                   </div>
                 </div>
               </div>
@@ -493,7 +529,7 @@ const OfferLetter = () => {
         <h3 style={{ ...sectionHeaderStyle, borderBottom: "none", marginBottom: "20px" }}>
           <HiOutlineDocumentText size={24} /> Recent Offer Letters
         </h3>
-        
+
         {isLoadingHistory ? (
           <div style={{ textAlign: "center", padding: "40px", color: "#64748b" }}>Loading history...</div>
         ) : history.length > 0 ? (
@@ -520,21 +556,21 @@ const OfferLetter = () => {
                     <td style={{ padding: "16px", color: "#64748b" }}>{new Date(item.issue_date).toLocaleDateString('en-GB')}</td>
                     <td style={{ padding: "16px", textAlign: "right" }}>
                       <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-                        <button 
+                        <button
                           onClick={() => offerLetterPDFService.viewOfferLetter(item.form_data)}
                           title="View"
                           style={{ padding: "6px", background: "#f1f5f9", border: "none", borderRadius: "4px", cursor: "pointer", color: "#4f46e5" }}
                         >
                           <HiOutlineEye size={18} />
                         </button>
-                        <button 
+                        <button
                           onClick={() => offerLetterPDFService.downloadOfferLetter(item.form_data)}
                           title="Download"
                           style={{ padding: "6px", background: "#f1f5f9", border: "none", borderRadius: "4px", cursor: "pointer", color: "#2ecc71" }}
                         >
                           <HiOutlineArrowDownTray size={18} />
                         </button>
-                        <button 
+                        <button
                           onClick={() => {
                             setFormData(item.form_data);
                             setSelectedEmployee(item.employee_display_id);

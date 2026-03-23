@@ -17,6 +17,7 @@ import { TfiEmail } from "react-icons/tfi";
 import './SalarySlip.css';
 import { salarySlipPDFService } from '../../../services/salarySlipPDFService';
 import { salaryAPI } from '../../../services/salaryAPI';
+import brandingAPI from '../../../services/brandingAPI';
 import axios from 'axios';
 
 const SalarySlip = () => {
@@ -45,6 +46,18 @@ const SalarySlip = () => {
     }
   });
 
+  const [branding, setBranding] = useState({
+    company_name: "Arham IT Solution",
+    company_address: "Above Being Healthy Gym, Near Surbhi Hospital, Nagar Sambhajjnagar Road, Ahliyanagar 414003",
+    company_email: "info@arhamitsolution.in",
+    company_website: "www.arhamitsolution.in",
+    hr_name: "Sharjeel Iqbal",
+    hr_designation: "HR and BDE Executive",
+    logo_url: companyLogo,
+    stamp_url: stampPng,
+    signature_url: null
+  });
+
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
@@ -54,7 +67,29 @@ const SalarySlip = () => {
         console.error("Error fetching employees:", err);
       }
     };
+    const fetchBranding = async () => {
+      try {
+        const res = await brandingAPI.get();
+        if (res.data?.success && res.data?.branding) {
+          const b = res.data.branding;
+          setBranding({
+            company_name: b.company_name || "Arham IT Solution",
+            company_address: b.company_address || "Above Being Healthy Gym, Near Surbhi Hospital, Nagar Sambhajjnagar Road, Ahliyanagar 414003",
+            company_email: b.company_email || "info@arhamitsolution.in",
+            company_website: b.company_website || "www.arhamitsolution.in",
+            hr_name: b.hr_name || "Sharjeel Iqbal",
+            hr_designation: b.hr_designation || "HR and BDE Executive",
+            logo_url: b.logo_url ? brandingAPI.getImageUrl(b.logo_url) : companyLogo,
+            stamp_url: b.stamp_url ? brandingAPI.getImageUrl(b.stamp_url) : stampPng,
+            signature_url: b.signature_url ? brandingAPI.getImageUrl(b.signature_url) : null
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching branding:", err);
+      }
+    };
     fetchEmployees();
+    fetchBranding();
   }, []);
 
   const handleInputChange = (category, field, value) => {
@@ -318,20 +353,20 @@ const SalarySlip = () => {
             display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "50px", borderBottom: "5px solid #000", padding: "20px 40px 10px 40px", marginBottom: "30px", boxSizing: "border-box", width: "100%"
           }}>
             <div style={{ flex: "0 0 auto" }}>
-              <img src={companyLogo} alt="Logo" style={{ height: "120px", width: "auto", maxWidth: "300px", objectFit: "contain", display: "block", padding: "0 2px" }} />
+              {branding.logo_url && <img src={branding.logo_url} alt="Logo" style={{ height: "120px", width: "auto", maxWidth: "300px", objectFit: "contain", display: "block", padding: "0 2px" }} />}
             </div>
             <div style={{ textAlign: "left", display: "flex", flexDirection: "column", gap: "10px", justifyContent: "center", maxWidth: "60%", flex: "0 0 auto", wordBreak: "break-all" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: "10px" }}>
                 <div style={{ background: "#000", color: "#fff", borderRadius: "50%", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <TbWorld size={18} />
                 </div>
-                <span style={{ fontWeight: "bold", fontSize: "11pt" }}>www.arhamitsolution.in</span>
+                <span style={{ fontWeight: "bold", fontSize: "11pt" }}>{branding.company_website}</span>
               </div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: "10px" }}>
                 <div style={{ background: "#000", color: "#fff", borderRadius: "50%", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <TfiEmail size={16} />
                 </div>
-                <span style={{ fontWeight: "bold", fontSize: "11pt" }}>info@arhamitsolution.in</span>
+                <span style={{ fontWeight: "bold", fontSize: "11pt" }}>{branding.company_email}</span>
               </div>
             </div>
           </div>
@@ -402,12 +437,13 @@ const SalarySlip = () => {
                 </div>
               </div>
               <div style={{textAlign: 'right', position: 'relative'}}>
-                <img src={stampPng} alt="Stamp" style={{width: '120px', position: 'absolute', right: '30px', top: '-60px', opacity: '0.9', zIndex: 1}} />
-                <div style={{position: 'relative', zIndex: 2}}>
+                {branding.signature_url ? <img src={branding.signature_url} alt="Signature" style={{height: '50px', position: 'absolute', right: '30px', top: '-60px', zIndex: 2, objectFit: 'contain'}} /> : <div style={{ height: "50px", position: "absolute", top: "-60px" }} />}
+                {branding.stamp_url && <img src={branding.stamp_url} alt="Stamp" style={{width: '120px', position: 'absolute', right: '30px', top: '-60px', opacity: '0.9', zIndex: 1, objectFit: 'contain'}} />}
+                <div style={{position: 'relative', zIndex: 2, marginTop: '20px'}}>
                   <p style={{fontWeight: "bold", margin: 0}}>Best Regards,</p>
-                  <p style={{fontWeight: "bold", margin: 0, fontSize: '13pt'}}>Sharjeel Iqbal</p>
-                  <p style={{fontSize: '10pt', margin: '2px 0'}}>HR & BDE Executive</p>
-                  <p style={{fontWeight: "bold", margin: 0}}>Arham IT Solution</p>
+                  <p style={{fontWeight: "bold", margin: 0, fontSize: '13pt'}}>{branding.hr_name}</p>
+                  <p style={{fontSize: '10pt', margin: '2px 0'}}>{branding.hr_designation}</p>
+                  <p style={{fontWeight: "bold", margin: 0}}>{branding.company_name}</p>
                 </div>
               </div>
             </div>
@@ -422,10 +458,10 @@ const SalarySlip = () => {
             fontWeight: "bold",
             background: "#fff",
             width: "100%",
-            boxSizing: "border-box"
+            boxSizing: "border-box",
+            whiteSpace: "pre-line"
           }}>
-            Above Being Healthy Gym, Near Surbhi Hospital, Nagar–Sambhaji Nagar Road,<br />
-            Ahilyanagar, Maharashtra 414003
+            {branding.company_address}
           </div>
         </div>
       </div>

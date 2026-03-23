@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './HRDashboard.css';
 import dashboardAPI from '../../../services/dashboardAPI';
+import brandingAPI from '../../../services/brandingAPI';
 import {
   HiOutlineDocumentText,
   HiOutlineCurrencyDollar,
@@ -14,10 +15,12 @@ const HRDashboard = ({ setActiveTab }) => {
   const [loading, setLoading] = useState(true);
   const [statsData, setStatsData] = useState({
     employees: "0",
-    offersSent: "12", // Placeholder for now
+    offersSent: "0",
     activeJobs: "0",
     pendingTasks: "0"
   });
+
+  const [companyName, setCompanyName] = useState('company');
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -28,10 +31,11 @@ const HRDashboard = ({ setActiveTab }) => {
         // Find specific stats from the array
         const empStat = stats.find(s => s.title === 'EMPLOYEES');
         const internStat = stats.find(s => s.title === 'INTERNSHIPS');
+        const offerStat = stats.find(s => s.title === 'OFFERS_SENT');
 
         setStatsData({
           employees: empStat ? empStat.value : "0",
-          offersSent: "12",
+          offersSent: offerStat ? offerStat.value : "0",
           activeJobs: internStat ? internStat.value : "0",
           pendingTasks: internStat ? internStat.secondaryValue : "0"
         });
@@ -42,12 +46,24 @@ const HRDashboard = ({ setActiveTab }) => {
       }
     };
 
+    const fetchBranding = async () => {
+      try {
+        const res = await brandingAPI.get();
+        if (res.data?.success && res.data?.branding?.company_name) {
+          setCompanyName(res.data.branding.company_name);
+        }
+      } catch (err) {
+        console.error("Error fetching branding:", err);
+      }
+    };
+
     fetchStats();
+    fetchBranding();
   }, []);
 
   const stats = [
-    // { label: "Total Employees", value: statsData.employees, icon: <HiOutlineUsers />, color: "#6366f1" },
-    // { label: "Offers Sent", value: statsData.offersSent, icon: <HiOutlineDocumentText />, color: "#10b981" },
+    { label: "Total Employees", value: statsData.employees, icon: <HiOutlineUsers />, color: "#6366f1" },
+    { label: "Offers Sent", value: statsData.offersSent, icon: <HiOutlineDocumentText />, color: "#10b981" },
     // { label: "Active Jobs", value: statsData.activeJobs, icon: <HiOutlineBriefcase />, color: "#f59e0b" },
     // { label: "Pending Tasks", value: statsData.pendingTasks, icon: <HiOutlineClipboardDocumentList />, color: "#ef4444" },
   ];
@@ -85,7 +101,7 @@ const HRDashboard = ({ setActiveTab }) => {
           </div>
           <div className="tool-info">
             <h3>Offer Letter</h3>
-            <p>Generate professional offer letters with company branding.</p>
+            <p>Generate professional offer letters with {companyName} branding.</p>
           </div>
           <div className="tool-action">
             <HiOutlineArrowRight />
@@ -99,7 +115,7 @@ const HRDashboard = ({ setActiveTab }) => {
           </div>
           <div className="tool-info">
             <h3>Salary Slip</h3>
-            <p>Manage and generate monthly employee salary slips.</p>
+            <p>Manage and generate monthly employee salary slips for {companyName}.</p>
           </div>
           <div className="tool-action">
             <HiOutlineArrowRight />
@@ -108,13 +124,41 @@ const HRDashboard = ({ setActiveTab }) => {
 
 
         {/* Resignation Card */}
-        {/* <div className="hr-tool-card">
+        <div className="hr-tool-card" onClick={() => setActiveTab('resignation')}>
           <div className="tool-icon-wrapper resign">
             <HiOutlineClipboardDocumentList />
           </div>
           <div className="tool-info">
             <h3>Resignation</h3>
-            <p>Process employee resignations and exit formalties.</p>
+            <p>Process employee resignations and exit formalities for {companyName}.</p>
+          </div>
+          <div className="tool-action">
+            <HiOutlineArrowRight />
+          </div>
+        </div>
+
+        {/* Experience Letter Card */}
+        <div className="hr-tool-card" onClick={() => setActiveTab('experience-letter')}>
+          <div className="tool-icon-wrapper doc">
+            <HiOutlineDocumentText />
+          </div>
+          <div className="tool-info">
+            <h3>Experience Letter</h3>
+            <p>Generate experience letters and relieve employees for {companyName}.</p>
+          </div>
+          <div className="tool-action">
+            <HiOutlineArrowRight />
+          </div>
+        </div>
+
+        {/* Increment Letter Card */}
+        <div className="hr-tool-card" onClick={() => setActiveTab('increment-letter')}>
+          <div className="tool-icon-wrapper cash">
+            <HiOutlineCurrencyDollar />
+          </div>
+          <div className="tool-info">
+            <h3>Increment Letter</h3>
+            <p>Generate automated salary increment letters for {companyName}.</p>
           </div>
           <div className="tool-action">
             <HiOutlineArrowRight />

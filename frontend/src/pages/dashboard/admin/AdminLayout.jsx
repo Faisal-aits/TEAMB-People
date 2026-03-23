@@ -31,6 +31,13 @@ import StudentAttendanceManagement from './StudentAttendanceManagement.jsx';
 // Hirirng Manager Module 
 import HRDashboard from './HRDashboard.jsx';
 import OfferLetter from '../HR/OfferLetter.jsx'; //Offer letter jsx HR Folder  
+import SalarySlip from '../HR/SalarySlip.jsx';
+import SalaryHistory from '../HR/SalaryHistory.jsx';
+import EmployeeDirectory from '../HR/EmployeeDirectory.jsx';
+import CompanyBranding from './CompanyBranding.jsx';
+import ResignationRequests from '../HR/ResignationRequests.jsx';
+import ExperienceLetters from '../HR/ExperienceLetters.jsx';
+import IncrementLetters from '../HR/IncrementLetters.jsx';
 
 const AdminLayout = () => {
   const [activeTab, setActiveTab] = useState(() => {
@@ -441,6 +448,14 @@ const AdminLayout = () => {
                 </button>
               </li>
 
+              {/* Company Branding */}
+              <li className={activeTab === 'company-branding' ? 'active' : ''}>
+                <button onClick={() => setActiveTab('company-branding')}>
+                  <span className="nav-icon"><BsPersonCircle /></span>
+                  {sidebarOpen && <span className="nav-text">Company Branding</span>}
+                </button>
+              </li>
+
               {/* Logout Button */}
               <li>
                 <button onClick={handleLogout}>
@@ -494,8 +509,15 @@ const AdminLayout = () => {
 
           {/* Hirirng manager module  */}
           {activeTab === 'hr' && <HRDashboard setActiveTab={setActiveTab} />}
-          {activeTab === 'offer-letter' && <OfferLetter />}
-        </main>
+          {activeTab === 'offer-letter' && <OfferLetter />}  
+          {activeTab === 'salary-slip' && <SalarySlip />}
+          {activeTab === 'salary-history' && <SalaryHistory />}
+          {activeTab === 'hr-employee-directory' && <EmployeeDirectory />}
+          {activeTab === 'company-branding' && <CompanyBranding />}
+          {activeTab === 'resignation' && <ResignationRequests />}
+          {activeTab === 'experience-letter' && <ExperienceLetters />}
+          {activeTab === 'increment-letter' && <IncrementLetters />}
+          </main>
       </div>
     </div>
   );
