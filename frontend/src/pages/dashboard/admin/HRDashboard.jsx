@@ -93,7 +93,7 @@ const HRDashboard = ({ setActiveTab }) => {
         </div>
 
         {/* Salary Slip Card */}
-        <div className="hr-tool-card">
+        <div className="hr-tool-card" onClick={() => setActiveTab('salary-slip')}>
           <div className="tool-icon-wrapper cash">
             <HiOutlineCurrencyDollar />
           </div>
@@ -105,6 +105,7 @@ const HRDashboard = ({ setActiveTab }) => {
             <HiOutlineArrowRight />
           </div>
         </div>
+
 
         {/* Resignation Card */}
         <div className="hr-tool-card">
@@ -121,7 +122,7 @@ const HRDashboard = ({ setActiveTab }) => {
         </div>
 
         {/* Employees Card */}
-        <div className="hr-tool-card" onClick={() => setActiveTab('employee')}>
+        <div className="hr-tool-card" onClick={() => setActiveTab('hr-employee-directory')}>
           <div className="tool-icon-wrapper emp">
             <HiOutlineUsers />
           </div>

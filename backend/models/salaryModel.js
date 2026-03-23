@@ -226,6 +226,42 @@ const Salary = {
             FROM salary_records`
         );
         return rows[0];
+    },
+
+    // Get salary records for a specific user ID (Employee view)
+    getByUserId: async (userId, filters = {}) => {
+        let query = `
+            SELECT 
+                sr.*,
+                CONCAT(u.first_name, ' ', u.last_name) as employee_name,
+                ed.position as designation,
+                d.name as department_name
+            FROM salary_records sr
+            INNER JOIN employee_details ed ON sr.employee_id = ed.id
+            INNER JOIN users u ON ed.user_id = u.id
+            INNER JOIN departments d ON sr.department_id = d.id
+            WHERE u.id = ?
+        `;
+        const params = [userId];
+
+        if (filters.month) {
+            query += ' AND sr.month = ?';
+            params.push(filters.month);
+        }
+        if (filters.year) {
+            query += ' AND sr.year = ?';
+            params.push(filters.year);
+        }
+
+        query += ` ORDER BY sr.year DESC, FIELD(sr.month, 'December', 'November', 'October', 'September', 'August', 'July', 'June', 'May', 'April', 'March', 'February', 'January') DESC`;
+        
+        const [rows] = await pool.execute(query, params);
+        
+        return rows.map(row => ({
+            ...row,
+            allowances: typeof row.allowances === 'string' ? JSON.parse(row.allowances) : row.allowances,
+            deductions: typeof row.deductions === 'string' ? JSON.parse(row.deductions) : row.deductions
+        }));
     }
 };
 

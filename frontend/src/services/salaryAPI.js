@@ -32,13 +32,7 @@ export const salaryAPI = {
   // Get departments for dropdown
   getDepartments: () => api.get('/salary/departments'),
 
-  // Generate payslip
-  generatePayslip: (id) => api.get(`/salary/payslip/${id}`),
-
-  // Get salary statistics
-  getStats: () => api.get('/salary/stats'),
-
-    // Generate payslip PDF download
+  // Generate payslip PDF download
   generatePayslip: (id) => {
     return api.get(`/salary/payslip/${id}`, {
       responseType: 'blob' // Important for file download
@@ -50,4 +44,12 @@ export const salaryAPI = {
 
   // Send payslip via email
   sendPayslipEmail: (id, emailData) => api.post(`/salary/payslip/${id}/email`, emailData),
+
+  // Get salary records for logged-in employee
+  getMySalaryRecords: (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.month) params.append('month', filters.month);
+    if (filters.year) params.append('year', filters.year);
+    return api.get(`/salary/my-records?${params.toString()}`);
+  },
 };

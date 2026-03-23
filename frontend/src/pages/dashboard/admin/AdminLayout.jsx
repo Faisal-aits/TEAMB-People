@@ -31,6 +31,9 @@ import StudentAttendanceManagement from './StudentAttendanceManagement.jsx';
 // Hirirng Manager Module 
 import HRDashboard from './HRDashboard.jsx';
 import OfferLetter from '../HR/OfferLetter.jsx'; //Offer letter jsx HR Folder  
+import SalarySlip from '../HR/SalarySlip.jsx';
+import SalaryHistory from '../HR/SalaryHistory.jsx';
+import EmployeeDirectory from '../HR/EmployeeDirectory.jsx';
 
 const AdminLayout = () => {
   const [activeTab, setActiveTab] = useState(() => {
@@ -495,6 +498,9 @@ const AdminLayout = () => {
           {/* Hirirng manager module  */}
           {activeTab === 'hr' && <HRDashboard setActiveTab={setActiveTab} />}
           {activeTab === 'offer-letter' && <OfferLetter />}  
+          {activeTab === 'salary-slip' && <SalarySlip />}
+          {activeTab === 'salary-history' && <SalaryHistory />}
+          {activeTab === 'hr-employee-directory' && <EmployeeDirectory />}
           </main>
       </div>
     </div>
