@@ -163,7 +163,7 @@ const HRDashboard = ({ setActiveTab }) => {
           <div className="tool-action">
             <HiOutlineArrowRight />
           </div>
-        </div>
+        </div> */}
 
         {/* Employees Card */}
         <div className="hr-tool-card" onClick={() => setActiveTab('hr-employee-directory')}>

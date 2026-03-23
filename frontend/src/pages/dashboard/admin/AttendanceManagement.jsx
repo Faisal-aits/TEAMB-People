@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { FaExclamationTriangle, FaCamera, FaCheckCircle, FaTimesCircle, FaSync } from 'react-icons/fa';
+import { FaExclamationTriangle, FaCamera, FaCheckCircle, FaTimesCircle, FaSync, FaFileExport, FaPrint } from 'react-icons/fa';
 import { attendanceAPI } from '../../../services/attendanceAPI';
 import { employeeAPI } from '../../../services/employeeAPI';
-
+import * as XLSX from 'xlsx'; // Add this import for Excel export
 import './Attendance.css';
 
 const AttendanceManagement = () => {
@@ -12,6 +12,18 @@ const AttendanceManagement = () => {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // ==================== REPORT MODAL STATES ====================
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportData, setReportData] = useState([]);
+  const [reportFilters, setReportFilters] = useState({
+    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0],
+    department: '',
+    status: ''
+  });
+  const [departments, setDepartments] = useState([]);
+  const [reportLoading, setReportLoading] = useState(false);
 
   // ==================== MODAL STATES ====================
   const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
@@ -26,6 +38,7 @@ const AttendanceManagement = () => {
   // ==================== INITIALIZE REAL DATA ====================
   useEffect(() => {
     initializeRealData();
+    fetchDepartments();
   }, []);
 
   const initializeRealData = async () => {
@@ -33,55 +46,42 @@ const AttendanceManagement = () => {
       setLoading(true);
       setError(null);
       console.log('Initializing real data...');
-      
-      // Fetch all employees and today's attendance data in parallel
+
       const [employeesResponse, attendanceResponse] = await Promise.all([
         employeeAPI.getAll().catch(err => {
           console.error('Employee API error:', err);
-          return { data: { employees: [] } }; // Fallback
+          return { data: { employees: [] } };
         }),
         attendanceAPI.getAll({ date: new Date().toISOString().split('T')[0] }).catch(err => {
           console.error('Attendance API error:', err);
-          return { data: { attendance: [] } }; // Fallback
+          return { data: { attendance: [] } };
         })
       ]);
-      
-      console.log('Employees response:', employeesResponse);
-      console.log('Attendance response:', attendanceResponse);
-      
-      // Handle employees data - map to expected structure
+
       if (employeesResponse.data && employeesResponse.data.employees) {
         const formattedEmployees = employeesResponse.data.employees.map(emp => ({
-          id: emp.employee_id, // Use employee_id from your API
+          id: emp.employee_id,
           name: `${emp.first_name} ${emp.last_name}`,
           department: emp.department_name || 'Unknown Department',
           position: emp.position || 'Unknown Position',
           email: emp.email,
           phone: emp.phone,
           is_active: emp.is_active,
-          // Include all original data for reference
           ...emp
         }));
         setEmployees(formattedEmployees);
-        console.log('Employees set:', formattedEmployees.length);
       } else {
-        console.log('No employees data found in response');
         setEmployees([]);
       }
-      
-      // Handle attendance data
+
       if (attendanceResponse.data) {
-        // Handle different possible response structures
         const attendance = attendanceResponse.data.attendance || attendanceResponse.data || [];
         setAttendanceData(attendance);
-        console.log('Attendance data set:', attendance.length);
       }
-      
+
     } catch (err) {
       console.error('Error initializing data:', err);
       setError(`Failed to load data: ${err.message}`);
-      
-      // Fallback to empty arrays
       setAttendanceData([]);
       setEmployees([]);
     } finally {
@@ -89,30 +89,285 @@ const AttendanceManagement = () => {
     }
   };
 
+  const fetchDepartments = async () => {
+    try {
+      const response = await employeeAPI.getDepartments();
+      if (response.data && response.data.departments) {
+        setDepartments(response.data.departments);
+      }
+    } catch (err) {
+      console.error('Error fetching departments:', err);
+    }
+  };
+
   const handleAutoMarkAbsent = async () => {
     try {
-        const response = await attendanceAPI.markAbsent();
-        alert(response.data.message);
-        initializeRealData(); // Refresh data
+      const response = await attendanceAPI.markAbsent();
+      alert(response.data.message);
+      initializeRealData();
     } catch (err) {
-        console.error('Error marking absent:', err);
-        alert('Failed to mark absent: ' + (err.response?.data?.message || err.message));
+      console.error('Error marking absent:', err);
+      alert('Failed to mark absent: ' + (err.response?.data?.message || err.message));
     }
-};
+  };
+
+  // ==================== REPORT FUNCTIONS ====================
+  const handleGenerateReport = async () => {
+    try {
+      setReportLoading(true);
+
+      // Validate date range
+      if (!reportFilters.startDate || !reportFilters.endDate) {
+        alert('Please select both start and end dates');
+        return;
+      }
+
+      console.log('Generating report with filters:', reportFilters);
+
+      // Fetch all attendance records within date range
+      const response = await attendanceAPI.getAll({
+        start_date: reportFilters.startDate,
+        end_date: reportFilters.endDate,
+        department: reportFilters.department,
+        status: reportFilters.status
+      });
+
+      console.log('API Response:', response);
+
+      let attendanceRecords = [];
+
+      // Handle different response structures
+      if (response.data) {
+        if (response.data.attendance) {
+          attendanceRecords = response.data.attendance;
+        } else if (Array.isArray(response.data)) {
+          attendanceRecords = response.data;
+        } else if (response.data.data) {
+          attendanceRecords = response.data.data;
+        }
+      }
+
+      console.log('Attendance records:', attendanceRecords);
+
+      if (!attendanceRecords || attendanceRecords.length === 0) {
+        alert('No attendance records found for the selected date range.');
+        setReportData([]);
+        setIsReportModalOpen(true);
+        return;
+      }
+
+      // Format report data
+      const formattedReport = attendanceRecords.map(record => {
+        const employee = employees.find(emp => emp.id === record.employee_id);
+        return {
+          'Employee ID': record.employee_id,
+          'Employee Name': employee ? employee.name : (record.employee_name || 'Unknown'),
+          'Department': employee ? employee.department : (record.department || 'Unknown'),
+          'Position': employee ? employee.position : (record.position || 'Unknown'),
+          'Date': formatDate(record.date),
+          'Check In Time': formatTime(record.check_in_time),
+          'Check Out Time': formatTime(record.check_out_time),
+          'Status': record.status,
+          'Working Hours': calculateWorkingHours(record.check_in_time, record.check_out_time),
+          'Remarks': record.remarks || ''
+        };
+      });
+
+      console.log('Formatted report:', formattedReport);
+      setReportData(formattedReport);
+      setIsReportModalOpen(true);
+
+    } catch (err) {
+      console.error('Error generating report:', err);
+      alert('Failed to generate report: ' + (err.response?.data?.message || err.message || 'Please check the console for details'));
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  const calculateWorkingHours = (checkIn, checkOut) => {
+    if (!checkIn || !checkOut || checkIn === '-' || checkOut === '-') return '-';
+
+    try {
+      const parseTime = (timeStr) => {
+        let hours = 0, minutes = 0;
+        if (timeStr.includes('AM') || timeStr.includes('PM')) {
+          const [time, period] = timeStr.split(' ');
+          let [hour, minute] = time.split(':');
+          hour = parseInt(hour);
+          minute = parseInt(minute);
+          if (period === 'PM' && hour !== 12) hour += 12;
+          if (period === 'AM' && hour === 12) hour = 0;
+          return { hour, minute };
+        } else {
+          const [hour, minute] = timeStr.split(':');
+          return { hour: parseInt(hour), minute: parseInt(minute) };
+        }
+      };
+
+      const inTime = parseTime(checkIn);
+      const outTime = parseTime(checkOut);
+
+      let totalMinutes = (outTime.hour * 60 + outTime.minute) - (inTime.hour * 60 + inTime.minute);
+      if (totalMinutes < 0) totalMinutes += 24 * 60;
+
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+
+      return `${hours}h ${minutes}m`;
+    } catch (error) {
+      return '-';
+    }
+  };
+
+  const exportToExcel = () => {
+    if (reportData.length === 0) {
+      alert('No data to export');
+      return;
+    }
+
+    // Create worksheet
+    const ws = XLSX.utils.json_to_sheet(reportData);
+
+    // Auto-size columns (optional)
+    const colWidths = [];
+    Object.keys(reportData[0]).forEach(key => {
+      const maxLength = Math.max(
+        key.length,
+        ...reportData.map(row => String(row[key] || '').length)
+      );
+      colWidths.push({ wch: Math.min(maxLength + 2, 50) });
+    });
+    ws['!cols'] = colWidths;
+
+    // Create workbook
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Attendance Report');
+
+    // Generate filename with date range
+    const filename = `Attendance_Report_${reportFilters.startDate}_to_${reportFilters.endDate}.xlsx`;
+
+    // Export
+    XLSX.writeFile(wb, filename);
+  };
+
+  const handlePrintReport = () => {
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Attendance Report</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              margin: 20px;
+            }
+            h1 {
+              color: #333;
+              text-align: center;
+            }
+            .report-header {
+              text-align: center;
+              margin-bottom: 20px;
+            }
+            .report-date {
+              text-align: center;
+              color: #666;
+              margin-bottom: 20px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 20px;
+            }
+            th, td {
+              border: 1px solid #ddd;
+              padding: 8px;
+              text-align: left;
+            }
+            th {
+              background-color: #f2f2f2;
+              font-weight: bold;
+            }
+            tr:nth-child(even) {
+              background-color: #f9f9f9;
+            }
+            .status-present {
+              color: green;
+            }
+            .status-delayed {
+              color: orange;
+            }
+            .status-absent {
+              color: red;
+            }
+            .footer {
+              margin-top: 30px;
+              text-align: center;
+              font-size: 12px;
+              color: #666;
+            }
+            @media print {
+              button {
+                display: none;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <button onclick="window.print()" style="margin-bottom: 20px; padding: 10px 20px;">
+            Print Report
+          </button>
+          <h1>Attendance Report</h1>
+          <div class="report-header">
+            <strong>Generated on:</strong> ${new Date().toLocaleString()}
+          </div>
+          <div class="report-date">
+            <strong>Period:</strong> ${formatDate(reportFilters.startDate)} to ${formatDate(reportFilters.endDate)}
+            ${reportFilters.department ? `<br><strong>Department:</strong> ${reportFilters.department}` : ''}
+            ${reportFilters.status ? `<br><strong>Status:</strong> ${reportFilters.status}` : ''}
+          </div>
+          <table>
+            <thead>
+              <tr>
+                ${Object.keys(reportData[0] || {}).map(key => `<th>${key}</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${reportData.map(row => `
+                <tr>
+                  ${Object.values(row).map(value => `
+                    <td class="${value === 'Present' ? 'status-present' : value === 'Delayed' ? 'status-delayed' : value === 'Absent' ? 'status-absent' : ''}">
+                      ${value || '-'}
+                    </td>
+                  `).join('')}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          <div class="footer">
+            <p>Total Records: ${reportData.length}</p>
+            <p>This report is generated by Attendance Management System</p>
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
   // ==================== ATTENDANCE STATISTICS ====================
   const attendanceStats = {
     totalPresent: attendanceData.filter(a => a.status === 'Present').length,
     totalDelayed: attendanceData.filter(a => a.status === 'Delayed').length,
-    totalLeaves: attendanceData.filter(a => a.status === 'On Leave'|| a.status === 'Absent').length,
-    totalEmployees: employees.length // Use total employees count
+    totalLeaves: attendanceData.filter(a => a.status === 'On Leave' || a.status === 'Absent').length,
+    totalEmployees: employees.length
   };
 
   const getEmployeeHistoryStats = (employeeHistory) => {
     return {
       totalPresent: employeeHistory.filter(a => a.status === 'Present').length,
       totalDelayed: employeeHistory.filter(a => a.status === 'Delayed').length,
-      totalLeaves: employeeHistory.filter(a => a.status === 'On Leave'|| a.status === 'Absent').length,
+      totalLeaves: employeeHistory.filter(a => a.status === 'On Leave' || a.status === 'Absent').length,
       totalRecords: employeeHistory.length
     };
   };
@@ -127,12 +382,11 @@ const AttendanceManagement = () => {
     try {
       console.log('Approving attendance:', attendanceId);
       await attendanceAPI.approve(attendanceId);
-      
-      // Update local state
-      setAttendanceData(prev => prev.map(item => 
+
+      setAttendanceData(prev => prev.map(item =>
         item.attendance_id === attendanceId ? { ...item, status: 'Present' } : item
       ));
-      
+
       alert('Attendance approved successfully!');
       initializeRealData();
     } catch (err) {
@@ -150,12 +404,11 @@ const AttendanceManagement = () => {
     try {
       console.log('Rejecting attendance:', attendanceId);
       await attendanceAPI.reject(attendanceId, 'Rejected by manager');
-      
-      // Update local state
-      setAttendanceData(prev => prev.map(item => 
+
+      setAttendanceData(prev => prev.map(item =>
         item.attendance_id === attendanceId ? { ...item, status: 'On Leave' } : item
       ));
-      
+
       alert('Attendance marked as leave!');
       initializeRealData();
     } catch (err) {
@@ -169,11 +422,8 @@ const AttendanceManagement = () => {
       setLoading(true);
       console.log('Fetching history for employee:', employee.id);
       const response = await attendanceAPI.getEmployeeHistory(employee.id);
-      
-      console.log('History response:', response);
-      
+
       if (response.data) {
-        // Handle different response structures
         const history = response.data.history || response.data || [];
         setAttendanceHistory(history);
         setSelectedEmployee(employee);
@@ -181,7 +431,6 @@ const AttendanceManagement = () => {
       }
     } catch (err) {
       console.error('Error fetching employee history:', err);
-      // Show mock history for demo
       const mockHistory = [
         {
           history_id: 1,
@@ -211,15 +460,15 @@ const AttendanceManagement = () => {
 
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          width: 640, 
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: 640,
           height: 480,
-          facingMode: 'user' 
-        } 
+          facingMode: 'user'
+        }
       });
       setCameraStream(stream);
-      
+
       const video = document.getElementById('camera-preview');
       if (video) {
         video.srcObject = stream;
@@ -237,199 +486,201 @@ const AttendanceManagement = () => {
     }
   };
 
-// In AttendanceManagement.jsx - Update handleCapturePhoto
-const handleCapturePhoto = async () => {
-  const video = document.getElementById('camera-preview');
-  const canvas = document.createElement('canvas');
-  const context = canvas.getContext('2d');
-  
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  context.drawImage(video, 0, 0, canvas.width, canvas.height);
-  
-  const imageDataUrl = canvas.toDataURL('image/png');
-  
-  try {
-    // Show loading state
-    setFaceValidation({ isValid: false, message: 'Validating face...' });
-    
-    // Convert to file and send to backend for validation
-    const imageFile = await compressImageToFile(imageDataUrl);
-    
-    // Send to backend API for face validation
-    const formData = new FormData();
-    formData.append('faceImage', imageFile);
-    
-    // You need to create this API endpoint
-    const response = await api.post('/face/validate', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
-    
-    if (response.data.success) {
-      setFaceValidation({ 
-        isValid: true, 
-        message: '✅ Face detected and validated!' 
+  const handleCapturePhoto = async () => {
+    const video = document.getElementById('camera-preview');
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const imageDataUrl = canvas.toDataURL('image/png');
+
+    try {
+      setFaceValidation({ isValid: false, message: 'Validating face...' });
+      const imageFile = await compressImageToFile(imageDataUrl);
+
+      const formData = new FormData();
+      formData.append('faceImage', imageFile);
+
+      const response = await api.post('/face/validate', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
+
+      if (response.data.success) {
+        setFaceValidation({
+          isValid: true,
+          message: '✅ Face detected and validated!'
+        });
+        setCapturedImage(imageDataUrl);
+        stopCamera();
+      } else {
+        setFaceValidation({
+          isValid: false,
+          message: response.data.message || '❌ No face detected. Please try again.'
+        });
+      }
+    } catch (error) {
+      console.error('Face validation error:', error);
       setCapturedImage(imageDataUrl);
       stopCamera();
-    } else {
-      setFaceValidation({ 
-        isValid: false, 
-        message: response.data.message || '❌ No face detected. Please try again.' 
-      });
+      setFaceValidation({ isValid: true, message: '✅ Photo captured' });
     }
-  } catch (error) {
-    console.error('Face validation error:', error);
-    // Fallback: just capture without validation
-    setCapturedImage(imageDataUrl);
-    stopCamera();
-    setFaceValidation({ isValid: true, message: '✅ Photo captured' });
-  }
-};
+  };
 
   const handleRetakePhoto = () => {
     setCapturedImage(null);
     startCamera();
   };
-// ==================== WORKING IMAGE COMPRESSION ====================
+
   const compressImage = (base64Image, quality = 0.5, maxWidth = 400) => {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      img.onload = function() {
+      img.onload = function () {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        
-        // Calculate new dimensions
+
         let width = img.width;
         let height = img.height;
-        
+
         if (width > maxWidth) {
           height = (height * maxWidth) / width;
           width = maxWidth;
         }
-        
+
         canvas.width = width;
         canvas.height = height;
-        
-        // Draw and compress
         ctx.drawImage(img, 0, 0, width, height);
-        
-        // Convert to JPEG with compression
+
         try {
           const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
-          
           console.log(`📊 Image compression: ${(base64Image.length / 1024).toFixed(1)}KB → ${(compressedBase64.length / 1024).toFixed(1)}KB`);
-          
-          // If compression didn't help much, use original but warn
-          if (compressedBase64.length > 500000) { // 500KB
-            console.warn('Image still large after compression:', (compressedBase64.length / 1024).toFixed(1) + 'KB');
-          }
-          
           resolve(compressedBase64);
         } catch (error) {
-          console.error('Compression error:', error);
           reject(error);
         }
       };
-      
-      img.onerror = function() {
+
+      img.onerror = function () {
         reject(new Error('Failed to load image for compression'));
       };
-      
+
       img.src = base64Image;
     });
   };
-// ==================== FACE ENROLLMENT FUNCTIONS ====================
 
-const handleEnrollSubmit = async () => {
-  if (!selectedEmployeeForEnroll) {
-    alert('Please select an employee');
-    return;
-  }
-  
-  if (!capturedImage) {
-    alert('Please capture a photo first');
-    return;
-  }
-
-  try {
-    const employee = employees.find(emp => emp.name === selectedEmployeeForEnroll);
-    
-    if (!employee) {
-      alert('Selected employee not found');
+  const handleEnrollSubmit = async () => {
+    if (!selectedEmployeeForEnroll) {
+      alert('Please select an employee');
       return;
     }
 
-    console.log('🔄 Enrolling face for:', employee.id, employee.name);
-    
-    // Show loading state
-    setFaceValidation({ isValid: false, message: 'Processing image...' });
+    if (!capturedImage) {
+      alert('Please capture a photo first');
+      return;
+    }
 
-    // Convert base64 to compressed File
-    const imageFile = await compressImageToFile(capturedImage, 0.6, 400);
-    
-    console.log('📁 Final file object:', {
-      type: imageFile.type,
-      size: imageFile.size,
-      name: imageFile.name
-    });
+    try {
+      const employee = employees.find(emp => emp.name === selectedEmployeeForEnroll);
 
-    setFaceValidation({ isValid: false, message: 'Uploading to server...' });
+      if (!employee) {
+        alert('Selected employee not found');
+        return;
+      }
 
-    // ✅ FIX: Use employeeAPI.enrollFace instead of api directly
-    console.log('📤 Making API call to enroll face...');
-    
-    const response = await employeeAPI.enrollFace(employee.id, imageFile);
-    
-    console.log('✅ API Response:', response.data);
-    
-    if (response.data.success) {
-      alert(`✅ ${response.data.message}`);
-      
-      // Reset modal
-      setIsEnrollFaceModalOpen(false);
-      setCapturedImage(null);
-      setSelectedEmployeeForEnroll('');
+      console.log('🔄 Enrolling face for:', employee.id, employee.name);
+
+      setFaceValidation({ isValid: false, message: 'Processing image...' });
+      const imageFile = await compressImageToFile(capturedImage, 0.6, 400);
+
+      console.log('📁 Final file object:', {
+        type: imageFile.type,
+        size: imageFile.size,
+        name: imageFile.name
+      });
+
+      setFaceValidation({ isValid: false, message: 'Uploading to server...' });
+
+      const response = await employeeAPI.enrollFace(employee.id, imageFile);
+
+      console.log('✅ API Response:', response.data);
+
+      if (response.data.success) {
+        alert(`✅ ${response.data.message}`);
+
+        setIsEnrollFaceModalOpen(false);
+        setCapturedImage(null);
+        setSelectedEmployeeForEnroll('');
+        setFaceValidation({ isValid: false, message: '' });
+        stopCamera();
+      }
+    } catch (err) {
+      console.error('❌ Error enrolling face:', err);
+      if (err.response?.data?.message) {
+        alert(`❌ ${err.response.data.message}`);
+      } else {
+        alert('❌ Failed to enroll face. Check console for details.');
+      }
       setFaceValidation({ isValid: false, message: '' });
-      stopCamera();
     }
-  } catch (err) {
-    console.error('❌ Error enrolling face:', err);
-    console.error('Error response:', err.response?.data);
-    console.error('Error status:', err.response?.status);
-    
-    if (err.response?.data?.message) {
-      alert(`❌ ${err.response.data.message}`);
-    } else {
-      alert('❌ Failed to enroll face. Check console for details.');
-    }
-    
-    setFaceValidation({ isValid: false, message: '' });
-  }
-};
+  };
 
-// Also add this function to check face status (optional):
-const checkFaceStatus = async (employeeId) => {
-  try {
-    const response = await employeeAPI.getFaceStatus(employeeId);
-    return response.data;
-  } catch (error) {
-    console.error('Error checking face status:', error);
-    return { hasFaceEnrolled: false };
-  }
-};
+  const compressImageToFile = async (base64Image, quality = 0.7, maxWidth = 400) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = function () {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(img, 0, 0, width, height);
+
+        try {
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const file = new File([blob], 'face-image.jpg', {
+                type: 'image/jpeg',
+                lastModified: Date.now()
+              });
+
+              console.log(`📊 Compressed file size: ${(blob.size / 1024).toFixed(1)}KB`);
+              resolve(file);
+            } else {
+              reject(new Error('Failed to create blob from canvas'));
+            }
+          }, 'image/jpeg', quality);
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      img.onerror = function () {
+        reject(new Error('Failed to load image for compression'));
+      };
+
+      img.src = base64Image;
+    });
+  };
 
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
     if (file) {
-      // Validate file type
       if (!file.type.startsWith('image/')) {
         alert('Please select an image file');
         event.target.value = '';
         return;
       }
 
-      // Validate file size
       if (file.size > 5 * 1024 * 1024) {
         alert('Image file is too large. Maximum size is 5MB.');
         event.target.value = '';
@@ -439,16 +690,14 @@ const checkFaceStatus = async (employeeId) => {
       const reader = new FileReader();
       reader.onload = async (e) => {
         const imageDataUrl = e.target.result;
-        
+
         try {
-          // Validate face in uploaded image
           setFaceValidation({ isValid: false, message: 'Validating face...' });
-          
           const img = await FaceRecognition.base64ToImage(imageDataUrl);
           const validation = await FaceRecognition.validateFaceImage(img);
-          
+
           setFaceValidation(validation);
-          
+
           if (validation.isValid) {
             setCapturedImage(imageDataUrl);
           } else {
@@ -464,82 +713,7 @@ const checkFaceStatus = async (employeeId) => {
       reader.readAsDataURL(file);
     }
   };
-// ==================== FILE/FORMDATA UTILITIES ====================
-// Convert base64 to Blob
-const base64ToBlob = (base64Data) => {
-  try {
-    // Extract the base64 data and MIME type
-    const parts = base64Data.split(';base64,');
-    const mimeType = parts[0].split(':')[1];
-    const byteString = atob(parts[1]);
-    
-    // Create array buffer and write bytes
-    const ab = new ArrayBuffer(byteString.length);
-    const ia = new Uint8Array(ab);
-    
-    for (let i = 0; i < byteString.length; i++) {
-      ia[i] = byteString.charCodeAt(i);
-    }
-    
-    return new Blob([ab], { type: mimeType });
-  } catch (error) {
-    console.error('Error converting base64 to blob:', error);
-    throw new Error('Failed to process image');
-  }
-};
 
-
-// Compress image and convert to File
-  const compressImageToFile = async (base64Image, quality = 0.7, maxWidth = 400) => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = function() {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        
-        // Calculate new dimensions
-        let width = img.width;
-        let height = img.height;
-        
-        if (width > maxWidth) {
-          height = (height * maxWidth) / width;
-          width = maxWidth;
-        }
-        
-        canvas.width = width;
-        canvas.height = height;
-        
-        // Draw and compress
-        ctx.drawImage(img, 0, 0, width, height);
-        
-        // Convert to JPEG with compression
-        try {
-          canvas.toBlob((blob) => {
-            if (blob) {
-              // Create a File from the Blob
-              const file = new File([blob], 'face-image.jpg', { 
-                type: 'image/jpeg',
-                lastModified: Date.now()
-              });
-              
-              console.log(`📊 Compressed file size: ${(blob.size / 1024).toFixed(1)}KB`);
-              resolve(file);
-            } else {
-              reject(new Error('Failed to create blob from canvas'));
-            }
-          }, 'image/jpeg', quality);
-        } catch (error) {
-          reject(error);
-        }
-      };
-      
-      img.onerror = function() {
-        reject(new Error('Failed to load image for compression'));
-      };
-      
-      img.src = base64Image;
-    });
-  };
   // ==================== UI HELPER FUNCTIONS ====================
   const getStatusBadge = (status) => {
     const statusConfig = {
@@ -579,54 +753,46 @@ const base64ToBlob = (base64Data) => {
     });
   };
 
-const formatTime = (timeString) => {
-  // Check for null, undefined, empty string, or 'undefined'
-  if (!timeString || timeString === 'undefined' || timeString === 'null') {
-    return '-';
-  }
-  
-  // If it's already in AM/PM format, return as is
-  if (timeString.includes('AM') || timeString.includes('PM')) {
-    return timeString;
-  }
-  
-  // If it's in 24-hour format, convert to 12-hour format
-  try {
-    const [hours, minutes] = timeString.split(':');
-    
-    // Additional validation for hours and minutes
-    if (!hours || !minutes) {
+  const formatTime = (timeString) => {
+    if (!timeString || timeString === 'undefined' || timeString === 'null') {
       return '-';
     }
-    
-    const hour = parseInt(hours);
-    const minute = parseInt(minutes);
-    
-    // Validate if the parsed values are numbers
-    if (isNaN(hour) || isNaN(minute)) {
-      return '-';
-    }
-    
-    // Validate hour range
-    if (hour < 0 || hour > 23) {
-      return '-';
-    }
-    
-    // Validate minute range
-    if (minute < 0 || minute > 59) {
-      return '-';
-    }
-    
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const hour12 = hour % 12 || 12;
-    return `${hour12}:${minutes.toString().padStart(2, '0')} ${ampm}`;
-  } catch (error) {
-    console.error('Error formatting time:', error, timeString);
-    return '-';
-  }
-};
 
-  // Get attendance record for employee
+    if (timeString.includes('AM') || timeString.includes('PM')) {
+      return timeString;
+    }
+
+    try {
+      const [hours, minutes] = timeString.split(':');
+
+      if (!hours || !minutes) {
+        return '-';
+      }
+
+      const hour = parseInt(hours);
+      const minute = parseInt(minutes);
+
+      if (isNaN(hour) || isNaN(minute)) {
+        return '-';
+      }
+
+      if (hour < 0 || hour > 23) {
+        return '-';
+      }
+
+      if (minute < 0 || minute > 59) {
+        return '-';
+      }
+
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const hour12 = hour % 12 || 12;
+      return `${hour12}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+    } catch (error) {
+      console.error('Error formatting time:', error, timeString);
+      return '-';
+    }
+  };
+
   const getEmployeeAttendance = (employeeId) => {
     return attendanceData.find(att => att.employee_id === employeeId) || {
       check_in_time: '-',
@@ -636,7 +802,6 @@ const formatTime = (timeString) => {
     };
   };
 
-  // Clean up camera on unmount
   useEffect(() => {
     return () => {
       stopCamera();
@@ -659,8 +824,8 @@ const formatTime = (timeString) => {
         <div className="attendance-error">
           <FaExclamationTriangle style={{ marginRight: '8px' }} />
           {error}
-          <button 
-            onClick={initializeRealData} 
+          <button
+            onClick={initializeRealData}
             className="attendance-retry-btn"
             style={{ marginLeft: '16px' }}
           >
@@ -711,28 +876,32 @@ const formatTime = (timeString) => {
         {/* Attendance Table Header */}
         <div className="attendance-table-header">
           <h3 id="attendance-table-title">Today's Attendance</h3>
-               <div className="header-actions">
-                    <button
-        onClick={handleAutoMarkAbsent}
-        className="attendance-action-btn"
-        style={{ marginRight: '10px' }}
-    >
-        Auto Mark Absent
-    </button>
-          <div className="attendance-table-actions">
-            {/* <span className="attendance-count" >
-              Showing {employees.length} employees
-            </span> */}
-
-
+          <div className="header-actions">
             <button
-              onClick={handleEnrollFace}
-              className="attendance-enroll-top-btn"
+              onClick={handleAutoMarkAbsent}
+              className="attendance-action-btn"
+              style={{ marginRight: '10px' }}
             >
-              <FaCamera style={{ marginRight: '8px' }} />
-              Enroll Face
+              Auto Mark Absent
             </button>
-               </div>
+            <div className="attendance-table-actions">
+              {/* Report Generation Buttons */}
+              <button
+                onClick={() => setIsReportModalOpen(true)}
+                className="attendance-enroll-top-btn"
+                style={{ marginRight: '10px', backgroundColor: '#4caf50' }}
+              >
+                <FaFileExport style={{ marginRight: '8px' }} />
+                Generate Report
+              </button>
+              <button
+                onClick={handleEnrollFace}
+                className="attendance-enroll-top-btn"
+              >
+                <FaCamera style={{ marginRight: '8px' }} />
+                Enroll Face
+              </button>
+            </div>
           </div>
         </div>
 
@@ -747,18 +916,17 @@ const formatTime = (timeString) => {
                 <th>Check In</th>
                 <th>Check Out</th>
                 <th>Status</th>
-                {/* <th>Actions</th> */}
               </tr>
             </thead>
             <tbody>
               {employees.map(employee => {
                 const attendance = getEmployeeAttendance(employee.id);
-                const hasFaceEnrolled = employee.face_encoding; 
+                const hasFaceEnrolled = employee.face_encoding;
                 return (
                   <tr key={employee.id}>
                     <td>
                       <div className="attendance-name-cell">
-                        <div 
+                        <div
                           className="attendance-name-text attendance-clickable"
                           onClick={() => handleViewAttendanceHistory(employee)}
                         >
@@ -793,42 +961,6 @@ const formatTime = (timeString) => {
                     <td>
                       {getStatusBadge(attendance.status)}
                     </td>
-                    {/* <td>
-                      <div className="attendance-actions-container">
-                        {attendance.status === 'Present' ? (
-                          <span className="attendance-status-badge approved-badge">
-                            <FaCheckCircle style={{ marginRight: '4px' }} />
-                            Approved
-                          </span>
-                        ) : attendance.status === 'On Leave' ? (
-                          <span className="attendance-status-badge rejected-badge">
-                            <FaTimesCircle style={{ marginRight: '4px' }} />
-                            Rejected
-                          </span>
-                        ) : (
-                          <>
-                            <button
-                              onClick={() => handleApprove(attendance.attendance_id)}
-                              className="attendance-action-btn attendance-approve-btn"
-                              disabled={!attendance.attendance_id}
-                              title={!attendance.attendance_id ? "No attendance record to approve" : ""}
-                            >
-                              <FaCheckCircle style={{ marginRight: '4px' }} />
-                              Approve
-                            </button>
-                            <button
-                              onClick={() => handleReject(attendance.attendance_id)}
-                              className="attendance-action-btn attendance-reject-btn"
-                              disabled={!attendance.attendance_id}
-                              title={!attendance.attendance_id ? "No attendance record to reject" : ""}
-                            >
-                              <FaTimesCircle style={{ marginRight: '4px' }} />
-                              Reject
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td> */}
                   </tr>
                 );
               })}
@@ -838,7 +970,7 @@ const formatTime = (timeString) => {
                     <div style={{ textAlign: 'center', padding: '40px' }}>
                       <FaExclamationTriangle size={32} style={{ marginBottom: '16px', opacity: 0.5 }} />
                       <p>No employees found</p>
-                      <button 
+                      <button
                         onClick={initializeRealData}
                         className="attendance-retry-btn"
                       >
@@ -854,6 +986,162 @@ const formatTime = (timeString) => {
         </div>
       </div>
 
+      {/* ==================== REPORT GENERATION MODAL ==================== */}
+      {isReportModalOpen && (
+        <div className="attendance-modal-overlay">
+          <div className="attendance-modal-content attendance-large-modal">
+            <div className="attendance-modal-header">
+              <h2>Attendance Report</h2>
+              <button
+                className="attendance-close-btn"
+                onClick={() => {
+                  setIsReportModalOpen(false);
+                  setReportData([]);
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="attendance-details-content">
+              {/* Report Filters */}
+              <div className="attendance-form-section">
+                <h3 className="attendance-section-title">Report Filters</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                  <div className="attendance-form-group">
+                    <label>Start Date</label>
+                    <input
+                      type="date"
+                      value={reportFilters.startDate}
+                      onChange={(e) => setReportFilters({ ...reportFilters, startDate: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '6px'
+                      }}
+                    />
+                  </div>
+                  <div className="attendance-form-group">
+                    <label>End Date</label>
+                    <input
+                      type="date"
+                      value={reportFilters.endDate}
+                      onChange={(e) => setReportFilters({ ...reportFilters, endDate: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '6px'
+                      }}
+                    />
+                  </div>
+                  <div className="attendance-form-group">
+                    <label>Department</label>
+                    <select
+                      value={reportFilters.department}
+                      onChange={(e) => setReportFilters({ ...reportFilters, department: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '6px'
+                      }}
+                    >
+                      <option value="">All Departments</option>
+                      {departments.map(dept => (
+                        <option key={dept.department_id || dept.id} value={dept.name}>
+                          {dept.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="attendance-form-group">
+                    <label>Status</label>
+                    <select
+                      value={reportFilters.status}
+                      onChange={(e) => setReportFilters({ ...reportFilters, status: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '6px'
+                      }}
+                    >
+                      <option value="">All Statuses</option>
+                      <option value="Present">Present</option>
+                      <option value="Delayed">Delayed</option>
+                      <option value="Absent">Absent</option>
+                      <option value="On Leave">On Leave</option>
+                    </select>
+                  </div>
+                </div>
+                <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={handleGenerateReport}
+                    className="attendance-submit-btn"
+                    disabled={reportLoading}
+                  >
+                    {reportLoading ? 'Generating...' : 'Generate Report'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Report Data Display */}
+              {reportData.length > 0 && (
+                <>
+                  <div className="attendance-form-section">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                      <h3 className="attendance-section-title" style={{ margin: 0 }}>
+                        Report Results ({reportData.length} records)
+                      </h3>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                          onClick={exportToExcel}
+                          className="attendance-action-btn"
+                          style={{ backgroundColor: '#10b981', color: 'white' }}
+                        >
+                          <FaFileExport style={{ marginRight: '4px' }} />
+                          Export to Excel
+                        </button>
+                        <button
+                          onClick={handlePrintReport}
+                          className="attendance-action-btn"
+                          style={{ backgroundColor: '#3b82f6', color: 'white' }}
+                        >
+                          <FaPrint style={{ marginRight: '4px' }} />
+                          Print Report
+                        </button>
+                      </div>
+                    </div>
+                    <div className="attendance-table-wrapper" style={{ maxHeight: '400px', overflow: 'auto' }}>
+                      <table className="attendance-main-table">
+                        <thead>
+                          <tr>
+                            {Object.keys(reportData[0]).map(key => (
+                              <th key={key}>{key}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {reportData.map((row, index) => (
+                            <tr key={index}>
+                              {Object.values(row).map((value, idx) => (
+                                <td key={idx}>{value || '-'}</td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ==================== ATTENDANCE HISTORY MODAL ==================== */}
       {isAttendanceModalOpen && selectedEmployee && (
         <div className="attendance-modal-overlay">
@@ -863,7 +1151,7 @@ const formatTime = (timeString) => {
                 Attendance History - {selectedEmployee.name}
                 <span className="employee-department">({selectedEmployee.department})</span>
               </h2>
-              <button 
+              <button
                 className="attendance-close-btn"
                 id="attendance-view-close"
                 onClick={() => setIsAttendanceModalOpen(false)}
@@ -875,7 +1163,7 @@ const formatTime = (timeString) => {
             <div className="attendance-details-content">
               {/* Attendance History Statistics */}
               {selectedEmployee && (
-                <div className="attendance-dashboard-stats" style={{marginBottom: '1.5rem'}}>
+                <div className="attendance-dashboard-stats" style={{ marginBottom: '1.5rem' }}>
                   <div className="attendance-stat-card" id="attendance-history-stat-present">
                     <div className="attendance-stat-number">
                       {getEmployeeHistoryStats(attendanceHistory).totalPresent}
@@ -959,7 +1247,7 @@ const formatTime = (timeString) => {
           <div className="attendance-modal-content">
             <div className="attendance-modal-header">
               <h2>Enroll Face</h2>
-              <button 
+              <button
                 className="attendance-close-btn"
                 onClick={() => {
                   setIsEnrollFaceModalOpen(false);
@@ -975,8 +1263,7 @@ const formatTime = (timeString) => {
               {/* Camera Section */}
               <div className="attendance-form-section">
                 <h3 className="attendance-section-title">Face Capture</h3>
-                
-                {/* ADD FACE VALIDATION STATUS HERE */}
+
                 <div className="face-validation-status">
                   {faceValidation.message && (
                     <div className={`validation-message ${faceValidation.isValid ? 'valid' : 'invalid'}`}>
@@ -984,17 +1271,17 @@ const formatTime = (timeString) => {
                     </div>
                   )}
                 </div>
-                
+
                 <div className="camera-section">
                   {!capturedImage ? (
                     <>
-                      <div 
+                      <div
                         id="camera-preview-container"
                         className="camera-preview"
                         style={{
-                          width: '100%', 
-                          height: '300px', 
-                          backgroundColor: '#f5f5f5', 
+                          width: '100%',
+                          height: '300px',
+                          backgroundColor: '#f5f5f5',
                           border: '2px dashed #ddd',
                           display: 'flex',
                           alignItems: 'center',
@@ -1016,7 +1303,7 @@ const formatTime = (timeString) => {
                           }}
                         />
                       </div>
-                      
+
                       {!cameraStream && (
                         <button
                           onClick={startCamera}
@@ -1032,7 +1319,7 @@ const formatTime = (timeString) => {
                           Start Camera
                         </button>
                       )}
-                      
+
                       {cameraStream && (
                         <button
                           onClick={handleCapturePhoto}
@@ -1051,12 +1338,12 @@ const formatTime = (timeString) => {
                     </>
                   ) : (
                     <>
-                      <div 
+                      <div
                         className="captured-photo-preview"
                         style={{
-                          width: '100%', 
-                          height: '300px', 
-                          backgroundColor: '#f5f5f5', 
+                          width: '100%',
+                          height: '300px',
+                          backgroundColor: '#f5f5f5',
                           border: '2px solid #48bb78',
                           display: 'flex',
                           alignItems: 'center',
@@ -1066,9 +1353,9 @@ const formatTime = (timeString) => {
                           overflow: 'hidden'
                         }}
                       >
-                        <img 
-                          src={capturedImage} 
-                          alt="Captured" 
+                        <img
+                          src={capturedImage}
+                          alt="Captured"
                           style={{
                             width: '100%',
                             height: '100%',
@@ -1076,7 +1363,7 @@ const formatTime = (timeString) => {
                           }}
                         />
                       </div>
-                      
+
                       <button
                         onClick={handleRetakePhoto}
                         className="attendance-action-btn"
@@ -1096,8 +1383,8 @@ const formatTime = (timeString) => {
                 {/* Upload File Alternative */}
                 <div className="attendance-form-group">
                   <label>Or Upload Photo</label>
-                  <input 
-                    type="file" 
+                  <input
+                    type="file"
                     accept="image/*"
                     onChange={handleFileUpload}
                     style={{
@@ -1113,7 +1400,7 @@ const formatTime = (timeString) => {
               {/* Employee Selection */}
               <div className="attendance-form-group">
                 <label>Select Employee</label>
-                <select 
+                <select
                   value={selectedEmployeeForEnroll}
                   onChange={(e) => setSelectedEmployeeForEnroll(e.target.value)}
                   style={{
