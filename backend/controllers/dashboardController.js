@@ -59,6 +59,18 @@ const dashboardController = {
                 console.log('Internships table not found, using default values');
             }
 
+            // Get offer letters count
+            let offersSentTotal = 0;
+            try {
+                const [offersResult] = await pool.execute(
+                    'SELECT COUNT(*) as total FROM offer_letters WHERE tenant_id = ?',
+                    [tenantId]
+                );
+                offersSentTotal = offersResult[0]?.total || 0;
+            } catch (error) {
+                console.log('Offer letters table not found, using default values');
+            }
+
             const stats = [
                 { 
                     title: 'EMPLOYEES', 
@@ -77,6 +89,15 @@ const dashboardController = {
                     secondaryLabel: 'Completed',
                     icon: '📋',
                     color: '#48BB78'
+                },
+                { 
+                    title: 'OFFERS_SENT', 
+                    value: offersSentTotal.toString(), 
+                    subtitle: 'Offers Sent',
+                    secondaryValue: '0',
+                    secondaryLabel: 'Accepted',
+                    icon: '📄',
+                    color: '#4299E1'
                 },
                 // { 
                 //     title: 'STUDENTS', 

@@ -26,6 +26,10 @@ const deliveryRoutes = require('./routes/deliveryRoutes');
 const serviceSettingRoutes = require('./routes/serviceSettingRoutes');
 const studentAttendanceRoutes = require('./routes/studentAttendanceRoutes');
 const offerLetterRoutes = require('./routes/offerLetterRoutes');
+const brandingRoutes = require('./routes/brandingRoutes');
+const resignationRoutes = require('./routes/resignationRoutes');
+const experienceLetterRoutes = require('./routes/experienceLetterRoutes');
+const incrementLetterRoutes = require('./routes/incrementLetterRoutes');
 const superAdminRoutes = require('./routes/superAdminRoutes');
 const { scheduleAutoAbsentCron } = require('./cron/attendanceCron');
 scheduleAutoAbsentCron();
@@ -51,6 +55,17 @@ app.use(cors()); // 1. CORS first
 
 app.use(express.json({ limit: '10mb' })); // 2. JSON parsing with limit
 app.use(express.urlencoded({ extended: true, limit: '10mb' })); // 3. URL encoded
+
+// Serve uploaded files statically
+const path = require('path');
+const fs = require('fs');
+const errorLog = fs.createWriteStream(path.join(__dirname, 'error.log'), { flags: 'a' });
+const originalConsoleError = console.error;
+console.error = (...args) => {
+    errorLog.write(new Date().toISOString() + ' - ' + args.join(' ') + '\n');
+    originalConsoleError.apply(console, args);
+};
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Log all requests
 app.use((req, res, next) => {
@@ -90,6 +105,10 @@ app.use('/api/delivery', deliveryRoutes);
 app.use('/api/service-settings', serviceSettingRoutes);
 app.use('/api/student-attendance', studentAttendanceRoutes);
 app.use('/api/offer-letters', offerLetterRoutes);
+app.use('/api/branding', brandingRoutes);
+app.use('/api/resignation-requests', resignationRoutes);
+app.use('/api/experience-letters', experienceLetterRoutes);
+app.use('/api/increment-letters', incrementLetterRoutes);
 
 
 
@@ -105,6 +124,16 @@ app.get('/api/health', (req, res) => {
         timestamp: new Date().toISOString(),
         service: 'Work Desk Multi-Tenant API',
         version: '2.0.0'
+    });
+});
+
+// Global Error Handler
+app.use((err, req, res, next) => {
+    console.error('SERVER ERROR:', err.stack || err);
+    res.status(500).json({ 
+        success: false, 
+        message: 'Internal Server Error', 
+        error: process.env.NODE_ENV === 'development' ? err.message : undefined 
     });
 });
 

@@ -1,12 +1,19 @@
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import companyLogo from '../assets/img/company.png';
-import stampPng from '../assets/img/stamp.png';
+import fallbackLogo from '../assets/img/company.png';
+import fallbackStamp from '../assets/img/stamp.png';
+import { brandingAPI } from './brandingAPI';
 
 export const salarySlipPDFService = {
   downloadSalarySlip: async (formData) => {
     try {
-      const html = generateSalarySlipHTML(formData);
+      let branding = {};
+      try {
+        const res = await brandingAPI.get();
+        if (res.data?.success && res.data?.branding) branding = res.data.branding;
+      } catch (err) { console.error("Failed to fetch branding data", err); }
+
+      const html = generateSalarySlipHTML(formData, branding);
       const pdf = await generatePDFFromHTML(html);
       pdf.save(`SalarySlip_${formData.fullName.replace(/\s+/g, '_')}_${formData.monthYear.replace(/[\s,]+/g, '_')}.pdf`);
     } catch (error) {
@@ -17,7 +24,13 @@ export const salarySlipPDFService = {
 
   viewSalarySlip: async (formData) => {
     try {
-      const html = generateSalarySlipHTML(formData);
+      let branding = {};
+      try {
+        const res = await brandingAPI.get();
+        if (res.data?.success && res.data?.branding) branding = res.data.branding;
+      } catch (err) { console.error("Failed to fetch branding data", err); }
+
+      const html = generateSalarySlipHTML(formData, branding);
       const pdf = await generatePDFFromHTML(html);
       const blobUrl = pdf.output('bloburl');
       window.open(blobUrl, '_blank');
@@ -68,17 +81,28 @@ const formatCurrency = (amt) => {
   return new Intl.NumberFormat('en-IN').format(amt || 0);
 };
 
-const generateSalarySlipHTML = (data) => {
+const generateSalarySlipHTML = (data, branding) => {
   const totalEarnings = Object.values(data.earnings).reduce((a, b) => a + Number(b), 0);
   const totalDeductions = Object.values(data.deductions).reduce((a, b) => a + Number(b), 0);
   const netPay = totalEarnings - totalDeductions;
+
+  const company_name = branding?.company_name || "Arham IT Solution";
+  const company_address = branding?.company_address ? branding.company_address.replace(/\n/g, '<br />') : "Above Being Healthy Gym, Near Surbhi Hospital, Nagar–Sambhaji Nagar Road,<br />Ahilyanagar, Maharashtra 414003";
+  const company_email = branding?.company_email || "info@arhamitsolution.in";
+  const company_website = branding?.company_website || "www.arhamitsolution.in";
+  const hr_name = branding?.hr_name || "Sharjeel Iqbal";
+  const hr_designation = branding?.hr_designation || "HR & BDE Executive";
+  
+  const logo_url = branding?.logo_url ? brandingAPI.getImageUrl(branding.logo_url) : fallbackLogo;
+  const stamp_url = branding?.stamp_url ? brandingAPI.getImageUrl(branding.stamp_url) : fallbackStamp;
+  const signature_url = branding?.signature_url ? brandingAPI.getImageUrl(branding.signature_url) : null;
 
   return `
     <div style="font-family: Arial, sans-serif; color: #000; width: 210mm; min-height: 297mm; background: #fff; display: flex; flex-direction: column; box-sizing: border-box;">
       <!-- Header -->
       <div style="width: 100%; border-bottom: 5px solid #000; padding: 10mm 20mm 5mm 20mm; box-sizing: border-box; display: table;">
         <div style="display: table-cell; vertical-align: middle; text-align: left; padding-right: 15mm;">
-          <img src="${companyLogo}" alt="Logo" style="height: 100px; width: auto; max-width: 350px; display: block; object-fit: contain; padding: 0 2px;">
+          ${logo_url ? `<img src="${logo_url}" alt="Logo" style="height: 100px; width: auto; max-width: 350px; display: block; object-fit: contain; padding: 0 2px;">` : ''}
         </div>
         <div style="display: table-cell; vertical-align: middle; text-align: left; line-height: 1.2;">
           <div style="display: inline-block; text-align: left; font-size: 11pt; white-space: nowrap;">
@@ -95,7 +119,7 @@ const generateSalarySlipHTML = (data) => {
                  </div>
                </div>
                <div style="display: table-cell; vertical-align: middle; font-weight: bold;">
-                 www.arhamitsolution.in
+                 ${company_website}
                </div>
             </div>
             <div style="display: table;">
@@ -108,7 +132,7 @@ const generateSalarySlipHTML = (data) => {
                  </div>
                </div>
                <div style="display: table-cell; vertical-align: middle; font-weight: bold;">
-                 info@arhamitsolution.in
+                 ${company_email}
                </div>
             </div>
           </div>
@@ -182,21 +206,20 @@ const generateSalarySlipHTML = (data) => {
             </div>
           </div>
           <div style="text-align: right; position: relative;">
-            <img src="${stampPng}" alt="Stamp" style="width: 120px; position: absolute; right: 30px; top: -75px; opacity: 0.9;">
-            <div style="position: relative; z-index: 2;">
+            ${stamp_url ? `<img src="${stamp_url}" alt="Stamp" style="height: 90px; width: auto; max-width: 140px; position: absolute; right: 30px; top: -75px; opacity: 0.9; object-fit: contain;">` : ''}
+            <div style="position: relative; z-index: 2; display: flex; flex-direction: column; align-items: flex-end;">
+              ${signature_url ? `<img src="${signature_url}" alt="Signature" style="height: 45px; margin-bottom: 5px; object-fit: contain;">` : '<div style="height: 50px;"></div>'}
               <p style="font-weight: bold; margin: 0;">Best Regards,</p>
-              <p style="font-weight: bold; margin: 0; font-size: 13pt;">Sharjeel Iqbal</p>
-              <p style="font-size: 10pt; margin: 2px 0;">HR & BDE Executive</p>
-              <p style="font-weight: bold; margin: 0;">Arham IT Solution</p>
+              <p style="font-weight: bold; margin: 0; font-size: 13pt;">${hr_name}</p>
+              <p style="font-size: 10pt; margin: 2px 0;">${hr_designation}</p>
+              <p style="font-weight: bold; margin: 0;">${company_name}</p>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Footer -->
       <div style="margin-top: auto; border-top: 3px solid #000; padding: 15px 20px; textAlign: center; font-size: 10pt; font-weight: bold; background: #fff; width: 100%; box-sizing: border-box; text-align: center;">
-        Above Being Healthy Gym, Near Surbhi Hospital, Nagar–Sambhaji Nagar Road,<br />
-        Ahilyanagar, Maharashtra 414003
+        ${company_address}
       </div>
     </div>
   `;
