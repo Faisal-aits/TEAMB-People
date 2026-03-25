@@ -42,8 +42,8 @@
             </PrivateRoute>
           } />
           
-          <Route path="/sub-admin/*" element={
-            <PrivateRoute requiredRole="sub_admin">
+          <Route path="/hr/*" element={
+            <PrivateRoute requiredRole="hr">
               <SubAdminDashboard />
             </PrivateRoute>
           } />

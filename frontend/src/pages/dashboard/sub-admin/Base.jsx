@@ -1,5 +1,6 @@
 // src/pages/dashboard/employee/Base.jsx
 import React, { useState, useEffect } from 'react';
+import { BsPersonCircle } from "react-icons/bs";
 import { useAuth } from '../../../contexts/AuthContext';
 import './Base.css';
 import Dashboard from './Dashboard .jsx';
@@ -13,6 +14,14 @@ import InternshipManagement from './InternshipManagement.jsx';
 import Projects from './Projects.jsx';
 import Reports from './Reports.jsx';
 import Settings from './Settings.jsx';
+import HRDashboard from './HRDashboard.jsx';
+import OfferLetter from '../HR/OfferLetter.jsx'; //Offer letter jsx HR Folder  
+import SalarySlip from '../HR/SalarySlip.jsx';
+import SalaryHistory from '../HR/SalaryHistory.jsx';
+import EmployeeDirectory from '../HR/EmployeeDirectory.jsx';
+import ResignationRequests from '../HR/ResignationRequests.jsx';
+import ExperienceLetters from '../HR/ExperienceLetters.jsx';
+import IncrementLetters from '../HR/IncrementLetters.jsx';
 
 const Base = () => {
   const [activeTab, setActiveTab] = useState(() => {
@@ -85,7 +94,7 @@ const Base = () => {
     if (!user) return 'Employee';
     const roleMap = {
       'admin': 'Administrator',
-      'sub_admin': 'Sub Administrator', 
+      'hr': 'HR', 
       'employee': 'Employee',
       'student': 'Student'
     };
@@ -146,16 +155,24 @@ const Base = () => {
         return <Leave {...contentProps} />;
       case 'student': // Add these cases
         return <StudentManagement {...contentProps} />;
-      case 'courses':
-        return <CourseManagement {...contentProps} />;
-      case 'internship':
-        return <InternshipManagement {...contentProps} />;
-      case 'projects':
-        return <Projects {...contentProps} />;
-      case 'reports':
-        return <Reports {...contentProps} />;
-      case 'settings':
-        return <Settings {...contentProps} />;
+     
+      
+         case 'hr':
+        return <HRDashboard setActiveTab={setActiveTab}/>;
+      case 'offer-letter':
+        return <OfferLetter  {...contentProps} />;
+      case 'salary-slip':
+        return <SalarySlip {...contentProps} />;
+      case 'salary-history':
+        return <SalaryHistory {...contentProps} />;
+      case 'hr-employee-directory':
+        return <EmployeeDirectory {...contentProps} />;
+      case 'resignation':
+        return <ResignationRequests {...contentProps} />;
+      case 'experience-letter':
+        return <ExperienceLetters{...contentProps} />;
+      case 'increment-letter':
+        return <IncrementLetters{...contentProps} />;
       default:
         return <Dashboard {...contentProps} />;
     }
@@ -210,7 +227,12 @@ const Base = () => {
                   {sidebarOpen && <span className="nav-text">Personal Info</span>}
                 </button>
               </li>
-
+ <li className={activeTab === 'hr' ? 'active' : ''}>
+                <button onClick={() => setActiveTab('hr')}>
+                  <span className="nav-icon"><BsPersonCircle /></span>
+                  {sidebarOpen && <span className="nav-text">HR Dashboard</span>}
+                </button>
+              </li>
               {/* Expense */}
               {/* <li className={activeTab === 'expense' ? 'active' : ''}>
                 <button onClick={() => setActiveTab('expense')}>

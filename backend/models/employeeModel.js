@@ -34,7 +34,7 @@ getAll: async (tenantId, filters = {}) => {
             JOIN roles r ON u.role_id = r.id
             LEFT JOIN employee_details ed ON u.id = ed.user_id
             LEFT JOIN departments d ON ed.department_id = d.id
-            WHERE u.tenant_id = ? AND r.name IN ('admin', 'sub_admin', 'employee')
+            WHERE u.tenant_id = ? AND r.name IN ('admin', 'hr', 'employee')
         `;
         const params = [tenantId];
 

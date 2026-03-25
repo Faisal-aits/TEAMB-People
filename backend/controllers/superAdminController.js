@@ -156,7 +156,7 @@ const superAdminController = {
             // Create default roles for tenant
             const roleNames = [
                 { name: 'admin', description: 'Tenant Administrator' },
-                { name: 'sub_admin', description: 'Sub Administrator / HR' },
+                { name: 'hr', description: 'Sub Administrator / HR' },
                 { name: 'employee', description: 'Employee' },
                 { name: 'student', description: 'Student' }
             ];

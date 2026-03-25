@@ -34,7 +34,7 @@ const EmployeeManagement = () => {
     pan_number: '',
     aadhar_number: '',
     employee_id: '', // Manual employee ID
-    role_id: '3' // Default role: employee (3=employee, 2=sub-admin, 1=admin)
+    role_id: '3' // Default role: employee (3=employee, 2=hr, 1=admin)
   });
 
   const [editFormData, setEditFormData] = useState({
@@ -62,7 +62,7 @@ const EmployeeManagement = () => {
   // Role options - including all roles
   const roleOptions = [
     { id: '1', name: 'Admin' },
-    { id: '2', name: 'Sub-Admin' },
+    { id: '2', name: 'HR' },
     { id: '3', name: 'Employee' }
     
   ];
@@ -280,7 +280,7 @@ const EmployeeManagement = () => {
   const getRoleIdFromRoleName = (roleName) => {
     switch(roleName?.toLowerCase()) {
       case 'admin': return '1';
-      case 'sub-admin': return '2';
+      case 'hr': return '2';
       case 'employee': return '3';
       case 'student': return '4';
       default: return '3';
@@ -461,8 +461,8 @@ const EmployeeManagement = () => {
       case 'admin':
         badgeClass += 'role-admin';
         break;
-      case 'sub-admin':
-        badgeClass += 'role-sub-admin';
+      case 'hr':
+        badgeClass += 'role-hr';
         break;
       case 'employee':
         badgeClass += 'role-employee';
@@ -1007,7 +1007,7 @@ const EmployeeManagement = () => {
               </div>
 
               {/* Employment Details - Only show for employees/admins */}
-              {(selectedEmployee.role_name?.toLowerCase() === 'admin' || selectedEmployee.role_name?.toLowerCase() === 'sub-admin' || selectedEmployee.role_name?.toLowerCase() === 'employee') && (
+              {(selectedEmployee.role_name?.toLowerCase() === 'admin' || selectedEmployee.role_name?.toLowerCase() === 'hr' || selectedEmployee.role_name?.toLowerCase() === 'employee') && (
                 <div className="form-section">
                   <h3 className="section-title">Employment Details</h3>
                   <div className="details-grid">
@@ -1032,7 +1032,7 @@ const EmployeeManagement = () => {
               )}
 
               {/* Bank Details - Only show for employees/admins */}
-              {(selectedEmployee.role_name?.toLowerCase() === 'admin' || selectedEmployee.role_name?.toLowerCase() === 'sub-admin' || selectedEmployee.role_name?.toLowerCase() === 'employee') && (
+              {(selectedEmployee.role_name?.toLowerCase() === 'admin' || selectedEmployee.role_name?.toLowerCase() === 'hr' || selectedEmployee.role_name?.toLowerCase() === 'employee') && (
                 <div className="form-section">
                   <h3 className="section-title">Bank Details</h3>
                   <div className="bank-details-row">

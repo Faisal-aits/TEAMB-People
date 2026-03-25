@@ -143,7 +143,7 @@ const AdminLayout = () => {
     if (!user) return 'Admin';
     const roleMap = {
       'admin': 'Administrator',
-      'sub_admin': 'Sub Administrator',
+      'hr': 'HR',
       'employee': 'Employee',
       'student': 'Student'
     };
