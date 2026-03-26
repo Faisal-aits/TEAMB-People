@@ -53,7 +53,7 @@ npm install
 Create a `.env` file in the backend directory:
 ```
 PORT=3000
-MYSQL_HOST=localhost
+DB_HOST=localhost
 MYSQL_USER=root
 MYSQL_PASSWORD=your_password
 MYSQL_DB=aits
