@@ -4,20 +4,37 @@ const Employee = require('../models/employeeModel');
 
 const employeeController = {
     // Get all employees
-    getAllEmployees: async (req, res) => {
-        try {
-            const filters = {};
-            if (req.query.department_id) filters.department_id = req.query.department_id;
-            if (req.query.is_active !== undefined) filters.is_active = req.query.is_active === 'true';
-            if (req.query.role_id) filters.role_id = req.query.role_id;
-
-            const employees = await Employee.getAll(req.tenantId, filters);
-            res.json({ employees });
-        } catch (error) {
-            console.error('Get employees error:', error);
-            res.status(500).json({ message: 'Server error' });
+   getAllEmployees: async (req, res) => {
+    try {
+        const filters = {};
+        if (req.query.department_id) filters.department_id = req.query.department_id;
+        if (req.query.is_active !== undefined) {
+            filters.is_active = req.query.is_active === 'true';
         }
-    },
+        if (req.query.role_id) filters.role_id = req.query.role_id;
+
+        console.log('Backend filters received:', req.query);
+        console.log('Processed filters:', filters);
+
+        const employees = await Employee.getAll(req.tenantId, filters);
+        console.log(`Found ${employees.length} employees`);
+        
+        // Log first employee if exists
+        if (employees.length > 0) {
+            console.log('First employee sample:', {
+                id: employees[0].employee_id,
+                name: `${employees[0].first_name} ${employees[0].last_name}`,
+                role: employees[0].role_name,
+                is_active: employees[0].is_active
+            });
+        }
+        
+        res.json({ employees });
+    } catch (error) {
+        console.error('Get employees error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+},
 
     // Get employee by ID
     getEmployee: async (req, res) => {

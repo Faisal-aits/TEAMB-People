@@ -34,7 +34,7 @@ const EmployeeManagement = () => {
     pan_number: '',
     aadhar_number: '',
     employee_id: '', // Manual employee ID
-    role_id: '3' // Default role: employee (3=employee, 2=sub-admin, 1=admin)
+    role_id: '3' // Default role: employee (3=employee, 2=hr, 1=admin)
   });
 
   const [editFormData, setEditFormData] = useState({
@@ -62,33 +62,62 @@ const EmployeeManagement = () => {
   // Role options - including all roles
   const roleOptions = [
     { id: '1', name: 'Admin' },
-    { id: '2', name: 'Sub-Admin' },
+    { id: '2', name: 'HR' },
     { id: '3', name: 'Employee' }
     
   ];
 
-  // Load initial data
- useEffect(() => {
-  loadEmployees();
-  loadDepartments();
-  loadSuggestedPositions();
-}, []); // 👈 load once only
+// Load initial data only once
+useEffect(() => {
+  const loadInitialData = async () => {
+    await Promise.all([
+      loadDepartments(),
+      loadSuggestedPositions()
+    ]);
+    await loadEmployees();
+  };
+  
+  loadInitialData();
+}, []); // Empty dependency array
 
-
- const loadEmployees = async () => {
+// Load employees when filters change
+useEffect(() => {
+  // Only load if not the initial load (departments have been loaded)
+  if (departments.length > 0) {
+    loadEmployees();
+  }
+}, [filters.department_id, filters.role_id, filters.is_active]);
+const loadEmployees = async () => {
   try {
     setLoading(true);
 
     const apiFilters = {};
 
-    if (filters.department_id) apiFilters.department_id = filters.department_id;
-    if (filters.role_id) apiFilters.role_id = filters.role_id;
-    if (filters.is_active !== '') apiFilters.is_active = filters.is_active;
+    if (filters.department_id) {
+      apiFilters.department_id = filters.department_id;
+    }
+    if (filters.role_id) {
+      apiFilters.role_id = filters.role_id;
+    }
+    // Important: Don't filter by is_active if it's empty string
+    if (filters.is_active && filters.is_active !== '') {
+      // Send as string, not boolean - check your backend expects
+      apiFilters.is_active = filters.is_active === 'true';
+    }
+
+    console.log('Loading employees with filters:', apiFilters);
 
     const response = await employeeAPI.getAll(apiFilters);
-    setEmployees(response.data.employees || []);
+    console.log('API Response:', response.data);
+    
+    // Ensure we're setting the employees array correctly
+    const employeesData = response.data.employees || [];
+    console.log('Number of employees received:', employeesData.length);
+    setEmployees(employeesData);
+    
   } catch (error) {
     console.error('Error loading employees:', error);
+    setEmployees([]); // Set empty array on error
   } finally {
     setLoading(false);
   }
@@ -128,12 +157,13 @@ const EmployeeManagement = () => {
     }));
   };
 
-  const handleFilterChange = (key, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [key]: value
-    }));
-  };
+ const handleFilterChange = (key, value) => {
+  console.log(`Filter changed: ${key} = ${value}`); // Debug log
+  setFilters(prev => ({
+    ...prev,
+    [key]: value
+  }));
+};
 
   const handlePositionChange = (e) => {
     const value = e.target.value;
@@ -155,73 +185,80 @@ const EmployeeManagement = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
+  
+  if (!formData.first_name || !formData.last_name || !formData.email) {
+    alert('Please fill in all required fields');
+    return;
+  }
+
+  setIsSubmitting(true);
+
+  try {
+    const employeeData = {
+      first_name: formData.first_name,
+      last_name: formData.last_name,
+      email: formData.email,
+      phone: formData.phone || null,
+      department_id: formData.department_id || null,
+      position: formData.position || null,
+      joining_date: formData.joining_date || null,
+      date_of_birth: formData.date_of_birth || null,
+      address: formData.address || null,
+      emergency_contact: formData.emergency_contact || null,
+      bank_account_number: formData.bank_account_number || null,
+      ifsc_code: formData.ifsc_code || null,
+      pan_number: formData.pan_number || null,
+      aadhar_number: formData.aadhar_number || null,
+      employee_id: formData.employee_id || null,
+      role_id: formData.role_id || '3'
+    };
+
+    const response = await employeeAPI.create(employeeData);
     
-    if (!formData.first_name || !formData.last_name || !formData.email) {
-      alert('Please fill in all required fields');
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const employeeData = {
-        first_name: formData.first_name,
-        last_name: formData.last_name,
-        email: formData.email,
-        phone: formData.phone || null,
-        department_id: formData.department_id || null,
-        position: formData.position || null,
-        joining_date: formData.joining_date || null,
-        date_of_birth: formData.date_of_birth || null,
-        address: formData.address || null,
-        emergency_contact: formData.emergency_contact || null,
-        bank_account_number: formData.bank_account_number || null,
-        ifsc_code: formData.ifsc_code || null,
-        pan_number: formData.pan_number || null,
-        aadhar_number: formData.aadhar_number || null,
-        employee_id: formData.employee_id || null,
-        role_id: formData.role_id || '3'
-      };
-
-      const response = await employeeAPI.create(employeeData);
-      
-      // Reset form
-      setFormData({
-        first_name: '',
-        last_name: '',
-        email: '',
-        phone: '',
-        department_id: '',
-        position: '',
-        joining_date: '',
-        date_of_birth: '',
-        address: '',
-        emergency_contact: '',
-        bank_account_number: '',
-        ifsc_code: '',
-        pan_number: '',
-        aadhar_number: '',
-        employee_id: '',
-        role_id: '3'
-      });
-      
-      setShowCustomPosition(false);
-      setCustomPosition('');
-      setIsModalOpen(false);
-      
-      // Reload employees to show the new one
-      await loadEmployees();
-      
-      alert('User added successfully!');
-    } catch (error) {
-      console.error('Error creating user:', error);
-      const errorMessage = error.response?.data?.message || 'Error creating user. Please try again.';
-      alert(errorMessage);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    // Reset form
+    setFormData({
+      first_name: '',
+      last_name: '',
+      email: '',
+      phone: '',
+      department_id: '',
+      position: '',
+      joining_date: '',
+      date_of_birth: '',
+      address: '',
+      emergency_contact: '',
+      bank_account_number: '',
+      ifsc_code: '',
+      pan_number: '',
+      aadhar_number: '',
+      employee_id: '',
+      role_id: '3'
+    });
+    
+    setShowCustomPosition(false);
+    setCustomPosition('');
+    setIsModalOpen(false);
+    
+    // Important: Reset filters to show all employees after adding
+    setFilters({
+      department_id: '',
+      is_active: '',
+      role_id: ''
+    });
+    
+    // Reload employees to show the new one
+    await loadEmployees();
+    
+    alert('User added successfully!');
+  } catch (error) {
+    console.error('Error creating user:', error);
+    const errorMessage = error.response?.data?.message || 'Error creating user. Please try again.';
+    alert(errorMessage);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const handleViewEmployee = (employee) => {
     setSelectedEmployee(employee);
@@ -280,7 +317,7 @@ const EmployeeManagement = () => {
   const getRoleIdFromRoleName = (roleName) => {
     switch(roleName?.toLowerCase()) {
       case 'admin': return '1';
-      case 'sub-admin': return '2';
+      case 'hr': return '2';
       case 'employee': return '3';
       case 'student': return '4';
       default: return '3';
@@ -386,13 +423,14 @@ const EmployeeManagement = () => {
   const handleExport = () => {
     try {
       // If no data to export
-      if (filteredEmployees.length === 0) {
+         if (employees.length === 0) {
         alert('No data to export!');
         return;
       }
 
       // Prepare data for export
-      const exportData = filteredEmployees.map(employee => ({
+     const exportData = employees.map(employee => ({
+
         'User ID': employee.employee_id || `UID-${employee.user_id}`,
         'First Name': employee.first_name,
         'Last Name': employee.last_name,
@@ -448,7 +486,7 @@ const EmployeeManagement = () => {
       XLSX.writeFile(workbook, fileName);
       
       console.log('✅ Export successful:', fileName);
-      alert(`Exported ${filteredEmployees.length} users successfully!`);
+      alert(`Exported ${employees.length} users successfully!`);
     } catch (error) {
       console.error('❌ Error exporting data:', error);
       alert('Error exporting data. Please try again.');
@@ -461,8 +499,8 @@ const EmployeeManagement = () => {
       case 'admin':
         badgeClass += 'role-admin';
         break;
-      case 'sub-admin':
-        badgeClass += 'role-sub-admin';
+      case 'hr':
+        badgeClass += 'role-hr';
         break;
       case 'employee':
         badgeClass += 'role-employee';
@@ -496,34 +534,6 @@ const EmployeeManagement = () => {
     return groups;
   }, {});
 
- const filteredEmployees = employees.filter(employee => {
-
-  // Department filter
-  if (
-    filters.department_id &&
-    String(employee.department_id) !== String(filters.department_id)
-  ) {
-    return false;
-  }
-
-  // Role filter
-  if (
-    filters.role_id &&
-    String(employee.role_id) !== String(filters.role_id)
-  ) {
-    return false;
-  }
-
-  // Status filter (ACTIVE / INACTIVE / ALL)
-  if (filters.is_active !== '') {
-    const status = employee.is_active ? 'true' : 'false';
-    if (status !== filters.is_active) {
-      return false;
-    }
-  }
-
-  return true;
-});
 
 
   if (loading) {
@@ -591,7 +601,7 @@ const EmployeeManagement = () => {
   <option value="false">Inactive</option>
 </select>
             
-            <button className="export-btn" onClick={handleExport} disabled={filteredEmployees.length === 0}>Export</button>
+            <button className="export-btn" onClick={handleExport} disabled={employees.length === 0}>Export</button>
           </div>
         </div>
         
@@ -610,7 +620,7 @@ const EmployeeManagement = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredEmployees.map(employee => (
+               {employees.map(employee => (
                 <tr key={employee.employee_id}>
                   <td>
                     <div className="employee-id-cell">
@@ -662,7 +672,7 @@ const EmployeeManagement = () => {
           </table>
         </div>
 
-        {filteredEmployees.length === 0 && (
+        {employees.length === 0 && (
           <div className="no-employees">
             <div className="no-data-icon">👥</div>
             <p>No users found</p>
@@ -1007,7 +1017,7 @@ const EmployeeManagement = () => {
               </div>
 
               {/* Employment Details - Only show for employees/admins */}
-              {(selectedEmployee.role_name?.toLowerCase() === 'admin' || selectedEmployee.role_name?.toLowerCase() === 'sub-admin' || selectedEmployee.role_name?.toLowerCase() === 'employee') && (
+              {(selectedEmployee.role_name?.toLowerCase() === 'admin' || selectedEmployee.role_name?.toLowerCase() === 'hr' || selectedEmployee.role_name?.toLowerCase() === 'employee') && (
                 <div className="form-section">
                   <h3 className="section-title">Employment Details</h3>
                   <div className="details-grid">
@@ -1032,7 +1042,7 @@ const EmployeeManagement = () => {
               )}
 
               {/* Bank Details - Only show for employees/admins */}
-              {(selectedEmployee.role_name?.toLowerCase() === 'admin' || selectedEmployee.role_name?.toLowerCase() === 'sub-admin' || selectedEmployee.role_name?.toLowerCase() === 'employee') && (
+              {(selectedEmployee.role_name?.toLowerCase() === 'admin' || selectedEmployee.role_name?.toLowerCase() === 'hr' || selectedEmployee.role_name?.toLowerCase() === 'employee') && (
                 <div className="form-section">
                   <h3 className="section-title">Bank Details</h3>
                   <div className="bank-details-row">

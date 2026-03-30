@@ -85,7 +85,7 @@ const Base = () => {
     if (!user) return 'Employee';
     const roleMap = {
       'admin': 'Administrator',
-      'sub_admin': 'Sub Administrator', 
+      'hr': 'HR', 
       'employee': 'Employee',
       'student': 'Student'
     };

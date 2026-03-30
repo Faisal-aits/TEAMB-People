@@ -32,6 +32,9 @@ const experienceLetterRoutes = require('./routes/experienceLetterRoutes');
 const incrementLetterRoutes = require('./routes/incrementLetterRoutes');
 const superAdminRoutes = require('./routes/superAdminRoutes');
 const { scheduleAutoAbsentCron } = require('./cron/attendanceCron');
+const teamRoutes = require('./routes/teamRoutes');
+const taskRoutes = require('./routes/taskRoutes');
+const dailyReportRoutes = require('./routes/dailyReportRoutes');
 scheduleAutoAbsentCron();
 
 const app = express();
@@ -109,7 +112,9 @@ app.use('/api/branding', brandingRoutes);
 app.use('/api/resignation-requests', resignationRoutes);
 app.use('/api/experience-letters', experienceLetterRoutes);
 app.use('/api/increment-letters', incrementLetterRoutes);
-
+app.use('/api/teams', teamRoutes);           // Add this
+app.use('/api/tasks', taskRoutes);           // Add this
+app.use('/api/daily-reports', dailyReportRoutes); 
 
 
 // Basic route

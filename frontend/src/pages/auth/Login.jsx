@@ -31,8 +31,8 @@ const Login = () => {
       case 'admin':
         navigate('/admin');
         break;
-      case 'sub_admin':
-        navigate('/sub-admin');
+      case 'hr':
+        navigate('/hr');
         break;
       case 'employee':
         navigate('/employee');
