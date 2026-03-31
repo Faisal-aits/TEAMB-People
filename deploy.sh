@@ -26,4 +26,8 @@ npm install
 # If your PM2 process is named differently, change 'server.js' below
 pm2 restart server.js || pm2 start server.js --name "work-desk-backend"
 
+# 5. Optional: Reload Nginx (Useful if you changed Nginx config ports)
+echo "--- Reloading Nginx ---"
+sudo systemctl reload nginx
+
 echo "--- Deployment Complete! ---"
