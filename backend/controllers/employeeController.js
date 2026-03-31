@@ -164,6 +164,11 @@ const employeeController = {
 
         } catch (error) {
             console.error('Delete employee error:', error);
+            if (error.code === 'ER_ROW_IS_REFERENCED_2') {
+                return res.status(400).json({ 
+                    message: 'Cannot delete this employee because they have associated records (attendance, tasks, etc.). Please edit and change their status to INACTIVE instead.' 
+                });
+            }
             res.status(500).json({ message: 'Server error' });
         }
     },
