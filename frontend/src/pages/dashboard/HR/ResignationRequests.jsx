@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { resignationAPI } from "../../../services/resignationAPI";
 import { resignationPDFService } from "../../../services/resignationPDFService";
 import { employeeAPI } from "../../../services/employeeAPI";
+import { API_BASE_URL } from "../../../services/api";
 import { HiOutlineDocumentText, HiOutlineEye, HiOutlineCheckCircle, HiOutlineXCircle, HiOutlineClock } from "react-icons/hi2";
 
 const ResignationRequests = () => {
@@ -169,7 +170,7 @@ const ResignationRequests = () => {
                           </>
                         )}
                         {req.status === 'accepted' && req.letter_url && (
-                          <button onClick={() => viewLetter('http://localhost:3000' + req.letter_url)} title="View Letter" style={{ padding: "6px", background: "#f1f5f9", border: "none", borderRadius: "4px", cursor: "pointer", color: "#4f46e5" }}><HiOutlineEye size={18} /></button>
+                          <button onClick={() => viewLetter(API_BASE_URL + req.letter_url)} title="View Letter" style={{ padding: "6px", background: "#f1f5f9", border: "none", borderRadius: "4px", cursor: "pointer", color: "#4f46e5" }}><HiOutlineEye size={18} /></button>
                         )}
                       </div>
                     </td>

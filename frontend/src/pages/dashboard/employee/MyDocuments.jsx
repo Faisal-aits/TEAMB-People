@@ -6,6 +6,7 @@ import { salarySlipPDFService } from '../../../services/salarySlipPDFService';
 import { resignationAPI } from '../../../services/resignationAPI';
 import { experienceLetterAPI } from '../../../services/experienceLetterAPI';
 import { incrementLetterAPI } from '../../../services/incrementLetterAPI';
+import { API_BASE_URL } from '../../../services/api';
 
 import { 
   HiOutlineDocumentText, 
@@ -91,7 +92,7 @@ const MyDocuments = () => {
         else await salarySlipPDFService.downloadSalarySlip(formData);
       } else if (type === 'backend-pdf') {
         // Direct URL open for backend-generated PDFs (Resign, Exp, Inc)
-        window.open('http://localhost:3000' + doc.letter_url, "_blank");
+        window.open(API_BASE_URL + doc.letter_url, "_blank");
       }
     } catch (err) {
       alert("Failed to process document. Please try again.");

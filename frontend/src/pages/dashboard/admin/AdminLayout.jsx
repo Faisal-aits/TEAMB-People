@@ -509,7 +509,7 @@ const AdminLayout = () => {
 
           {/* Hirirng manager module  */}
           {activeTab === 'hr' && <HRDashboard setActiveTab={setActiveTab} />}
-          {activeTab === 'offer-letter' && <OfferLetter />}  
+          {activeTab === 'offer-letter' && <OfferLetter />}
           {activeTab === 'salary-slip' && <SalarySlip />}
           {activeTab === 'salary-history' && <SalaryHistory />}
           {activeTab === 'hr-employee-directory' && <EmployeeDirectory />}
@@ -517,7 +517,7 @@ const AdminLayout = () => {
           {activeTab === 'resignation' && <ResignationRequests />}
           {activeTab === 'experience-letter' && <ExperienceLetters />}
           {activeTab === 'increment-letter' && <IncrementLetters />}
-          </main>
+        </main>
       </div>
     </div>
   );
