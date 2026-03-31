@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 /* Projects.css - Complete Styles for Projects Component */
 
 /* Project Management Section */
@@ -5,6 +6,59 @@
   background: #f8f9fa;
   padding: 1rem;
   min-height: 100vh;
+=======
+/* Filter button styles */
+.proj-filter-btn {
+  transition: all 0.3s ease;
+}
+
+.proj-filter-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.proj-filter-btn.active {
+  background: #4caf50 !important;
+  box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
+}
+
+/* Print styles for PDF export */
+@media print {
+  .proj-modal-overlay {
+    position: relative;
+    background: white;
+  }
+  
+  .proj-modal-content {
+    box-shadow: none;
+    margin: 0;
+    padding: 0;
+  }
+  
+  .proj-form-actions,
+  .proj-modal-header button,
+  .proj-filter-btn,
+  .proj-add-btn,
+  .proj-refresh-btn {
+    display: none !important;
+  }
+  
+  .proj-main-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .proj-main-table th,
+  .proj-main-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+  }
+}
+.multi-select-container {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+>>>>>>> Stashed changes
 }
 
 .project-management-header {

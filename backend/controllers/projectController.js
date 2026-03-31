@@ -166,42 +166,60 @@ const projectController = {
     }
   },
 
-  // Delete project
-  deleteProject: async (req, res) => {
-    try {
-      const projectId = req.params.id;
-
-      // Check if project exists
-      const existingProject = await Project.getById(req.tenantId, projectId);
-      if (!existingProject) {
-        return res.status(404).json({ 
-          success: false,
-          message: 'Project not found' 
-        });
-      }
-
-      const affectedRows = await Project.delete(req.tenantId, projectId);
-
-      if (affectedRows === 0) {
-        return res.status(404).json({ 
-          success: false,
-          message: 'Project not found' 
-        });
-      }
-
-      res.json({ 
-        success: true,
-        message: 'Project deleted successfully' 
-      });
-    } catch (error) {
-      console.error('Delete project error:', error);
-      res.status(500).json({ 
+  // projectController.js
+deleteProject: async (req, res) => {
+  try {
+    const projectId = req.params.id;
+    console.log(`=== DELETE REQUEST FOR PROJECT ${projectId} ===`);
+    console.log('Tenant ID:', req.tenantId);
+    
+    // First check if project exists
+    const existingProject = await Project.getById(req.tenantId, projectId);
+    
+    if (!existingProject) {
+      console.log('Project not found');
+      return res.status(404).json({ 
         success: false,
-        message: 'Server error',
-        error: error.message 
+        message: 'Project not found' 
       });
     }
-  },
+    
+    console.log('Found project:', existingProject.name);
+    console.log('Attempting to delete...');
+    
+    const affectedRows = await Project.delete(req.tenantId, projectId);
+    console.log('Delete result - affected rows:', affectedRows);
+    
+    if (affectedRows === 0) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Project not found' 
+      });
+    }
+    
+    console.log('Delete successful');
+    res.json({ 
+      success: true,
+      message: 'Project deleted successfully' 
+    });
+    
+  } catch (error) {
+    console.error('=== DELETE ERROR DETAILS ===');
+    console.error('Error name:', error.name);
+    console.error('Error code:', error.code);
+    console.error('Error message:', error.message);
+    console.error('SQL State:', error.sqlState);
+    console.error('SQL Message:', error.sqlMessage);
+    console.error('Full error:', error);
+    
+    // Send detailed error response
+    res.status(500).json({ 
+      success: false,
+      message: error.sqlMessage || error.message || 'Server error',
+      code: error.code
+    });
+  }
+},
 
   // Update project phase
   updateProjectPhase: async (req, res) => {

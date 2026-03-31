@@ -214,35 +214,122 @@ const Project = {
     return project;
   },
 
-  // Delete project
-  delete: async (tenantId, id) => {
-    const connection = await pool.getConnection();
+  // projectModel.js - Updated delete method
+delete: async (tenantId, id) => {
+  const connection = await pool.getConnection();
+  
+  try {
+    await connection.beginTransaction();
+    console.log(`Starting deletion of project ${id} for tenant ${tenantId}`);
+
+    // List of possible tables that might reference projects
+    // Delete in order of dependency (child tables first)
     
-    try {
-      await connection.beginTransaction();
-
-      // First delete phases
-      await connection.execute('DELETE FROM project_phases WHERE project_id = ? AND tenant_id = ?', [id, tenantId]);
-      
-      // Delete team members
-      await connection.execute('DELETE FROM project_team_members WHERE project_id = ? AND tenant_id = ?', [id, tenantId]);
-      
-      // Delete history
-      await connection.execute('DELETE FROM project_history WHERE project_id = ? AND tenant_id = ?', [id, tenantId]);
-      
-      // Then delete project
-      const [result] = await connection.execute('DELETE FROM projects WHERE id = ? AND tenant_id = ?', [id, tenantId]);
-      
-      await connection.commit();
-      return result.affectedRows;
-    } catch (error) {
-      await connection.rollback();
-      throw error;
-    } finally {
-      connection.release();
+    const tablesToCheck = [
+      'project_phases',
+      'project_team_members', 
+      'project_history',
+      'tasks',
+      'project_documents',
+      'project_comments',
+      'project_attachments',
+      'project_milestones',
+      'project_budget',
+      'project_risks',
+      'project_changes'
+    ];
+    
+    // Try to delete from each table if it exists
+    for (const table of tablesToCheck) {
+      try {
+        // Check if table exists first
+        const [tableExists] = await connection.execute(`
+          SELECT COUNT(*) as count 
+          FROM information_schema.tables 
+          WHERE table_schema = DATABASE() 
+          AND table_name = ?
+        `, [table]);
+        
+        if (tableExists[0].count > 0) {
+          // Check if column exists in the table
+          const [columnExists] = await connection.execute(`
+            SELECT COUNT(*) as count 
+            FROM information_schema.columns 
+            WHERE table_schema = DATABASE() 
+            AND table_name = ? 
+            AND column_name IN ('project_id', 'projectId')
+          `, [table]);
+          
+          if (columnExists[0].count > 0) {
+            // Try both possible column names
+            try {
+              const [result] = await connection.execute(
+                `DELETE FROM ${table} WHERE (project_id = ? OR projectId = ?) AND tenant_id = ?`,
+                [id, id, tenantId]
+              );
+              if (result.affectedRows > 0) {
+                console.log(`Deleted ${result.affectedRows} records from ${table}`);
+              }
+            } catch (err) {
+              console.log(`Could not delete from ${table}:`, err.message);
+            }
+          }
+        }
+      } catch (err) {
+        console.log(`Error processing table ${table}:`, err.message);
+      }
     }
-  },
-
+    
+    // Also try to delete from generic tables that might reference projects
+    try {
+      // Delete from any table that has project_id column (dynamic approach)
+      const [allTables] = await connection.execute(`
+        SELECT DISTINCT TABLE_NAME 
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_SCHEMA = DATABASE() 
+        AND COLUMN_NAME IN ('project_id', 'projectId')
+        AND TABLE_NAME != 'projects'
+      `);
+      
+      for (const tableRow of allTables) {
+        const tableName = tableRow.TABLE_NAME;
+        try {
+          const [result] = await connection.execute(
+            `DELETE FROM ${tableName} WHERE (project_id = ? OR projectId = ?) AND tenant_id = ?`,
+            [id, id, tenantId]
+          );
+          if (result.affectedRows > 0) {
+            console.log(`Deleted ${result.affectedRows} records from ${tableName}`);
+          }
+        } catch (err) {
+          console.log(`Could not delete from ${tableName}:`, err.message);
+        }
+      }
+    } catch (err) {
+      console.log('Error finding related tables:', err.message);
+    }
+    
+    // Finally delete the project itself
+    const [result] = await connection.execute(
+      'DELETE FROM projects WHERE id = ? AND tenant_id = ?',
+      [id, tenantId]
+    );
+    
+    console.log(`Project deletion affected ${result.affectedRows} rows`);
+    
+    await connection.commit();
+    console.log('Transaction committed successfully');
+    
+    return result.affectedRows;
+    
+  } catch (error) {
+    await connection.rollback();
+    console.error('Error in Project.delete:', error);
+    throw error;
+  } finally {
+    connection.release();
+  }
+},
   // Update project phase
   updatePhase: async (tenantId, projectId, phaseName, phaseData) => {
     const { status, progress, comments } = phaseData;
