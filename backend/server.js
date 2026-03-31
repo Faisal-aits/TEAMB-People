@@ -54,7 +54,27 @@ const upload = multer({
 });
 
 // Middleware - IN THIS ORDER:
-app.use(cors()); // 1. CORS first
+// 1. CORS first - allow production domains and localhost
+const allowedOrigins = [
+  'https://work-desk.tech',
+  'https://www.work-desk.tech',
+  'https://admin.work-desk.tech',
+  'http://localhost:5173',
+  'http://localhost:5174',
+];
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant-Id'],
+}));
 
 app.use(express.json({ limit: '10mb' })); // 2. JSON parsing with limit
 app.use(express.urlencoded({ extended: true, limit: '10mb' })); // 3. URL encoded
