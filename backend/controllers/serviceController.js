@@ -1,5 +1,5 @@
 // backend/controllers/serviceController.js
-const Service = require('../models/ServiceModel');
+const Service = require('../models/serviceModel');
 
 const serviceController = {
   // Get all services
