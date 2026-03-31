@@ -62,6 +62,13 @@ const EmployeeManagement = () => {
   // Role options - fetched dynamically from API
   const [roleOptions, setRoleOptions] = useState([]);
 
+  // Helper: check if selected role is a non-student role (show employment/bank fields)
+  const isNonStudentRole = (roleId) => {
+    if (!roleId || roleOptions.length === 0) return true; // Show by default while loading
+    const role = roleOptions.find(r => r.id === String(roleId));
+    return !role || role.name.toLowerCase() !== 'student';
+  };
+
 // Load initial data only once
 useEffect(() => {
   const loadInitialData = async () => {
@@ -125,7 +132,7 @@ const loadEmployees = async () => {
       const roles = response.data.roles || [];
       setRoleOptions(roles.filter(r => r.name !== 'student').map(r => ({
         id: String(r.id),
-        name: r.name === 'sub_admin' ? 'Sub Admin' : r.name.charAt(0).toUpperCase() + r.name.slice(1)
+        name: r.name.charAt(0).toUpperCase() + r.name.slice(1)
       })));
       // Set default role to employee
       const employeeRole = roles.find(r => r.name === 'employee');
@@ -264,10 +271,10 @@ const loadEmployees = async () => {
     // Reload employees to show the new one
     await loadEmployees();
     
-    alert('User added successfully!');
+    alert('Employee added successfully!');
   } catch (error) {
-    console.error('Error creating user:', error);
-    const errorMessage = error.response?.data?.message || 'Error creating user. Please try again.';
+    console.error('Error creating employee:', error);
+    const errorMessage = error.response?.data?.message || 'Error creating employee. Please try again.';
     alert(errorMessage);
   } finally {
     setIsSubmitting(false);
@@ -377,10 +384,10 @@ const loadEmployees = async () => {
       // Reload employees to show updated data
       await loadEmployees();
       
-      alert('User updated successfully!');
+      alert('Employee updated successfully!');
     } catch (error) {
-      console.error('Error updating user:', error);
-      const errorMessage = error.response?.data?.message || 'Error updating user. Please try again.';
+      console.error('Error updating employee:', error);
+      const errorMessage = error.response?.data?.message || 'Error updating employee. Please try again.';
       alert(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -404,16 +411,16 @@ const loadEmployees = async () => {
               // Remove from local state
               setEmployees(prev => prev.filter(emp => emp.employee_id !== employee.employee_id));
               setIsViewModalOpen(false);
-              alert('User permanently deleted from database!');
+              alert('Employee permanently deleted from database!');
           } catch (error) {
-              console.error('Error deleting user:', error);
+              console.error('Error deleting employee:', error);
               
               if (error.response?.status === 404) {
-                  alert('User not found in database.');
+                  alert('Employee not found in database.');
               } else if (error.response?.status === 400) {
                   alert(error.response.data.message);
               } else {
-                  const errorMessage = error.response?.data?.message || 'Error deleting user. Please try again.';
+                  const errorMessage = error.response?.data?.message || 'Error deleting employee. Please try again.';
                   alert(errorMessage);
               }
           } finally {
@@ -487,16 +494,16 @@ const loadEmployees = async () => {
 
       // Create workbook
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Users Data');
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Employees Data');
 
       // Generate file name with current date
-      const fileName = `Users_Export_${new Date().toISOString().split('T')[0]}.xlsx`;
+      const fileName = `Employees_Export_${new Date().toISOString().split('T')[0]}.xlsx`;
 
       // Export to Excel
       XLSX.writeFile(workbook, fileName);
       
       console.log('✅ Export successful:', fileName);
-      alert(`Exported ${employees.length} users successfully!`);
+      alert(`Exported ${employees.length} employees successfully!`);
     } catch (error) {
       console.error('❌ Error exporting data:', error);
       alert('Error exporting data. Please try again.');
@@ -550,7 +557,7 @@ const loadEmployees = async () => {
     return (
       <div className="employee-section">
         <div className="loading-container">
-          <div>Loading users...</div>
+          <div>Loading employees...</div>
         </div>
       </div>
     );
@@ -619,8 +626,8 @@ const loadEmployees = async () => {
           <table className="employee-table">
             <thead>
               <tr>
-                <th>User ID</th>
-                <th>User</th>
+                <th>Employee ID</th>
+                <th>Employee</th>
                 <th>Contact</th>
                 <th>Department</th>
                 <th>Position</th>
@@ -685,7 +692,7 @@ const loadEmployees = async () => {
         {employees.length === 0 && (
           <div className="no-employees">
             <div className="no-data-icon">👥</div>
-            <p>No users found</p>
+            <p>No employees found</p>
             <p className="no-data-subtext">
               {filters.department_id || filters.role_id || filters.is_active !== 'true' 
                 ? 'Try changing your filters to see more results.'
@@ -696,7 +703,7 @@ const loadEmployees = async () => {
                 onClick={() => setIsModalOpen(true)}
                 className="add-first-btn"
               >
-                Add First User
+                Add First Employee
               </button>
             )}
           </div>
@@ -708,7 +715,7 @@ const loadEmployees = async () => {
         <div className="modal-overlay">
           <div className="modal-content1 large-modal">
             <div className="modal-header">
-              <h2>Add New User</h2>
+              <h2>Add New Employee</h2>
               <button 
                 className="close-btn"
                 onClick={() => setIsModalOpen(false)}
@@ -720,7 +727,7 @@ const loadEmployees = async () => {
             <form onSubmit={handleSubmit} className="employee-form">
               {/* User ID Field */}
               <div className="form-section">
-                <h3 className="section-title">User Identification</h3>
+                <h3 className="section-title">Employee Identification</h3>
                 <div className="form-row-four">
                   <div className="form-group">
                     <label>Employee ID (Optional)</label>
@@ -802,7 +809,7 @@ const loadEmployees = async () => {
               </div>
 
               {/* Employment Details - Only show for employees/admins */}
-              {(formData.role_id === '1' || formData.role_id === '2' || formData.role_id === '3') && (
+              {isNonStudentRole(formData.role_id) && (
                 <div className="form-section">
                   <h3 className="section-title">Employment Details</h3>
                   <div className="form-row-four">
@@ -902,7 +909,7 @@ const loadEmployees = async () => {
               </div>
 
               {/* Bank Details - Only show for employees/admins */}
-              {(formData.role_id === '1' || formData.role_id === '2' || formData.role_id === '3') && (
+              {isNonStudentRole(formData.role_id) && (
                 <div className="form-section">
                   <h3 className="section-title">Bank Details</h3>
                   <div className="form-row-four">
@@ -964,7 +971,7 @@ const loadEmployees = async () => {
                   className="submit-btn"
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? 'Creating...' : 'Create User'}
+                  {isSubmitting ? 'Creating...' : 'Create Employee'}
                 </button>
               </div>
             </form>
@@ -977,7 +984,7 @@ const loadEmployees = async () => {
         <div className="modal-overlay">
           <div className="modal-content1 large-modal">
             <div className="modal-header">
-              <h2>User Details</h2>
+              <h2>Employee Details</h2>
               <button 
                 className="close-btn"
                 onClick={() => setIsViewModalOpen(false)}
@@ -992,7 +999,7 @@ const loadEmployees = async () => {
                 <h3 className="section-title">Basic Information</h3>
                 <div className="details-grid">
                   <div className="detail-item">
-                    <label>User ID</label>
+                    <label>Employee ID</label>
                     <span>{selectedEmployee.employee_id || `UID-${selectedEmployee.user_id}`}</span>
                   </div>
                   <div className="detail-item">
@@ -1082,7 +1089,7 @@ const loadEmployees = async () => {
                   onClick={() => handleEditEmployee(selectedEmployee)}
                   className="edit-btn"
                 >
-                  Edit User
+                  Edit Employee
                 </button>
                 {selectedEmployee.email !== 'admin@arhamitsolutions.com' && (
                   <button
@@ -1112,7 +1119,7 @@ const loadEmployees = async () => {
         <div className="modal-overlay">
           <div className="modal-content1 large-modal">
             <div className="modal-header">
-              <h2>Edit User</h2>
+              <h2>Edit Employee</h2>
               <button 
                 className="close-btn"
                 onClick={() => setIsEditModalOpen(false)}
@@ -1173,7 +1180,7 @@ const loadEmployees = async () => {
               </div>
 
               {/* Employment Details - Only show for employees/admins */}
-              {(editFormData.role_id === '1' || editFormData.role_id === '2' || editFormData.role_id === '3') && (
+              {isNonStudentRole(editFormData.role_id) && (
                 <div className="form-section">
                   <h3 className="section-title">Employment Details</h3>
                   <div className="form-row-four">
@@ -1267,7 +1274,7 @@ const loadEmployees = async () => {
               </div>
 
               {/* Bank Details - Only show for employees/admins */}
-              {(editFormData.role_id === '1' || editFormData.role_id === '2' || editFormData.role_id === '3') && (
+              {isNonStudentRole(editFormData.role_id) && (
                 <div className="form-section">
                   <h3 className="section-title">Bank Details</h3>
                   <div className="form-row-four">
@@ -1329,7 +1336,7 @@ const loadEmployees = async () => {
                   className="submit-btn"
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? 'Updating...' : 'Update User'}
+                  {isSubmitting ? 'Updating...' : 'Update Employee'}
                 </button>
               </div>
             </form>
