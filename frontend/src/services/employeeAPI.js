@@ -23,6 +23,9 @@ export const employeeAPI = {
   // Delete employee
   delete: (id) => api.delete(`/employees/${id}`),
 
+  // Get roles for this tenant
+  getRoles: () => api.get('/employees/roles'),
+
   // Get departments
   getDepartments: () => api.get('/employees/departments'),
 

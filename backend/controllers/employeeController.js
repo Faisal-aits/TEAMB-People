@@ -1,8 +1,22 @@
-// backend/controllers/employeeController.js
 const FaceRecognition = require('../utils/faceRecognition');
 const Employee = require('../models/employeeModel');
+const pool = require('../config/database');
 
 const employeeController = {
+    // Get roles for this tenant
+    getRoles: async (req, res) => {
+        try {
+            const [roles] = await pool.execute(
+                'SELECT id, name, description FROM roles WHERE tenant_id = ? ORDER BY id',
+                [req.tenantId]
+            );
+            res.json({ roles });
+        } catch (error) {
+            console.error('Get roles error:', error);
+            res.status(500).json({ message: 'Server error' });
+        }
+    },
+
     // Get all employees
    getAllEmployees: async (req, res) => {
     try {

@@ -34,7 +34,7 @@ const EmployeeManagement = () => {
     pan_number: '',
     aadhar_number: '',
     employee_id: '', // Manual employee ID
-    role_id: '3' // Default role: employee (3=employee, 2=hr, 1=admin)
+    role_id: '' // Will be set after roles are fetched
   });
 
   const [editFormData, setEditFormData] = useState({
@@ -59,20 +59,16 @@ const EmployeeManagement = () => {
   const [customPosition, setCustomPosition] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Role options - including all roles
-  const roleOptions = [
-    { id: '1', name: 'Admin' },
-    { id: '2', name: 'HR' },
-    { id: '3', name: 'Employee' }
-    
-  ];
+  // Role options - fetched dynamically from API
+  const [roleOptions, setRoleOptions] = useState([]);
 
 // Load initial data only once
 useEffect(() => {
   const loadInitialData = async () => {
     await Promise.all([
       loadDepartments(),
-      loadSuggestedPositions()
+      loadSuggestedPositions(),
+      loadRoles()
     ]);
     await loadEmployees();
   };
@@ -122,6 +118,24 @@ const loadEmployees = async () => {
     setLoading(false);
   }
 };
+
+  const loadRoles = async () => {
+    try {
+      const response = await employeeAPI.getRoles();
+      const roles = response.data.roles || [];
+      setRoleOptions(roles.filter(r => r.name !== 'student').map(r => ({
+        id: String(r.id),
+        name: r.name === 'sub_admin' ? 'Sub Admin' : r.name.charAt(0).toUpperCase() + r.name.slice(1)
+      })));
+      // Set default role to employee
+      const employeeRole = roles.find(r => r.name === 'employee');
+      if (employeeRole) {
+        setFormData(prev => ({ ...prev, role_id: String(employeeRole.id) }));
+      }
+    } catch (error) {
+      console.error('Error loading roles:', error);
+    }
+  };
 
   const loadDepartments = async () => {
     try {
@@ -211,7 +225,7 @@ const loadEmployees = async () => {
       pan_number: formData.pan_number || null,
       aadhar_number: formData.aadhar_number || null,
       employee_id: formData.employee_id || null,
-      role_id: formData.role_id || '3'
+      role_id: formData.role_id || roleOptions.find(r => r.name === 'Employee')?.id || ''
     };
 
     const response = await employeeAPI.create(employeeData);
@@ -233,7 +247,7 @@ const loadEmployees = async () => {
       pan_number: '',
       aadhar_number: '',
       employee_id: '',
-      role_id: '3'
+      role_id: roleOptions.find(r => r.name === 'Employee')?.id || ''
     });
     
     setShowCustomPosition(false);
@@ -306,22 +320,18 @@ const loadEmployees = async () => {
       ifsc_code: employee.ifsc_code || '',
       pan_number: employee.pan_number || '',
       aadhar_number: employee.aadhar_number || '',
-      role_id: getRoleIdFromRoleName(employee.role_name) || '3'
+      role_id: String(employee.role_id) || getRoleIdFromRoleName(employee.role_name) || ''
     });
     
     setIsViewModalOpen(false);
     setIsEditModalOpen(true);
   };
 
-  // Helper function to get role ID from role name
+  // Helper function to get role ID from role name (uses dynamic roleOptions)
   const getRoleIdFromRoleName = (roleName) => {
-    switch(roleName?.toLowerCase()) {
-      case 'admin': return '1';
-      case 'hr': return '2';
-      case 'employee': return '3';
-      case 'student': return '4';
-      default: return '3';
-    }
+    const role = roleOptions.find(r => r.name.toLowerCase() === roleName?.toLowerCase() ||
+      (roleName?.toLowerCase() === 'hr' && r.name.toLowerCase() === 'sub admin'));
+    return role?.id || roleOptions.find(r => r.name === 'Employee')?.id || '';
   };
 
   // Helper function to get role name from role ID
@@ -356,7 +366,7 @@ const loadEmployees = async () => {
         ifsc_code: editFormData.ifsc_code || null,
         pan_number: editFormData.pan_number || null,
         aadhar_number: editFormData.aadhar_number || null,
-        role_id: editFormData.role_id || '3'
+        role_id: editFormData.role_id || roleOptions.find(r => r.name === 'Employee')?.id || ''
       };
 
       await employeeAPI.update(selectedEmployee.employee_id, employeeData);

@@ -19,6 +19,9 @@ router.use(authMiddleware.verifyToken);
 // GET /api/employees - Get all employees
 router.get('/', employeeController.getAllEmployees);
 
+// GET /api/employees/roles - Get roles for this tenant
+router.get('/roles', employeeController.getRoles);
+
 // GET /api/employees/departments - Get departments
 router.get('/departments', employeeController.getDepartments);
 
