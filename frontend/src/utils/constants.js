@@ -1,7 +1,7 @@
 // src/utils/constants.js
 export const USER_ROLES = {
   ADMIN: 'admin',
-  SUB_ADMIN: 'sub_admin',
+  SUB_ADMIN: 'hr',
   EMPLOYEE: 'employee',
   STUDENT: 'student',
 };

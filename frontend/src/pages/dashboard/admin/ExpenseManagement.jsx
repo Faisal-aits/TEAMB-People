@@ -215,7 +215,7 @@ const ExpenseManagement = () => {
                       {new Date(expense.submitted_at).toLocaleDateString()}
                     </td>
                     <td style={{ padding: '1rem' }}>
-                      {expense.status === 'pending' && (user.role === 'admin' || user.role === 'sub_admin') && (
+                      {expense.status === 'pending' && (user.role === 'admin' || user.role === 'hr') && (
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                           <button
                             onClick={() => handleStatusUpdate(expense.id, 'approved')}

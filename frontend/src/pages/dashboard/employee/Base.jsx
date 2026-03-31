@@ -85,7 +85,7 @@ useEffect(() => {
     if (!user) return 'Employee';
     const roleMap = {
       'admin': 'Administrator',
-      'sub_admin': 'Sub Administrator', 
+      'hr': 'Sub Administrator', 
       'employee': 'Employee',
       'student': 'Student'
     };

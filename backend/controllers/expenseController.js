@@ -8,7 +8,7 @@ const expenseController = {
             const filters = {};
             
             // If user is not admin, only show their expenses
-            if (req.user.role_name !== 'admin' && req.user.role_name !== 'sub_admin') {
+            if (req.user.role_name !== 'admin' && req.user.role_name !== 'hr') {
                 filters.user_id = req.user.id;
             }
 
@@ -45,7 +45,7 @@ const expenseController = {
             }
 
             // Check if user has permission to view this expense
-            if (req.user.role_name !== 'admin' && req.user.role_name !== 'sub_admin' && expense.user_id !== req.user.id) {
+            if (req.user.role_name !== 'admin' && req.user.role_name !== 'hr' && expense.user_id !== req.user.id) {
                 return res.status(403).json({ message: 'Access denied' });
             }
 
@@ -108,7 +108,7 @@ const expenseController = {
             const expenseId = req.params.id;
 
             // Check if user has permission to approve/reject
-            if (req.user.role_name !== 'admin' && req.user.role_name !== 'sub_admin') {
+            if (req.user.role_name !== 'admin' && req.user.role_name !== 'hr') {
                 return res.status(403).json({ message: 'Access denied. Only admins can approve expenses.' });
             }
 
