@@ -1,30 +1,29 @@
 const db = require('../config/database');
 
 const teamController = {
-    // Get all teams
-    getAllTeams: async (req, res) => {
-        try {
-            const tenant_id = req.user?.tenant_id || req.tenantId || 1;
-            
-            const [teams] = await db.execute(`
-                SELECT 
-                    t.id,
-                    t.tenant_id,
-                    t.name,
-                    t.project_id,
-                    p.name as project_name,
-                    t.team_lead_id,
-                    CONCAT(u.first_name, ' ', u.last_name) as team_lead_name,
-                    t.description,
-                    t.status,
-                    t.created_at,
-                    t.updated_at
-                FROM teams t
-                LEFT JOIN projects p ON t.project_id = p.id AND p.tenant_id = ?
-                LEFT JOIN users u ON t.team_lead_id = u.id
-                WHERE t.tenant_id = ?
-                ORDER BY t.created_at DESC
-            `, [tenant_id, tenant_id]);
+  getAllTeams: async (req, res) => {
+    try {
+        const tenant_id = req.user?.tenant_id || req.tenantId || 1;
+        
+        const [teams] = await db.execute(`
+            SELECT 
+                t.id,
+                t.tenant_id,
+                t.name,
+                t.project_id,
+                p.name as project_name,
+                t.team_lead_id,
+                CONCAT(u.first_name, ' ', u.last_name) as team_lead_name,
+                t.description,
+                t.status,
+                t.created_at,
+                t.updated_at
+            FROM teams t
+            LEFT JOIN projects p ON t.project_id = p.id AND p.tenant_id = ?
+            LEFT JOIN users u ON t.team_lead_id = u.id
+            WHERE t.tenant_id = ? AND t.status = 'Active'  // Add this filter
+            ORDER BY t.created_at DESC
+        `, [tenant_id, tenant_id]);
             
             // Get members for each team
             for (let team of teams) {
