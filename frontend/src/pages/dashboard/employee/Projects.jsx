@@ -38,17 +38,18 @@ const ProjectManagement = () => {
   const [isPhaseModalOpen, setIsPhaseModalOpen] = useState(false);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+  const [isExcelTaskModalOpen, setIsExcelTaskModalOpen] = useState(false);
   const [isTaskDetailsModalOpen, setIsTaskDetailsModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
   const [selectedPhase, setSelectedPhase] = useState(null);
   const [selectedProjectTeams, setSelectedProjectTeams] = useState([]);
   const [selectedTeam, setSelectedTeam] = useState(null);
-const [isExcelEditorOpen, setIsExcelEditorOpen] = useState(false);
-const [editableTasks, setEditableTasks] = useState([]);
-const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-const [showMonthFilter, setShowMonthFilter] = useState(false);
+  const [isExcelEditorOpen, setIsExcelEditorOpen] = useState(false);
+  const [editableTasks, setEditableTasks] = useState([]);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [showMonthFilter, setShowMonthFilter] = useState(false);
   // Form states
   const [formData, setFormData] = useState({
     name: '',
@@ -620,365 +621,49 @@ const updateEditableTask = (index, field, value) => {
   };
   const canViewTeamManagement = () => currentUser.isProjectLead;
 
-  const handleEmployeeSelection = (employeeId) => {
-    if (!employeeId || employeeId === 'null' || employeeId === 'undefined' || employeeId === '') {
-      console.warn('Invalid employee ID attempted:', employeeId);
-      return;
-    }
-    
-    const id = String(employeeId).trim();
-    setSelectedEmployees(prev => 
-      prev.includes(id) ? prev.filter(eid => eid !== id) : [...prev, id]
-    );
-  };
-
-  const handleCreateTeam = async (e) => {
-    e.preventDefault();
-    
-    if (!teamFormData.name) {
-      alert('Team name is required');
-      return;
-    }
-    if (!teamFormData.project_id) {
-      alert('Please select a project for this team');
-      return;
-    }
-    
-    const validMembers = selectedEmployees.filter(id => {
-      return id && id !== 'null' && id !== 'undefined' && id !== '' && id !== null;
-    });
-    
-    if (validMembers.length === 0) {
-      alert('Please select at least one valid team member');
-      return;
-    }
-
-    try {
-      const teamData = {
-        name: teamFormData.name,
-        project_id: parseInt(teamFormData.project_id),
-        team_lead_id: teamFormData.team_lead_id ? parseInt(teamFormData.team_lead_id) : null,
-        description: teamFormData.description || '',
-        status: 'Active',
-        members: validMembers
-      };
-      
-      const response = await projectAPI.createTeam(teamData);
-      
-      if (response.data.success) {
-        setTeamFormData({ 
-          name: '', 
-          team_lead_id: '', 
-          project_id: '', 
-          description: '', 
-          members: [] 
-        });
-        setSelectedEmployees([]);
-        setIsTeamModalOpen(false);
-        await fetchAllData();
-        alert(response.data.message);
-        setActiveTab('teams');
-      } else {
-        alert(response.data.message || 'Failed to create team');
-      }
-    } catch (error) {
-      console.error('Error creating team:', error);
-      alert(error.response?.data?.message || 'Failed to create team');
-    }
-  };
-
-  const handleCreateTask = async (e) => {
-    e.preventDefault();
-    
-    if (!taskFormData.title || !taskFormData.title.trim()) {
-      alert('Task title is required');
-      return;
-    }
-    if (!taskFormData.project_id) {
-      alert('Project is required');
-      return;
-    }
-    if (selectedTaskEmployees.length === 0) {
-      alert('Please select at least one employee to assign this task to');
-      return;
-    }
-
-    try {
-      let createdCount = 0;
-      
-      for (const userId of selectedTaskEmployees) {
-        const numericUserId = Number(userId);
-        
-        const taskData = {
-          title: taskFormData.title.trim(),
-          description: taskFormData.description?.trim() || '',
-          priority: taskFormData.priority || 'Medium',
-          estimated_hours: Number(taskFormData.estimated_hours) || 0,
-          due_date: taskFormData.due_date || null,
-          project_id: Number(taskFormData.project_id),
-          team_id: taskFormData.team_id ? Number(taskFormData.team_id) : null,
-          assigned_by: currentUser?.id ? Number(currentUser.id) : null,
-          assigned_by_name: currentUser?.name || null,
-          status: 'To-Do',
-          review_status: 'Not Reviewed',
-          progress: 0,
-          assigned_to_member: numericUserId
-        };
-        
-        const response = await projectAPI.createTask(taskData);
-        
-        if (response.data.success) {
-          createdCount++;
-        }
-      }
-      
-      setTaskFormData({ 
-        title: '', 
-        description: '', 
-        priority: 'Medium', 
-        estimated_hours: 0, 
-        due_date: '', 
-        project_id: selectedProject?.id || '',
-        team_id: '',
-        assigned_to_members: [] 
-      });
-      setSelectedTaskEmployees([]);
-      setIsTaskModalOpen(false);
-      
-      await fetchAllData();
-      
-      if (createdCount > 0) {
-        alert(`${createdCount} task(s) created successfully!`);
-      } else {
-        alert('Failed to create tasks.');
-      }
-    } catch (err) {
-      console.error('Error creating task:', err);
-      alert(err.response?.data?.message || 'Failed to create task');
-    }
-  };
-
-  // Export to Excel for editing
-  const handleEditInExcel = (projectId) => {
-    const project = projects.find(p => p.id == projectId);
-    if (!project) return;
-    
-    const projectTasks = tasks.filter(task => task.project_id == projectId);
-    
-    if (projectTasks.length === 0) {
-      alert('No tasks to export for this project');
-      return;
-    }
-    
-    const exportData = projectTasks.map(task => ({
-      'Task ID': task.id,
-      'Date': new Date().toLocaleDateString(),
-      'Project': project.name,
-      'Task/Activity': task.title,
-      'Description (What I did)': task.description || '',
-      'Status': task.status,
-      'Remarks': task.remarks || '',
-      'Priority': task.priority,
-      'Due Date': task.due_date ? formatDate(task.due_date) : 'Not set',
-      'Assigned To': task.assigned_to_name || 'Not Assigned'
-    }));
-    
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, `Editable_Tasks_${project.name}`);
-    
-    // Auto-size columns
-    worksheet['!cols'] = [
-      { wch: 10 },  // Task ID
-      { wch: 12 },  // Date
-      { wch: 20 },  // Project
-      { wch: 30 },  // Task/Activity
-      { wch: 40 },  // Description
-      { wch: 15 },  // Status
-      { wch: 30 },  // Remarks
-      { wch: 10 },  // Priority
-      { wch: 12 },  // Due Date
-      { wch: 20 }   // Assigned To
-    ];
-    
-    const fileName = `Editable_Tasks_${project.name}_${new Date().toISOString().split('T')[0]}.xlsx`;
-    XLSX.writeFile(workbook, fileName);
-    
-    alert(`Excel file exported! Edit the Description, Status, and Remarks columns, then save the file. The changes will be applied when you import back.`);
-  };
-
-  // Import from Excel after editing
-  const handleImportFromExcel = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-    if (!selectedProject) {
-      alert('Please select a project first');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
-        
-        let updatedCount = 0;
-        let errors = [];
-
-        for (const row of jsonData) {
-          const taskId = row['Task ID'];
-          const description = row['Description (What I did)'];
-          const status = row['Status'];
-          const remarks = row['Remarks'];
-          
-          if (taskId) {
-            try {
-              const updateData = {};
-              if (description !== undefined) updateData.description = description;
-              if (status !== undefined) {
-                updateData.status = status;
-                // Auto-update progress based on status
-                if (status === 'Completed') {
-                  updateData.progress = 100;
-                  updateData.completed_date = new Date().toISOString().split('T')[0];
-                } else if (status === 'In Progress') {
-                  updateData.progress = 50;
-                } else if (status === 'Ready for Review') {
-                  updateData.progress = 80;
-                } else if (status === 'To-Do') {
-                  updateData.progress = 0;
-                } else if (status === 'Blocked') {
-                  updateData.progress = 0;
-                }
-              }
-              if (remarks !== undefined) updateData.remarks = remarks;
-              
-              if (Object.keys(updateData).length > 0) {
-                await projectAPI.updateTask(taskId, updateData);
-                updatedCount++;
-              }
-            } catch (err) {
-              errors.push(`Task ID ${taskId}: ${err.message}`);
-            }
-          }
-        }
-
-        await fetchAllData();
-        
-        let message = `✅ Import Complete!\n`;
-        message += `📝 Updated: ${updatedCount} tasks\n`;
-        if (errors.length > 0) {
-          message += `\n❌ Errors (${errors.length}):\n${errors.slice(0, 5).join('\n')}`;
-        }
-        alert(message);
-        
-        // Clear file input
-        event.target.value = '';
-        
-      } catch (err) {
-        console.error('Error importing tasks:', err);
-        alert('Failed to import tasks: ' + err.message);
-      }
-    };
-    reader.readAsArrayBuffer(file);
-  };
-
-  // Simple Monthly Export Function
-  const handleExportMonthlyReport = (projectId) => {
-    const project = projects.find(p => p.id == projectId);
-    if (!project) return;
-    
-    const projectTasks = tasks.filter(task => task.project_id == projectId);
-    
-    if (projectTasks.length === 0) {
-      alert('No tasks to export for this project');
-      return;
-    }
-    
-    const exportData = projectTasks.map(task => ({
-      'Date': new Date().toLocaleDateString(),
-      'Project': project.name,
-      'Task/Activity': task.title,
-      'Description': task.description || '',
-      'Status': task.status,
-      'Remarks': task.remarks || '',
-      'Priority': task.priority,
-      'Due Date': task.due_date ? formatDate(task.due_date) : 'Not set',
-      'Progress': `${task.progress || 0}%`,
-      'Assigned To': task.assigned_to_name || 'Not Assigned'
-    }));
-    
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, `Monthly_Report_${project.name}`);
-    
-    const fileName = `Monthly_Report_${project.name}_${new Date().toISOString().split('T')[0]}.xlsx`;
-    XLSX.writeFile(workbook, fileName);
-    
-    alert(`Monthly report exported successfully!`);
-  };
-
-  // Calculate overall project progress from all tasks
-  const calculateOverallProjectProgress = (projectId) => {
-    const projectTasks = tasks.filter(task => task.project_id == projectId);
-    
-    if (projectTasks.length === 0) return 0;
-    
-    let totalProgress = 0;
-    let completedTasks = 0;
-    let inProgressTasks = 0;
-    
-    projectTasks.forEach(task => {
-      totalProgress += task.progress || 0;
-      if (task.status === 'Completed') {
-        completedTasks++;
-      } else if (task.status === 'In Progress') {
-        inProgressTasks++;
-      }
-    });
-    
-    const averageProgress = totalProgress / projectTasks.length;
-    const completionRate = (completedTasks / projectTasks.length) * 100;
-    const inProgressRate = (inProgressTasks / projectTasks.length) * 50;
-    
-    // Weighted calculation: 50% average progress + 30% completion rate + 20% in-progress rate
-    let overallProgress = (averageProgress * 0.5) + (completionRate * 0.3) + (inProgressRate * 0.2);
-    
-    return Math.round(overallProgress);
-  };
-
-  const getTaskStatusIcon = (status) => {
-    switch(status) {
-      case 'Completed': return <FaCheckCircle style={{ color: '#28a745' }} />;
-      case 'In Progress': return <FaHourglassHalf style={{ color: '#ffc107' }} />;
-      case 'To-Do': return <FaClock style={{ color: '#6c757d' }} />;
-      case 'Blocked': return <FaExclamationTriangle style={{ color: '#dc3545' }} />;
-      default: return null;
-    }
-  };
-
-  const getReviewStatusBadge = (status) => {
-    const statusMap = {
-      'Approved': { class: 'review-approved', text: '✓ Approved' },
-      'Rejected': { class: 'review-rejected', text: '✗ Rejected' },
-      'Needs Rework': { class: 'review-rework', text: '⟳ Needs Rework' },
-      'Not Reviewed': { class: 'review-pending', text: '⏳ Pending' }
-    };
-    const config = statusMap[status] || statusMap['Not Reviewed'];
-    return <span className={`review-badge ${config.class}`}>{config.text}</span>;
-  };
-
   const handleUpdateTask = async (taskId, updateData) => {
     try {
       await projectAPI.updateTask(taskId, updateData);
       await fetchAllData();
-      return true;
+      alert('Task updated successfully');
     } catch (err) {
       console.error('Error updating task:', err);
-      return false;
+      alert('Failed to update task');
+    }
+  };
+
+  const handleUpdateTaskStatus = async (taskId, status) => {
+    const updateData = { status };
+    if (status === 'Completed') {
+      updateData.completed_date = new Date().toISOString().split('T')[0];
+      updateData.progress = 100;
+      updateData.review_status = 'Approved';
+    }
+    await handleUpdateTask(taskId, updateData);
+  };
+
+  const handleAcceptTask = async (taskId) => {
+    try {
+      const response = await projectAPI.acceptTask(taskId);
+      if (response.data.success) {
+        await fetchAllData();
+        alert('Task accepted!');
+      }
+    } catch (err) {
+      console.error('Error accepting task:', err);
+      alert('Failed to accept task.');
+    }
+  };
+
+  const handleAddComment = async (taskId, comment) => {
+    if (!comment.trim()) return;
+    try {
+      await projectAPI.addTaskComment(taskId, comment);
+      await fetchAllData();
+      alert('Comment added successfully');
+    } catch (err) {
+      console.error('Error adding comment:', err);
+      alert('Failed to add comment');
     }
   };
 
@@ -1024,6 +709,21 @@ const updateEditableTask = (index, field, value) => {
     }
   };
 
+  const handleUpdateReviewStatus = async (taskId, reviewStatus, comments) => {
+    const updateData = {
+      review_status: reviewStatus,
+      review_comments: comments,
+      review_date: new Date().toISOString().split(' ')[0],
+      reviewed_by: currentUser.id
+    };
+    if (reviewStatus === 'Approved') {
+      updateData.status = 'Completed';
+      updateData.completed_date = new Date().toISOString().split('T')[0];
+      updateData.progress = 100;
+    }
+    await handleUpdateTask(taskId, updateData);
+  };
+
   const handleDeleteProject = async () => {
     if (!selectedProject) return;
     try {
@@ -1038,6 +738,44 @@ const updateEditableTask = (index, field, value) => {
     } catch (err) {
       console.error('Error deleting project:', err);
       alert('Failed to delete project');
+    }
+    
+    const exportData = projectTasks.map(task => ({
+      'Date': new Date().toLocaleDateString(),
+      'Project': project.name,
+      'Task/Activity': task.title,
+      'Description': task.description || '',
+      'Status': task.status,
+      'Remarks': task.remarks || '',
+      'Priority': task.priority,
+      'Due Date': task.due_date ? formatDate(task.due_date) : 'Not set',
+      'Progress': `${task.progress || 0}%`,
+      'Assigned To': task.assigned_to_name || 'Not Assigned'
+    }));
+    
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, `Monthly_Report_${project.name}`);
+    
+    const fileName = `Monthly_Report_${project.name}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+    
+    alert(`Monthly report exported successfully!`);
+  };
+
+  const handleUpdatePhase = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await projectAPI.updatePhase(selectedProject.id, selectedPhase.name, phaseFormData);
+      if (response.data.success) {
+        await fetchAllData();
+        setIsPhaseModalOpen(false);
+        setSelectedPhase(null);
+        alert('Phase updated successfully!');
+      }
+    } catch (err) {
+      console.error('Error updating phase:', err);
+      alert('Failed to update phase');
     }
   };
 
@@ -1167,6 +905,16 @@ const updateEditableTask = (index, field, value) => {
           {canCreateTeam() && activeTab === 'teams' && (
             <button className="proj-add-btn" onClick={() => setIsTeamModalOpen(true)}><FaUsers /> Create Team</button>
           )}
+          {canCreateTask(selectedProject?.id) && activeTab === 'tasks' && (
+            <>
+              <button className="proj-add-btn" onClick={() => setIsTaskModalOpen(true)}><FaPlus /> Create Task</button>
+              <button className="proj-excel-btn" onClick={() => {
+                if (!selectedProject) alert('Please select a project first');
+                else handleExportTaskTemplate();
+              }}><FaFileExcel /> <FaDownload /> Export Task Sheet</button>
+              <button className="proj-import-btn" onClick={() => setIsExcelTaskModalOpen(true)}><FaUpload /> Import Tasks</button>
+            </>
+          )}
         </div>
       </div>
 
@@ -1195,8 +943,7 @@ const updateEditableTask = (index, field, value) => {
                 {departments.map(dept => <option key={dept} value={dept}>{dept}</option>)}
               </select>
               <button className="proj-export-btn" onClick={handleExportProjects} disabled={filteredProjects.length === 0}>Export</button>
-              
-              
+              <button className="proj-refresh-btn" onClick={fetchAllData}><FaSync /> Refresh</button>
             </div>
           </div>
           <div className="proj-table-wrapper">
@@ -1249,7 +996,7 @@ const updateEditableTask = (index, field, value) => {
           <div className="proj-table-header">
             <h3>Teams ({teams.filter(t => currentUser.managedProjects.includes(t.project_id)).length})</h3>
             <div className="proj-table-actions">
-              
+              <button className="proj-refresh-btn" onClick={fetchAllData}><FaSync /> Refresh</button>
               {canCreateTeam() && <button className="proj-add-btn" onClick={() => setIsTeamModalOpen(true)}><FaUsers /> Create Team</button>}
             </div>
           </div>

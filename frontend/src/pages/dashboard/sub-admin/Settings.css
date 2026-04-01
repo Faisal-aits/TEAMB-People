@@ -332,8 +332,7 @@
 
 /* Focus states for accessibility */
 .setting-form-input:focus,
-.setting-filter-btn:focus,
- {
+.setting-filter-btn:focus {
   outline: 2px solid #8a87c9;
   outline-offset: 2px;
 }

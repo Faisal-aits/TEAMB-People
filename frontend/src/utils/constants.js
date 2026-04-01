@@ -8,7 +8,7 @@ export const USER_ROLES = {
 
 export const ROLE_DISPLAY_NAMES = {
   [USER_ROLES.ADMIN]: 'Administrator',
-  [USER_ROLES.SUB_ADMIN]: 'Sub Administrator',
+  [USER_ROLES.SUB_ADMIN]: 'HR',
   [USER_ROLES.EMPLOYEE]: 'Employee',
   [USER_ROLES.STUDENT]: 'Student',
 };

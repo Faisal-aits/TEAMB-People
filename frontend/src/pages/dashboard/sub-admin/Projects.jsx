@@ -1,180 +1,452 @@
 import React, { useState, useEffect } from 'react';
+import { FaExclamationTriangle, FaBell } from 'react-icons/fa';
 import { projectAPI } from '../../../services/projectAPI';
-import { employeeAPI } from '../../../services/employeeAPI';
 import './Projects.css';
+import * as XLSX from 'xlsx';
 
-const Projects = () => {
-  const [userSession, setUserSession] = useState({
-    employeeId: '',
-    employeeName: '',
-    userId: null
-  });
+const ProjectManagement = () => {
   const [projects, setProjects] = useState([]);
+  const [projectLeads, setProjectLeads] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [employeeLoading, setEmployeeLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  // Fetch employee data from localStorage and API
+  const phases = ['Requirement Specification', 'System Design', 'Development', 'Integration & Testing', 'Deployment', 'Maintenance & Repeat Cycle'];
+  const projectStatuses = ['On Track', 'Delayed', 'At Risk', 'Completed', 'On Hold'];
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isPhaseModalOpen, setIsPhaseModalOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [selectedPhase, setSelectedPhase] = useState(null);
+  const [filters, setFilters] = useState({
+    status: '',
+    department: '',
+    project_lead: '',
+    phase: ''
+  });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [dashboardStats, setDashboardStats] = useState({
+    totalProjects: 0,
+    activeProjects: 0,
+    delayedProjects: 0,
+    completedProjects: 0
+  });
+
+  const [formData, setFormData] = useState({
+    name: '',
+    department: '',
+    project_lead: '',
+    start_date: '',
+    end_date: '',
+    current_phase: '',
+    status: 'On Track',
+    description: ''
+  });
+
+  const [phaseFormData, setPhaseFormData] = useState({
+    status: '',
+    progress: '',
+    comments: ''
+  });
+
+  // Fetch data on component mount
   useEffect(() => {
-    const fetchEmployeeData = async () => {
-      try {
-        setEmployeeLoading(true);
-        
-        // Get user data from localStorage (same as your Info component)
-        const userData = localStorage.getItem('user');
-        if (!userData) {
-          throw new Error('User data not found. Please log in again.');
-        }
-
-        const user = JSON.parse(userData);
-        console.log('Current user:', user);
-
-        if (!user.id) {
-          throw new Error('User ID not found.');
-        }
-
-        // Get employee data using user ID (same logic as your Info component)
-        const employee = await getEmployeeByUserId(user.id);
-        
-        if (!employee) {
-          throw new Error('Employee record not found for this user.');
-        }
-
-        console.log('Employee data for projects:', employee);
-          
-        // Set user session with actual data
-        setUserSession({
-          employeeId: employee.employee_id || employee.id,
-          employeeName: `${employee.first_name} ${employee.last_name}`,
-          userId: user.id
-        });
-
-      } catch (err) {
-        console.error('Error fetching employee data:', err);
-        setError(err.message || 'Failed to load employee data');
-      } finally {
-        setEmployeeLoading(false);
-      }
-    };
-
-    fetchEmployeeData();
+    fetchData();
   }, []);
 
-  // Get employee data by user ID from all employees list (same as your Info component)
-  const getEmployeeByUserId = async (userId) => {
+ useEffect(() => {
+  console.log('Project Leads loaded:', projectLeads);
+  console.log('Number of leads:', projectLeads.length);
+  
+  if (projectLeads.length > 0) {
+    console.log('Sample lead:', {
+      id: projectLeads[0].id,
+      idType: typeof projectLeads[0].id,
+      name: projectLeads[0].name,
+      position: projectLeads[0].position
+    });
+  }
+}, [projectLeads]);
+// In Projects.js, update the API calls for teams:
+
+// Fetch all employees for dropdown
+const fetchEmployees = async () => {
+  try {
+    const res = await projectAPI.getAllEmployees();
+    setEmployees(res.data.data || []);
+  } catch (err) {
+    console.error('Error fetching employees:', err);
+  }
+};
+
+// Fetch team leads for assignment
+const fetchTeamLeads = async () => {
+  try {
+    const res = await projectAPI.getTeamLeads();
+    setTeamLeads(res.data.data || []);
+  } catch (err) {
+    console.error('Error fetching team leads:', err);
+  }
+};
+
+// Fetch available employees for a team
+const fetchAvailableEmployees = async (teamId) => {
+  try {
+    const res = await projectAPI.getAvailableEmployees(teamId);
+    setAvailableEmployees(res.data.data || []);
+  } catch (err) {
+    console.error('Error fetching available employees:', err);
+  }
+};
+const fetchData = async () => {
+  try {
+    setLoading(true);
+    
+    console.log('Fetching projects...');
+    let projectsRes;
     try {
-      console.log('Fetching all employees to find user ID:', userId);
-      const response = await employeeAPI.getAll();
-      
-      if (response.data && response.data.employees) {
-        const employee = response.data.employees.find(emp => emp.user_id === userId);
-        console.log('Found employee:', employee);
-        return employee;
-      }
-      return null;
+      projectsRes = await projectAPI.getAll();
+      console.log('Projects response:', projectsRes);
     } catch (err) {
-      console.error('Error fetching employees list:', err);
-      return null;
+      console.error('Projects API failed:', err);
+      projectsRes = { data: { success: false, data: [] } };
     }
-  };
+    
+    console.log('Fetching stats...');
+    let statsRes;
+    try {
+      statsRes = await projectAPI.getStats();
+      console.log('Stats response:', statsRes);
+    } catch (err) {
+      console.error('Stats API failed:', err);
+      statsRes = { data: { success: false, data: {} } };
+    }
+    
+    console.log('Fetching employees...');
+    let employeesRes;
+    try {
+      employeesRes = await projectAPI.getEmployees();
+      console.log('Employees response:', employeesRes);
+    } catch (err) {
+      console.error('Employees API failed:', err);
+      employeesRes = { data: { success: false, data: [] } };
+    }
+    
+    // Get departments from a direct database query through a custom endpoint
+    console.log('Fetching departments from departments table...');
+    let deptsRes;
+    try {
+      // If you have a separate endpoint for departments from departments table
+      // Use that endpoint instead
+      deptsRes = await projectAPI.getDepartments();
+      console.log('Departments response:', deptsRes);
+    } catch (err) {
+      console.error('Departments API failed:', err);
+      deptsRes = { data: { success: false, data: [] } };
+    }
 
-  // Fetch projects from API
-  useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        setLoading(true);
-        const response = await projectAPI.getAll();
+    // Set data
+    if (projectsRes.data.success) {
+      const projectsData = projectsRes.data.data || [];
+      const projectsWithLead = projectsData.map(project => ({
+        ...project,
+        project_lead_name: project.manager
+      }));
+      setProjects(projectsWithLead);
+    } else {
+      setProjects([]);
+    }
+    
+    if (statsRes.data.success) {
+      setDashboardStats(statsRes.data.data || {});
+    } else {
+      setDashboardStats({ totalProjects: 0, activeProjects: 0, delayedProjects: 0, completedProjects: 0 });
+    }
+    
+    if (employeesRes.data.success) {
+      const employeesData = employeesRes.data.data || [];
+      setEmployees(employeesData);
+      
+      const allEmployeesExceptHR = employeesData.filter(emp => {
+        const role = emp.role_name?.toLowerCase();
+        const position = emp.position?.toLowerCase();
         
-        if (response.data.success) {
-          setProjects(response.data.data);
-        } else {
-          setError('Failed to fetch projects');
+        if (role === 'hr' || position === 'hr' || position === 'human resources') {
+          return false;
         }
-      } catch (err) {
-        console.error('Error fetching projects:', err);
-        setError('Error loading projects data');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    // Only fetch projects if we have employee data
-    if (!employeeLoading && userSession.employeeId) {
-      fetchProjects();
+        return true;
+      });
+      
+      setProjectLeads(allEmployeesExceptHR);
+    } else {
+      setProjectLeads([]);
     }
-  }, [employeeLoading, userSession.employeeId]);
-
-  // Check if employee is assigned to project (either as manager or team member)
-  const isEmployeeAssignedToProject = (project) => {
-    if (!userSession.employeeId || !userSession.employeeName) return false;
-
-    // Check if employee is the project manager (by name match)
-    const isManager = project.manager && project.manager.toLowerCase().includes(userSession.employeeName.toLowerCase());
     
-    // Check if employee is in the project team (by employee ID)
-    const isTeamMember = project.team && project.team.some(
-      member => member.employee_id === userSession.employeeId
-    );
+    // Handle departments - check if data exists
+    if (deptsRes.data.success && deptsRes.data.data && deptsRes.data.data.length > 0) {
+      setDepartments(deptsRes.data.data);
+    } else {
+      // If no departments from API, try to get from employees or use defaults
     
-    console.log(`Project: ${project.name}, Manager: ${project.manager}, IsManager: ${isManager}, IsTeamMember: ${isTeamMember}`);
-    return isManager || isTeamMember;
+    }
+    
+    setError('');
+    
+  } catch (err) {
+    console.error('Error fetching data:', err);
+    setError('Failed to load projects. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Transform database project data to match UI format
-  const transformProjectData = (dbProjects) => {
-    return dbProjects.map(project => ({
-      id: project.id,
-      projectName: project.name,
-      description: project.description,
-      department: project.department,
-      manager: project.manager,
-      startDate: project.start_date,
-      endDate: project.end_date,
-      phase: project.current_phase,
-      progress: project.progress || 0,
-      status: project.status,
-      team: project.team || [],
-      phases: project.phases || [],
-      // Role in project for display purposes
-      role: project.manager && project.manager.toLowerCase().includes(userSession.employeeName?.toLowerCase()) ? 'Manager' : 'Team Member'
-    }));
+  const handlePhaseInputChange = (e) => {
+    const { name, value } = e.target;
+    setPhaseFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Filter projects to show only those assigned to the logged-in employee
-  const assignedProjects = transformProjectData(projects).filter(project => 
-    isEmployeeAssignedToProject(project)
-  );
+  const handleFilterChange = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
 
-  const getProjectStatusBadge = (status) => {
-    const statusClasses = {
-      'Completed': 'project-status--approved',
-      'On Track': 'project-status--approved',
-      'In Progress': 'project-status--pending',
-      'Planning': 'project-status--pending',
-      'Delayed': 'project-status--rejected',
-      'At Risk': 'project-status--rejected',
-      'On Hold': 'project-status--rejected'
-    };
+  const sendNotificationToLead = async (projectLead, project) => {
+    try {
+      const notificationData = {
+        user_id: projectLead.id,
+        title: 'New Project Assignment',
+        message: `You have been assigned as Project Lead for "${project.name}". Please review the project details.`,
+        type: 'project_assignment',
+        project_id: project.id,
+        priority: 'high'
+      };
+      
+      await projectAPI.sendNotification(notificationData);
+      console.log(`✅ Notification sent to ${projectLead.name}`);
+    } catch (err) {
+      console.error('❌ Error sending notification:', err);
+    }
+  };
+
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  console.log('Form Data:', formData);
+  console.log('Project Leads:', projectLeads);
+  console.log('Selected Lead ID:', formData.project_lead);
+  
+  if (!formData.name || !formData.department || !formData.project_lead) {
+    alert('Please fill in all required fields (Project Name, Department, and Project Lead)');
+    return;
+  }
+
+  try {
+    // Find the lead - compare as strings (since employee_id is a string like 'AITS001')
+    const selectedLead = projectLeads.find(lead => String(lead.id) === String(formData.project_lead));
     
+    console.log('Found lead:', selectedLead);
+    
+    if (!selectedLead) {
+      alert(`Selected project lead not found. Available leads: ${projectLeads.map(l => `${l.id} - ${l.name}`).join(', ')}`);
+      return;
+    }
+
+   const projectData = {
+  name: formData.name,
+  department: formData.department,
+  manager: selectedLead.name,
+  start_date: formData.start_date || null,
+  end_date: formData.end_date || null,
+  current_phase: formData.current_phase || 'Planning',
+  status: formData.status,
+  description: formData.description || ''
+};
+
+    const response = await projectAPI.create(projectData);
+    
+    if (response.data.success) {
+      const newProject = response.data.data;
+      setProjects(prev => [newProject, ...prev]);
+      
+      await sendNotificationToLead(selectedLead, newProject);
+      
+      setFormData({
+        name: '', department: '', project_lead: '', start_date: '', 
+        end_date: '', current_phase: '', status: 'On Track', description: ''
+      });
+      setIsModalOpen(false);
+      await fetchData();
+      alert(`✅ Project added successfully! Notification sent to ${selectedLead.name}`);
+    } else {
+      throw new Error(response.data.message);
+    }
+  } catch (err) {
+    console.error('Error creating project:', err);
+    alert(err.response?.data?.message || 'Failed to create project. Please try again.');
+  }
+};
+
+  const handleViewProject = (project) => {
+    setSelectedProject(project);
+    setIsViewModalOpen(true);
+  };
+
+  const handleDeleteClick = (project) => {
+    setSelectedProject(project);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDeleteProject = async () => {
+    if (!selectedProject) return;
+
+    try {
+      const response = await projectAPI.delete(selectedProject.id);
+      
+      if (response.data.success) {
+        setProjects(prev => prev.filter(proj => proj.id !== selectedProject.id));
+        setIsDeleteModalOpen(false);
+        setIsViewModalOpen(false);
+        setSelectedProject(null);
+        await fetchData();
+        alert('Project deleted successfully!');
+      } else {
+        throw new Error(response.data.message);
+      }
+    } catch (err) {
+      console.error('Error deleting project:', err);
+      alert(err.response?.data?.message || 'Failed to delete project. Please try again.');
+    }
+  };
+
+  const handleEditPhase = (project, phase) => {
+    setSelectedProject(project);
+    setSelectedPhase(phase);
+    setPhaseFormData({
+      status: phase.status,
+      progress: phase.progress,
+      comments: phase.comments || ''
+    });
+    setIsPhaseModalOpen(true);
+  };
+
+  const handleUpdatePhase = async (e, shouldClose = false) => {
+    e.preventDefault();
+    
+    try {
+      const response = await projectAPI.updatePhase(
+        selectedProject.id, 
+        selectedPhase.name, 
+        phaseFormData
+      );
+      
+      if (response.data.success) {
+        setProjects(prev => prev.map(proj => 
+          proj.id === selectedProject.id ? response.data.data : proj
+        ));
+        setSelectedProject(response.data.data);
+        
+        if (shouldClose) {
+          setIsPhaseModalOpen(false);
+          setSelectedPhase(null);
+        }
+        alert('Phase updated successfully!');
+      } else {
+        throw new Error(response.data.message);
+      }
+    } catch (err) {
+      console.error('Error updating phase:', err);
+      alert(err.response?.data?.message || 'Failed to update phase. Please try again.');
+    }
+  };
+
+  const handleExport = () => {
+    try {
+      if (filteredProjects.length === 0) {
+        alert('No projects to export!');
+        return;
+      }
+
+      const exportData = filteredProjects.map(project => ({
+        'Project ID': `PROJ${String(project.id).padStart(3, '0')}`,
+        'Project Name': project.name,
+        'Department': project.department,
+        'Project Lead': project.project_lead_name || project.manager,
+        'Start Date': formatDate(project.start_date),
+        'End Date': formatDate(project.end_date),
+        'Current Phase': project.current_phase,
+        'Overall Progress': `${project.progress}%`,
+        'Status': project.status,
+        'Description': project.description || '-'
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const wscols = [
+        { wch: 15 }, { wch: 30 }, { wch: 20 }, { wch: 20 },
+        { wch: 15 }, { wch: 15 }, { wch: 25 }, { wch: 15 },
+        { wch: 15 }, { wch: 40 }
+      ];
+      worksheet['!cols'] = wscols;
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Projects');
+      const fileName = `Projects_Export_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+      
+      alert(`Exported ${filteredProjects.length} projects successfully!`);
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      alert('Error exporting data. Please try again.');
+    }
+  };
+
+  const getStatusBadge = (project) => {
+    if (project.status?.toUpperCase() === 'DELAYED' || 
+        project.status === 'Delayed' || 
+        project.status?.toUpperCase() === 'AT RISK') {
+      return (
+        <span className="proj-status-badge proj-status-inactive">
+          DELAYED
+        </span>
+      );
+    }
+    
+    const progress = project.progress || 0;
+    let displayStatus = 'ON TRACK';
+    let statusClass = 'proj-status-active';
+    
+    if (progress === 100) {
+      displayStatus = 'COMPLETED';
+      statusClass = 'proj-status-active';
+    } else if (progress === 0) {
+      displayStatus = 'NOT STARTED';
+      statusClass = 'proj-status-inactive';
+    }
+
     return (
-      <span className={`project-status-badge ${statusClasses[status] || 'project-status--pending'}`}>
-        {status}
+      <span className={`proj-status-badge ${statusClass}`}>
+        {displayStatus}
       </span>
     );
   };
 
-  const getPhaseStatusBadge = (phase) => {
-    const statusClasses = {
-      'Completed': 'project-status--approved',
-      'In Progress': 'project-status--pending',
-      'Review': 'project-status--pending',
-      'Not Started': 'project-status--rejected',
-      'On Hold': 'project-status--rejected'
+  const getPhaseStatusBadge = (status) => {
+    const statusConfig = {
+      'Completed': 'proj-status-active',
+      'In Progress': 'proj-status-active',
+      'Not Started': 'proj-status-inactive',
+      'On Hold': 'proj-status-inactive',
+      'Review': 'proj-status-active'
     };
-    
+
     return (
-      <span className={`project-phase-badge ${statusClasses[phase.status] || 'project-status--pending'}`}>
-        {phase.status}
+      <span className={`proj-status-badge ${statusConfig[status] || 'proj-status-inactive'}`}>
+        {status?.toUpperCase() || 'UNKNOWN'}
       </span>
     );
   };
@@ -188,224 +460,638 @@ const Projects = () => {
     });
   };
 
-  // Calculate days remaining until end date
-  const getDaysRemaining = (endDate) => {
-    if (!endDate) return null;
-    
-    const today = new Date();
-    const end = new Date(endDate);
-    const diffTime = end - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    return diffDays;
-  };
+  const filteredProjects = projects.filter(project => {
+    if (searchTerm && !project.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+      return false;
+    }
+    if (filters.status && project.status !== filters.status) {
+      return false;
+    }
+    if (filters.department && project.department !== filters.department) {
+      return false;
+    }
+    if (filters.project_lead && project.project_lead_name !== filters.project_lead) {
+      return false;
+    }
+    if (filters.phase && project.current_phase !== filters.phase) {
+      return false;
+    }
+    return true;
+  });
 
-  // Combined loading state
-  if (employeeLoading || loading) {
+  if (loading) {
     return (
-      <div className="project-management-section">
-        <div className="project-loading">
-          Loading your projects...
-        </div>
+      <div className="proj-management-section">
+        <div className="proj-loading">Loading projects...</div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="project-management-section">
-        <div className="project-error">
-          Error: {error}
-        </div>
-        <button onClick={() => window.location.reload()} className="retry-button">
-          Retry
+      <div className="proj-management-section">
+        <div className="proj-error">{error}</div>
+        <button onClick={fetchData} className="proj-retry-btn">
+          Try Again
         </button>
       </div>
     );
   }
 
-  if (!userSession.employeeId) {
-    return (
-      <div className="project-management-section">
-        <div className="project-error">
-          Unable to load employee information. Please try logging in again.
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="project-management-section" id="project-management-section">
-      <div className="project-management-header">
-        <h2 className="project-management-title">Project & Assignment</h2>
-        <div className="project-welcome-message">
-          Welcome, {userSession.employeeName}
+    <div className="proj-management-section" id="proj-management-main">
+      {/* Header */}
+      <div className="proj-management-header">
+        <h2 id="proj-management-title">
+          Project Management
+          <span className="proj-hr-badge">HR Access</span>
+        </h2>
+        <button 
+          className="proj-add-btn"
+          id="proj-add-main-btn"
+          onClick={() => setIsModalOpen(true)}
+        >
+          <span className="proj-btn-icon">+</span>
+          Create New Project
+        </button>
+      </div>
+
+      {/* Overview Dashboard */}
+      <div className="proj-dashboard-stats">
+        <div className="proj-stat-card" id="proj-stat-total">
+          <div className="proj-stat-number">{dashboardStats.totalProjects}</div>
+          <div className="proj-stat-label">Total Projects</div>
+        </div>
+        <div className="proj-stat-card" id="proj-stat-active">
+          <div className="proj-stat-number">{dashboardStats.activeProjects}</div>
+          <div className="proj-stat-label">Active Projects</div>
+        </div>
+        <div className="proj-stat-card" id="proj-stat-delayed">
+          <div className="proj-stat-number">{dashboardStats.delayedProjects}</div>
+          <div className="proj-stat-label">Delayed Projects</div>
+        </div>
+        <div className="proj-stat-card" id="proj-stat-completed">
+          <div className="proj-stat-number">
+            {projects.filter(project => 
+              project.progress === 100 || 
+              project.status?.toUpperCase() === 'COMPLETED'
+            ).length}
+          </div>
+          <div className="proj-stat-label">Completed Projects</div>
         </div>
       </div>
 
-      {/* Debug Info - Remove in production */}
-      <div style={{ 
-        background: '#f0f0f0', 
-        padding: '10px', 
-        marginBottom: '20px', 
-        borderRadius: '5px',
-        fontSize: '12px',
-        display: 'none' /* Set to 'block' to see debug info */
-      }}>
-        <strong>Debug Info:</strong><br />
-        Employee ID: {userSession.employeeId}<br />
-        Employee Name: {userSession.employeeName}<br />
-        Total Projects: {projects.length}<br />
-        Assigned Projects: {assignedProjects.length}
-      </div>
-
-      {/* Project Summary Cards */}
-      <div className="project-summary-cards">
-        <div className="project-summary-card">
-          <div className="project-summary-number">{assignedProjects.length}</div>
-          <div className="project-summary-label">Total Projects</div>
-        </div>
-        <div className="project-summary-card">
-          <div className="project-summary-number">
-            {assignedProjects.filter(p => p.status === 'In Progress' || p.status === 'On Track').length}
-          </div>
-          <div className="project-summary-label">Active Projects</div>
-        </div>
-        <div className="project-summary-card">
-          <div className="project-summary-number">
-            {assignedProjects.filter(p => p.status === 'Completed').length}
-          </div>
-          <div className="project-summary-label">Completed</div>
-        </div>
-        <div className="project-summary-card">
-          <div className="project-summary-number">
-            {assignedProjects.filter(p => p.role === 'Manager').length}
-          </div>
-          <div className="project-summary-label">Managing</div>
-        </div>
-      </div>
-
-      {/* Project & Assignment Section */}
-      <div className="project-table-container glass-form-project" style={{marginTop: '2rem'}}>
-        <div className="project-table-header">
-          <h3 className="project-table-title">My Projects</h3>
-          <div className="project-table-actions">
-            <span className="project-helper-text">
-              Showing {assignedProjects.length} projects assigned to you
-            </span>
+      {/* Project Table */}
+      <div className="proj-table-container proj-glass-form" id="proj-main-table">
+        <div className="proj-table-header">
+          <h3 id="proj-table-title">Project Directory</h3>
+          <div className="proj-table-actions">
+            <input
+              type="text"
+              placeholder="Search projects..."
+              className="proj-filter-input"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <select 
+              className="proj-filter-select"
+              value={filters.status}
+              onChange={(e) => handleFilterChange('status', e.target.value)}
+            >
+              <option value="">All Status</option>
+              {projectStatuses.map(status => (
+                <option key={status} value={status}>{status}</option>
+              ))}
+            </select>
+            <select 
+              className="proj-filter-select"
+              value={filters.department}
+              onChange={(e) => handleFilterChange('department', e.target.value)}
+            >
+              <option value="">All Departments</option>
+              {departments.map(dept => (
+                <option key={dept} value={dept}>{dept}</option>
+              ))}
+            </select>
+            <select 
+              className="proj-filter-select"
+              value={filters.project_lead}
+              onChange={(e) => handleFilterChange('project_lead', e.target.value)}
+            >
+              <option value="">All Project Leads</option>
+              {projectLeads.map(lead => (
+                <option key={lead.id} value={lead.name}>{lead.name}</option>
+              ))}
+            </select>
+            <button className="proj-export-btn" onClick={handleExport} disabled={filteredProjects.length === 0}>
+              Export
+            </button>
           </div>
         </div>
         
-        {assignedProjects.length === 0 ? (
-          <div className="project-empty-state">
-            <div className="project-empty-icon">📊</div>
-            <p>No projects assigned to you yet.</p>
-            <p className="project-empty-subtext">
-              {projects.length > 0 
-                ? "You're not assigned to any projects. Contact your manager to be added to project teams."
-                : "No projects found in the system."}
+        <div className="proj-table-wrapper">
+          <table className="proj-main-table">
+            <thead>
+              <tr>
+                <th>Project Name</th>
+                <th>Department</th>
+                <th>Project Lead</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Current Phase</th>
+                <th>Progress</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredProjects.map(project => (
+                <tr key={project.id}>
+                  <td>
+                    <div className="proj-name-cell">
+                      <div 
+                        className="proj-name-text proj-clickable"
+                        onClick={() => handleViewProject(project)}
+                      >
+                        {project.name}
+                      </div>
+                      <div className="proj-id-text">
+                        ID: PROJ{String(project.id).padStart(3, '0')}
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div className="proj-dept-cell">
+                      <div className="proj-dept-name">{project.department}</div>
+                    </div>
+                  </td>
+                  <td>
+                    <div className="proj-lead-cell">
+                      <div className="proj-lead-name">{project.project_lead_name || project.manager}</div>
+                    </div>
+                  </td>
+                  <td>
+                    <div className="proj-date-cell">
+                      {formatDate(project.start_date)}
+                    </div>
+                  </td>
+                  <td>
+                    <div className="proj-date-cell">
+                      {formatDate(project.end_date)}
+                    </div>
+                  </td>
+                  <td>
+                    <div className="proj-phase-cell">
+                      {project.current_phase}
+                    </div>
+                  </td>
+                  <td>
+                    <div className="proj-progress-cell">
+                      {project.progress}%
+                    </div>
+                  </td>
+                  <td>
+                    {getStatusBadge(project)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {filteredProjects.length === 0 && (
+          <div className="proj-empty-state">
+            <div className="proj-empty-icon">📊</div>
+            <p>No projects found</p>
+            <p className="proj-empty-subtext">
+              {searchTerm || filters.status || filters.department || filters.project_lead || filters.phase
+                ? 'Try changing your filters to see more results.'
+                : 'Get started by creating your first project.'}
             </p>
-          </div>
-        ) : (
-          <div className="project-cards-container">
-            {assignedProjects.map(project => {
-              const daysRemaining = getDaysRemaining(project.endDate);
-              
-              return (
-                <div key={project.id} className="project-card">
-                  <div className="project-card-header">
-                    <div className="project-card-title">
-                      <h4>{project.projectName}</h4>
-                      <span className="project-role-badge">{project.role}</span>
-                    </div>
-                    {getProjectStatusBadge(project.status)}
-                  </div>
-                  
-                  <div className="project-card-body">
-                    <div className="project-info-grid">
-                      <div className="project-info-item">
-                        <label>Department:</label>
-                        <span>{project.department}</span>
-                      </div>
-                      <div className="project-info-item">
-                        <label>Manager:</label>
-                        <span>{project.manager}</span>
-                      </div>
-                      <div className="project-info-item">
-                        <label>Current Phase:</label>
-                        <span>{project.phase}</span>
-                      </div>
-                      <div className="project-info-item">
-                        <label>Timeline:</label>
-                        <span>
-                          {formatDate(project.startDate)} - {formatDate(project.endDate)}
-                          {daysRemaining !== null && (
-                            <span className={`project-days-remaining ${daysRemaining < 0 ? 'overdue' : daysRemaining < 7 ? 'urgent' : 'normal'}`}>
-                              ({daysRemaining < 0 ? Math.abs(daysRemaining) + ' days overdue' : daysRemaining + ' days left'})
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div className="project-progress-section">
-                      <div className="project-progress-header">
-                        <span>Overall Progress</span>
-                        <span>{project.progress}%</span>
-                      </div>
-                      <div className="project-progress-track">
-                        <div 
-                          className={`project-progress-bar project-progress-${project.progress >= 80 ? 'high' : project.progress >= 50 ? 'medium' : 'low'}`} 
-                          style={{width: `${project.progress}%`}} 
-                        />
-                      </div>
-                    </div>
-
-                    {project.description && (
-                      <div className="project-description">
-                        <label>Description:</label>
-                        <p>{project.description}</p>
-                      </div>
-                    )}
-
-                    {/* Project Phases */}
-                    <div className="project-phases-section">
-                      <label>Project Phases:</label>
-                      <div className="project-phases-list">
-                        {project.phases && project.phases.map((phase, index) => (
-                          <div key={index} className="project-phase-item">
-                            <div className="phase-name">{phase.name}</div>
-                            <div className="phase-details">
-                              {getPhaseStatusBadge(phase)}
-                              <span className="phase-progress">{phase.progress}%</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Team Members */}
-                    {project.team && project.team.length > 0 && (
-                      <div className="project-team-section">
-                        <label>Team Members:</label>
-                        <div className="project-team-list">
-                          {project.team.map((member, index) => (
-                            <div key={index} className="team-member-tag">
-                              {member.name} ({member.department})
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+            {!searchTerm && !filters.status && !filters.department && !filters.project_lead && !filters.phase && (
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="proj-add-first-btn"
+              >
+                Create First Project
+              </button>
+            )}
           </div>
         )}
       </div>
+
+      {/* Create Project Modal */}
+      {isModalOpen && (
+        <div className="proj-modal-overlay">
+          <div className="proj-modal-content proj-large-modal">
+            <div className="proj-modal-header">
+              <h2>Create New Project</h2>
+              <button 
+                className="proj-close-btn"
+                onClick={() => setIsModalOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="proj-form">
+              <div className="proj-form-section">
+                <h3 className="proj-section-title">
+                  <FaBell className="proj-icon" />
+                  Project Information
+                </h3>
+                
+                <div className="proj-form-row">
+                  <div className="proj-form-group">
+                    <label className="required">Project Name *</label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      placeholder="Enter project name"
+                      required
+                    />
+                  </div>
+                  <div className="proj-form-group">
+                    <label className="required">Department *</label>
+                    <select
+                      name="department"
+                      value={formData.department}
+                      onChange={handleInputChange}
+                      required
+                    >
+                      <option value="">Select Department</option>
+                      {departments.map(dept => (
+                        <option key={dept} value={dept}>
+                          {dept}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="proj-form-row">
+                  <div className="proj-form-group">
+                    <label className="required">Project Lead *</label>
+                   <select
+  name="project_lead"
+  value={formData.project_lead}
+  onChange={handleInputChange}
+  required
+>
+  <option value="">Select Project Lead</option>
+  {projectLeads.map(lead => (
+    <option key={lead.id} value={lead.id}>
+      {lead.name} 
+      {lead.role_name && ` (${lead.role_name.toUpperCase()})`}
+      {lead.position && ` - ${lead.position}`}
+      {lead.department && ` (${lead.department})`}
+    </option>
+  ))}
+</select>
+                    <small>
+                      <FaBell className="proj-icon-small" /> 
+                      Notification will be sent to the selected project lead
+                    </small>
+                  </div>
+                  <div className="proj-form-group">
+                    <label>Status</label>
+                    <select
+                      name="status"
+                      value={formData.status}
+                      onChange={handleInputChange}
+                    >
+                      {projectStatuses.map(status => (
+                        <option key={status} value={status}>
+                          {status}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="proj-form-row">
+                  <div className="proj-form-group">
+                    <label>Start Date</label>
+                    <input
+                      type="date"
+                      name="start_date"
+                      value={formData.start_date}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <div className="proj-form-group">
+                    <label>End Date</label>
+                    <input
+                      type="date"
+                      name="end_date"
+                      value={formData.end_date}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                </div>
+
+                <div className="proj-form-group">
+                  <label>Current Phase</label>
+                  <select
+                    name="current_phase"
+                    value={formData.current_phase}
+                    onChange={handleInputChange}
+                  >
+                    <option value="">Select Phase</option>
+                    {phases.map(phase => (
+                      <option key={phase} value={phase}>
+                        {phase}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="proj-form-group">
+                  <label>Project Description</label>
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    placeholder="Enter project description..."
+                    rows="3"
+                  />
+                </div>
+              </div>
+
+              <div className="proj-form-actions">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="proj-cancel-btn"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="proj-submit-btn"
+                >
+                  <FaBell className="proj-icon" />
+                  Create Project & Send Notification
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* View Project Details Modal */}
+      {isViewModalOpen && selectedProject && (
+        <div className="proj-modal-overlay">
+          <div className="proj-modal-content proj-large-modal">
+            <div className="proj-modal-header">
+              <h2>Project Details - {selectedProject.name}</h2>
+              <button 
+                className="proj-close-btn"
+                onClick={() => setIsViewModalOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="proj-details-content">
+              <div className="proj-details-grid">
+                <div className="proj-detail-item">
+                  <label>Project ID</label>
+                  <span>PROJ{String(selectedProject.id).padStart(3, '0')}</span>
+                </div>
+                <div className="proj-detail-item">
+                  <label>Project Name</label>
+                  <span>{selectedProject.name}</span>
+                </div>
+                <div className="proj-detail-item">
+                  <label>Department</label>
+                  <span>{selectedProject.department}</span>
+                </div>
+                <div className="proj-detail-item">
+                  <label>Project Lead</label>
+                  <span>{selectedProject.project_lead_name || selectedProject.manager}</span>
+                </div>
+                <div className="proj-detail-item">
+                  <label>Start Date</label>
+                  <span>{formatDate(selectedProject.start_date)}</span>
+                </div>
+                <div className="proj-detail-item">
+                  <label>End Date</label>
+                  <span>{formatDate(selectedProject.end_date)}</span>
+                </div>
+                <div className="proj-detail-item">
+                  <label>Current Phase</label>
+                  <span>{selectedProject.current_phase}</span>
+                </div>
+                <div className="proj-detail-item">
+                  <label>Overall Progress</label>
+                  <span>{selectedProject.progress}%</span>
+                </div>
+                <div className="proj-detail-item">
+                  <label>Status</label>
+                  <span>{getStatusBadge(selectedProject)}</span>
+                </div>
+                {selectedProject.description && (
+                  <div className="proj-detail-item full-width">
+                    <label>Description</label>
+                    <span>{selectedProject.description}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Phases Section */}
+              <div className="proj-form-section">
+                <h3 className="proj-section-title">Project Phases</h3>
+                <div className="proj-phases-table-container">
+                  <div className="proj-phases-scroll">
+                    <table className="proj-phases-table">
+                      <thead>
+                        <tr>
+                          <th>Phase Name</th>
+                          <th>Status</th>
+                          <th>Progress</th>
+                          <th>Comments</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedProject.phases && selectedProject.phases.map((phase, index) => (
+                          <tr key={index}>
+                            <td>
+                              <div className="proj-phase-name-cell">
+                                <div className="proj-phase-name">{phase.name}</div>
+                              </div>
+                            </td>
+                            <td>
+                              <div className="proj-phase-status-cell">
+                                {getPhaseStatusBadge(phase.status)}
+                              </div>
+                            </td>
+                            <td>{phase.progress}%</td>
+                            <td>{phase.comments || 'No comments'}</td>
+                            <td>
+                              <button
+                                onClick={() => handleEditPhase(selectedProject, phase)}
+                                className="proj-action-btn proj-edit-phase-btn"
+                              >
+                                Update Phase
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div className="proj-form-actions">
+                <button
+                  type="button"
+                  onClick={() => handleDeleteClick(selectedProject)}
+                  className="proj-delete-btn"
+                >
+                  Delete Project
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsViewModalOpen(false)}
+                  className="proj-cancel-btn"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Phase Modal */}
+      {isPhaseModalOpen && selectedProject && selectedPhase && (
+        <div className="proj-modal-overlay">
+          <div className="proj-modal-content">
+            <div className="proj-modal-header">
+              <h2>Update Phase - {selectedPhase.name}</h2>
+              <button 
+                className="proj-close-btn"
+                onClick={() => setIsPhaseModalOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={(e) => handleUpdatePhase(e, true)} className="proj-form">
+              <div className="proj-form-section">
+                <h3 className="proj-section-title">Phase Information</h3>
+                <div className="proj-form-row">
+                  <div className="proj-form-group">
+                    <label>Status</label>
+                    <select
+                      name="status"
+                      value={phaseFormData.status}
+                      onChange={handlePhaseInputChange}
+                    >
+                      <option value="Not Started">Not Started</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="Review">Review</option>
+                      <option value="Completed">Completed</option>
+                      <option value="On Hold">On Hold</option>
+                    </select>
+                  </div>
+                  <div className="proj-form-group">
+                    <label>Progress (%)</label>
+                    <input
+                      type="number"
+                      name="progress"
+                      value={phaseFormData.progress}
+                      onChange={handlePhaseInputChange}
+                      min="0"
+                      max="100"
+                      placeholder="0-100"
+                    />
+                  </div>
+                </div>
+                <div className="proj-form-group">
+                  <label>Comments</label>
+                  <textarea
+                    name="comments"
+                    value={phaseFormData.comments}
+                    onChange={handlePhaseInputChange}
+                    placeholder="Enter phase comments or updates..."
+                    rows="3"
+                  />
+                </div>
+              </div>
+
+              <div className="proj-form-actions">
+                <button
+                  type="button"
+                  onClick={() => setIsPhaseModalOpen(false)}
+                  className="proj-cancel-btn"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="proj-submit-btn"
+                >
+                  Update Phase
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteModalOpen && selectedProject && (
+        <div className="proj-modal-overlay">
+          <div className="proj-modal-content">
+            <div className="proj-modal-header">
+              <h2>Delete Project</h2>
+              <button 
+                className="proj-close-btn"
+                onClick={() => setIsDeleteModalOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="proj-delete-confirm">
+              <div className="emp-delete-icon">
+                <FaExclamationTriangle />
+              </div>
+              <h3 className="proj-delete-title">
+                Delete {selectedProject.name}?
+              </h3>
+              <p className="proj-delete-message">
+                Are you sure you want to delete the <strong>{selectedProject.name}</strong> project? 
+                This action cannot be undone and all associated data will be permanently removed.
+              </p>
+
+              <div className="proj-delete-actions">
+                <button
+                  type="button"
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  className="proj-cancel-btn"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteProject}
+                  className="proj-delete-btn"
+                >
+                  Delete Project
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-export default Projects;
+export default ProjectManagement;

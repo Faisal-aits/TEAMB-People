@@ -2,9 +2,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FaBuilding, FaImage, FaCloudUploadAlt, FaTrash, FaSyncAlt } from 'react-icons/fa';
 import { brandingAPI } from '../../../services/brandingAPI';
+import { API_BASE_URL } from '../../../services/api';
 import './CompanyBranding.css';
-
-const API_BASE_URL = `http://${window.location.hostname}:3000`;
 
 const ImageUploadCard = ({ label, hint, fieldKey, currentUrl, onUpload, onRemove }) => {
     const fileInputRef = useRef(null);

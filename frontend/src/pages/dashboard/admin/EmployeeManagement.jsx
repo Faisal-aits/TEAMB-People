@@ -34,7 +34,7 @@ const EmployeeManagement = () => {
     pan_number: '',
     aadhar_number: '',
     employee_id: '', // Manual employee ID
-    role_id: '3' // Default role: employee (3=employee, 2=hr, 1=admin)
+    role_id: '' // Will be set after roles are fetched
   });
 
   const [editFormData, setEditFormData] = useState({
@@ -59,40 +59,90 @@ const EmployeeManagement = () => {
   const [customPosition, setCustomPosition] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Role options - including all roles
-  const roleOptions = [
-    { id: '1', name: 'Admin' },
-    { id: '2', name: 'HR' },
-    { id: '3', name: 'Employee' }
-    
-  ];
+  // Role options - fetched dynamically from API
+  const [roleOptions, setRoleOptions] = useState([]);
 
-  // Load initial data
- useEffect(() => {
-  loadEmployees();
-  loadDepartments();
-  loadSuggestedPositions();
-}, []); // 👈 load once only
+  // Helper: check if selected role is a non-student role (show employment/bank fields)
+  const isNonStudentRole = (roleId) => {
+    if (!roleId || roleOptions.length === 0) return true; // Show by default while loading
+    const role = roleOptions.find(r => r.id === String(roleId));
+    return !role || role.name.toLowerCase() !== 'student';
+  };
 
+// Load initial data only once
+useEffect(() => {
+  const loadInitialData = async () => {
+    await Promise.all([
+      loadDepartments(),
+      loadSuggestedPositions(),
+      loadRoles()
+    ]);
+    await loadEmployees();
+  };
+  
+  loadInitialData();
+}, []); // Empty dependency array
 
- const loadEmployees = async () => {
+// Load employees when filters change
+useEffect(() => {
+  // Only load if not the initial load (departments have been loaded)
+  if (departments.length > 0) {
+    loadEmployees();
+  }
+}, [filters.department_id, filters.role_id, filters.is_active]);
+const loadEmployees = async () => {
   try {
     setLoading(true);
 
     const apiFilters = {};
 
-    if (filters.department_id) apiFilters.department_id = filters.department_id;
-    if (filters.role_id) apiFilters.role_id = filters.role_id;
-    if (filters.is_active !== '') apiFilters.is_active = filters.is_active;
+    if (filters.department_id) {
+      apiFilters.department_id = filters.department_id;
+    }
+    if (filters.role_id) {
+      apiFilters.role_id = filters.role_id;
+    }
+    // Important: Don't filter by is_active if it's empty string
+    if (filters.is_active && filters.is_active !== '') {
+      // Send as string, not boolean - check your backend expects
+      apiFilters.is_active = filters.is_active === 'true';
+    }
+
+    console.log('Loading employees with filters:', apiFilters);
 
     const response = await employeeAPI.getAll(apiFilters);
-    setEmployees(response.data.employees || []);
+    console.log('API Response:', response.data);
+    
+    // Ensure we're setting the employees array correctly
+    const employeesData = response.data.employees || [];
+    console.log('Number of employees received:', employeesData.length);
+    setEmployees(employeesData);
+    
   } catch (error) {
     console.error('Error loading employees:', error);
+    setEmployees([]); // Set empty array on error
   } finally {
     setLoading(false);
   }
 };
+
+  const loadRoles = async () => {
+    try {
+      const response = await employeeAPI.getRoles();
+      const roles = response.data.roles || [];
+      setRoleOptions(roles.filter(r => r.name !== 'student').map(r => ({
+        id: String(r.id),
+        name: r.name.charAt(0).toUpperCase() + r.name.slice(1)
+      })));
+      // Set default role to employee
+      const employeeRole = roles.find(r => r.name === 'employee');
+      if (employeeRole) {
+        setFormData(prev => ({ ...prev, role_id: String(employeeRole.id) }));
+      }
+    } catch (error) {
+      console.error('Error loading roles:', error);
+    }
+  };
 
   const loadDepartments = async () => {
     try {
@@ -128,12 +178,13 @@ const EmployeeManagement = () => {
     }));
   };
 
-  const handleFilterChange = (key, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [key]: value
-    }));
-  };
+ const handleFilterChange = (key, value) => {
+  console.log(`Filter changed: ${key} = ${value}`); // Debug log
+  setFilters(prev => ({
+    ...prev,
+    [key]: value
+  }));
+};
 
   const handlePositionChange = (e) => {
     const value = e.target.value;
@@ -155,73 +206,80 @@ const EmployeeManagement = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
+  
+  if (!formData.first_name || !formData.last_name || !formData.email) {
+    alert('Please fill in all required fields');
+    return;
+  }
+
+  setIsSubmitting(true);
+
+  try {
+    const employeeData = {
+      first_name: formData.first_name,
+      last_name: formData.last_name,
+      email: formData.email,
+      phone: formData.phone || null,
+      department_id: formData.department_id || null,
+      position: formData.position || null,
+      joining_date: formData.joining_date || null,
+      date_of_birth: formData.date_of_birth || null,
+      address: formData.address || null,
+      emergency_contact: formData.emergency_contact || null,
+      bank_account_number: formData.bank_account_number || null,
+      ifsc_code: formData.ifsc_code || null,
+      pan_number: formData.pan_number || null,
+      aadhar_number: formData.aadhar_number || null,
+      employee_id: formData.employee_id || null,
+      role_id: formData.role_id || roleOptions.find(r => r.name === 'Employee')?.id || ''
+    };
+
+    const response = await employeeAPI.create(employeeData);
     
-    if (!formData.first_name || !formData.last_name || !formData.email) {
-      alert('Please fill in all required fields');
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const employeeData = {
-        first_name: formData.first_name,
-        last_name: formData.last_name,
-        email: formData.email,
-        phone: formData.phone || null,
-        department_id: formData.department_id || null,
-        position: formData.position || null,
-        joining_date: formData.joining_date || null,
-        date_of_birth: formData.date_of_birth || null,
-        address: formData.address || null,
-        emergency_contact: formData.emergency_contact || null,
-        bank_account_number: formData.bank_account_number || null,
-        ifsc_code: formData.ifsc_code || null,
-        pan_number: formData.pan_number || null,
-        aadhar_number: formData.aadhar_number || null,
-        employee_id: formData.employee_id || null,
-        role_id: formData.role_id || '3'
-      };
-
-      const response = await employeeAPI.create(employeeData);
-      
-      // Reset form
-      setFormData({
-        first_name: '',
-        last_name: '',
-        email: '',
-        phone: '',
-        department_id: '',
-        position: '',
-        joining_date: '',
-        date_of_birth: '',
-        address: '',
-        emergency_contact: '',
-        bank_account_number: '',
-        ifsc_code: '',
-        pan_number: '',
-        aadhar_number: '',
-        employee_id: '',
-        role_id: '3'
-      });
-      
-      setShowCustomPosition(false);
-      setCustomPosition('');
-      setIsModalOpen(false);
-      
-      // Reload employees to show the new one
-      await loadEmployees();
-      
-      alert('User added successfully!');
-    } catch (error) {
-      console.error('Error creating user:', error);
-      const errorMessage = error.response?.data?.message || 'Error creating user. Please try again.';
-      alert(errorMessage);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    // Reset form
+    setFormData({
+      first_name: '',
+      last_name: '',
+      email: '',
+      phone: '',
+      department_id: '',
+      position: '',
+      joining_date: '',
+      date_of_birth: '',
+      address: '',
+      emergency_contact: '',
+      bank_account_number: '',
+      ifsc_code: '',
+      pan_number: '',
+      aadhar_number: '',
+      employee_id: '',
+      role_id: roleOptions.find(r => r.name === 'Employee')?.id || ''
+    });
+    
+    setShowCustomPosition(false);
+    setCustomPosition('');
+    setIsModalOpen(false);
+    
+    // Important: Reset filters to show all employees after adding
+    setFilters({
+      department_id: '',
+      is_active: '',
+      role_id: ''
+    });
+    
+    // Reload employees to show the new one
+    await loadEmployees();
+    
+    alert('Employee added successfully!');
+  } catch (error) {
+    console.error('Error creating employee:', error);
+    const errorMessage = error.response?.data?.message || 'Error creating employee. Please try again.';
+    alert(errorMessage);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const handleViewEmployee = (employee) => {
     setSelectedEmployee(employee);
@@ -269,22 +327,18 @@ const EmployeeManagement = () => {
       ifsc_code: employee.ifsc_code || '',
       pan_number: employee.pan_number || '',
       aadhar_number: employee.aadhar_number || '',
-      role_id: getRoleIdFromRoleName(employee.role_name) || '3'
+      role_id: String(employee.role_id) || getRoleIdFromRoleName(employee.role_name) || ''
     });
     
     setIsViewModalOpen(false);
     setIsEditModalOpen(true);
   };
 
-  // Helper function to get role ID from role name
+  // Helper function to get role ID from role name (uses dynamic roleOptions)
   const getRoleIdFromRoleName = (roleName) => {
-    switch(roleName?.toLowerCase()) {
-      case 'admin': return '1';
-      case 'hr': return '2';
-      case 'employee': return '3';
-      case 'student': return '4';
-      default: return '3';
-    }
+    const role = roleOptions.find(r => r.name.toLowerCase() === roleName?.toLowerCase() ||
+      (roleName?.toLowerCase() === 'hr' && r.name.toLowerCase() === 'sub admin'));
+    return role?.id || roleOptions.find(r => r.name === 'Employee')?.id || '';
   };
 
   // Helper function to get role name from role ID
@@ -319,7 +373,7 @@ const EmployeeManagement = () => {
         ifsc_code: editFormData.ifsc_code || null,
         pan_number: editFormData.pan_number || null,
         aadhar_number: editFormData.aadhar_number || null,
-        role_id: editFormData.role_id || '3'
+        role_id: editFormData.role_id || roleOptions.find(r => r.name === 'Employee')?.id || ''
       };
 
       await employeeAPI.update(selectedEmployee.employee_id, employeeData);
@@ -330,10 +384,10 @@ const EmployeeManagement = () => {
       // Reload employees to show updated data
       await loadEmployees();
       
-      alert('User updated successfully!');
+      alert('Employee updated successfully!');
     } catch (error) {
-      console.error('Error updating user:', error);
-      const errorMessage = error.response?.data?.message || 'Error updating user. Please try again.';
+      console.error('Error updating employee:', error);
+      const errorMessage = error.response?.data?.message || 'Error updating employee. Please try again.';
       alert(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -357,16 +411,16 @@ const EmployeeManagement = () => {
               // Remove from local state
               setEmployees(prev => prev.filter(emp => emp.employee_id !== employee.employee_id));
               setIsViewModalOpen(false);
-              alert('User permanently deleted from database!');
+              alert('Employee permanently deleted from database!');
           } catch (error) {
-              console.error('Error deleting user:', error);
+              console.error('Error deleting employee:', error);
               
               if (error.response?.status === 404) {
-                  alert('User not found in database.');
+                  alert('Employee not found in database.');
               } else if (error.response?.status === 400) {
                   alert(error.response.data.message);
               } else {
-                  const errorMessage = error.response?.data?.message || 'Error deleting user. Please try again.';
+                  const errorMessage = error.response?.data?.message || 'Error deleting employee. Please try again.';
                   alert(errorMessage);
               }
           } finally {
@@ -386,13 +440,14 @@ const EmployeeManagement = () => {
   const handleExport = () => {
     try {
       // If no data to export
-      if (filteredEmployees.length === 0) {
+         if (employees.length === 0) {
         alert('No data to export!');
         return;
       }
 
       // Prepare data for export
-      const exportData = filteredEmployees.map(employee => ({
+     const exportData = employees.map(employee => ({
+
         'User ID': employee.employee_id || `UID-${employee.user_id}`,
         'First Name': employee.first_name,
         'Last Name': employee.last_name,
@@ -439,16 +494,16 @@ const EmployeeManagement = () => {
 
       // Create workbook
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Users Data');
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Employees Data');
 
       // Generate file name with current date
-      const fileName = `Users_Export_${new Date().toISOString().split('T')[0]}.xlsx`;
+      const fileName = `Employees_Export_${new Date().toISOString().split('T')[0]}.xlsx`;
 
       // Export to Excel
       XLSX.writeFile(workbook, fileName);
       
       console.log('✅ Export successful:', fileName);
-      alert(`Exported ${filteredEmployees.length} users successfully!`);
+      alert(`Exported ${employees.length} employees successfully!`);
     } catch (error) {
       console.error('❌ Error exporting data:', error);
       alert('Error exporting data. Please try again.');
@@ -496,41 +551,13 @@ const EmployeeManagement = () => {
     return groups;
   }, {});
 
- const filteredEmployees = employees.filter(employee => {
-
-  // Department filter
-  if (
-    filters.department_id &&
-    String(employee.department_id) !== String(filters.department_id)
-  ) {
-    return false;
-  }
-
-  // Role filter
-  if (
-    filters.role_id &&
-    String(employee.role_id) !== String(filters.role_id)
-  ) {
-    return false;
-  }
-
-  // Status filter (ACTIVE / INACTIVE / ALL)
-  if (filters.is_active !== '') {
-    const status = employee.is_active ? 'true' : 'false';
-    if (status !== filters.is_active) {
-      return false;
-    }
-  }
-
-  return true;
-});
 
 
   if (loading) {
     return (
       <div className="employee-section">
         <div className="loading-container">
-          <div>Loading users...</div>
+          <div>Loading employees...</div>
         </div>
       </div>
     );
@@ -591,7 +618,7 @@ const EmployeeManagement = () => {
   <option value="false">Inactive</option>
 </select>
             
-            <button className="export-btn" onClick={handleExport} disabled={filteredEmployees.length === 0}>Export</button>
+            <button className="export-btn" onClick={handleExport} disabled={employees.length === 0}>Export</button>
           </div>
         </div>
         
@@ -599,8 +626,8 @@ const EmployeeManagement = () => {
           <table className="employee-table">
             <thead>
               <tr>
-                <th>User ID</th>
-                <th>User</th>
+                <th>Employee ID</th>
+                <th>Employee</th>
                 <th>Contact</th>
                 <th>Department</th>
                 <th>Position</th>
@@ -610,7 +637,7 @@ const EmployeeManagement = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredEmployees.map(employee => (
+               {employees.map(employee => (
                 <tr key={employee.employee_id}>
                   <td>
                     <div className="employee-id-cell">
@@ -662,10 +689,10 @@ const EmployeeManagement = () => {
           </table>
         </div>
 
-        {filteredEmployees.length === 0 && (
+        {employees.length === 0 && (
           <div className="no-employees">
             <div className="no-data-icon">👥</div>
-            <p>No users found</p>
+            <p>No employees found</p>
             <p className="no-data-subtext">
               {filters.department_id || filters.role_id || filters.is_active !== 'true' 
                 ? 'Try changing your filters to see more results.'
@@ -676,7 +703,7 @@ const EmployeeManagement = () => {
                 onClick={() => setIsModalOpen(true)}
                 className="add-first-btn"
               >
-                Add First User
+                Add First Employee
               </button>
             )}
           </div>
@@ -688,7 +715,7 @@ const EmployeeManagement = () => {
         <div className="modal-overlay">
           <div className="modal-content1 large-modal">
             <div className="modal-header">
-              <h2>Add New User</h2>
+              <h2>Add New Employee</h2>
               <button 
                 className="close-btn"
                 onClick={() => setIsModalOpen(false)}
@@ -700,7 +727,7 @@ const EmployeeManagement = () => {
             <form onSubmit={handleSubmit} className="employee-form">
               {/* User ID Field */}
               <div className="form-section">
-                <h3 className="section-title">User Identification</h3>
+                <h3 className="section-title">Employee Identification</h3>
                 <div className="form-row-four">
                   <div className="form-group">
                     <label>Employee ID (Optional)</label>
@@ -782,7 +809,7 @@ const EmployeeManagement = () => {
               </div>
 
               {/* Employment Details - Only show for employees/admins */}
-              {(formData.role_id === '1' || formData.role_id === '2' || formData.role_id === '3') && (
+              {isNonStudentRole(formData.role_id) && (
                 <div className="form-section">
                   <h3 className="section-title">Employment Details</h3>
                   <div className="form-row-four">
@@ -882,7 +909,7 @@ const EmployeeManagement = () => {
               </div>
 
               {/* Bank Details - Only show for employees/admins */}
-              {(formData.role_id === '1' || formData.role_id === '2' || formData.role_id === '3') && (
+              {isNonStudentRole(formData.role_id) && (
                 <div className="form-section">
                   <h3 className="section-title">Bank Details</h3>
                   <div className="form-row-four">
@@ -944,7 +971,7 @@ const EmployeeManagement = () => {
                   className="submit-btn"
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? 'Creating...' : 'Create User'}
+                  {isSubmitting ? 'Creating...' : 'Create Employee'}
                 </button>
               </div>
             </form>
@@ -957,7 +984,7 @@ const EmployeeManagement = () => {
         <div className="modal-overlay">
           <div className="modal-content1 large-modal">
             <div className="modal-header">
-              <h2>User Details</h2>
+              <h2>Employee Details</h2>
               <button 
                 className="close-btn"
                 onClick={() => setIsViewModalOpen(false)}
@@ -972,7 +999,7 @@ const EmployeeManagement = () => {
                 <h3 className="section-title">Basic Information</h3>
                 <div className="details-grid">
                   <div className="detail-item">
-                    <label>User ID</label>
+                    <label>Employee ID</label>
                     <span>{selectedEmployee.employee_id || `UID-${selectedEmployee.user_id}`}</span>
                   </div>
                   <div className="detail-item">
@@ -1062,7 +1089,7 @@ const EmployeeManagement = () => {
                   onClick={() => handleEditEmployee(selectedEmployee)}
                   className="edit-btn"
                 >
-                  Edit User
+                  Edit Employee
                 </button>
                 {selectedEmployee.email !== 'admin@arhamitsolutions.com' && (
                   <button
@@ -1092,7 +1119,7 @@ const EmployeeManagement = () => {
         <div className="modal-overlay">
           <div className="modal-content1 large-modal">
             <div className="modal-header">
-              <h2>Edit User</h2>
+              <h2>Edit Employee</h2>
               <button 
                 className="close-btn"
                 onClick={() => setIsEditModalOpen(false)}
@@ -1153,7 +1180,7 @@ const EmployeeManagement = () => {
               </div>
 
               {/* Employment Details - Only show for employees/admins */}
-              {(editFormData.role_id === '1' || editFormData.role_id === '2' || editFormData.role_id === '3') && (
+              {isNonStudentRole(editFormData.role_id) && (
                 <div className="form-section">
                   <h3 className="section-title">Employment Details</h3>
                   <div className="form-row-four">
@@ -1247,7 +1274,7 @@ const EmployeeManagement = () => {
               </div>
 
               {/* Bank Details - Only show for employees/admins */}
-              {(editFormData.role_id === '1' || editFormData.role_id === '2' || editFormData.role_id === '3') && (
+              {isNonStudentRole(editFormData.role_id) && (
                 <div className="form-section">
                   <h3 className="section-title">Bank Details</h3>
                   <div className="form-row-four">
@@ -1309,7 +1336,7 @@ const EmployeeManagement = () => {
                   className="submit-btn"
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? 'Updating...' : 'Update User'}
+                  {isSubmitting ? 'Updating...' : 'Update Employee'}
                 </button>
               </div>
             </form>

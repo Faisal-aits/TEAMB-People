@@ -1,7 +1,5 @@
 // src/services/brandingAPI.js
-import api from './api';
-
-const API_BASE_URL = `http://${window.location.hostname}:3000`;
+import api, { API_BASE_URL } from './api';
 
 export const brandingAPI = {
     // Get branding config for current tenant

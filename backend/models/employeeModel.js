@@ -34,7 +34,7 @@ getAll: async (tenantId, filters = {}) => {
             JOIN roles r ON u.role_id = r.id
             LEFT JOIN employee_details ed ON u.id = ed.user_id
             LEFT JOIN departments d ON ed.department_id = d.id
-            WHERE u.tenant_id = ? AND r.name IN ('admin', 'hr', 'employee')
+            WHERE u.tenant_id = ? AND r.name != 'student'
         `;
         const params = [tenantId];
 
@@ -74,119 +74,121 @@ getAll: async (tenantId, filters = {}) => {
         }
     },
 
-    // Create new employee (tenant-scoped)
-    create: async (tenantId, employeeData) => {
-        const connection = await pool.getConnection();
-        
-        try {
-            await connection.beginTransaction();
 
-            // Use provided role_id or get employee role for this tenant
-            let roleId = employeeData.role_id;
-            if (!roleId) {
-                const [roleRows] = await connection.execute(
-                    'SELECT id FROM roles WHERE name = ? AND tenant_id = ?', ['employee', tenantId]
-                );
-                roleId = roleRows[0]?.id;
-            }
-            
-            // Validate role exists and belongs to tenant
-            const [roleCheck] = await connection.execute(
-                'SELECT id FROM roles WHERE id = ? AND tenant_id = ?',
-                [roleId, tenantId]
+  // Create new employee (tenant-scoped)
+create: async (tenantId, employeeData) => {
+    const connection = await pool.getConnection();
+    
+    try {
+        await connection.beginTransaction();
+
+        // Use provided role_id or get employee role for this tenant
+        let roleId = employeeData.role_id;
+        if (!roleId) {
+            const [roleRows] = await connection.execute(
+                'SELECT id FROM roles WHERE name = ? AND tenant_id = ?', ['employee', tenantId]
             );
-            
-            if (roleCheck.length === 0) {
-                throw new Error('Invalid role ID');
-            }
-
-            // Determine employee ID
-            let employeeId;
-            if (employeeData.employee_id && employeeData.employee_id.trim() !== '') {
-                employeeId = employeeData.employee_id.trim().toUpperCase();
-                
-                const [existingEmployee] = await connection.execute(
-                    'SELECT id FROM employee_details WHERE id = ? AND tenant_id = ?', 
-                    [employeeId, tenantId]
-                );
-                
-                if (existingEmployee.length > 0) {
-                    throw new Error(`Employee ID '${employeeId}' already exists in system`);
-                }
-            } else {
-                const [lastEmployee] = await connection.execute(
-                    `SELECT id FROM employee_details 
-                     WHERE tenant_id = ? AND id LIKE 'EMP%' 
-                     ORDER BY CAST(SUBSTRING(id, 4) AS UNSIGNED) DESC 
-                     LIMIT 1`,
-                    [tenantId]
-                );
-                
-                let nextNumber = 1;
-                if (lastEmployee.length > 0 && lastEmployee[0].id) {
-                    const numericPart = lastEmployee[0].id.substring(3);
-                    const lastNumber = parseInt(numericPart) || 0;
-                    nextNumber = lastNumber + 1;
-                }
-                
-                employeeId = `EMP${String(nextNumber).padStart(3, '0')}`;
-                console.log(`🆔 Auto-generated Employee ID: ${employeeId}`);
-            }
-
-            // Create user with tenant_id
-            const [userResult] = await connection.execute(
-                `INSERT INTO users (tenant_id, role_id, first_name, last_name, email, password_hash, phone, is_active) 
-                 VALUES (?, ?, ?, ?, ?, NULL, ?, TRUE)`,
-                [
-                    tenantId,
-                    roleId,
-                    employeeData.first_name, 
-                    employeeData.last_name, 
-                    employeeData.email, 
-                    employeeData.phone || null
-                ]
-            );
-
-            const userId = userResult.insertId;
-
-            // Create employee details with tenant_id
-            await connection.execute(
-                `INSERT INTO employee_details 
-                (id, tenant_id, user_id, department_id, position, joining_date, date_of_birth, address, emergency_contact,
-                 bank_account_number, ifsc_code, pan_number, aadhar_number) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [
-                    employeeId,
-                    tenantId,
-                    userId,
-                    employeeData.department_id || null, 
-                    employeeData.position || null,
-                    employeeData.joining_date || null,
-                    employeeData.date_of_birth || null,
-                    employeeData.address || null,
-                    employeeData.emergency_contact || null,
-                    employeeData.bank_account_number || null,
-                    employeeData.ifsc_code || null,
-                    employeeData.pan_number || null,
-                    employeeData.aadhar_number || null
-                ]
-            );
-
-            await connection.commit();
-            
-            return {
-                user_id: userId,
-                employee_id: employeeId
-            };
-
-        } catch (error) {
-            await connection.rollback();
-            console.error('Error in Employee.create:', error);
-            throw error;
-        } finally {
-            connection.release();
+            roleId = roleRows[0]?.id;
         }
-    },
+        
+        // Validate role exists and belongs to tenant
+        const [roleCheck] = await connection.execute(
+            'SELECT id FROM roles WHERE id = ? AND tenant_id = ?',
+            [roleId, tenantId]
+        );
+        
+        if (roleCheck.length === 0) {
+            throw new Error('Invalid role ID');
+        }
+
+        // Determine employee ID
+        let employeeId;
+        if (employeeData.employee_id && employeeData.employee_id.trim() !== '') {
+            employeeId = employeeData.employee_id.trim().toUpperCase();
+            
+            const [existingEmployee] = await connection.execute(
+                'SELECT id FROM employee_details WHERE id = ? AND tenant_id = ?', 
+                [employeeId, tenantId]
+            );
+            
+            if (existingEmployee.length > 0) {
+                throw new Error(`Employee ID '${employeeId}' already exists in system`);
+            }
+        } else {
+            // Auto-generate employee ID with AITS prefix
+            const [lastEmployee] = await connection.execute(
+                `SELECT id FROM employee_details 
+                 WHERE tenant_id = ? AND id LIKE 'AITS%' 
+                 ORDER BY CAST(SUBSTRING(id, 5) AS UNSIGNED) DESC 
+                 LIMIT 1`,
+                [tenantId]
+            );
+            
+            let nextNumber = 1;
+            if (lastEmployee.length > 0 && lastEmployee[0].id) {
+                const numericPart = lastEmployee[0].id.substring(4); // Get everything after "AITS"
+                const lastNumber = parseInt(numericPart) || 0;
+                nextNumber = lastNumber + 1;
+            }
+            
+            employeeId = `AITS${String(nextNumber).padStart(3, '0')}`;
+            console.log(`🆔 Auto-generated Employee ID: ${employeeId}`);
+        }
+
+        // Create user with tenant_id
+        const [userResult] = await connection.execute(
+            `INSERT INTO users (tenant_id, role_id, first_name, last_name, email, password_hash, phone, is_active) 
+             VALUES (?, ?, ?, ?, ?, NULL, ?, TRUE)`,
+            [
+                tenantId,
+                roleId,
+                employeeData.first_name, 
+                employeeData.last_name, 
+                employeeData.email, 
+                employeeData.phone || null
+            ]
+        );
+
+        const userId = userResult.insertId;
+
+        // Create employee details with tenant_id
+        await connection.execute(
+            `INSERT INTO employee_details 
+            (id, tenant_id, user_id, department_id, position, joining_date, date_of_birth, address, emergency_contact,
+             bank_account_number, ifsc_code, pan_number, aadhar_number) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                employeeId,
+                tenantId,
+                userId,
+                employeeData.department_id || null, 
+                employeeData.position || null,
+                employeeData.joining_date || null,
+                employeeData.date_of_birth || null,
+                employeeData.address || null,
+                employeeData.emergency_contact || null,
+                employeeData.bank_account_number || null,
+                employeeData.ifsc_code || null,
+                employeeData.pan_number || null,
+                employeeData.aadhar_number || null
+            ]
+        );
+
+        await connection.commit();
+        
+        return {
+            user_id: userId,
+            employee_id: employeeId
+        };
+
+    } catch (error) {
+        await connection.rollback();
+        console.error('Error in Employee.create:', error);
+        throw error;
+    } finally {
+        connection.release();
+    }
+},
 
     // Get employee by ID (tenant-scoped)
 getById: async (tenantId, id) => {

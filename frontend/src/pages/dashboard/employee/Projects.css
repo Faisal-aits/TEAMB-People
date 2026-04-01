@@ -496,8 +496,9 @@
   color: #1f2937;
   margin-bottom: 1rem;
   display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
 }
 
 .proj-form-row {
@@ -624,7 +625,13 @@
   font-size: 1.1rem;
   background: rgba(220, 53, 69, 0.1);
   border-radius: 8px;
-  margin: 1rem;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .proj-retry-btn {
@@ -692,10 +699,47 @@
     opacity: 0;
     transform: translateY(10px);
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  
+  .proj-header-actions {
+    width: 100%;
+    justify-content: center;
   }
+  
+  .proj-excel-btn,
+  .proj-import-btn {
+    padding: 8px 15px;
+    font-size: 12px;
+  }
+  
+  .employee-list {
+    max-height: 150px;
+  }
+  
+  .member-badge {
+    font-size: 10px;
+  }
+}
+/* Add to Projects.css */
+
+/* Review Status Badges */
+.review-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 15px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.review-approved {
+  background: #d4edda;
+  color: #155724;
+}
+
+.review-rejected {
+  background: #f8d7da;
+  color: #721c24;
 }
 
 .proj-stat-card,
