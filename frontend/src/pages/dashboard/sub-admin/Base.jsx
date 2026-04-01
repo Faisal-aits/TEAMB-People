@@ -14,7 +14,6 @@ import InternshipManagement from './InternshipManagement.jsx';
 import Projects from './Projects.jsx';
 import Reports from './Reports.jsx';
 import Settings from './Settings.jsx';
-<<<<<<< Updated upstream
 import HRDashboard from './HRDashboard.jsx';
 import OfferLetter from '../HR/OfferLetter.jsx'; //Offer letter jsx HR Folder  
 import SalarySlip from '../HR/SalarySlip.jsx';
@@ -23,10 +22,8 @@ import EmployeeDirectory from '../HR/EmployeeDirectory.jsx';
 import ResignationRequests from '../HR/ResignationRequests.jsx';
 import ExperienceLetters from '../HR/ExperienceLetters.jsx';
 import IncrementLetters from '../HR/IncrementLetters.jsx';
-
-=======
 import EmployeeManagement from './EmployeeManagement.jsx'; // Add this import
->>>>>>> Stashed changes
+
 const Base = () => {
   const [activeTab, setActiveTab] = useState(() => {
   return localStorage.getItem('employeeActiveTab') || 'dashboard';

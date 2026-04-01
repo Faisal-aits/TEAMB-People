@@ -1,45 +1,47 @@
 import React, { useState, useEffect } from 'react';
+import { FaExclamationTriangle, FaBell, FaUsers, FaTasks, FaPlus, FaTrash, FaEye, FaCheck, FaFileExcel, FaUpload, FaCheckCircle, FaHourglassHalf, FaClock, FaUserPlus, FaDownload, FaSync } from 'react-icons/fa';
 import { projectAPI } from '../../../services/projectAPI';
-import { employeeAPI } from '../../../services/employeeAPI';
-import { FaExclamationTriangle, FaEdit, FaSave, FaTimes } from 'react-icons/fa';
 import './Projects.css';
+import * as XLSX from 'xlsx';
 
-const Projects = () => {
-  const [userSession, setUserSession] = useState({
-    employeeId: '',
-    employeeName: '',
-    userId: null
+const ProjectManagement = () => {
+  // User context
+  const [currentUser, setCurrentUser] = useState({
+    id: null,
+    employeeId: null,
+    name: '',
+    role: '',
+    isProjectLead: false,
+    managedProjects: []
   });
+
+  // State variables
   const [projects, setProjects] = useState([]);
+  const [projectLeads, setProjectLeads] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [teams, setTeams] = useState([]);
+  const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [employeeLoading, setEmployeeLoading] = useState(true);
-  
-  // ========== PROJECT DETAIL STATES ==========
+  const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState('projects');
+  const [selectedEmployees, setSelectedEmployees] = useState([]);
+  const [selectedTaskEmployees, setSelectedTaskEmployees] = useState([]);
+  const [availableTeamMembers, setAvailableTeamMembers] = useState([]);
+  const [loadingTeamMembers, setLoadingTeamMembers] = useState(false);
+  const [loadingTeams, setLoadingTeams] = useState(false);
+
+  // Modal states
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isPhaseModalOpen, setIsPhaseModalOpen] = useState(false);
-<<<<<<< Updated upstream
-  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
-=======
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [isTaskDetailsModalOpen, setIsTaskDetailsModalOpen] = useState(false);
-  const [isDeleteTaskModalOpen, setIsDeleteTaskModalOpen] = useState(false);
-  const [isDeleteTeamModalOpen, setIsDeleteTeamModalOpen] = useState(false);
->>>>>>> Stashed changes
   const [selectedProject, setSelectedProject] = useState(null);
+  const [selectedTask, setSelectedTask] = useState(null);
   const [selectedPhase, setSelectedPhase] = useState(null);
-<<<<<<< Updated upstream
-  const [isEditingPhase, setIsEditingPhase] = useState(false);
-  const [editingPhaseIndex, setEditingPhaseIndex] = useState(null);
-  const [tempPhaseData, setTempPhaseData] = useState({
-    progress: 0
-  });
-  
-  const [editFormData, setEditFormData] = useState({
-=======
   const [selectedProjectTeams, setSelectedProjectTeams] = useState([]);
   const [selectedTeam, setSelectedTeam] = useState(null);
 const [isExcelEditorOpen, setIsExcelEditorOpen] = useState(false);
@@ -49,18 +51,16 @@ const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 const [showMonthFilter, setShowMonthFilter] = useState(false);
   // Form states
   const [formData, setFormData] = useState({
->>>>>>> Stashed changes
     name: '',
     department: '',
-    manager: '',
+    project_lead: '',
     start_date: '',
     end_date: '',
     current_phase: '',
-    status: ''
+    status: 'On Track',
+    description: ''
   });
   
-<<<<<<< Updated upstream
-=======
   const [taskFormData, setTaskFormData] = useState({
     title: '',
     description: '',
@@ -80,28 +80,11 @@ const [showMonthFilter, setShowMonthFilter] = useState(false);
     members: []
   });
 
->>>>>>> Stashed changes
   const [phaseFormData, setPhaseFormData] = useState({
+    status: '',
     progress: '',
     comments: ''
   });
-<<<<<<< Updated upstream
-  
-  const [assignFormData, setAssignFormData] = useState({
-    assigned_department: '',
-    manager_name: '',
-    team: []
-  });
-  
-  // Additional states needed for modals
-  const [departments, setDepartments] = useState([]);
-  const [managers, setManagers] = useState([]);
-  const [employees, setEmployees] = useState([]);
-  const [projectStatuses] = useState(['On Track', 'Delayed', 'At Risk', 'Completed', 'On Hold']);
-  const [phases] = useState(['Requirement Specification', 'System Design', 'Development', 'Integration & Testing', 'Deployment', 'Maintenance & Repeat Cycle']);
-
-  // Fetch employee data from localStorage and API
-=======
 
   const [filters, setFilters] = useState({
     status: '',
@@ -367,78 +350,10 @@ const updateEditableTask = (index, field, value) => {
     updated[index][field] = value;
     setEditableTasks(updated);
 };
-
-// Handle delete task - Only Project Lead can delete
-const handleDeleteTask = async () => {
-  if (!selectedTask) return;
-  
-  // Check if current user is project lead for this project
-  const isProjectLeadForTask = currentUser.isProjectLead && currentUser.managedProjects.includes(selectedTask.project_id);
-  
-  if (!isProjectLeadForTask) {
-    alert('Only Project Lead can delete tasks');
-    return;
-  }
-  
-  try {
-    const response = await projectAPI.deleteTask(selectedTask.id);
-    if (response.data.success) {
-      setIsDeleteTaskModalOpen(false);
-      setSelectedTask(null);
-      await fetchAllData();
-      alert('Task deleted successfully!');
-    } else {
-      alert(response.data.message || 'Failed to delete task');
-    }
-  } catch (err) {
-    console.error('Error deleting task:', err);
-    alert(err.response?.data?.message || 'Failed to delete task');
-  }
-};
-
-const handleDeleteTeam = async () => {
-  if (!selectedTeam) return;
-  
-  const isProjectLeadForTeam = currentUser.isProjectLead && currentUser.managedProjects.includes(selectedTeam.project_id);
-  
-  if (!isProjectLeadForTeam) {
-    alert('Only Project Lead can delete teams');
-    return;
-  }
-  
-  try {
-    console.log('Deleting team with ID:', selectedTeam.id);
-    
-    const response = await projectAPI.deleteTeam(selectedTeam.id);
-    console.log('Delete response:', response);
-    
-    if (response.data.success) {
-      // Manually remove the team from state
-      setTeams(prevTeams => prevTeams.filter(team => team.id !== selectedTeam.id));
-      
-      setIsDeleteTeamModalOpen(false);
-      setSelectedTeam(null);
-      alert('Team deleted successfully!');
-    } else {
-      alert(response.data.message || 'Failed to delete team');
-    }
-  } catch (err) {
-    console.error('Error deleting team:', err);
-    alert(err.response?.data?.message || 'Failed to delete team');
-  }
-};
   // Load current user
->>>>>>> Stashed changes
   useEffect(() => {
-    const fetchEmployeeData = async () => {
+    const loadUser = () => {
       try {
-<<<<<<< Updated upstream
-        setEmployeeLoading(true);
-        
-        const userData = localStorage.getItem('user');
-        if (!userData) {
-          throw new Error('User data not found. Please log in again.');
-=======
         const userData = JSON.parse(localStorage.getItem('user'));
         console.log('=== USER DATA FROM LOCALSTORAGE ===');
         console.log('Raw user data:', userData);
@@ -465,299 +380,14 @@ const handleDeleteTeam = async () => {
             isProjectLead: false,
             managedProjects: []
           });
->>>>>>> Stashed changes
         }
-
-        const user = JSON.parse(userData);
-        console.log('Current user:', user);
-
-        if (!user.id) {
-          throw new Error('User ID not found.');
-        }
-
-        const employee = await getEmployeeByUserId(user.id);
-        
-        if (!employee) {
-          throw new Error('Employee record not found for this user.');
-        }
-
-        console.log('Employee data for projects:', employee);
-          
-        setUserSession({
-          employeeId: employee.employee_id || employee.id,
-          employeeName: `${employee.first_name} ${employee.last_name}`,
-          userId: user.id
-        });
-
       } catch (err) {
-        console.error('Error fetching employee data:', err);
-        setError(err.message || 'Failed to load employee data');
-      } finally {
-        setEmployeeLoading(false);
+        console.error('Error loading user:', err);
       }
     };
-
-    fetchEmployeeData();
+    loadUser();
+    fetchAllData();
   }, []);
-<<<<<<< Updated upstream
-
-  // Get employee data by user ID
-  const getEmployeeByUserId = async (userId) => {
-    try {
-      console.log('Fetching all employees to find user ID:', userId);
-      const response = await employeeAPI.getAll();
-      
-      if (response.data && response.data.employees) {
-        const employee = response.data.employees.find(emp => emp.user_id === userId);
-        console.log('Found employee:', employee);
-        return employee;
-      }
-      return null;
-    } catch (err) {
-      console.error('Error fetching employees list:', err);
-      return null;
-    }
-  };
-
-  // Fetch projects from API
-  useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        setLoading(true);
-        const response = await projectAPI.getAll();
-        
-        if (response.data.success) {
-          setProjects(response.data.data);
-          // Also fetch departments and managers for modals
-          fetchDepartmentsAndManagers();
-        } else {
-          setError('Failed to fetch projects');
-        }
-      } catch (err) {
-        console.error('Error fetching projects:', err);
-        setError('Error loading projects data');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (!employeeLoading && userSession.employeeId) {
-      fetchProjects();
-    }
-  }, [employeeLoading, userSession.employeeId]);
-
-  // Fetch departments and managers
-  const fetchDepartmentsAndManagers = async () => {
-    try {
-      const [deptsRes, managersRes] = await Promise.all([
-        projectAPI.getDepartments(),
-        projectAPI.getManagers()
-      ]);
-      
-      if (deptsRes.data.success) {
-        setDepartments(deptsRes.data.data || []);
-      }
-      if (managersRes.data.success) {
-        setManagers(managersRes.data.data || []);
-      }
-    } catch (err) {
-      console.error('Error fetching departments/managers:', err);
-    }
-  };
-
-  // Load employees for assignment
-  useEffect(() => {
-    const loadEmployees = async () => {
-      try {
-        const response = await projectAPI.getEmployees();
-        if (response.data.success) {
-          setEmployees(response.data.data || []);
-        }
-      } catch (err) {
-        console.error('Error loading employees:', err);
-      }
-    };
-    
-    loadEmployees();
-  }, []);
-
-  // Check if employee is assigned to project
-  const isEmployeeAssignedToProject = (project) => {
-    if (!userSession.employeeId || !userSession.employeeName) return false;
-
-    const isManager = project.manager && project.manager.toLowerCase().includes(userSession.employeeName.toLowerCase());
-    
-    const isTeamMember = project.team && project.team.some(
-      member => member.employee_id === userSession.employeeId
-    );
-    
-    return isManager || isTeamMember;
-  };
-
-  // Calculate overall progress from phases
-  const calculateOverallProgress = (phases) => {
-    if (!phases || phases.length === 0) return 0;
-    const total = phases.reduce((sum, phase) => sum + (phase.progress || 0), 0);
-    return Math.round(total / phases.length);
-  };
-
-  // Calculate project status based on phases
-  const calculateProjectStatus = (phases, endDate) => {
-    if (!phases || phases.length === 0) return 'Planning';
-    
-    const overallProgress = calculateOverallProgress(phases);
-    
-    // Check if all phases are completed
-    const allCompleted = phases.every(phase => phase.progress === 100);
-    if (allCompleted) return 'Completed';
-    
-    // Check if any phase is behind schedule (you can customize this logic)
-    const hasDelayedPhases = phases.some(phase => {
-      // If progress is less than expected based on timeline
-      // This is a simplified logic - you can make it more sophisticated
-      return phase.progress < 30 && phase.status === 'In Progress';
-    });
-    
-    // Check if project is near deadline
-    if (endDate) {
-      const today = new Date();
-      const end = new Date(endDate);
-      const daysRemaining = Math.ceil((end - today) / (1000 * 60 * 60 * 24));
-      
-      if (daysRemaining < 0) return 'Delayed';
-      if (daysRemaining < 7 && overallProgress < 90) return 'At Risk';
-    }
-    
-    // Determine status based on progress
-    if (overallProgress === 100) return 'Completed';
-    if (overallProgress > 0) return 'On Track';
-    
-    return 'Planning';
-  };
-
-  // Transform database project data
-  const transformProjectData = (dbProjects) => {
-    return dbProjects.map(project => {
-      const phases = project.phases || [];
-      const overallProgress = calculateOverallProgress(phases);
-      const calculatedStatus = calculateProjectStatus(phases, project.end_date);
-      
-      return {
-        id: project.id,
-        projectName: project.name,
-        description: project.description,
-        department: project.department,
-        manager: project.manager,
-        startDate: project.start_date,
-        endDate: project.end_date,
-        phase: project.current_phase,
-        progress: overallProgress,
-        status: calculatedStatus, // Use calculated status instead of stored status
-        team: project.team || [],
-        phases: phases,
-        role: project.manager && project.manager.toLowerCase().includes(userSession.employeeName?.toLowerCase()) ? 'Manager' : 'Team Member'
-      };
-    });
-  };
-
-  const assignedProjects = transformProjectData(projects).filter(project => 
-    isEmployeeAssignedToProject(project)
-  );
-
-  // ========== PHASE EDITING FUNCTIONS ==========
-
-  // Start editing a phase
-  const handleEditPhaseClick = (project, phase, index) => {
-    setSelectedProject(project);
-    setSelectedPhase(phase);
-    setEditingPhaseIndex(index);
-    setTempPhaseData({
-      progress: phase.progress || 0
-    });
-    setIsEditingPhase(true);
-  };
-
-  // Cancel phase editing
-  const handleCancelPhaseEdit = () => {
-    setIsEditingPhase(false);
-    setEditingPhaseIndex(null);
-    setSelectedPhase(null);
-    setTempPhaseData({ progress: 0 });
-  };
-
-  // Update temp phase data
-  const handleTempPhaseChange = (field, value) => {
-    setTempPhaseData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  // Save phase changes
-  const handleSavePhase = async () => {
-    if (!selectedProject || editingPhaseIndex === null) return;
-
-    try {
-      // Create updated phases array
-      const updatedPhases = [...selectedProject.phases];
-      const progress = parseInt(tempPhaseData.progress) || 0;
-      
-      // Auto-determine phase status based on progress
-      let phaseStatus = 'Not Started';
-      if (progress >= 100) {
-        phaseStatus = 'Completed';
-      } else if (progress > 0) {
-        phaseStatus = 'In Progress';
-      }
-      
-      updatedPhases[editingPhaseIndex] = {
-        ...updatedPhases[editingPhaseIndex],
-        progress: progress,
-        status: phaseStatus
-      };
-
-      // Calculate new overall progress
-      const newOverallProgress = calculateOverallProgress(updatedPhases);
-      
-      // Calculate new project status
-      const newProjectStatus = calculateProjectStatus(updatedPhases, selectedProject.endDate);
-
-      // Call API to update phase
-      const response = await projectAPI.updatePhase(
-        selectedProject.id,
-        selectedPhase.name,
-        {
-          progress: progress,
-          status: phaseStatus
-        }
-      );
-
-      if (response.data.success) {
-        // Update local projects state with new status
-        setProjects(prev => prev.map(proj => 
-          proj.id === selectedProject.id 
-            ? { 
-                ...proj, 
-                phases: updatedPhases, 
-                progress: newOverallProgress,
-                status: newProjectStatus 
-              }
-            : proj
-        ));
-        
-        // Reset editing state
-        setIsEditingPhase(false);
-        setEditingPhaseIndex(null);
-        setSelectedPhase(null);
-        
-        // alert('Phase updated successfully!');
-      } else {
-        throw new Error(response.data.message);
-      }
-    } catch (err) {
-      console.error('Error updating phase:', err);
-      alert(err.response?.data?.message || 'Failed to update phase. Please try again.');
-=======
   
   // Set project lead status
   useEffect(() => {
@@ -882,103 +512,85 @@ const handleDeleteTeam = async () => {
       setLoadingTeamMembers(false);
     }
   };
-const fetchAllData = async () => {
-  try {
-    setLoading(true);
-    console.log('=== FETCHING ALL DATA ===');
 
-    const [projectsRes, statsRes, employeesRes, departmentsRes, teamsRes, tasksRes] = await Promise.allSettled([
-      projectAPI.getAll(),
-      projectAPI.getStats(),
-      projectAPI.getEmployees(),
-      projectAPI.getDepartments(),
-      projectAPI.getAllTeams(),
-      projectAPI.getAllTasks()
-    ]);
+  const fetchAllData = async () => {
+    try {
+      setLoading(true);
+      console.log('=== FETCHING ALL DATA ===');
 
-    console.log('Teams API Response Status:', teamsRes.status);
-    if (teamsRes.status === 'fulfilled') {
-      console.log('Teams API Full Response:', teamsRes.value);
-      console.log('Teams API Data:', teamsRes.value?.data);
-      
-      if (teamsRes.value?.data?.success) {
+      const [projectsRes, statsRes, employeesRes, departmentsRes, teamsRes, tasksRes] = await Promise.allSettled([
+        projectAPI.getAll(),
+        projectAPI.getStats(),
+        projectAPI.getEmployees(),
+        projectAPI.getDepartments(),
+        projectAPI.getAllTeams(),
+        projectAPI.getAllTasks()
+      ]);
+
+      if (projectsRes.status === 'fulfilled') {
+        if (projectsRes.value?.data?.success) {
+          const projectsData = projectsRes.value.data.data || [];
+          setProjects(projectsData);
+        } else {
+          setProjects([]);
+        }
+      } else {
+        setProjects([]);
+      }
+
+      if (statsRes.status === 'fulfilled' && statsRes.value?.data?.success) {
+        const stats = statsRes.value.data.data || {};
+        setDashboardStats(stats);
+      }
+
+      if (employeesRes.status === 'fulfilled') {
+        if (employeesRes.value?.data?.success) {
+          const employeesData = employeesRes.value.data.data || [];
+          const validEmployees = employeesData.filter(emp => emp && emp.id);
+          setEmployees(validEmployees);
+          
+          const leads = validEmployees.filter(emp => {
+            const role = emp.role_name?.toLowerCase();
+            const position = emp.position?.toLowerCase();
+            return role !== 'hr' && position !== 'hr';
+          });
+          setProjectLeads(leads);
+        } else {
+          setEmployees([]);
+        }
+      }
+
+      if (departmentsRes.status === 'fulfilled' && departmentsRes.value?.data?.success) {
+        setDepartments(departmentsRes.value.data.data || []);
+      }
+
+      if (teamsRes.status === 'fulfilled' && teamsRes.value?.data?.success) {
         const teamsData = teamsRes.value.data.data || [];
-        console.log('Raw teams data from API:', JSON.stringify(teamsData, null, 2));
-        console.log('Number of teams received:', teamsData.length);
-        
-        // Ensure each team has members array
         const teamsWithMembers = teamsData.map(team => ({
           ...team,
           members: team.members || [],
           member_count: team.members?.length || 0
         }));
-        
-        console.log('Processed teams:', teamsWithMembers);
         setTeams(teamsWithMembers);
-      } else {
-        console.log('Teams API success false or no data:', teamsRes.value?.data);
-        setTeams([]);
       }
-    } else {
-      console.log('Teams API failed:', teamsRes);
-      setTeams([]);
-    }
 
-    // Rest of your existing code for projects, stats, etc...
-    if (projectsRes.status === 'fulfilled') {
-      if (projectsRes.value?.data?.success) {
-        const projectsData = projectsRes.value.data.data || [];
-        setProjects(projectsData);
+      if (tasksRes.status === 'fulfilled' && tasksRes.value?.data?.success) {
+        const tasksData = tasksRes.value.data.data || [];
+        setTasks(tasksData);
+      } else if (tasksRes.status === 'fulfilled') {
+        setTasks([]);
       } else {
-        setProjects([]);
+        setTasks([]);
       }
-    } else {
-      setProjects([]);
-    }
 
-    if (statsRes.status === 'fulfilled' && statsRes.value?.data?.success) {
-      const stats = statsRes.value.data.data || {};
-      setDashboardStats(stats);
+      setError('');
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      setError('Failed to load data. Please refresh the page.');
+    } finally {
+      setLoading(false);
     }
-
-    if (employeesRes.status === 'fulfilled') {
-      if (employeesRes.value?.data?.success) {
-        const employeesData = employeesRes.value.data.data || [];
-        const validEmployees = employeesData.filter(emp => emp && emp.id);
-        setEmployees(validEmployees);
-        
-        const leads = validEmployees.filter(emp => {
-          const role = emp.role_name?.toLowerCase();
-          const position = emp.position?.toLowerCase();
-          return role !== 'hr' && position !== 'hr';
-        });
-        setProjectLeads(leads);
-      } else {
-        setEmployees([]);
-      }
-    }
-
-    if (departmentsRes.status === 'fulfilled' && departmentsRes.value?.data?.success) {
-      setDepartments(departmentsRes.value.data.data || []);
-    }
-
-    if (tasksRes.status === 'fulfilled' && tasksRes.value?.data?.success) {
-      const tasksData = tasksRes.value.data.data || [];
-      setTasks(tasksData);
-    } else if (tasksRes.status === 'fulfilled') {
-      setTasks([]);
-    } else {
-      setTasks([]);
-    }
-
-    setError('');
-  } catch (err) {
-    console.error('Error fetching data:', err);
-    setError('Failed to load data. Please refresh the page.');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const getUserProjects = () => {
     if (projects.length > 0) {
@@ -1001,14 +613,6 @@ const fetchAllData = async () => {
   const canCreateTeam = () => currentUser.isProjectLead;
   const canCreateTask = (projectId) => currentUser.isProjectLead && currentUser.managedProjects.includes(projectId);
   const canEditProject = () => currentUser.role === 'hr';
-  const canDeleteTask = (task) => {
-    if (currentUser.isProjectLead) return currentUser.managedProjects.includes(task.project_id);
-    return false;
-  };
-  const canDeleteTeam = (team) => {
-    if (currentUser.isProjectLead) return currentUser.managedProjects.includes(team.project_id);
-    return false;
-  };
   const canEditTask = (task) => {
     if (currentUser.role === 'hr') return true;
     if (currentUser.isProjectLead) return currentUser.managedProjects.includes(task.project_id);
@@ -1028,84 +632,60 @@ const fetchAllData = async () => {
     );
   };
 
- const handleCreateTeam = async (e) => {
-  e.preventDefault();
-  
-  if (!teamFormData.name) {
-    alert('Team name is required');
-    return;
-  }
-  if (!teamFormData.project_id) {
-    alert('Please select a project for this team');
-    return;
-  }
-  
-  const validMembers = selectedEmployees.filter(id => {
-    return id && id !== 'null' && id !== 'undefined' && id !== '' && id !== null;
-  });
-  
-  if (validMembers.length === 0) {
-    alert('Please select at least one valid team member');
-    return;
-  }
-
-  try {
-    const teamData = {
-      name: teamFormData.name,
-      project_id: parseInt(teamFormData.project_id),
-      team_lead_id: teamFormData.team_lead_id ? parseInt(teamFormData.team_lead_id) : null,
-      description: teamFormData.description || '',
-      status: 'Active',
-      members: validMembers
-    };
+  const handleCreateTeam = async (e) => {
+    e.preventDefault();
     
-    console.log('Creating team with data:', teamData);
-    
-    const response = await projectAPI.createTeam(teamData);
-    console.log('Create team response:', response);
-    
-    if (response.data && response.data.success) {
-      // Get the newly created team from response
-      const newTeam = response.data.data;
-      console.log('New team created:', newTeam);
-      
-      // Add the new team to the existing teams state
-      if (newTeam) {
-        setTeams(prevTeams => {
-          const updatedTeams = [...prevTeams, {
-            ...newTeam,
-            members: newTeam.members || [],
-            member_count: newTeam.members?.length || validMembers.length
-          }];
-          console.log('Updated teams list:', updatedTeams);
-          return updatedTeams;
-        });
-      } else {
-        // If response doesn't return the team, fetch all teams again
-        await fetchAllData();
-      }
-      
-      // Reset form and close modal
-      setTeamFormData({ 
-        name: '', 
-        team_lead_id: '', 
-        project_id: '', 
-        description: '', 
-        members: [] 
-      });
-      setSelectedEmployees([]);
-      setIsTeamModalOpen(false);
-      alert(response.data.message || 'Team created successfully!');
-      setActiveTab('teams');
-    } else {
-      alert(response.data?.message || 'Failed to create team');
+    if (!teamFormData.name) {
+      alert('Team name is required');
+      return;
     }
-  } catch (error) {
-    console.error('Error creating team:', error);
-    console.error('Error response:', error.response);
-    alert(error.response?.data?.message || 'Failed to create team');
-  }
-};
+    if (!teamFormData.project_id) {
+      alert('Please select a project for this team');
+      return;
+    }
+    
+    const validMembers = selectedEmployees.filter(id => {
+      return id && id !== 'null' && id !== 'undefined' && id !== '' && id !== null;
+    });
+    
+    if (validMembers.length === 0) {
+      alert('Please select at least one valid team member');
+      return;
+    }
+
+    try {
+      const teamData = {
+        name: teamFormData.name,
+        project_id: parseInt(teamFormData.project_id),
+        team_lead_id: teamFormData.team_lead_id ? parseInt(teamFormData.team_lead_id) : null,
+        description: teamFormData.description || '',
+        status: 'Active',
+        members: validMembers
+      };
+      
+      const response = await projectAPI.createTeam(teamData);
+      
+      if (response.data.success) {
+        setTeamFormData({ 
+          name: '', 
+          team_lead_id: '', 
+          project_id: '', 
+          description: '', 
+          members: [] 
+        });
+        setSelectedEmployees([]);
+        setIsTeamModalOpen(false);
+        await fetchAllData();
+        alert(response.data.message);
+        setActiveTab('teams');
+      } else {
+        alert(response.data.message || 'Failed to create team');
+      }
+    } catch (error) {
+      console.error('Error creating team:', error);
+      alert(error.response?.data?.message || 'Failed to create team');
+    }
+  };
 
   const handleCreateTask = async (e) => {
     e.preventDefault();
@@ -1399,858 +979,162 @@ const fetchAllData = async () => {
     } catch (err) {
       console.error('Error updating task:', err);
       return false;
->>>>>>> Stashed changes
     }
   };
 
-  // ========== PROJECT DETAIL HANDLER FUNCTIONS ==========
-
-  // View Project
-  const handleViewProject = (project) => {
-    setSelectedProject(project);
-    setIsViewModalOpen(true);
-  };
-
-  // Edit Project
-  const handleEditProject = (project) => {
-    setSelectedProject(project);
-    
-    const formatDateForInput = (dateString) => {
-      if (!dateString) return '';
-      try {
-        const date = new Date(dateString);
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-      } catch (error) {
-        return '';
-      }
-    };
-
-    setEditFormData({
-      name: project.name,
-      department: project.department,
-      manager: project.manager,
-      start_date: formatDateForInput(project.start_date),
-      end_date: formatDateForInput(project.end_date),
-      current_phase: project.current_phase,
-      status: project.status
-    });
-    
-    setIsViewModalOpen(false);
-    setIsEditModalOpen(true);
-  };
-
-  const handleEditInputChange = (e) => {
-    const { name, value } = e.target;
-    setEditFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleUpdateProject = async (e) => {
+  const handleSubmitProject = async (e) => {
     e.preventDefault();
-    
-    if (!editFormData.name || !editFormData.department || !editFormData.manager) {
+    if (!canCreateProject()) {
+      alert('Only HR can create projects');
+      return;
+    }
+    if (!formData.name || !formData.department || !formData.project_lead) {
       alert('Please fill in all required fields');
       return;
     }
 
     try {
-      const response = await projectAPI.update(selectedProject.id, editFormData);
-      
+      const selectedLead = projectLeads.find(lead => String(lead.id) === String(formData.project_lead));
+      if (!selectedLead) {
+        alert('Selected project lead not found');
+        return;
+      }
+
+      const projectData = {
+        name: formData.name,
+        department: formData.department,
+        manager: selectedLead.name,
+        start_date: formData.start_date || null,
+        end_date: formData.end_date || null,
+        current_phase: formData.current_phase || 'Planning',
+        status: formData.status,
+        description: formData.description || ''
+      };
+
+      const response = await projectAPI.create(projectData);
       if (response.data.success) {
-        setProjects(prev => prev.map(proj => 
-          proj.id === selectedProject.id ? response.data.data : proj
-        ));
-        setIsEditModalOpen(false);
-        setSelectedProject(null);
-        alert('Project updated successfully!');
-      } else {
-        throw new Error(response.data.message);
+        setFormData({ name: '', department: '', project_lead: '', start_date: '', end_date: '', current_phase: '', status: 'On Track', description: '' });
+        setIsModalOpen(false);
+        await fetchAllData();
+        alert('Project created successfully!');
       }
     } catch (err) {
-      console.error('Error updating project:', err);
-      alert(err.response?.data?.message || 'Failed to update project. Please try again.');
+      console.error('Error creating project:', err);
+      alert(err.response?.data?.message || 'Failed to create project');
     }
   };
 
-<<<<<<< Updated upstream
-  // Assign Project Team
-  const handleAssignProject = (project) => {
-    setSelectedProject(project);
-    setAssignFormData({
-      assigned_department: project.department || '',
-      manager_name: project.manager || '',
-      team: project.team ? project.team.map(member => member.employee_id) : []
-    });
-    setIsViewModalOpen(false);
-    setIsAssignModalOpen(true);
-  };
-
-  const handleAssignInputChange = (e) => {
-    const { name, value } = e.target;
-    setAssignFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleTeamMemberToggle = (employeeId) => {
-    setAssignFormData(prev => {
-      const team = [...prev.team];
-      const index = team.indexOf(employeeId);
-      
-      if (index > -1) {
-        team.splice(index, 1);
-      } else {
-        team.push(employeeId);
-      }
-      
-      return { ...prev, team };
-    });
-  };
-
-  const handleAssignSubmit = async (e) => {
-    e.preventDefault();
-    
-    try {
-      const response = await projectAPI.assignTeam(selectedProject.id, assignFormData);
-      
-      if (response.data.success) {
-        setProjects(prev => prev.map(proj => 
-          proj.id === selectedProject.id ? response.data.data : proj
-        ));
-        setIsAssignModalOpen(false);
-        setSelectedProject(null);
-        alert('Project team assigned successfully!');
-      } else {
-        throw new Error(response.data.message);
-      }
-    } catch (err) {
-      console.error('Error assigning team:', err);
-      alert(err.response?.data?.message || 'Failed to assign team. Please try again.');
-    }
-  };
-
-  // Delete Project
-  const handleDeleteClick = (project) => {
-    setSelectedProject(project);
-    setIsDeleteModalOpen(true);
-  };
-
-=======
->>>>>>> Stashed changes
   const handleDeleteProject = async () => {
     if (!selectedProject) return;
-
     try {
       const response = await projectAPI.delete(selectedProject.id);
-      
       if (response.data.success) {
-        setProjects(prev => prev.filter(proj => proj.id !== selectedProject.id));
         setIsDeleteModalOpen(false);
         setIsViewModalOpen(false);
         setSelectedProject(null);
+        await fetchAllData();
         alert('Project deleted successfully!');
-      } else {
-        throw new Error(response.data.message);
       }
     } catch (err) {
       console.error('Error deleting project:', err);
-      alert(err.response?.data?.message || 'Failed to delete project. Please try again.');
+      alert('Failed to delete project');
     }
   };
 
-<<<<<<< Updated upstream
-  // Edit Phase (Modal version)
-  const handleEditPhaseModal = (project, phase) => {
-    setSelectedProject(project);
-    setSelectedPhase(phase);
-    setPhaseFormData({
-      progress: phase.progress,
-      comments: phase.comments || ''
-    });
-    setIsPhaseModalOpen(true);
-  };
-
-  const handlePhaseInputChange = (e) => {
-    const { name, value } = e.target;
-    setPhaseFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleUpdatePhaseModal = async (e) => {
-    e.preventDefault();
-    
-    try {
-      const progress = parseInt(phaseFormData.progress) || 0;
-      
-      // Auto-determine phase status based on progress
-      let phaseStatus = 'Not Started';
-      if (progress >= 100) {
-        phaseStatus = 'Completed';
-      } else if (progress > 0) {
-        phaseStatus = 'In Progress';
-      }
-      
-      const response = await projectAPI.updatePhase(
-        selectedProject.id, 
-        selectedPhase.name, 
-        {
-          progress: progress,
-          status: phaseStatus,
-          comments: phaseFormData.comments
-        }
-      );
-      
-      if (response.data.success) {
-        // Update local projects
-        setProjects(prev => prev.map(proj => 
-          proj.id === selectedProject.id ? response.data.data : proj
-        ));
-        setIsPhaseModalOpen(false);
-        setSelectedProject(null);
-        setSelectedPhase(null);
-        alert('Phase updated successfully!');
-      } else {
-        throw new Error(response.data.message);
-      }
-    } catch (err) {
-      console.error('Error updating phase:', err);
-      alert(err.response?.data?.message || 'Failed to update phase. Please try again.');
-    }
-  };
-
-  // Start New Cycle
-  const handleStartNewCycle = async (project) => {
-=======
   const handleExportProjects = () => {
->>>>>>> Stashed changes
     try {
-      const newProjectData = {
-        ...project,
-        name: `${project.name} - Cycle ${Math.floor(Math.random() * 100) + 1}`,
-        start_date: new Date().toISOString().split('T')[0],
-        end_date: '',
-        progress: 0,
-        status: 'On Track',
-        phases: project.phases.map(phase => ({
-          ...phase,
-          status: 'Not Started',
-          progress: 0,
-          documents: [],
-          comments: ''
-        }))
-      };
+      const userProjects = getUserProjects();
+      const filteredProjects = userProjects.filter(project => {
+        if (searchTerm && !project.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+        if (filters.status && project.status !== filters.status) return false;
+        if (filters.department && project.department !== filters.department) return false;
+        return true;
+      });
 
-      const response = await projectAPI.create(newProjectData);
-      
-      if (response.data.success) {
-        setProjects(prev => [response.data.data, ...prev]);
-        alert('New project cycle started successfully!');
-      } else {
-        throw new Error(response.data.message);
+      if (filteredProjects.length === 0) {
+        alert('No projects to export!');
+        return;
       }
-    } catch (err) {
-      console.error('Error starting new cycle:', err);
-      alert(err.response?.data?.message || 'Failed to start new cycle. Please try again.');
+
+      const exportData = filteredProjects.map(project => ({
+        'Project Name': project.name,
+        'Department': project.department,
+        'Project Lead': project.manager,
+        'Start Date': formatDate(project.start_date),
+        'End Date': formatDate(project.end_date),
+        'Current Phase': project.current_phase,
+        'Progress': `${project.progress}%`,
+        'Status': project.status
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Projects');
+      XLSX.writeFile(workbook, `Projects_Export_${new Date().toISOString().split('T')[0]}.xlsx`);
+      alert(`Exported ${filteredProjects.length} projects successfully!`);
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      alert('Error exporting data');
     }
   };
 
-  // ========== HELPER FUNCTIONS ==========
-
-  const getProjectStatusBadge = (status) => {
-    const statusClasses = {
-      'Completed': 'project-status--approved',
-      'On Track': 'project-status--approved',
-      'In Progress': 'project-status--pending',
-      'Planning': 'project-status--pending',
-      'Delayed': 'project-status--rejected',
-      'At Risk': 'project-status--rejected',
-      'On Hold': 'project-status--rejected'
-    };
-    
-    return (
-      <span className={`project-status-badge ${statusClasses[status] || 'project-status--pending'}`}>
-        {status}
-      </span>
-    );
-  };
-
-  const getPhaseStatusBadge = (phase) => {
-    const statusClasses = {
-      'Completed': 'project-status--approved',
-      'In Progress': 'project-status--pending',
-      'Review': 'project-status--pending',
-      'Not Started': 'project-status--rejected',
-      'On Hold': 'project-status--rejected'
-    };
-    
-    return (
-      <span className={`project-phase-badge ${statusClasses[phase.status] || 'project-status--pending'}`}>
-        {phase.status}
-      </span>
-    );
-  };
-
-  const getStatusBadge = (status) => {
-    const statusConfig = {
+  const getStatusBadge = (project) => {
+    const statusMap = {
       'On Track': 'proj-status-active',
-      'Completed': 'proj-status-active',
       'Delayed': 'proj-status-inactive',
       'At Risk': 'proj-status-inactive',
-      'On Hold': 'proj-status-inactive',
-      'Planning': 'proj-status-pending'
+      'Completed': 'proj-status-active',
+      'On Hold': 'proj-status-inactive'
     };
-
     return (
-      <span className={`proj-status-badge ${statusConfig[status] || 'proj-status-inactive'}`}>
-        {status?.toUpperCase() || 'UNKNOWN'}
+      <span className={`proj-status-badge ${statusMap[project.status] || 'proj-status-inactive'}`}>
+        {project.status?.toUpperCase() || 'UNKNOWN'}
       </span>
     );
+  };
+
+  const getTaskPriorityBadge = (priority) => {
+    const priorityMap = { 'High': 'priority-high', 'Medium': 'priority-medium', 'Low': 'priority-low' };
+    return <span className={`task-priority-badge ${priorityMap[priority]}`}>{priority}</span>;
   };
 
   const formatDate = (dateString) => {
     if (!dateString) return 'Not set';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
-  // Calculate days remaining
-  const getDaysRemaining = (endDate) => {
-    if (!endDate) return null;
-    
-    const today = new Date();
-    const end = new Date(endDate);
-    const diffTime = end - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    return diffDays;
+  const handleFilterChange = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
   };
 
-  // ========== MODAL COMPONENTS ==========
+  const userProjects = getUserProjects();
+  const userTasks = getUserTasks();
 
-  // View Project Details Modal
-  const ViewProjectModal = () => (
-    <div className="proj-modal-overlay">
-      <div className="proj-modal-content proj-large-modal">
-        <div className="proj-modal-header">
-          <h2 id="proj-view-modal-title">Project Details - {selectedProject?.name}</h2>
-          <button 
-            className="proj-close-btn"
-            id="proj-view-close"
-            onClick={() => setIsViewModalOpen(false)}
-          >
-            ×
-          </button>
-        </div>
+  const filteredProjects = userProjects.filter(project => {
+    if (searchTerm && !project.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+    if (filters.status && project.status !== filters.status) return false;
+    if (filters.department && project.department !== filters.department) return false;
+    return true;
+  });
 
-        <div className="proj-details-content">
-          <div className="proj-form-section">
-            <h3 className="proj-section-title">Project Information</h3>
-            <div className="proj-details-grid">
-              <div className="proj-detail-item">
-                <label>Project ID</label>
-                <span>PROJ{String(selectedProject?.id).padStart(3, '0')}</span>
-              </div>
-              <div className="proj-detail-item">
-                <label>Project Name</label>
-                <span>{selectedProject?.name}</span>
-              </div>
-              <div className="proj-detail-item">
-                <label>Department</label>
-                <span>{selectedProject?.department}</span>
-              </div>
-              <div className="proj-detail-item">
-                <label>Manager</label>
-                <span>{selectedProject?.manager}</span>
-              </div>
-              <div className="proj-detail-item">
-                <label>Start Date</label>
-                <span>{formatDate(selectedProject?.start_date)}</span>
-              </div>
-              <div className="proj-detail-item">
-                <label>End Date</label>
-                <span>{formatDate(selectedProject?.end_date)}</span>
-              </div>
-              <div className="proj-detail-item">
-                <label>Current Phase</label>
-                <span>{selectedProject?.current_phase}</span>
-              </div>
-              <div className="proj-detail-item">
-                <label>Overall Progress</label>
-                <span>{selectedProject?.progress}%</span>
-              </div>
-              <div className="proj-detail-item">
-                <label>Status</label>
-                <span>{getStatusBadge(selectedProject?.status)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Team Information Section */}
-          {selectedProject?.team && selectedProject.team.length > 0 && (
-            <div className="proj-form-section">
-              <h3 className="proj-section-title">Team Members</h3>
-              <div className="proj-details-grid">
-                {selectedProject.team.map((member, index) => (
-                  <div key={index} className="proj-detail-item">
-                    <label>Team Member {index + 1}</label>
-                    <span>{member.name} ({member.department}) - {member.position}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Phases Section */}
-          <div className="proj-form-section">
-            <h3 className="proj-section-title">Project Phases</h3>
-            <div className="proj-phases-table-container">
-              <div className="proj-phases-scroll">
-                <table className="proj-phases-table">
-                  <thead>
-                    <tr>
-                      <th>Phase Name</th>
-                      <th>Status</th>
-                      <th>Progress</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedProject?.phases?.map((phase, index) => (
-                      <tr key={index}>
-                        <td>
-                          <div className="proj-phase-name-cell">
-                            <div className="proj-phase-name">{phase.name}</div>
-                          </div>
-                        </td>
-                        <td>
-                          <div className="proj-phase-status-cell">
-                            {getPhaseStatusBadge(phase)}
-                          </div>
-                        </td>
-                        <td>{phase.progress}%</td>
-                        <td>
-                          <button
-                            onClick={() => handleEditPhaseModal(selectedProject, phase)}
-                            className="proj-action-btn proj-edit-phase-btn"
-                            style={{
-                              backgroundColor: '#4CAF50',
-                              color: 'white',
-                              border: 'none',
-                              padding: '5px 10px',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '5px'
-                            }}
-                          >
-                            <FaEdit /> Edit
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          <div className="proj-form-actions">
-            <button
-              type="button"
-              onClick={() => handleEditProject(selectedProject)}
-              className="proj-edit-btn"
-            >
-              Edit Project
-            </button>
-            <button
-              type="button"
-              onClick={() => handleAssignProject(selectedProject)}
-              className="proj-submit-btn"
-            >
-              Assign Project Team
-            </button>
-            <button
-              type="button"
-              onClick={() => handleStartNewCycle(selectedProject)}
-              className="proj-submit-btn"
-            >
-              Start New Cycle
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDeleteClick(selectedProject)}
-              className="proj-delete-btn"
-            >
-              Delete Project
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsViewModalOpen(false)}
-              className="proj-cancel-btn"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
- 
-
-  // Inline Phase Editor (Input Only)
-const InlinePhaseEditor = ({ project, phase, index }) => {
-  if (isEditingPhase && editingPhaseIndex === index && selectedProject?.id === project.id) {
+  if (loading) {
     return (
-      <div style={{
-        padding: '6px 8px',
-        backgroundColor: '#f9f9f9',
-        borderRadius: '4px',
-        marginTop: '5px',
-        width: '60%'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <input
-            type="number"
-            min="0"
-            max="100"
-            value={tempPhaseData.progress}
-            onChange={(e) => handleTempPhaseChange('progress', e.target.value)}
-            style={{
-              width: '50px',
-              padding: '4px',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
-              textAlign: 'center'
-            }}
-            autoFocus
-          />
-          <span style={{ fontSize: '13px', marginRight: '4px' }}>%</span>
-          <button onClick={handleCancelPhaseEdit} style={{ padding: '4px 8px', border: '1px solid #ddd', borderRadius: '4px', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Cancel"><FaTimes size={12} /></button>
-          <button onClick={handleSavePhase} style={{ padding: '4px 8px', border: 'none', borderRadius: '4px', background: '#4CAF50', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Save"><FaSave size={12} /></button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-      <span style={{ fontWeight: '500', fontSize: '14px' }}>{phase.progress}%</span>
-      <button onClick={() => handleEditPhaseClick(project, phase, index)} style={{ background: 'none', border: 'none', color: '#4CAF50', cursor: 'pointer', padding: '4px', borderRadius: '4px', backgroundColor: '#e8f5e9', display: 'flex', alignItems: 'center' }} title="Edit phase progress"><FaEdit size={12} /></button>
-    </div>
-  );
-};
-
-  // Edit Project Modal
-  const EditProjectModal = () => (
-    <div className="proj-modal-overlay">
-      <div className="proj-modal-content">
-        <div className="proj-modal-header">
-          <h2 id="proj-edit-modal-title">Edit Project</h2>
-          <button 
-            className="proj-close-btn"
-            id="proj-edit-close"
-            onClick={() => setIsEditModalOpen(false)}
-          >
-            ×
-          </button>
-        </div>
-
-        <form onSubmit={handleUpdateProject} className="proj-form">
-          <div className="proj-form-section">
-            <h3 className="proj-section-title">Project Information</h3>
-            <div className="proj-form-row">
-              <div className="proj-form-group">
-                <label>Project Name *</label>
-                <input
-                  type="text"
-                  name="name"
-                  value={editFormData.name}
-                  onChange={handleEditInputChange}
-                  placeholder="Enter project name"
-                  required
-                />
-              </div>
-              <div className="proj-form-group">
-                <label>Department *</label>
-                <select
-                  name="department"
-                  value={editFormData.department}
-                  onChange={handleEditInputChange}
-                  required
-                >
-                  <option value="">Select Department</option>
-                  {departments.map(dept => (
-                    <option key={dept} value={dept}>{dept}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="proj-form-row">
-              <div className="proj-form-group">
-                <label>Manager *</label>
-                <select
-                  name="manager"
-                  value={editFormData.manager}
-                  onChange={handleEditInputChange}
-                  required
-                >
-                  <option value="">Select Manager</option>
-                  {managers.map(manager => (
-                    <option key={manager.id} value={manager.name}>
-                      {manager.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="proj-form-group">
-                <label>Status</label>
-                <select
-                  name="status"
-                  value={editFormData.status}
-                  onChange={handleEditInputChange}
-                  disabled
-                  style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
-                >
-                  <option value="">Auto-calculated</option>
-                </select>
-                <small style={{ color: '#666' }}>Status is auto-calculated based on phases</small>
-              </div>
-            </div>
-            <div className="proj-form-row">
-              <div className="proj-form-group">
-                <label>Start Date</label>
-                <input
-                  type="date"
-                  name="start_date"
-                  value={editFormData.start_date}
-                  onChange={handleEditInputChange}
-                />
-              </div>
-              <div className="proj-form-group">
-                <label>End Date</label>
-                <input
-                  type="date"
-                  name="end_date"
-                  value={editFormData.end_date}
-                  onChange={handleEditInputChange}
-                />
-              </div>
-            </div>
-            <div className="proj-form-group">
-              <label>Current Phase</label>
-              <select
-                name="current_phase"
-                value={editFormData.current_phase}
-                onChange={handleEditInputChange}
-              >
-                <option value="">Select Phase</option>
-                {phases.map(phase => (
-                  <option key={phase} value={phase}>{phase}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="proj-form-actions">
-            <button
-              type="button"
-              onClick={() => setIsEditModalOpen(false)}
-              className="proj-cancel-btn"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="proj-submit-btn"
-            >
-              Update Project
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-
-  // Assign Project Modal
-  const AssignProjectModal = () => (
-    <div className="proj-modal-overlay">
-      <div className="proj-modal-content proj-large-modal">
-        <div className="proj-modal-header">
-          <h2>Assign Project Team - {selectedProject?.name}</h2>
-          <button 
-            className="proj-close-btn"
-            onClick={() => setIsAssignModalOpen(false)}
-          >
-            ×
-          </button>
-        </div>
-
-        <form onSubmit={handleAssignSubmit} className="proj-form">
-          <div className="proj-form-section">
-            <h3 className="proj-section-title">Project Assignment</h3>
-            <div className="proj-form-row-two">
-              <div className="proj-form-group">
-                <label>Assigned Department</label>
-                <select
-                  name="assigned_department"
-                  value={assignFormData.assigned_department}
-                  onChange={handleAssignInputChange}
-                >
-                  <option value="">Select Department</option>
-                  {departments.map(dept => (
-                    <option key={dept} value={dept}>{dept}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div className="proj-form-section">
-            <h3 className="proj-section-title">Team Members</h3>
-            <div className="proj-team-selection">
-              {employees.map(employee => (
-                <div key={employee.id} className="proj-team-member-checkbox">
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={assignFormData.team.includes(employee.id)}
-                      onChange={() => handleTeamMemberToggle(employee.id)}
-                    />
-                    <span>{employee.name} ({employee.department}) - {employee.position}</span>
-                  </label>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="proj-form-actions">
-            <button
-              type="button"
-              onClick={() => setIsAssignModalOpen(false)}
-              className="proj-cancel-btn"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="proj-submit-btn"
-            >
-              Assign Team
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-
-  // Delete Confirmation Modal
-  const DeleteProjectModal = () => (
-    <div className="proj-modal-overlay">
-      <div className="proj-modal-content">
-        <div className="proj-modal-header">
-          <h2 id="proj-delete-modal-title">Delete Project</h2>
-          <button 
-            className="proj-close-btn"
-            id="proj-delete-close"
-            onClick={() => setIsDeleteModalOpen(false)}
-          >
-            ×
-          </button>
-        </div>
-
-        <div className="proj-delete-confirm">
-          <div className="emp-delete-icon">
-            <FaExclamationTriangle />
-          </div>
-          <h3 className="proj-delete-title">
-            Delete {selectedProject?.name}?
-          </h3>
-          <p className="proj-delete-message">
-            Are you sure you want to delete the <strong>{selectedProject?.name}</strong> project? 
-            This action cannot be undone and all associated data will be permanently removed.
-          </p>
-
-          <div className="proj-delete-actions">
-            <button
-              type="button"
-              onClick={() => setIsDeleteModalOpen(false)}
-              className="proj-cancel-btn"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleDeleteProject}
-              className="proj-delete-btn"
-            >
-              Delete Project
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  // ========== RENDER MODALS ==========
-  const renderProjectModals = () => (
-    <>
-      {isViewModalOpen && selectedProject && <ViewProjectModal key="view-modal" />}
-      {isEditModalOpen && selectedProject && <EditProjectModal key="edit-modal" />}
-      {isAssignModalOpen && selectedProject && <AssignProjectModal key="assign-modal" />}
-      {isPhaseModalOpen && selectedProject && selectedPhase && <EditPhaseModal key="phase-modal" />}
-      {isDeleteModalOpen && selectedProject && <DeleteProjectModal key="delete-modal" />}
-    </>
-  );
-
-  // Combined loading state
-  if (employeeLoading || loading) {
-    return (
-      <div className="project-management-section">
-        <div className="project-loading">
-          Loading your projects...
-        </div>
+      <div className="proj-management-section">
+        <div className="proj-loading">Loading projects...</div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="project-management-section">
-        <div className="project-error">
-          Error: {error}
-        </div>
-        <button onClick={() => window.location.reload()} className="retry-button">
-          Retry
-        </button>
-      </div>
-    );
-  }
-
-  if (!userSession.employeeId) {
-    return (
-      <div className="project-management-section">
-        <div className="project-error">
-          Unable to load employee information. Please try logging in again.
-        </div>
+      <div className="proj-management-section">
+        <div className="proj-error">{error}</div>
+        <button onClick={fetchAllData} className="proj-retry-btn">Try Again</button>
       </div>
     );
   }
 
   return (
-<<<<<<< Updated upstream
-    <div className="project-management-section" id="project-management-section">
-      <div className="project-management-header">
-        <h2 className="project-management-title">Project & Assignment</h2>
-        <div className="project-welcome-message">
-          Welcome, {userSession.employeeName}
-=======
     <div className="proj-management-section" id="proj-management-main">
       {/* Header */}
       <div className="proj-management-header">
@@ -2283,183 +1167,18 @@ const InlinePhaseEditor = ({ project, phase, index }) => {
           {canCreateTeam() && activeTab === 'teams' && (
             <button className="proj-add-btn" onClick={() => setIsTeamModalOpen(true)}><FaUsers /> Create Team</button>
           )}
->>>>>>> Stashed changes
         </div>
       </div>
 
-      {/* Debug Info */}
-      <div style={{ 
-        background: '#f0f0f0', 
-        padding: '10px', 
-        marginBottom: '20px', 
-        borderRadius: '5px',
-        fontSize: '12px',
-        display: 'none'
-      }}>
-        <strong>Debug Info:</strong><br />
-        Employee ID: {userSession.employeeId}<br />
-        Employee Name: {userSession.employeeName}<br />
-        Total Projects: {projects.length}<br />
-        Assigned Projects: {assignedProjects.length}
+      {/* Dashboard Stats */}
+      <div className="proj-dashboard-stats">
+        <div className="proj-stat-card"><div className="proj-stat-number">{dashboardStats.totalProjects}</div><div className="proj-stat-label">Total Projects</div></div>
+        <div className="proj-stat-card"><div className="proj-stat-number">{dashboardStats.activeProjects}</div><div className="proj-stat-label">Active Projects</div></div>
+        <div className="proj-stat-card"><div className="proj-stat-number">{dashboardStats.delayedProjects}</div><div className="proj-stat-label">Delayed Projects</div></div>
+        <div className="proj-stat-card"><div className="proj-stat-number">{teams.length}</div><div className="proj-stat-label">Teams</div></div>
+        <div className="proj-stat-card"><div className="proj-stat-number">{userTasks.length}</div><div className="proj-stat-label">My Tasks</div></div>
       </div>
 
-<<<<<<< Updated upstream
-      {/* Project Summary Cards */}
-      <div className="project-summary-cards">
-        <div className="project-summary-card">
-          <div className="project-summary-number">{assignedProjects.length}</div>
-          <div className="project-summary-label">Total Projects</div>
-        </div>
-        <div className="project-summary-card">
-          <div className="project-summary-number">
-            {assignedProjects.filter(p => p.status === 'On Track' || p.status === 'In Progress').length}
-          </div>
-          <div className="project-summary-label">Active Projects</div>
-        </div>
-        <div className="project-summary-card">
-          <div className="project-summary-number">
-            {assignedProjects.filter(p => p.status === 'Completed').length}
-          </div>
-          <div className="project-summary-label">Completed</div>
-        </div>
-        <div className="project-summary-card">
-          <div className="project-summary-number">
-            {assignedProjects.filter(p => p.status === 'Delayed' || p.status === 'At Risk').length}
-          </div>
-          <div className="project-summary-label">At Risk/Delayed</div>
-        </div>
-      </div>
-
-      {/* Project & Assignment Section */}
-      <div className="project-table-container glass-form-project" style={{marginTop: '2rem'}}>
-        <div className="project-table-header">
-          <h3 className="project-table-title">My Projects</h3>
-          <div className="project-table-actions">
-            <span className="project-helper-text">
-              Showing {assignedProjects.length} projects assigned to you
-            </span>
-          </div>
-        </div>
-        
-        {assignedProjects.length === 0 ? (
-          <div className="project-empty-state">
-            <div className="project-empty-icon">📊</div>
-            <p>No projects assigned to you yet.</p>
-            <p className="project-empty-subtext">
-              {projects.length > 0 
-                ? "You're not assigned to any projects. Contact your manager to be added to project teams."
-                : "No projects found in the system."}
-            </p>
-          </div>
-        ) : (
-          <div className="project-cards-container">
-            {assignedProjects.map(project => {
-              const daysRemaining = getDaysRemaining(project.endDate);
-              
-              return (
-                <div key={project.id} className="project-card">
-                  <div className="project-card-header">
-                    <div className="project-card-title">
-                      <h4>{project.projectName}</h4>
-                      <span className="project-role-badge">{project.role}</span>
-                    </div>
-                    {getProjectStatusBadge(project.status)}
-                  </div>
-                  
-                  <div className="project-card-body">
-                    <div className="project-info-grid">
-                      <div className="project-info-item">
-                        <label>Department:</label>
-                        <span>{project.department}</span>
-                      </div>
-                      <div className="project-info-item">
-                        <label>Manager:</label>
-                        <span>{project.manager}</span>
-                      </div>
-                      <div className="project-info-item">
-                        <label>Current Phase:</label>
-                        <span>{project.phase}</span>
-                      </div>
-                      <div className="project-info-item">
-                        <label>Timeline:</label>
-                        <span>
-                          {formatDate(project.startDate)} - {formatDate(project.endDate)}
-                          {daysRemaining !== null && (
-                            <span className={`project-days-remaining ${daysRemaining < 0 ? 'overdue' : daysRemaining < 7 ? 'urgent' : 'normal'}`}>
-                              ({daysRemaining < 0 ? Math.abs(daysRemaining) + ' days overdue' : daysRemaining + ' days left'})
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div className="project-progress-section">
-                      <div className="project-progress-header">
-                        <span>Overall Progress</span>
-                        <span style={{ fontWeight: 'bold', color: '#4CAF50' }}>{project.progress}%</span>
-
-                      </div>
-                      <div className="project-progress-track">
-                        <div 
-                          className={`project-progress-bar project-progress-${project.progress >= 80 ? 'high' : project.progress >= 50 ? 'medium' : 'low'}`} 
-                          style={{width: `${project.progress}%`}} 
-                        />
-                      </div>
-                    </div>
-
-                    {project.description && (
-                      <div className="project-description">
-                        <label>Description:</label>
-                        <p>{project.description}</p>
-                      </div>
-                    )}
-
-                    {/* Project Phases with Edit Options */}
-                    <div className="project-phases-section">
-                      <label>Project Phases:</label>
-                      <div className="project-phases-list">
-                        {project.phases && project.phases.map((phase, index) => (
-                          <div key={index} className="project-phase-item">
-                            <div className="phase-name">{phase.name}</div>
-                            <div className="phase-details">
-                              {getPhaseStatusBadge(phase)}
-                              <InlinePhaseEditor 
-                                project={project} 
-                                phase={phase} 
-                                index={index} 
-                              />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Team Members */}
-                    {project.team && project.team.length > 0 && (
-                      <div className="project-team-section">
-                        <label>Team Members:</label>
-                        <div className="project-team-list">
-                          {project.team.map((member, index) => (
-                            <div key={index} className="team-member-tag">
-                              {member.name} ({member.department})
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                  
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-      
-      {/* Render Modals */}
-      {renderProjectModals()}
-=======
       {/* Projects Tab */}
       {activeTab === 'projects' && (
         <div className="proj-table-container">
@@ -2524,102 +1243,87 @@ const InlinePhaseEditor = ({ project, phase, index }) => {
         </div>
       )}
 
-  {/* Teams Tab */}
-{activeTab === 'teams' && canViewTeamManagement() && (
-  <div className="proj-table-container">
-    <div className="proj-table-header">
-      <h3>Teams ({teams.filter(t => currentUser.managedProjects.includes(t.project_id)).length})</h3>
-      <div className="proj-table-actions">
-        {canCreateTeam() && <button className="proj-add-btn" onClick={() => setIsTeamModalOpen(true)}><FaUsers /> Create Team</button>}
-      </div>
-    </div>
-    <div className="proj-table-wrapper">
-      {teams.filter(t => currentUser.managedProjects.includes(t.project_id)).length === 0 ? (
-        <div className="proj-empty-state">
-          <div className="proj-empty-icon">👥</div>
-          <p>No teams found. Create a team to get started!</p>
-        </div>
-      ) : (
-        <table className="proj-main-table">
-          <thead>
-            <tr>
-              <th>Team Name</th>
-              <th>Project</th>
-        
-              <th>Members</th>
-              <th>Member Count</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {teams
-              .filter(team => currentUser.managedProjects.includes(team.project_id))
-              .map(team => {
-                const project = projects.find(p => p.id === team.project_id);
-                const membersList = team.members || [];
-                const isInactive = team.status === 'Inactive';
-                return (
-                  <tr key={team.id} style={isInactive ? { opacity: 0.6, backgroundColor: '#f5f5f5' } : {}}>
-                    <td><strong>{team.name}</strong>{isInactive && <span style={{ color: '#999', fontSize: '11px', marginLeft: '8px' }}>(Deleted)</span>}</td>
-                    <td>{project ? <span className="project-badge">{project.name}</span> : <span className="text-muted">Not Assigned</span>}</td>
-                    <td>{team.team_lead_name || 'Not Assigned'}</td>
-                    <td>
-                      <div className="team-members-list">
-                        {membersList && membersList.length > 0 ? (
-                          membersList.map((member, index) => (
-                            <div key={member.id || index} className="member-item">
-                              <span className="member-name">{member.name || 'Unknown'}</span>
-                              <small className="member-position">{member.position || 'Member'}</small>
-                            </div>
-                          ))
-                        ) : (
-                          <span className="text-muted">No members assigned</span>
-                        )}
-                      </div>
-                    </td>
-                    <td>{membersList.length || team.member_count || 0}</td>
-                    <td>
-                      <span className={`team-status-badge ${team.status === 'Active' ? 'status-active' : 'status-inactive'}`}>
-                        {team.status || 'Active'}
-                      </span>
-                    </td>
-                    <td>
-                      <button 
-                        onClick={() => {
-                          const membersListText = membersList && membersList.length > 0
-                            ? membersList.map(m => `- ${m.name} (${m.position || 'Member'})`).join('\n')
-                            : 'No members assigned';
-                          alert(`Team: ${team.name}\nProject: ${project?.name || 'Not Assigned'}\nLead: ${team.team_lead_name || 'None'}\nStatus: ${team.status || 'Active'}\n\nMembers (${membersList.length}):\n${membersListText}`);
-                        }} 
-                        className="proj-action-btn" 
-                        title="View Team Details"
-                      >
-                        <FaEye />
-                      </button>
-                      {canDeleteTeam(team) && team.status !== 'Inactive' && (
-                        <button 
-                          onClick={() => {
-                            setSelectedTeam(team);
-                            setIsDeleteTeamModalOpen(true);
-                          }} 
-                          className="proj-action-btn" 
-                          title="Delete Team"
-                          style={{ color: '#dc3545' }}
-                        >
-                          <FaTrash />
-                        </button>
-                      )}
-                    </td>
+      {/* Teams Tab */}
+      {activeTab === 'teams' && canViewTeamManagement() && (
+        <div className="proj-table-container">
+          <div className="proj-table-header">
+            <h3>Teams ({teams.filter(t => currentUser.managedProjects.includes(t.project_id)).length})</h3>
+            <div className="proj-table-actions">
+              
+              {canCreateTeam() && <button className="proj-add-btn" onClick={() => setIsTeamModalOpen(true)}><FaUsers /> Create Team</button>}
+            </div>
+          </div>
+          <div className="proj-table-wrapper">
+            {teams.filter(t => currentUser.managedProjects.includes(t.project_id)).length === 0 ? (
+              <div className="proj-empty-state">
+                <div className="proj-empty-icon">👥</div>
+                <p>No teams found. Create a team to get started!</p>
+              </div>
+            ) : (
+              <table className="proj-main-table">
+                <thead>
+                  <tr>
+                    <th>Team Name</th>
+                    <th>Project</th>
+                    <th>Team Lead</th>
+                    <th>Members</th>
+                    <th>Member Count</th>
+                    <th>Status</th>
+                    <th>Actions</th>
                   </tr>
-                );
-              })}
-          </tbody>
-        </table>
+                </thead>
+                <tbody>
+                  {teams.filter(team => currentUser.managedProjects.includes(team.project_id)).map(team => {
+                    const project = projects.find(p => p.id === team.project_id);
+                    const membersList = team.members || [];
+                    return (
+                      <tr key={team.id}>
+                        <td><strong>{team.name}</strong></td>
+                        <td>{project ? <span className="project-badge">{project.name}</span> : <span className="text-muted">Not Assigned</span>}</td>
+                        <td>{team.team_lead_name || 'Not Assigned'}</td>
+                        <td>
+                          <div className="team-members-list">
+                            {membersList && membersList.length > 0 ? (
+                              membersList.map((member, index) => (
+                                <div key={member.id || index} className="member-item">
+                                  <span className="member-name">{member.name || 'Unknown'}</span>
+                                  <small className="member-position">{member.position || 'Member'}</small>
+                                </div>
+                              ))
+                            ) : (
+                              <span className="text-muted">No members assigned</span>
+                            )}
+                          </div>
+                        </td>
+                        <td>{membersList.length || team.member_count || 0}</td>
+                        <td>
+                          <span className={`team-status-badge ${team.status === 'Active' ? 'status-active' : 'status-inactive'}`}>
+                            {team.status || 'Active'}
+                          </span>
+                        </td>
+                        <td>
+                          <button 
+                            onClick={() => {
+                              const membersListText = membersList && membersList.length > 0
+                                ? membersList.map(m => `- ${m.name} (${m.position || 'Member'})`).join('\n')
+                                : 'No members assigned';
+                              alert(`Team: ${team.name}\nProject: ${project?.name || 'Not Assigned'}\nLead: ${team.team_lead_name || 'None'}\n\nMembers (${membersList.length}):\n${membersListText}`);
+                            }} 
+                            className="proj-action-btn" 
+                            title="View Team Details"
+                          >
+                            <FaEye />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
       )}
-    </div>
-  </div>
-)}
 
      {/* Tasks Tab with Excel Editing and Filtering */}
 {activeTab === 'tasks' && (
@@ -2856,19 +1560,6 @@ const InlinePhaseEditor = ({ project, phase, index }) => {
                       >
                         <FaEye />
                       </button>
-                      {canDeleteTask(task) && (
-                        <button 
-                          onClick={() => {
-                            setSelectedTask(task);
-                            setIsDeleteTaskModalOpen(true);
-                          }} 
-                          className="proj-action-btn" 
-                          title="Delete Task"
-                          style={{ color: '#dc3545' }}
-                        >
-                          <FaTrash />
-                        </button>
-                      )}
                     </td>
                   </tr>
                 ))}
@@ -2914,7 +1605,17 @@ const InlinePhaseEditor = ({ project, phase, index }) => {
                   placeholder="e.g., Frontend Development Team" 
                 />
               </div>
-              
+              <div className="proj-form-group">
+                <label>Team Lead</label>
+                <select 
+                  name="team_lead_id" 
+                  value={teamFormData.team_lead_id} 
+                  onChange={(e) => setTeamFormData({...teamFormData, team_lead_id: e.target.value})}
+                >
+                  <option value="">Select Team Lead (Optional)</option>
+                  {projectLeads.map(lead => <option key={lead.id} value={lead.id}>{lead.name} ({lead.position || 'Employee'})</option>)}
+                </select>
+              </div>
               
               <div className="proj-form-group">
                 <label className="required">Team Members *</label>
@@ -3141,7 +1842,13 @@ const InlinePhaseEditor = ({ project, phase, index }) => {
                 <div className="proj-form-group">
                   <label className="required">Assign to Team Members *</label>
                   
-                  
+                  <div style={{ marginBottom: '10px', padding: '8px', background: '#f0f0f0', borderRadius: '4px', fontSize: '12px' }}>
+                    <strong>Debug Info:</strong><br/>
+                    Team ID: {taskFormData.team_id}<br/>
+                    Available Members: {availableTeamMembers.length}<br/>
+                    Selected: {selectedTaskEmployees.length}<br/>
+                    Loading: {loadingTeamMembers ? 'Yes' : 'No'}
+                  </div>
                   
                   {loadingTeamMembers ? (
                     <div className="loading-members">Loading team members...</div>
@@ -3321,12 +2028,6 @@ const InlinePhaseEditor = ({ project, phase, index }) => {
                 <div className="proj-detail-item"><label>Review Status</label>{getReviewStatusBadge(selectedTask.review_status)}</div>
               </div>
               <div className="proj-form-actions">
-                {canDeleteTask(selectedTask) && (
-                  <button onClick={() => {
-                    setIsTaskDetailsModalOpen(false);
-                    setIsDeleteTaskModalOpen(true);
-                  }} className="proj-delete-btn">Delete Task</button>
-                )}
                 <button onClick={() => setIsTaskDetailsModalOpen(false)} className="proj-cancel-btn">Close</button>
               </div>
             </div>
@@ -3363,7 +2064,7 @@ const InlinePhaseEditor = ({ project, phase, index }) => {
         </div>
       )}
 
-         {/* Delete Project Confirmation Modal */}
+         {/* Delete Confirmation Modal */}
       {isDeleteModalOpen && selectedProject && canEditProject() && (
         <div className="proj-modal-overlay">
           <div className="proj-modal-content">
@@ -3383,49 +2084,6 @@ const InlinePhaseEditor = ({ project, phase, index }) => {
           </div>
         </div>
       )}
-
-      {/* Delete Task Confirmation Modal */}
-      {isDeleteTaskModalOpen && selectedTask && canDeleteTask(selectedTask) && (
-        <div className="proj-modal-overlay">
-          <div className="proj-modal-content">
-            <div className="proj-modal-header">
-              <h2>Delete Task</h2>
-              <button className="proj-close-btn" onClick={() => setIsDeleteTaskModalOpen(false)}>×</button>
-            </div>
-            <div className="proj-delete-confirm">
-              <div className="emp-delete-icon"><FaExclamationTriangle /></div>
-              <h3>Delete Task: {selectedTask.title}?</h3>
-              <p>Are you sure you want to delete this task? This action cannot be undone.</p>
-              <div className="proj-delete-actions">
-                <button onClick={() => setIsDeleteTaskModalOpen(false)} className="proj-cancel-btn">Cancel</button>
-                <button onClick={handleDeleteTask} className="proj-delete-btn">Delete Task</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Team Confirmation Modal */}
-      {isDeleteTeamModalOpen && selectedTeam && canDeleteTeam(selectedTeam) && (
-        <div className="proj-modal-overlay">
-          <div className="proj-modal-content">
-            <div className="proj-modal-header">
-              <h2>Delete Team</h2>
-              <button className="proj-close-btn" onClick={() => setIsDeleteTeamModalOpen(false)}>×</button>
-            </div>
-            <div className="proj-delete-confirm">
-              <div className="emp-delete-icon"><FaExclamationTriangle /></div>
-              <h3>Delete Team: {selectedTeam.name}?</h3>
-              <p>Are you sure you want to delete this team? This action cannot be undone.</p>
-              <div className="proj-delete-actions">
-                <button onClick={() => setIsDeleteTeamModalOpen(false)} className="proj-cancel-btn">Cancel</button>
-                <button onClick={handleDeleteTeam} className="proj-delete-btn">Delete Team</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
 {/* Excel-like Editor Modal with Download Option */}
 {isExcelEditorOpen && (
   <div className="proj-modal-overlay">
@@ -3566,9 +2224,8 @@ const InlinePhaseEditor = ({ project, phase, index }) => {
     </div>
   </div>
 )}
->>>>>>> Stashed changes
     </div>
   );
 };
 
-export default Projects;
+export default ProjectManagement;

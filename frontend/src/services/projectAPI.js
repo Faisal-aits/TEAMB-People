@@ -1,6 +1,9 @@
+// services/projectAPI.js
 import api from './api';
-
+import axios from 'axios';
 export const projectAPI = {
+  // ==================== EXISTING PROJECT METHODS ====================
+  
   // Get all projects
   getAll: (filters = {}) => {
     const params = new URLSearchParams();
@@ -21,10 +24,8 @@ export const projectAPI = {
   // Update project
   update: (id, projectData) => api.put(`/projects/${id}`, projectData),
 
-delete: (projectId) => {
-    console.log('Deleting project with ID:', projectId);
-    return api.delete(`/projects/${projectId}`);
-  },
+  // Delete project
+  delete: (id) => api.delete(`/projects/${id}`),
 
   // Update project phase
   updatePhase: (projectId, phaseName, phaseData) => 
@@ -38,15 +39,16 @@ delete: (projectId) => {
 
   // Get departments list
   getDepartments: () => api.get('/projects/departments'),
-
+  
+  // Get project leads
+  getProjectLeads: () => api.get('/projects/project-leads'),
+  
   // Assign team to project
   assignTeam: (projectId, teamData) => 
     api.post(`/projects/${projectId}/assign`, teamData),
 
   // Get employees for dropdown
   getEmployees: () => api.get('/projects/employees'),
-<<<<<<< Updated upstream
-=======
 
   // Get project tasks
   getProjectTasks: (projectId) => api.get(`/projects/${projectId}/tasks`),
@@ -156,12 +158,11 @@ delete: (projectId) => {
   // Get team by ID
   getTeamById: (id) => api.get(`/teams/${id}`), // Fixed: was /projects/${id}
 
-// In projectAPI.js, ensure createTeam returns the full team object
-createTeam: async (teamData) => {
-  console.log('API call - createTeam with data:', JSON.stringify(teamData, null, 2));
-  const response = await api.post('/teams', teamData);
-  console.log('API response - createTeam:', response.data);
-  return response;
+  // Create team
+// In your projectAPI service
+createTeam: (teamData) => {
+    console.log('API call - createTeam with data:', JSON.stringify(teamData, null, 2));
+    return api.post('/teams', teamData);
 },
 addTeamMembers: (teamId, membersData) => {
     return api.post(`/teams/${teamId}/members`, membersData); // Optional: separate endpoint for adding members
@@ -170,7 +171,9 @@ addTeamMembers: (teamId, membersData) => {
   // Update team
   updateTeam: (id, data) => api.put(`/teams/${id}`, data), // Fixed: was /projects/${id}
 
- deleteTeam: (teamId) => api.delete(`/teams/${teamId}`),
+  // Delete team
+  deleteTeam: (id) => api.delete(`/teams/${id}`), // Fixed: was /projects/${id}
+
   // Add member to team
   addTeamMember: (data) => api.post('/teams/members', data), // Fixed: was /projects/members
 
@@ -253,8 +256,4 @@ bulkAssignMembers: (taskId, memberIds) => {
   console.log('Calling bulkAssignMembers with:', { taskId, memberIds });
   return api.post(`/tasks/${taskId}/bulk-assign`, { member_ids: memberIds });
 },
-// Add this method to your projectAPI service
-
-
->>>>>>> Stashed changes
 };
