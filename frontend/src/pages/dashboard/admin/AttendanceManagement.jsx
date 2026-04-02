@@ -45,7 +45,7 @@ const AttendanceManagement = () => {
     try {
       setLoading(true);
       setError(null);
-      console.log('Initializing real data...');
+      // console.log('Initializing real data...');
 
       const [employeesResponse, attendanceResponse] = await Promise.all([
         employeeAPI.getAll().catch(err => {
@@ -122,7 +122,7 @@ const AttendanceManagement = () => {
         return;
       }
 
-      console.log('Generating report with filters:', reportFilters);
+      // console.log('Generating report with filters:', reportFilters);
 
       // Fetch all attendance records within date range
       const response = await attendanceAPI.getAll({
@@ -132,7 +132,7 @@ const AttendanceManagement = () => {
         status: reportFilters.status
       });
 
-      console.log('API Response:', response);
+      // console.log('API Response:', response);
 
       let attendanceRecords = [];
 
@@ -147,7 +147,7 @@ const AttendanceManagement = () => {
         }
       }
 
-      console.log('Attendance records:', attendanceRecords);
+      // console.log('Attendance records:', attendanceRecords);
 
       if (!attendanceRecords || attendanceRecords.length === 0) {
         alert('No attendance records found for the selected date range.');
@@ -173,12 +173,12 @@ const AttendanceManagement = () => {
         };
       });
 
-      console.log('Formatted report:', formattedReport);
+      // console.log('Formatted report:', formattedReport);
       setReportData(formattedReport);
       setIsReportModalOpen(true);
 
     } catch (err) {
-      console.error('Error generating report:', err);
+      // console.error('Error generating report:', err);
       alert('Failed to generate report: ' + (err.response?.data?.message || err.message || 'Please check the console for details'));
     } finally {
       setReportLoading(false);
@@ -380,7 +380,7 @@ const AttendanceManagement = () => {
     }
 
     try {
-      console.log('Approving attendance:', attendanceId);
+      // console.log('Approving attendance:', attendanceId);
       await attendanceAPI.approve(attendanceId);
 
       setAttendanceData(prev => prev.map(item =>
@@ -390,7 +390,7 @@ const AttendanceManagement = () => {
       alert('Attendance approved successfully!');
       initializeRealData();
     } catch (err) {
-      console.error('Error approving attendance:', err);
+      // console.error('Error approving attendance:', err);
       alert('Failed to approve attendance: ' + (err.response?.data?.message || err.message));
     }
   };
@@ -402,7 +402,7 @@ const AttendanceManagement = () => {
     }
 
     try {
-      console.log('Rejecting attendance:', attendanceId);
+      // console.log('Rejecting attendance:', attendanceId);
       await attendanceAPI.reject(attendanceId, 'Rejected by manager');
 
       setAttendanceData(prev => prev.map(item =>
@@ -412,7 +412,7 @@ const AttendanceManagement = () => {
       alert('Attendance marked as leave!');
       initializeRealData();
     } catch (err) {
-      console.error('Error rejecting attendance:', err);
+      // console.error('Error rejecting attendance:', err);
       alert('Failed to reject attendance: ' + (err.response?.data?.message || err.message));
     }
   };
@@ -420,7 +420,7 @@ const AttendanceManagement = () => {
   const handleViewAttendanceHistory = async (employee) => {
     try {
       setLoading(true);
-      console.log('Fetching history for employee:', employee.id);
+      // console.log('Fetching history for employee:', employee.id);
       const response = await attendanceAPI.getEmployeeHistory(employee.id);
 
       if (response.data) {
@@ -430,7 +430,7 @@ const AttendanceManagement = () => {
         setIsAttendanceModalOpen(true);
       }
     } catch (err) {
-      console.error('Error fetching employee history:', err);
+      // console.error('Error fetching employee history:', err);
       const mockHistory = [
         {
           history_id: 1,
@@ -555,7 +555,7 @@ const AttendanceManagement = () => {
 
         try {
           const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
-          console.log(`📊 Image compression: ${(base64Image.length / 1024).toFixed(1)}KB → ${(compressedBase64.length / 1024).toFixed(1)}KB`);
+          // console.log(`📊 Image compression: ${(base64Image.length / 1024).toFixed(1)}KB → ${(compressedBase64.length / 1024).toFixed(1)}KB`);
           resolve(compressedBase64);
         } catch (error) {
           reject(error);
@@ -589,22 +589,22 @@ const AttendanceManagement = () => {
         return;
       }
 
-      console.log('🔄 Enrolling face for:', employee.id, employee.name);
+      // console.log('🔄 Enrolling face for:', employee.id, employee.name);
 
       setFaceValidation({ isValid: false, message: 'Processing image...' });
       const imageFile = await compressImageToFile(capturedImage, 0.6, 400);
 
-      console.log('📁 Final file object:', {
-        type: imageFile.type,
-        size: imageFile.size,
-        name: imageFile.name
-      });
+      // console.log('📁 Final file object:', {
+      //   type: imageFile.type,
+      //   size: imageFile.size,
+      //   name: imageFile.name
+      // });
 
       setFaceValidation({ isValid: false, message: 'Uploading to server...' });
 
       const response = await employeeAPI.enrollFace(employee.id, imageFile);
 
-      console.log('✅ API Response:', response.data);
+      // console.log('✅ API Response:', response.data);
 
       if (response.data.success) {
         alert(`✅ ${response.data.message}`);
@@ -616,7 +616,7 @@ const AttendanceManagement = () => {
         stopCamera();
       }
     } catch (err) {
-      console.error('❌ Error enrolling face:', err);
+      // console.error('❌ Error enrolling face:', err);
       if (err.response?.data?.message) {
         alert(`❌ ${err.response.data.message}`);
       } else {
@@ -653,7 +653,7 @@ const AttendanceManagement = () => {
                 lastModified: Date.now()
               });
 
-              console.log(`📊 Compressed file size: ${(blob.size / 1024).toFixed(1)}KB`);
+              // console.log(`📊 Compressed file size: ${(blob.size / 1024).toFixed(1)}KB`);
               resolve(file);
             } else {
               reject(new Error('Failed to create blob from canvas'));

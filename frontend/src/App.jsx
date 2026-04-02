@@ -8,6 +8,8 @@
 
   // Components
   const Login = React.lazy(() => import('./pages/auth/Login'));
+  const ForgotPassword = React.lazy(() => import('./pages/auth/ForgotPassword'));
+  const ResetPassword = React.lazy(() => import('./pages/auth/ResetPassword'));
   const AdminDashboard = React.lazy(() => import('./pages/dashboard/AdminDashboard'));
   const SubAdminDashboard = React.lazy(() => import('./pages/dashboard/SubAdminDashboard'));
   const EmployeeDashboard = React.lazy(() => import('./pages/dashboard/EmployeeDashboard'));
@@ -34,6 +36,8 @@
               user ? <Navigate to={`/${user.role.replace('_', '-')}`} replace /> : <Login />
             } 
           />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
           
           {/* Protected Routes */}
           <Route path="/admin/*" element={

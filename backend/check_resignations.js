@@ -18,7 +18,7 @@ async function check() {
             console.log('No records found');
             process.exit(0);
         }
-        console.log(`id: ${r.id}, employee_id: ${r.employee_id}, status: ${r.status}, tenant_id: ${r.tenant_id}`);
+        // console.log(`id: ${r.id}, employee_id: ${r.employee_id}, status: ${r.status}, tenant_id: ${r.tenant_id}`);
         process.exit(0);
     } catch (err) {
         console.error(err);

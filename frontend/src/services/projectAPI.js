@@ -3,7 +3,7 @@ import api from './api';
 import axios from 'axios';
 export const projectAPI = {
   // ==================== EXISTING PROJECT METHODS ====================
-  
+
   // Get all projects
   getAll: (filters = {}) => {
     const params = new URLSearchParams();
@@ -11,7 +11,7 @@ export const projectAPI = {
     if (filters.department) params.append('department', filters.department);
     if (filters.manager) params.append('manager', filters.manager);
     if (filters.phase) params.append('phase', filters.phase);
-    
+
     return api.get(`/projects?${params.toString()}`);
   },
 
@@ -28,7 +28,7 @@ export const projectAPI = {
   delete: (id) => api.delete(`/projects/${id}`),
 
   // Update project phase
-  updatePhase: (projectId, phaseName, phaseData) => 
+  updatePhase: (projectId, phaseName, phaseData) =>
     api.put(`/projects/${projectId}/phases/${phaseName}`, phaseData),
 
   // Get dashboard statistics
@@ -39,12 +39,12 @@ export const projectAPI = {
 
   // Get departments list
   getDepartments: () => api.get('/projects/departments'),
-  
+
   // Get project leads
   getProjectLeads: () => api.get('/projects/project-leads'),
-  
+
   // Assign team to project
-  assignTeam: (projectId, teamData) => 
+  assignTeam: (projectId, teamData) =>
     api.post(`/projects/${projectId}/assign`, teamData),
 
   // Get employees for dropdown
@@ -60,15 +60,15 @@ export const projectAPI = {
   getProjectPhases: (projectId) => api.get(`/projects/${projectId}/phases`),
 
   // Update project phase by ID
-  updateProjectPhaseById: (projectId, phaseId, data) => 
+  updateProjectPhaseById: (projectId, phaseId, data) =>
     api.put(`/projects/${projectId}/phases/${phaseId}`, data),
 
   // Add document to phase
-  addPhaseDocument: (projectId, phaseId, data) => 
+  addPhaseDocument: (projectId, phaseId, data) =>
     api.post(`/projects/${projectId}/phases/${phaseId}/documents`, data),
 
   // Remove document from phase
-  removePhaseDocument: (projectId, phaseId, docId) => 
+  removePhaseDocument: (projectId, phaseId, docId) =>
     api.delete(`/projects/${projectId}/phases/${phaseId}/documents/${docId}`),
 
   // Get detailed stats
@@ -81,7 +81,7 @@ export const projectAPI = {
   bulkDeleteProjects: (projectIds) => api.post('/projects/bulk-delete', { project_ids: projectIds }),
 
   // Bulk update project status
-  bulkUpdateProjectStatus: (projectIds, status) => 
+  bulkUpdateProjectStatus: (projectIds, status) =>
     api.post('/projects/bulk-status', { project_ids: projectIds, status }),
 
   // Get overdue projects
@@ -91,8 +91,8 @@ export const projectAPI = {
   getMyProjects: () => api.get('/projects/my-projects'),
 
   // ==================== TASK MANAGEMENT METHODS ====================
-  
-   // Get all tasks
+
+  // Get all tasks
   getAllTasks: (filters = {}) => {
     const params = new URLSearchParams();
     if (filters.project_id) params.append('project_id', filters.project_id);
@@ -131,11 +131,11 @@ export const projectAPI = {
   getMyTasks: () => api.get('/tasks/my-tasks'), // Fixed: was /projects/my-tasks
 
   // Bulk update task status
-  bulkUpdateTaskStatus: (taskIds, status) => 
+  bulkUpdateTaskStatus: (taskIds, status) =>
     api.put('/tasks/bulk/status', { task_ids: taskIds, status }), // Fixed: was /projects/bulk/status
 
   // Bulk assign tasks
-  bulkAssignTasks: (taskIds, assigneeId, assignerRole) => 
+  bulkAssignTasks: (taskIds, assigneeId, assignerRole) =>
     api.put('/tasks/bulk/assign', { task_ids: taskIds, assignee_id: assigneeId, assigner_role: assignerRole }), // Fixed: was /projects/bulk/assign
 
   // Add comment to task
@@ -151,7 +151,7 @@ export const projectAPI = {
   getTimeLogs: (taskId) => api.get(`/tasks/${taskId}/time-logs`), // Fixed: was /projects${taskId}/time-logs
 
   // ==================== TEAM MANAGEMENT METHODS ====================
-  
+
   // Get all teams
   getAllTeams: () => api.get('/teams'), // Fixed: was /projects
 
@@ -159,14 +159,14 @@ export const projectAPI = {
   getTeamById: (id) => api.get(`/teams/${id}`), // Fixed: was /projects/${id}
 
   // Create team
-// In your projectAPI service
-createTeam: (teamData) => {
-    console.log('API call - createTeam with data:', JSON.stringify(teamData, null, 2));
+  // In your projectAPI service
+  createTeam: (teamData) => {
+    // console.log('API call - createTeam with data:', JSON.stringify(teamData, null, 2));
     return api.post('/teams', teamData);
-},
-addTeamMembers: (teamId, membersData) => {
+  },
+  addTeamMembers: (teamId, membersData) => {
     return api.post(`/teams/${teamId}/members`, membersData); // Optional: separate endpoint for adding members
-},
+  },
 
   // Update team
   updateTeam: (id, data) => api.put(`/teams/${id}`, data), // Fixed: was /projects/${id}
@@ -178,7 +178,7 @@ addTeamMembers: (teamId, membersData) => {
   addTeamMember: (data) => api.post('/teams/members', data), // Fixed: was /projects/members
 
   // Remove member from team
-  removeTeamMember: (teamId, employeeId) => 
+  removeTeamMember: (teamId, employeeId) =>
     api.delete(`/teams/${teamId}/members/${employeeId}`), // Fixed: was /projects/${teamId}/members/${employeeId}
 
   // Get team members
@@ -197,11 +197,11 @@ addTeamMembers: (teamId, membersData) => {
   getAllEmployees: () => api.get('/employees'), // Fixed: was /all-employees
 
   // Bulk add members to team
-  bulkAddTeamMembers: (teamId, employeeIds, roleInTeam) => 
+  bulkAddTeamMembers: (teamId, employeeIds, roleInTeam) =>
     api.post(`/teams/${teamId}/members/bulk`, { employee_ids: employeeIds, role_in_team: roleInTeam }), // Fixed: was /projects/${teamId}/members/bulk
 
   // ==================== DAILY REPORT METHODS ====================
-  
+
   // Get daily reports
   getDailyReports: (employeeId, date) => {
     const params = new URLSearchParams();
@@ -220,7 +220,7 @@ addTeamMembers: (teamId, membersData) => {
   exportDailyReports: (date) => api.get(`/daily-reports/export/${date}`, { responseType: 'blob' }), // Fixed: was /projects/export/${date}
 
   // ==================== NOTIFICATION METHODS ====================
-  
+
   // Get notifications
   getNotifications: () => api.get('/notifications'), // Fixed: was /projects
 
@@ -234,26 +234,26 @@ addTeamMembers: (teamId, membersData) => {
   markAllNotificationsRead: () => api.put('/notifications/read-all'), // Fixed: was /projects/read-all
 
   // ==================== ASSIGNMENT METHODS ====================
-  
+
   // Assign to team lead
-  assignToTeamLead: (taskId, teamLeadId) => 
+  assignToTeamLead: (taskId, teamLeadId) =>
     api.put(`/tasks/${taskId}/assign-team-lead`, { team_lead_id: teamLeadId }), // Fixed: was /projects/${taskId}/assign-team-lead
 
   // Assign to member
-  assignToMember: (taskId, memberId) => 
-     api.put(`/tasks/${taskId}/assign-member`, { member_id: memberId }),
-  assignMultipleEmployees: (taskId, employeeIds) => 
-  api.post(`/tasks/${taskId}/assign-multiple`, { employeeIds }),
+  assignToMember: (taskId, memberId) =>
+    api.put(`/tasks/${taskId}/assign-member`, { member_id: memberId }),
+  assignMultipleEmployees: (taskId, employeeIds) =>
+    api.post(`/tasks/${taskId}/assign-multiple`, { employeeIds }),
 
-getTaskAssignees: (taskId) => 
-  api.get(`/tasks/${taskId}/assignees`),
+  getTaskAssignees: (taskId) =>
+    api.get(`/tasks/${taskId}/assignees`),
 
-removeTaskAssignee: (taskId, employeeId) => 
-  api.delete(`/tasks/${taskId}/assignees/${employeeId}`),
+  removeTaskAssignee: (taskId, employeeId) =>
+    api.delete(`/tasks/${taskId}/assignees/${employeeId}`),
 
-// In projectAPI.js, make sure this method exists:
-bulkAssignMembers: (taskId, memberIds) => {
-  console.log('Calling bulkAssignMembers with:', { taskId, memberIds });
-  return api.post(`/tasks/${taskId}/bulk-assign`, { member_ids: memberIds });
-},
+  // In projectAPI.js, make sure this method exists:
+  bulkAssignMembers: (taskId, memberIds) => {
+    // console.log('Calling bulkAssignMembers with:', { taskId, memberIds });
+    return api.post(`/tasks/${taskId}/bulk-assign`, { member_ids: memberIds });
+  },
 };

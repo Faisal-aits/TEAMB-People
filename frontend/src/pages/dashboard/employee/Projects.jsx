@@ -356,12 +356,12 @@ const updateEditableTask = (index, field, value) => {
     const loadUser = () => {
       try {
         const userData = JSON.parse(localStorage.getItem('user'));
-        console.log('=== USER DATA FROM LOCALSTORAGE ===');
-        console.log('Raw user data:', userData);
+        // console.log('=== USER DATA FROM LOCALSTORAGE ===');
+        // console.log('Raw user data:', userData);
         
         if (userData) {
           const userId = userData.employee_id || userData.id || userData.user_id;
-          console.log('User ID:', userId);
+          // console.log('User ID:', userId);
           
           setCurrentUser({
             id: userId,
@@ -405,12 +405,12 @@ const updateEditableTask = (index, field, value) => {
   // Load teams when project is selected
   useEffect(() => {
     if (taskFormData.project_id) {
-      console.log('=== LOADING TEAMS FOR PROJECT ===');
-      console.log('Selected project ID:', taskFormData.project_id);
-      console.log('All teams:', teams);
+      // console.log('=== LOADING TEAMS FOR PROJECT ===');
+      // console.log('Selected project ID:', taskFormData.project_id);
+      // console.log('All teams:', teams);
       
       const projectTeams = teams.filter(t => t.project_id === parseInt(taskFormData.project_id));
-      console.log('Filtered teams for project:', projectTeams);
+      // console.log('Filtered teams for project:', projectTeams);
       
       setSelectedProjectTeams(projectTeams);
       setTaskFormData(prev => ({ ...prev, team_id: '' }));
@@ -444,14 +444,14 @@ const updateEditableTask = (index, field, value) => {
   const loadTeamMembers = async (teamId) => {
     try {
       setLoadingTeamMembers(true);
-      console.log('=== LOADING TEAM MEMBERS ===');
-      console.log('Team ID:', teamId);
+      // console.log('=== LOADING TEAM MEMBERS ===');
+      // console.log('Team ID:', teamId);
       
       const existingTeam = teams.find(t => t.id === parseInt(teamId));
-      console.log('Existing team data:', existingTeam);
+      // console.log('Existing team data:', existingTeam);
       
       if (existingTeam && existingTeam.members && existingTeam.members.length > 0) {
-        console.log('Using cached members:', existingTeam.members);
+        // console.log('Using cached members:', existingTeam.members);
         const formattedMembers = existingTeam.members.map(member => ({
           id: member.user_id || member.id,
           user_id: member.user_id || member.id,
@@ -465,9 +465,9 @@ const updateEditableTask = (index, field, value) => {
         return;
       }
       
-      console.log('Fetching from API for team:', teamId);
+      // console.log('Fetching from API for team:', teamId);
       const response = await projectAPI.getTeamMembers(teamId);
-      console.log('API Response Data:', response.data);
+      // console.log('API Response Data:', response.data);
       
       let membersList = [];
       
@@ -495,7 +495,7 @@ const updateEditableTask = (index, field, value) => {
         email: member.email || ''
       }));
       
-      console.log('Formatted members:', formattedMembers);
+      // console.log('Formatted members:', formattedMembers);
       setAvailableTeamMembers(formattedMembers);
       
       setTeams(prevTeams => 
@@ -517,7 +517,7 @@ const updateEditableTask = (index, field, value) => {
   const fetchAllData = async () => {
     try {
       setLoading(true);
-      console.log('=== FETCHING ALL DATA ===');
+      // console.log('=== FETCHING ALL DATA ===');
 
       const [projectsRes, statsRes, employeesRes, departmentsRes, teamsRes, tasksRes] = await Promise.allSettled([
         projectAPI.getAll(),

@@ -47,7 +47,7 @@ const Attendance = {
                 query += ' AND a.date = ?';
                 params.push(filters.date);
             } else {
-                const today = new Date().toISOString().split('T')[0];
+                const today = new Date().toLocaleString("sv-SE", {timeZone: "Asia/Kolkata"}).split(' ')[0];
                 query += ' AND a.date = ?';
                 params.push(today);
             }
@@ -70,7 +70,7 @@ const Attendance = {
     // Get attendance statistics
     getStatistics: async (tenantId, date = null) => {
         try {
-            const targetDate = date || new Date().toISOString().split('T')[0];
+            const targetDate = date || new Date().toLocaleString("sv-SE", {timeZone: "Asia/Kolkata"}).split(' ')[0];
             
             const query = `
                 SELECT 
@@ -537,7 +537,7 @@ const Attendance = {
                 }
             }
 
-            const today = new Date().toISOString().split('T')[0];
+            const today = new Date().toLocaleString("sv-SE", {timeZone: "Asia/Kolkata"}).split(' ')[0];
             
             const [existing] = await connection.execute(
                 'SELECT * FROM tb_attendance WHERE employee_id = ? AND date = ?',

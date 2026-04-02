@@ -168,9 +168,9 @@ const ChevronRightIcon = () => (
           <div className="sidebar-header">
             <div className="header-content">
               {sidebarOpen ? (
-                <h2 className="company-title-sidebar">ARHAM IT SOLUTIONS</h2>
+                <h2 className="company-title-sidebar">Work Desk</h2>
               ) : (
-                <div className="company-icon">A</div>
+                <div className="company-icon">W</div>
               )}
             </div>
           </div>

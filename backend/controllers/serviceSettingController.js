@@ -1,5 +1,6 @@
 // backend/controllers/serviceSettingController.js
 const ServiceSetting = require('../models/serviceSettingModel');
+const Tenant = require('../models/tenantModel');
 
 const serviceSettingController = {
     // Get bank details
@@ -202,6 +203,55 @@ const serviceSettingController = {
             res.status(500).json({
                 success: false,
                 message: 'Server error while updating GST details: ' + error.message
+            });
+        }
+    },
+
+    // Get SMTP details
+    getSmtpDetails: async (req, res) => {
+        try {
+            console.log('🔄 Getting SMTP details...');
+            const tenant = await Tenant.getById(req.tenantId);
+            
+            res.json({
+                success: true,
+                smtpDetails: {
+                    smtp_provider: tenant?.smtp_provider || '',
+                    smtp_user: tenant?.smtp_user || '',
+                    smtp_password: tenant?.smtp_password || ''
+                }
+            });
+        } catch (error) {
+            console.error('Get SMTP details error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Server error while fetching SMTP details'
+            });
+        }
+    },
+
+    // Update SMTP details
+    updateSmtpDetails: async (req, res) => {
+        try {
+            const { smtp_provider, smtp_user, smtp_password } = req.body;
+
+            await Tenant.update(req.tenantId, {
+                smtp_provider: smtp_provider || null,
+                smtp_user: smtp_user || null,
+                smtp_password: smtp_password || null
+            });
+
+            console.log('✅ SMTP details updated successfully');
+
+            res.json({
+                success: true,
+                message: 'SMTP details updated successfully!'
+            });
+        } catch (error) {
+            console.error('❌ Update SMTP details error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Server error while updating SMTP details: ' + error.message
             });
         }
     }

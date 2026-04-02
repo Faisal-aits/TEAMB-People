@@ -136,10 +136,10 @@ const InternshipManagement = () => {
       // Export to Excel
       XLSX.writeFile(workbook, fileName);
       
-      console.log('✅ Export successful:', fileName);
+      // console.log('✅ Export successful:', fileName);
       alert(`Exported ${filteredInternships.length} internship programs successfully!`);
     } catch (error) {
-      console.error('❌ Error exporting data:', error);
+      // console.error('❌ Error exporting data:', error);
       alert('Error exporting data. Please try again.');
     }
   };

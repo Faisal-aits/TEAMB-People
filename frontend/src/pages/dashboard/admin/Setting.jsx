@@ -1,6 +1,6 @@
 // src/pages/dashboard/admin/ServiceManagement.jsx
 import React, { useState, useEffect } from 'react';
-import { FaCreditCard, FaReceipt } from 'react-icons/fa';
+import { FaCreditCard, FaReceipt, FaEnvelope, FaInfoCircle } from 'react-icons/fa';
 import { serviceSettingAPI } from '../../../services/serviceSettingAPI';
 import './Setting.css';
 
@@ -31,6 +31,13 @@ const ServiceManagement = () => {
     igst_rate: 18
   });
 
+  // SMTP Details State
+  const [smtpSettings, setSmtpSettings] = useState({
+    smtp_provider: '',
+    smtp_user: '',
+    smtp_password: ''
+  });
+
   // Load settings data
   useEffect(() => {
     loadSettingsData();
@@ -45,10 +52,15 @@ const ServiceManagement = () => {
         if (response.data.success && response.data.bankDetails) {
           setBankDetails(response.data.bankDetails);
         }
-      } else {
+      } else if (activeSetting === 'gst') {
         const response = await serviceSettingAPI.getGstDetails();
         if (response.data.success && response.data.gstDetails) {
           setGstDetails(response.data.gstDetails);
+        }
+      } else if (activeSetting === 'smtp') {
+        const response = await serviceSettingAPI.getSmtpDetails();
+        if (response.data.success && response.data.smtpDetails) {
+          setSmtpSettings(response.data.smtpDetails);
         }
       }
     } catch (error) {
@@ -135,6 +147,37 @@ const ServiceManagement = () => {
     }
   };
 
+  const handleSmtpInputChange = (e) => {
+    const { name, value } = e.target;
+    setSmtpSettings(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSaveSmtpSettings = async (e) => {
+    e.preventDefault();
+    if (!smtpSettings.smtp_provider || !smtpSettings.smtp_user || !smtpSettings.smtp_password) {
+      alert('Please fill out all SMTP fields');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const response = await serviceSettingAPI.updateSmtpDetails(smtpSettings);
+      if (response.data.success) {
+        alert('SMTP details saved successfully!');
+        await loadSettingsData();
+      } else {
+        alert('Failed to save SMTP details: ' + response.data.message);
+      }
+    } catch (error) {
+      console.error('Error saving SMTP details:', error);
+      alert('Error saving SMTP details. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="setting-management-section setting-management-wrapper" id="settingManagementMain">
@@ -171,6 +214,14 @@ const ServiceManagement = () => {
               >
                 <FaReceipt className="setting-tab-icon gst-tab-icon" style={{ marginRight: '8px' }} />
                 GST Details
+              </button>
+              <button 
+                className={`setting-filter-btn settings-tab-btn ${activeSetting === 'smtp' ? 'active gst-tab-active' : 'gst-tab-inactive'}`}
+                id="smtpTabBtn"
+                onClick={() => setActiveSetting('smtp')}
+              >
+                <FaEnvelope className="setting-tab-icon" style={{ marginRight: '8px' }} />
+                SMTP Settings
               </button>
             </div>
           </div>
@@ -428,6 +479,74 @@ const ServiceManagement = () => {
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? 'Saving...' : 'Save GST Details'}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {activeSetting === 'smtp' && (
+            <form onSubmit={handleSaveSmtpSettings} className="setting-employee-form app-settings-form">
+              <div className="setting-form-section app-info-section">
+                <div style={{ marginBottom: "20px" }}>
+                  <div className="smtp-tutorial-alert">
+                    <FaInfoCircle size={24} color="#3182ce" />
+                    <div style={{ marginLeft: "10px" }}>
+                      <strong>How to get Application Password?</strong>
+                      <p style={{ margin: "5px 0 0 0", fontSize: "0.9rem" }}>
+                        <strong>Gmail:</strong> Go to Manage your Google Account &gt; Security &gt; 2-Step Verification &gt; App passwords. Create a new one and paste it below. <br/>
+                        <strong>Outlook:</strong> Go to Microsoft Account Security &gt; Advanced Security Options &gt; App passwords.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="setting-form-row-three app-form-row">
+                  <div className="setting-form-group app-form-group">
+                    <label className="setting-form-label app-form-label">SMTP Provider *</label>
+                    <select
+                      name="smtp_provider"
+                      value={smtpSettings.smtp_provider}
+                      onChange={handleSmtpInputChange}
+                      className="setting-form-input app-form-input"
+                      required
+                    >
+                      <option value="">Select Provider</option>
+                      <option value="gmail">Gmail</option>
+                      <option value="outlook">Outlook</option>
+                    </select>
+                  </div>
+
+                  <div className="setting-form-group app-form-group">
+                    <label className="setting-form-label app-form-label">SMTP Email User *</label>
+                    <input
+                      type="email"
+                      name="smtp_user"
+                      value={smtpSettings.smtp_user}
+                      onChange={handleSmtpInputChange}
+                      placeholder="e.g. hr@company.com"
+                      className="setting-form-input app-form-input"
+                      required
+                    />
+                  </div>
+
+                  <div className="setting-form-group app-form-group">
+                    <label className="setting-form-label app-form-label">SMTP App Password *</label>
+                    <input
+                      type="password"
+                      name="smtp_password"
+                      value={smtpSettings.smtp_password}
+                      onChange={handleSmtpInputChange}
+                      placeholder="Paste app password here"
+                      className="setting-form-input app-form-input"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="setting-form-actions app-form-actions">
+                <button type="submit" className="setting-submit-btn app-submit-btn" disabled={isSubmitting}>
+                  {isSubmitting ? 'Saving...' : 'Save SMTP Settings'}
                 </button>
               </div>
             </form>

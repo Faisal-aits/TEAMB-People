@@ -11,7 +11,7 @@ const attendanceController = {
     getAllAttendance: async (req, res) => {
         try {
             const filters = {
-                date: req.query.date || new Date().toISOString().split('T')[0],
+                date: req.query.date || new Date().toLocaleString("sv-SE", {timeZone: "Asia/Kolkata"}).split(' ')[0],
                 status: req.query.status || 'all'
             };
 
@@ -187,7 +187,7 @@ const attendanceController = {
                 });
             }
 
-            const today = date || new Date().toISOString().split('T')[0];
+            const today = date || new Date().toLocaleString("sv-SE", {timeZone: "Asia/Kolkata"}).split(' ')[0];
             const currentDateTime = new Date();
 
             const attendanceExists = await Attendance.checkExists(req.tenantId, employee_id, today);
@@ -252,7 +252,7 @@ const attendanceController = {
                 });
             }
 
-            const today = date || new Date().toISOString().split('T')[0];
+            const today = date || new Date().toLocaleString("sv-SE", {timeZone: "Asia/Kolkata"}).split(' ')[0];
             console.log('📅 Looking for attendance on:', today, 'for employee:', employee.employee_id);
 
             const allAttendance = await Attendance.getAll(req.tenantId, { date: today });
@@ -333,7 +333,7 @@ const attendanceController = {
             }
 
             const employeeId = employee.employee_id;
-            const today = date || new Date().toISOString().split('T')[0];
+            const today = date || new Date().toLocaleString("sv-SE", {timeZone: "Asia/Kolkata"}).split(' ')[0];
             const currentDateTime = new Date();
 
             console.log('💾 Creating attendance for:', { employeeId, type, today });
@@ -450,7 +450,7 @@ const attendanceController = {
             console.log(`✅ Employee identified: ${identifiedEmployee.employee_id} (Similarity: ${(highestSimilarity * 100).toFixed(1)}%)`);
 
             // Step 3: Get today's date
-            const today = new Date().toISOString().split('T')[0];
+            const today = new Date().toLocaleString("sv-SE", {timeZone: "Asia/Kolkata"}).split(' ')[0];
             const currentTime = new Date();
 
             // Step 4: Get employee's shift for today
@@ -615,7 +615,7 @@ const attendanceController = {
             console.log(`✅ Face verified! Proceeding with attendance...`);
 
             // Step 7: Mark attendance (same as before but faster)
-            const today = new Date().toISOString().split('T')[0];
+            const today = new Date().toLocaleString("sv-SE", {timeZone: "Asia/Kolkata"}).split(' ')[0];
             const currentTime = new Date();
 
             console.log(`🔍 Getting shift for employee ${employee.employee_id} on date ${today}`);

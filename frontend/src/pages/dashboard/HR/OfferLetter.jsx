@@ -47,7 +47,7 @@ const OfferLetter = () => {
     const fetchEmployees = async () => {
       try {
         const res = await employeeAPI.getAll();
-        console.log("Employees API Response:", res.data);
+        // console.log("Employees API Response:", res.data);
         const employeesData = res.data.employees || res.data.data || (Array.isArray(res.data) ? res.data : []);
         setEmployees(employeesData);
       } catch (err) {

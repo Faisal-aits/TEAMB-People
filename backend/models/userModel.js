@@ -50,12 +50,43 @@ const User = {
     updatePassword: async (userId, passwordHash) => {
         try {
             const [result] = await pool.execute(
-                'UPDATE users SET password_hash = ? WHERE id = ?',
+                'UPDATE users SET password_hash = ?, reset_password_token = NULL, reset_password_expires = NULL WHERE id = ?',
                 [passwordHash, userId]
             );
             return result.affectedRows > 0;
         } catch (error) {
             console.error('Database error in updatePassword:', error);
+            throw error;
+        }
+    },
+
+    // Set reset token and expiry
+    setResetToken: async (userId, token, expiryDate) => {
+        try {
+            const [result] = await pool.execute(
+                'UPDATE users SET reset_password_token = ?, reset_password_expires = ? WHERE id = ?',
+                [token, expiryDate, userId]
+            );
+            return result.affectedRows > 0;
+        } catch (error) {
+            console.error('Database error in setResetToken:', error);
+            throw error;
+        }
+    },
+
+    // Find user by valid reset token
+    findByResetToken: async (token) => {
+        try {
+            const [rows] = await pool.execute(
+                `SELECT u.*, r.name as role_name 
+                 FROM users u 
+                 JOIN roles r ON u.role_id = r.id 
+                 WHERE u.reset_password_token = ? AND u.reset_password_expires > NOW()`,
+                [token]
+            );
+            return rows[0];
+        } catch (error) {
+            console.error('Database error in findByResetToken:', error);
             throw error;
         }
     }

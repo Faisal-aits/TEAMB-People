@@ -16,4 +16,10 @@ export const serviceSettingAPI = {
 
    // Get quotation settings - ADD THIS FUNCTION
   getQuotationSettings: () => api.get('/service-settings/quotation'),
+
+  // Get SMTP details
+  getSmtpDetails: () => api.get('/service-settings/smtp'),
+
+  // Update SMTP details
+  updateSmtpDetails: (smtpData) => api.put('/service-settings/smtp', smtpData),
 };

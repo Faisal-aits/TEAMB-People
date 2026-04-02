@@ -574,7 +574,7 @@ const SalaryManagement = () => {
       // Export to Excel
       XLSX.writeFile(workbook, fileName);
       
-      console.log('✅ Export successful:', fileName);
+      // console.log('✅ Export successful:', fileName);
       alert(`Exported ${filteredRecords.length} salary records successfully!`);
     } catch (error) {
       console.error('❌ Error exporting data:', error);

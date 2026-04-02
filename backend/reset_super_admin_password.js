@@ -7,8 +7,8 @@ async function resetPassword() {
   const newPassword = process.argv[3];
 
   if (!email || !newPassword) {
-    console.log('Usage: node reset_super_admin_password.js <email> <new_password>');
-    console.log('Example: node reset_super_admin_password.js superadmin@workdesk.com MyNewPassword123');
+    // console.log('Usage: node reset_super_admin_password.js <email> <new_password>');
+    // console.log('Example: node reset_super_admin_password.js superadmin@workdesk.com MyNewPassword123');
     process.exit(1);
   }
 
@@ -26,7 +26,7 @@ async function resetPassword() {
 
   try {
     console.log(`Looking for super admin with email: ${email}...`);
-    
+
     // Check if user exists
     const [rows] = await pool.execute(
       'SELECT id, first_name, last_name FROM super_admins WHERE email = ?',
@@ -40,7 +40,7 @@ async function resetPassword() {
 
     const admin = rows[0];
     console.log(`Found super admin: ${admin.first_name} ${admin.last_name}`);
-    
+
     // Hash new password
     console.log('Hashing new password...');
     const saltRounds = 10;
@@ -53,7 +53,7 @@ async function resetPassword() {
     );
 
     console.log(`✅ Password successfully updated for ${email}`);
-    
+
   } catch (error) {
     console.error('❌ Error resetting password:', error.message);
   } finally {

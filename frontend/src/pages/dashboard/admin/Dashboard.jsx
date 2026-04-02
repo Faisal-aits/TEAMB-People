@@ -166,7 +166,7 @@ useEffect(() => {
   const fetchRecentReports = async () => {
     try {
       const response = await reportAPI.getRecent(3);
-      console.log('Recent Reports API Response:', response);
+      // console.log('Recent Reports API Response:', response);
       
       let reports = [];
       
@@ -176,7 +176,7 @@ useEffect(() => {
         reports = response.data;
       }
       
-      console.log('Recent reports found:', reports.length);
+      // console.log('Recent reports found:', reports.length);
       
       setRecentReports(reports);
     } catch (error) {

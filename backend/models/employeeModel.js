@@ -138,13 +138,14 @@ create: async (tenantId, employeeData) => {
         // Create user with tenant_id
         const [userResult] = await connection.execute(
             `INSERT INTO users (tenant_id, role_id, first_name, last_name, email, password_hash, phone, is_active) 
-             VALUES (?, ?, ?, ?, ?, NULL, ?, TRUE)`,
+             VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)`,
             [
                 tenantId,
                 roleId,
                 employeeData.first_name, 
                 employeeData.last_name, 
                 employeeData.email, 
+                employeeData.password_hash || null,
                 employeeData.phone || null
             ]
         );
