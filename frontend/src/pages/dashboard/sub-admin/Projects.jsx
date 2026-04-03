@@ -14,13 +14,22 @@ const ProjectManagement = () => {
 
   const phases = ['Requirement Specification', 'System Design', 'Development', 'Integration & Testing', 'Deployment', 'Maintenance & Repeat Cycle'];
   const projectStatuses = ['On Track', 'Delayed', 'At Risk', 'Completed', 'On Hold'];
-
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isPhaseModalOpen, setIsPhaseModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
   const [selectedPhase, setSelectedPhase] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+  name: '',
+  department: '',
+  manager: '',
+  start_date: '',
+  end_date: '',
+  current_phase: '',
+  status: ''
+});
   const [filters, setFilters] = useState({
     status: '',
     department: '',
@@ -71,7 +80,48 @@ const ProjectManagement = () => {
   }
 }, [projectLeads]);
 // In Projects.js, update the API calls for teams:
+const handleEditProject = (project) => {
+  setSelectedProject(project);
+  setEditFormData({
+    name: project.name || '',
+    department: project.department || '',
+    manager: project.manager || project.project_lead_name || '',
+    start_date: project.start_date || '',
+    end_date: project.end_date || '',
+    current_phase: project.current_phase || '',
+    status: project.status || 'On Track'
+  });
+  setIsEditModalOpen(true);
+};
 
+const handleEditInputChange = (e) => {
+  const { name, value } = e.target;
+  setEditFormData(prev => ({ ...prev, [name]: value }));
+};
+
+const handleUpdateProject = async (e) => {
+  e.preventDefault();
+  
+  try {
+    const response = await projectAPI.update(selectedProject.id, editFormData);
+    
+    if (response.data.success) {
+      // Update the project in the local state
+      setProjects(prev => prev.map(proj => 
+        proj.id === selectedProject.id ? response.data.data : proj
+      ));
+      setIsEditModalOpen(false);
+      setSelectedProject(null);
+      await fetchData(); // Refresh data to ensure consistency
+      alert('Project updated successfully!');
+    } else {
+      throw new Error(response.data.message);
+    }
+  } catch (err) {
+    console.error('Error updating project:', err);
+    alert(err.response?.data?.message || 'Failed to update project. Please try again.');
+  }
+};
 // Fetch all employees for dropdown
 const fetchEmployees = async () => {
   try {
@@ -947,6 +997,13 @@ const fetchData = async () => {
               </div>
 
               <div className="proj-form-actions">
+               <button
+                  type="button"
+                  onClick={() => handleEditProject(selectedProject)}
+                  className="proj-edit-btn"
+                >
+                  Edit Project
+                </button>
                 <button
                   type="button"
                   onClick={() => handleDeleteClick(selectedProject)}
@@ -966,7 +1023,144 @@ const fetchData = async () => {
           </div>
         </div>
       )}
+{/* Edit Project Modal */}
+{isEditModalOpen && selectedProject && (
+  <div className="proj-modal-overlay">
+    <div className="proj-modal-content">
+      <div className="proj-modal-header">
+        <h2 id="proj-edit-modal-title">Edit Project</h2>
+        <button 
+          className="proj-close-btn"
+          id="proj-edit-close"
+          onClick={() => setIsEditModalOpen(false)}
+        >
+          ×
+        </button>
+      </div>
 
+      <form onSubmit={handleUpdateProject} className="proj-form">
+        <div className="proj-form-section">
+          <h3 className="proj-section-title">Project Information</h3>
+          <div className="proj-form-row">
+            <div className="proj-form-group">
+              <label>Project Name *</label>
+              <input
+                type="text"
+                name="name"
+                value={editFormData.name}
+                onChange={handleEditInputChange}
+                placeholder="Enter project name"
+                required
+              />
+            </div>
+            <div className="proj-form-group">
+              <label>Department *</label>
+              <select
+                name="department"
+                value={editFormData.department}
+                onChange={handleEditInputChange}
+                required
+              >
+                <option value="">Select Department</option>
+                {departments.map(dept => (
+                  <option key={dept} value={dept}>
+                    {dept}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          
+          <div className="proj-form-row">
+            <div className="proj-form-group">
+              <label>Project Lead *</label>
+              <select
+                name="manager"
+                value={editFormData.manager}
+                onChange={handleEditInputChange}
+                required
+              >
+                <option value="">Select Project Lead</option>
+                {projectLeads.map(lead => (
+                  <option key={lead.id} value={lead.name}>
+                    {lead.name} {lead.role_name && `(${lead.role_name})`}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="proj-form-group">
+              <label>Status</label>
+              <select
+                name="status"
+                value={editFormData.status}
+                onChange={handleEditInputChange}
+              >
+                {projectStatuses.map(status => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          
+          <div className="proj-form-row">
+            <div className="proj-form-group">
+              <label>Start Date</label>
+              <input
+                type="date"
+                name="start_date"
+                value={editFormData.start_date?.split('T')[0] || editFormData.start_date || ''}
+                onChange={handleEditInputChange}
+              />
+            </div>
+            <div className="proj-form-group">
+              <label>End Date</label>
+              <input
+                type="date"
+                name="end_date"
+                value={editFormData.end_date?.split('T')[0] || editFormData.end_date || ''}
+                onChange={handleEditInputChange}
+              />
+            </div>
+          </div>
+          
+          <div className="proj-form-group">
+            <label>Current Phase</label>
+            <select
+              name="current_phase"
+              value={editFormData.current_phase}
+              onChange={handleEditInputChange}
+            >
+              <option value="">Select Phase</option>
+              {phases.map(phase => (
+                <option key={phase} value={phase}>
+                  {phase}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="proj-form-actions">
+          <button
+            type="button"
+            onClick={() => setIsEditModalOpen(false)}
+            className="proj-cancel-btn"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="proj-submit-btn"
+          >
+            Update Project
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
       {/* Edit Phase Modal */}
       {isPhaseModalOpen && selectedProject && selectedPhase && (
         <div className="proj-modal-overlay">
