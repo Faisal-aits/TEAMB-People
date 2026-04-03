@@ -365,89 +365,92 @@ createTask: async (req, res) => {
         }
     },
 
-    // Update task
-    updateTask: async (req, res) => {
-        try {
-            const tenant_id = req.user?.tenant_id || req.tenantId;
-            const { id } = req.params;
-            const updateData = req.body;
-            
-            // Check if task exists
-            const [existingTask] = await db.execute(
-                'SELECT id FROM tasks WHERE id = ? AND tenant_id = ?',
-                [id, tenant_id]
-            );
-            
-            if (existingTask.length === 0) {
-                return res.status(404).json({ 
-                    success: false, 
-                    message: 'Task not found' 
-                });
-            }
-            
-            // Build update query - only include fields that are provided
-            const allowedFields = [
-                'project_id', 'team_id', 'title', 'description', 'priority',
-                'status', 'progress', 'estimated_hours', 'actual_hours',
-                'assigned_to_team_lead', 'assigned_to_member', 'due_date',
-                'start_date', 'completed_date', 'accepted', 'accepted_date',
-                'review_status', 'review_comments', 'review_date', 'reviewed_by',
-                'blocked_reason'
-            ];
-            
-            const updates = [];
-            const values = [];
-            
-            for (const field of allowedFields) {
-                if (updateData[field] !== undefined) {
-                    updates.push(`${field} = ?`);
-                    // Convert undefined to null for SQL
-                    values.push(updateData[field] !== undefined ? updateData[field] : null);
-                }
-            }
-            
-            if (updates.length === 0) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: 'No fields to update' 
-                });
-            }
-            
-            updates.push('updated_at = NOW()');
-            values.push(id, tenant_id);
-            
-            const query = `UPDATE tasks SET ${updates.join(', ')} WHERE id = ? AND tenant_id = ?`;
-            await db.execute(query, values);
-            
-            // Get updated task
-            const [updatedTask] = await db.execute(`
-                SELECT 
-                    t.*,
-                    p.name as project_name,
-                    tm.name as team_name,
-                    CONCAT(u_member.first_name, ' ', u_member.last_name) as assigned_member_name
-                FROM tasks t
-                LEFT JOIN projects p ON t.project_id = p.id
-                LEFT JOIN teams tm ON t.team_id = tm.id
-                LEFT JOIN employee_details e_member ON t.assigned_to_member = e_member.id
-                LEFT JOIN users u_member ON e_member.user_id = u_member.id
-                WHERE t.id = ? AND t.tenant_id = ?
-            `, [id, tenant_id]);
-            
-            res.json({ 
-                success: true, 
-                data: updatedTask[0],
-                message: 'Task updated successfully'
-            });
-            
-        } catch (error) {
-            console.error('Update task error:', error);
-            res.status(500).json({ 
+   // Update task
+updateTask: async (req, res) => {
+    try {
+        const tenant_id = req.user?.tenant_id || req.tenantId;
+        const { id } = req.params;
+        const updateData = req.body;
+        
+        // Check if task exists
+        const [existingTask] = await db.execute(
+            'SELECT id FROM tasks WHERE id = ? AND tenant_id = ?',
+            [id, tenant_id]
+        );
+        
+        if (existingTask.length === 0) {
+            return res.status(404).json({ 
                 success: false, 
-                message: 'Failed to update task: ' + error.message 
+                message: 'Task not found' 
             });
         }
-    },
+        
+        // Build update query - only include fields that are provided
+        // ADD 'remarks' to this array
+        const allowedFields = [
+            'project_id', 'team_id', 'title', 'description', 'priority',
+            'status', 'progress', 'estimated_hours', 'actual_hours',
+            'assigned_to_team_lead', 'assigned_to_member', 'due_date',
+            'start_date', 'completed_date', 'accepted', 'accepted_date',
+            'review_status', 'review_comments', 'remarks',  // ← ADD 'remarks' here
+            'review_date', 'reviewed_by', 'blocked_reason'
+        ];
+        
+        const updates = [];
+        const values = [];
+        
+        for (const field of allowedFields) {
+            if (updateData[field] !== undefined) {
+                updates.push(`${field} = ?`);
+                values.push(updateData[field] !== undefined ? updateData[field] : null);
+            }
+        }
+        
+        if (updates.length === 0) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'No fields to update' 
+            });
+        }
+        
+        updates.push('updated_at = NOW()');
+        values.push(id, tenant_id);
+        
+        const query = `UPDATE tasks SET ${updates.join(', ')} WHERE id = ? AND tenant_id = ?`;
+        console.log('Update query:', query);
+        console.log('Values:', values);
+        
+        await db.execute(query, values);
+        
+        // Get updated task
+        const [updatedTask] = await db.execute(`
+            SELECT 
+                t.*,
+                p.name as project_name,
+                tm.name as team_name,
+                CONCAT(u_member.first_name, ' ', u_member.last_name) as assigned_member_name
+            FROM tasks t
+            LEFT JOIN projects p ON t.project_id = p.id
+            LEFT JOIN teams tm ON t.team_id = tm.id
+            LEFT JOIN employee_details e_member ON t.assigned_to_member = e_member.id
+            LEFT JOIN users u_member ON e_member.user_id = u_member.id
+            WHERE t.id = ? AND t.tenant_id = ?
+        `, [id, tenant_id]);
+        
+        res.json({ 
+            success: true, 
+            data: updatedTask[0],
+            message: 'Task updated successfully'
+        });
+        
+    } catch (error) {
+        console.error('Update task error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to update task: ' + error.message 
+        });
+    }
+},
 
     // Delete task
     deleteTask: async (req, res) => {

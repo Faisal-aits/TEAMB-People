@@ -2,10 +2,10 @@
 const express = require('express');
 const router = express.Router();
 const taskController = require('../controllers/taskController');
-const authMiddleware = require('../middleware/auth');
+const authMiddleware =require('../middleware/authMiddleware');
 
 // Apply auth middleware
-router.use(authMiddleware);
+router.use(authMiddleware.verifyToken);
 
 // ========== GET Routes ==========
 router.get('/', taskController.getAllTasks);                           // Get all tasks
