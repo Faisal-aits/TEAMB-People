@@ -1,72 +1,91 @@
 const pool = require('../config/database');
 
 const Project = {
-  // Get all projects with phases (exclude template project)
-  getAll: async (tenantId) => {
-    const [projects] = await pool.execute(`
-      SELECT 
-        id, name, description, department, manager, 
-        DATE_FORMAT(start_date, '%Y-%m-%d') as start_date,
-        DATE_FORMAT(end_date, '%Y-%m-%d') as end_date,
-        current_phase, status, progress, created_at, updated_at
-      FROM projects 
-      WHERE id != 1 AND tenant_id = ?
-      ORDER BY created_at DESC
-    `, [tenantId]);
+ // Get all projects with phases (exclude template project)
+getAll: async (tenantId) => {
+  const [projects] = await pool.execute(`
+    SELECT 
+      id, name, description, department, manager, 
+      DATE_FORMAT(start_date, '%Y-%m-%d') as start_date,
+      DATE_FORMAT(end_date, '%Y-%m-%d') as end_date,
+      current_phase, status, progress, created_at, updated_at
+    FROM projects 
+    WHERE id != 1 AND tenant_id = ?
+    ORDER BY created_at DESC
+  `, [tenantId]);
 
-    for (let project of projects) {
-      const [phases] = await pool.execute(`
-        SELECT * FROM project_phases 
-        WHERE project_id = ? AND tenant_id = ?
-        ORDER BY phase_order
-      `, [project.id, tenantId]);
-      
-      // Parse documents for each phase
-      project.phases = phases.map(phase => ({
-        ...phase,
-        documents: parseDocuments(phase.documents)
-      }));
-
-      // Get team members for each project
-      project.team = await Project.getTeamMembers(tenantId, project.id);
-    }
-
-    return projects;
-  },
-
-  // Get project by ID with phases
-  getById: async (tenantId, id) => {
-    const [projects] = await pool.execute(`
-      SELECT 
-        id, name, description, department, manager, 
-        DATE_FORMAT(start_date, '%Y-%m-%d') as start_date,
-        DATE_FORMAT(end_date, '%Y-%m-%d') as end_date,
-        current_phase, status, progress, created_at, updated_at
-      FROM projects WHERE id = ? AND tenant_id = ?
-    `, [id, tenantId]);
-
-    if (projects.length === 0) return null;
-
-    const project = projects[0];
-    
-    // Get phases for this project
+  for (let project of projects) {
     const [phases] = await pool.execute(`
       SELECT * FROM project_phases 
       WHERE project_id = ? AND tenant_id = ?
       ORDER BY phase_order
-    `, [id, tenantId]);
+    `, [project.id, tenantId]);
     
     // Parse documents for each phase
     project.phases = phases.map(phase => ({
       ...phase,
       documents: parseDocuments(phase.documents)
     }));
+
+    // FIX: Get team members for each project - but team_members is per team, not per project
+    // Since team_members doesn't have project_id, we need to get teams for this project first
+    const [teams] = await pool.execute(`
+      SELECT id FROM teams WHERE project_id = ? AND tenant_id = ? AND status = 'Active'
+    `, [project.id, tenantId]);
     
-    // Get team members for this project
-    project.team = await Project.getTeamMembers(tenantId, id);
-    
-    return project;
-  },
+    let allTeamMembers = [];
+    for (const team of teams) {
+      const teamMembers = await Project.getTeamMembers(team.id, tenantId);
+      allTeamMembers = [...allTeamMembers, ...teamMembers];
+    }
+    project.team = allTeamMembers;
+  }
+
+  return projects;
+},
+
+// Get project by ID with phases
+getById: async (tenantId, id) => {
+  const [projects] = await pool.execute(`
+    SELECT 
+      id, name, description, department, manager, 
+      DATE_FORMAT(start_date, '%Y-%m-%d') as start_date,
+      DATE_FORMAT(end_date, '%Y-%m-%d') as end_date,
+      current_phase, status, progress, created_at, updated_at
+    FROM projects WHERE id = ? AND tenant_id = ?
+  `, [id, tenantId]);
+
+  if (projects.length === 0) return null;
+
+  const project = projects[0];
+  
+  // Get phases for this project
+  const [phases] = await pool.execute(`
+    SELECT * FROM project_phases 
+    WHERE project_id = ? AND tenant_id = ?
+    ORDER BY phase_order
+  `, [id, tenantId]);
+  
+  // Parse documents for each phase
+  project.phases = phases.map(phase => ({
+    ...phase,
+    documents: parseDocuments(phase.documents)
+  }));
+  
+  // FIX: Get team members - get teams for this project first
+  const [teams] = await pool.execute(`
+    SELECT id FROM teams WHERE project_id = ? AND tenant_id = ? AND status = 'Active'
+  `, [id, tenantId]);
+  
+  let allTeamMembers = [];
+  for (const team of teams) {
+    const teamMembers = await Project.getTeamMembers(team.id, tenantId);
+    allTeamMembers = [...allTeamMembers, ...teamMembers];
+  }
+  project.team = allTeamMembers;
+  
+  return project;
+},
 
 // In projectModel.js - Update the create method
 create: async (tenantId, projectData) => {
@@ -213,7 +232,7 @@ create: async (tenantId, projectData) => {
     return project;
   },
 
-  // projectModel.js - Updated delete method
+// projectModel.js - Updated delete method
 delete: async (tenantId, id) => {
   const connection = await pool.getConnection();
   
@@ -226,7 +245,7 @@ delete: async (tenantId, id) => {
     
     const tablesToCheck = [
       'project_phases',
-      'project_team_members', 
+      'team_members', 
       'project_history',
       'tasks',
       'project_documents',
@@ -329,6 +348,7 @@ delete: async (tenantId, id) => {
     connection.release();
   }
 },
+
   // Update project phase
   updatePhase: async (tenantId, projectId, phaseName, phaseData) => {
     const { status, progress, comments } = phaseData;
@@ -375,126 +395,42 @@ delete: async (tenantId, id) => {
     return rows[0];
   },
 
-  // Get managers list
-  getManagers: async (tenantId) => {
-    const [rows] = await pool.execute(`
-      SELECT DISTINCT manager as name 
-      FROM departments 
-      WHERE manager IS NOT NULL AND manager != '' AND tenant_id = ?
-      UNION
-      SELECT DISTINCT CONCAT(u.first_name, ' ', u.last_name) as name
-      FROM employee_details ed
-      INNER JOIN users u ON ed.user_id = u.id
-      WHERE (ed.position LIKE '%manager%' OR 
-             ed.position LIKE '%lead%' OR 
-             ed.position LIKE '%head%' OR 
-             ed.position LIKE '%director%')
-      AND u.is_active = 1 AND u.tenant_id = ? AND ed.tenant_id = ?
-      ORDER BY name
-    `, [tenantId, tenantId, tenantId]);
-    return rows;
-  },
+  // In projectModel.js, find the getTeamMembers function (around line 417)
+getTeamMembers: async (teamId, tenantId) => {
+  const query = `
+    SELECT 
+      tm.employee_id,
+      CONCAT(u.first_name, ' ', u.last_name) as name,
+      d.name as department,
+      ed.position
+    FROM team_members tm
+    JOIN employee_details ed ON tm.employee_id = ed.id
+    JOIN users u ON ed.user_id = u.id
+    LEFT JOIN departments d ON ed.department_id = d.id
+    WHERE tm.team_id = ? AND tm.tenant_id = ?
+  `;
+  const [rows] = await pool.execute(query, [teamId, tenantId]);
+  return rows;
+},
 
-
-  // Check if project name already exists
-  checkNameExists: async (tenantId, name, excludeId = null) => {
-    let query = 'SELECT id FROM projects WHERE name = ? AND id != 1 AND tenant_id = ?';
-    const params = [name, tenantId];
-
-    if (excludeId) {
-      query += ' AND id != ?';
-      params.push(excludeId);
-    }
-
-    const [rows] = await pool.execute(query, params);
-    return rows.length > 0;
-  },
-
-  // Get project team members
-  getTeamMembers: async (tenantId, projectId) => {
-    try {
-      const [rows] = await pool.execute(
-        `SELECT 
-          ptm.employee_id,
-          CONCAT(u.first_name, ' ', u.last_name) as name,
-          d.name as department,
-          ed.position
-        FROM project_team_members ptm
-        JOIN employee_details ed ON ptm.employee_id = ed.id
-        JOIN users u ON ed.user_id = u.id
-        LEFT JOIN departments d ON ed.department_id = d.id
-        WHERE ptm.project_id = ? AND ptm.tenant_id = ?`,
-        [projectId, tenantId]
-      );
-      return rows;
-    } catch (error) {
-      console.error('Error in getTeamMembers:', error);
-      return [];
-    }
-  },
-
-  // Assign team to project
-  assignTeam: async (tenantId, projectId, teamData) => {
-    const connection = await pool.getConnection();
+// Assign team to project
+assignTeam: async (tenantId, projectId, teamData) => {
+  try {
+    const { assigned_department, manager_name } = teamData;
     
-    try {
-      await connection.beginTransaction();
+    const [result] = await pool.execute(
+      `UPDATE projects SET department = ?, manager = ?, updated_at = CURRENT_TIMESTAMP 
+       WHERE id = ? AND tenant_id = ?`,
+      [assigned_department || null, manager_name || null, projectId, tenantId]
+    );
+    
+    return await Project.getById(tenantId, projectId);
+  } catch (error) {
+    console.error('Error in assignTeam:', error);
+    throw error;
+  }
+},
 
-      // Update project with assigned department and manager
-      await connection.execute(
-        `UPDATE projects SET
-          department = ?,
-          manager = ?,
-          updated_at = CURRENT_TIMESTAMP
-        WHERE id = ? AND tenant_id = ?`,
-        [
-          teamData.assigned_department,
-          teamData.manager_name,
-          projectId,
-          tenantId
-        ]
-      );
-
-      // Remove existing team members
-      await connection.execute(
-        'DELETE FROM project_team_members WHERE project_id = ? AND tenant_id = ?',
-        [projectId, tenantId]
-      );
-
-      // Add new team members
-      if (teamData.team && teamData.team.length > 0) {
-        const teamValues = teamData.team.map(employeeId => [tenantId, projectId, employeeId]);
-        await connection.query(
-          'INSERT INTO project_team_members (tenant_id, project_id, employee_id) VALUES ?',
-          [teamValues]
-        );
-      }
-
-      // Add to project history
-      await connection.execute(
-        `INSERT INTO project_history (tenant_id, project_id, date, action, user)
-         VALUES (?, ?, CURDATE(), 'Team assigned to project', 'Admin')`,
-        [tenantId, projectId]
-      );
-
-      await connection.commit();
-      
-      // Return the updated project with team
-      const project = await Project.getById(tenantId, projectId);
-      project.team = await Project.getTeamMembers(tenantId, projectId);
-      return project;
-    } catch (error) {
-      await connection.rollback();
-      console.error('Error in assignTeam:', error);
-      throw error;
-    } finally {
-      connection.release();
-    }
-  },
-// In projectModel.js - Update getEmployeesForDropdown
-
-
-// In projectModel.js - Update getEmployeesForDropdown
 getEmployeesForDropdown: async (tenantId) => {
   try {
     const [rows] = await pool.execute(
@@ -552,26 +488,7 @@ getAllEmployeesForLeads: async (tenantId) => {
   }
 },
 
-  // Get dashboard statistics (exclude template project)
-  getDashboardStats: async (tenantId) => {
-    try {
-      const [rows] = await pool.execute(`
-        SELECT 
-          COUNT(*) as totalProjects,
-          SUM(CASE WHEN status NOT IN ('Completed', 'Template') THEN 1 ELSE 0 END) as activeProjects,
-          SUM(CASE WHEN status = 'Delayed' THEN 1 ELSE 0 END) as delayedProjects,
-          SUM(CASE WHEN progress = 100 OR status = 'Completed' THEN 1 ELSE 0 END) as completedProjects
-        FROM projects
-        WHERE id != 1 AND tenant_id = ?
-      `, [tenantId]);
-      
-      return rows[0];
-    } catch (error) {
-      console.error('Error in getDashboardStats:', error);
-      throw error;
-    }
-  },
-
+ 
   // Get departments list from projects
  getDepartments: async (tenantId) => {
   try {
@@ -622,27 +539,6 @@ getAllEmployeesForLeads: async (tenantId) => {
       throw error;
     }
   },
-
-  // Assign team to project
-  assignTeam: async (tenantId, projectId, teamData) => {
-    try {
-      const { assigned_department, manager_name } = teamData;
-      
-      const [result] = await pool.execute(
-        `UPDATE projects SET department = ?, manager = ?, updated_at = CURRENT_TIMESTAMP 
-         WHERE id = ? AND tenant_id = ?`,
-        [assigned_department || null, manager_name || null, projectId, tenantId]
-      );
-      
-      return await Project.getById(tenantId, projectId);
-    } catch (error) {
-      console.error('Error in assignTeam:', error);
-      throw error;
-    }
-  },
-  // Add to projectModel.js
-
-// Get project tasks
 getProjectTasks: async (tenantId, projectId) => {
   const [tasks] = await pool.execute(`
     SELECT * FROM tasks 
@@ -652,23 +548,6 @@ getProjectTasks: async (tenantId, projectId) => {
   return tasks;
 },
 
-// Get all employees for leads
-getAllEmployeesForLeads: async (tenantId) => {
-  const [rows] = await pool.execute(`
-    SELECT 
-      ed.id,
-      CONCAT(u.first_name, ' ', u.last_name) as name,
-      u.email,
-      COALESCE(ed.position, 'Employee') as position,
-      COALESCE(d.name, 'No Department') as department
-    FROM employee_details ed
-    INNER JOIN users u ON ed.user_id = u.id
-    LEFT JOIN departments d ON ed.department_id = d.id
-    WHERE u.is_active = 1 AND u.tenant_id = ?
-    ORDER BY u.first_name, u.last_name
-  `, [tenantId]);
-  return rows;
-},
 
 // Get employees for dropdown
 getEmployeesForDropdown: async (tenantId) => {

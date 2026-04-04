@@ -1,11 +1,19 @@
-/* Projects.css - Complete Styles for ProjectManagement Component */
+/* Projects.css - Complete CSS for Project Management System */
 
-/* Main Container */
-.proj-management-section {
-  background: #f8f9fa;
-  padding: 1rem;
-  min-height: 100vh;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+/* ==================== MAIN CONTAINER ==================== */
+/* Add to Projects.css */
+/* Multi-Select Styles */
+.multi-select-container {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.selected-members {
+  padding: 8px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #ddd;
+  min-height: 50px;
 }
 
 /* Header Section */
