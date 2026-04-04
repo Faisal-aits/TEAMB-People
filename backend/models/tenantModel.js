@@ -109,6 +109,9 @@ const Tenant = {
             if (tenantData.subscription_plan !== undefined) { fields.push('subscription_plan = ?'); values.push(tenantData.subscription_plan); }
             if (tenantData.is_active !== undefined) { fields.push('is_active = ?'); values.push(tenantData.is_active); }
             if (tenantData.max_employees !== undefined) { fields.push('max_employees = ?'); values.push(tenantData.max_employees); }
+            if (tenantData.smtp_provider !== undefined) { fields.push('smtp_provider = ?'); values.push(tenantData.smtp_provider); }
+            if (tenantData.smtp_user !== undefined) { fields.push('smtp_user = ?'); values.push(tenantData.smtp_user); }
+            if (tenantData.smtp_password !== undefined) { fields.push('smtp_password = ?'); values.push(tenantData.smtp_password); }
 
             if (fields.length === 0) return false;
 

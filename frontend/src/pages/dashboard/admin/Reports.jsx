@@ -18,23 +18,23 @@ const Reports = () => {
 
   // Check if we have reports from dashboard navigation
   useEffect(() => {
-    console.log('Location state:', location.state);
+    // console.log('Location state:', location.state);
     
     if (location.state?.fromDashboard) {
-      console.log('Reports from dashboard navigation:', location.state.reports);
+      // console.log('Reports from dashboard navigation:', location.state.reports);
       
       let reportsData = [];
       
       if (Array.isArray(location.state.reports)) {
         reportsData = location.state.reports;
-        console.log('Reports is an array with length:', reportsData.length);
+        // console.log('Reports is an array with length:', reportsData.length);
       } else if (location.state.reports?.data && Array.isArray(location.state.reports.data)) {
         reportsData = location.state.reports.data;
       } else if (location.state.reports?.reports && Array.isArray(location.state.reports.reports)) {
         reportsData = location.state.reports.reports;
       }
       
-      console.log('Processed reports data:', reportsData);
+      // console.log('Processed reports data:', reportsData);
       
       const processedReports = reportsData.map(report => ({
         id: report.id || report.report_id || Math.random().toString(),
@@ -44,7 +44,7 @@ const Reports = () => {
         ...report
       }));
       
-      console.log('Final processed reports:', processedReports);
+      // console.log('Final processed reports:', processedReports);
       setReports(processedReports);
       setFilteredReports(processedReports); // Set filtered reports immediately
       setLoading(false);
@@ -63,13 +63,13 @@ const Reports = () => {
   useEffect(() => {
     const debugAPIs = async () => {
       try {
-        console.log('Testing API endpoints...');
+        // console.log('Testing API endpoints...');
         const recentResponse = await reportAPI.getRecent(3);
-        console.log('getRecent(3) response:', recentResponse);
+        // console.log('getRecent(3) response:', recentResponse);
         const allResponse = await reportAPI.getAll();
-        console.log('getAll() response:', allResponse);
+        // console.log('getAll() response:', allResponse);
       } catch (error) {
-        console.error('Debug error:', error);
+        // console.error('Debug error:', error);
       }
     };
     
@@ -80,7 +80,7 @@ const Reports = () => {
     try {
       setLoading(true);
       const response = await reportAPI.getRecent(100);
-      console.log('getRecent response:', response);
+      // console.log('getRecent response:', response);
       
       let reportsData = [];
       
@@ -92,12 +92,12 @@ const Reports = () => {
         reportsData = response.data.data;
       }
       
-      console.log('Extracted reports data:', reportsData);
+      // console.log('Extracted reports data:', reportsData);
       setReports(reportsData);
       setFilteredReports(reportsData); // Set filtered reports immediately
       setError(null);
     } catch (err) {
-      console.error('Failed to fetch reports:', err);
+      // console.error('Failed to fetch reports:', err);
       setError('Failed to load reports. Please try again.');
       setReports([]);
       setFilteredReports([]);
@@ -107,8 +107,8 @@ const Reports = () => {
   };
 
   const applyFilters = () => {
-    console.log('Applying filters with:', filters);
-    console.log('Current reports:', reports);
+    // console.log('Applying filters with:', filters);
+    // console.log('Current reports:', reports);
     
     let filtered = [...reports];
 
@@ -133,7 +133,7 @@ const Reports = () => {
     // Sort by date (newest first)
     filtered.sort((a, b) => new Date(b.date_generated) - new Date(a.date_generated));
     
-    console.log('Filtered results:', filtered);
+    // console.log('Filtered results:', filtered);
     setFilteredReports(filtered);
   };
 

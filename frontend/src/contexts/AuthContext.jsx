@@ -50,7 +50,7 @@ export const AuthProvider = ({ children }) => {
       const response = await authAPI.login(credentials);
       const { token, user } = response.data;
       
-      console.log('Login successful, user:', user);
+      // console.log('Login successful, user:', user);
       
       // Store in localStorage
       localStorage.setItem('token', token);

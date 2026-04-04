@@ -40,7 +40,7 @@ const FaceDetectionAttendance = () => {
         
         // Wait for video to be ready
         videoRef.current.onloadedmetadata = () => {
-          console.log('Camera ready, video dimensions:', videoRef.current.videoWidth, 'x', videoRef.current.videoHeight);
+          // console.log('Camera ready, video dimensions:', videoRef.current.videoWidth, 'x', videoRef.current.videoHeight);
         };
       }
       
@@ -106,10 +106,10 @@ const FaceDetectionAttendance = () => {
         throw new Error('Failed to capture image from camera');
       }
 
-      console.log('📤 Sending face image for recognition...', {
-        size: blob.size,
-        type: blob.type
-      });
+      // console.log('📤 Sending face image for recognition...', {
+      //   size: blob.size,
+      //   type: blob.type
+      // });
 
       const formData = new FormData();
       formData.append('faceImage', blob, 'face-capture.jpg');
@@ -119,7 +119,7 @@ const FaceDetectionAttendance = () => {
 
       const response = await attendanceAPI.identifyAndMarkAttendance(formData);
       
-      console.log('✅ Backend response:', response.data);
+      // console.log('✅ Backend response:', response.data);
       setDetectionResult(response.data);
       
       if (response.data.success) {

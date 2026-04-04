@@ -67,16 +67,16 @@ const ProjectManagement = () => {
   }, []);
 
  useEffect(() => {
-  console.log('Project Leads loaded:', projectLeads);
-  console.log('Number of leads:', projectLeads.length);
+  // console.log('Project Leads loaded:', projectLeads);
+  // console.log('Number of leads:', projectLeads.length);
   
   if (projectLeads.length > 0) {
-    console.log('Sample lead:', {
-      id: projectLeads[0].id,
-      idType: typeof projectLeads[0].id,
-      name: projectLeads[0].name,
-      position: projectLeads[0].position
-    });
+    // console.log('Sample lead:', {
+    //   id: projectLeads[0].id,
+    //   idType: typeof projectLeads[0].id,
+    //   name: projectLeads[0].name,
+    //   position: projectLeads[0].position
+    // });
   }
 }, [projectLeads]);
 // In Projects.js, update the API calls for teams:
@@ -155,44 +155,44 @@ const fetchData = async () => {
   try {
     setLoading(true);
     
-    console.log('Fetching projects...');
+    // console.log('Fetching projects...');
     let projectsRes;
     try {
       projectsRes = await projectAPI.getAll();
-      console.log('Projects response:', projectsRes);
+      // console.log('Projects response:', projectsRes);
     } catch (err) {
       console.error('Projects API failed:', err);
       projectsRes = { data: { success: false, data: [] } };
     }
     
-    console.log('Fetching stats...');
+    // console.log('Fetching stats...');
     let statsRes;
     try {
       statsRes = await projectAPI.getStats();
-      console.log('Stats response:', statsRes);
+      // console.log('Stats response:', statsRes);
     } catch (err) {
       console.error('Stats API failed:', err);
       statsRes = { data: { success: false, data: {} } };
     }
     
-    console.log('Fetching employees...');
+    // console.log('Fetching employees...');
     let employeesRes;
     try {
       employeesRes = await projectAPI.getEmployees();
-      console.log('Employees response:', employeesRes);
+      // console.log('Employees response:', employeesRes);
     } catch (err) {
       console.error('Employees API failed:', err);
       employeesRes = { data: { success: false, data: [] } };
     }
     
     // Get departments from a direct database query through a custom endpoint
-    console.log('Fetching departments from departments table...');
+    // console.log('Fetching departments from departments table...');
     let deptsRes;
     try {
       // If you have a separate endpoint for departments from departments table
       // Use that endpoint instead
       deptsRes = await projectAPI.getDepartments();
-      console.log('Departments response:', deptsRes);
+      // console.log('Departments response:', deptsRes);
     } catch (err) {
       console.error('Departments API failed:', err);
       deptsRes = { data: { success: false, data: [] } };
@@ -278,7 +278,7 @@ const fetchData = async () => {
       };
       
       await projectAPI.sendNotification(notificationData);
-      console.log(`✅ Notification sent to ${projectLead.name}`);
+      // console.log(`✅ Notification sent to ${projectLead.name}`);
     } catch (err) {
       console.error('❌ Error sending notification:', err);
     }
@@ -287,9 +287,9 @@ const fetchData = async () => {
  const handleSubmit = async (e) => {
   e.preventDefault();
   
-  console.log('Form Data:', formData);
-  console.log('Project Leads:', projectLeads);
-  console.log('Selected Lead ID:', formData.project_lead);
+  // console.log('Form Data:', formData);
+  // console.log('Project Leads:', projectLeads);
+  // console.log('Selected Lead ID:', formData.project_lead);
   
   if (!formData.name || !formData.department || !formData.project_lead) {
     alert('Please fill in all required fields (Project Name, Department, and Project Lead)');
@@ -300,7 +300,7 @@ const fetchData = async () => {
     // Find the lead - compare as strings (since employee_id is a string like 'AITS001')
     const selectedLead = projectLeads.find(lead => String(lead.id) === String(formData.project_lead));
     
-    console.log('Found lead:', selectedLead);
+    // console.log('Found lead:', selectedLead);
     
     if (!selectedLead) {
       alert(`Selected project lead not found. Available leads: ${projectLeads.map(l => `${l.id} - ${l.name}`).join(', ')}`);

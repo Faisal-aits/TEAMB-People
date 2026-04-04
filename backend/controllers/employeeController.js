@@ -1,6 +1,9 @@
 const FaceRecognition = require('../utils/faceRecognition');
 const Employee = require('../models/employeeModel');
 const pool = require('../config/database');
+const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
+const { sendEmployeeCredentials } = require('../utils/emailService');
 
 const employeeController = {
     // Get roles for this tenant
@@ -85,8 +88,11 @@ const employeeController = {
                 }
             }
 
+            const rawPassword = crypto.randomBytes(4).toString('hex');
+            const password_hash = await bcrypt.hash(rawPassword, 10);
+
             const employeeData = {
-                first_name, last_name, email,
+                first_name, last_name, email, password_hash,
                 phone: phone || null, department_id: department_id || null, position: position || null,
                 joining_date: joining_date || null, date_of_birth: date_of_birth || null,
                 address: address || null, emergency_contact: emergency_contact || null,
@@ -97,8 +103,19 @@ const employeeController = {
 
             const result = await Employee.create(req.tenantId, employeeData);
 
+            // Fetch tenant slug to use as Organization ID
+            const [tenantRows] = await pool.execute('SELECT slug FROM tenants WHERE id = ?', [req.tenantId]);
+            const tenantSlug = tenantRows[0]?.slug || 'Organization';
+
+            // req.user has the email of the logged-in admin or HR
+            const adminEmail = req.user?.email || process.env.SMTP_USER;
+
+            if (adminEmail) {
+                await sendEmployeeCredentials(adminEmail, tenantSlug, email, rawPassword, `${first_name} ${last_name}`);
+            }
+
             res.status(201).json({ 
-                message: 'Employee created successfully! They can now login with their email and set their password.', 
+                message: 'Employee created successfully! Their login credentials have been emailed to you.', 
                 user_id: result.user_id,
                 employee_id: result.employee_id
             });

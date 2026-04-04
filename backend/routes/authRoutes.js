@@ -30,4 +30,14 @@ router.put('/change-password', authMiddleware.verifyToken, authController.change
 // @access  Public
 router.get('/tenant/:slug', authController.getTenantBySlug);
 
+// @route   POST /api/auth/forgot-password
+// @desc    Request a reset token endpoint
+// @access  Public
+router.post('/forgot-password', authController.forgotPassword);
+
+// @route   POST /api/auth/reset-password/:token
+// @desc    Process the reset interaction
+// @access  Public
+router.post('/reset-password/:token', authController.resetPassword);
+
 module.exports = router;

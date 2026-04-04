@@ -29,10 +29,10 @@ const AttendanceTable = () => {
   const fetchAttendanceHistory = async () => {
     try {
       setLoading(true);
-      console.log('🔄 Fetching attendance history from backend...');
+      // console.log('🔄 Fetching attendance history from backend...');
       
       const response = await attendanceAPI.getMyHistory();
-      console.log('📊 Backend Response:', response.data);
+      // console.log('📊 Backend Response:', response.data);
       
       if (response.data.success) {
         // Transform backend data to match frontend structure
@@ -46,14 +46,14 @@ const AttendanceTable = () => {
           remarks: record.remarks || ''
         }));
         
-        console.log('🔄 Transformed Data:', transformedData);
+        // console.log('🔄 Transformed Data:', transformedData);
         setAttendance(transformedData);
       } else {
         setError(response.data.message || 'Failed to fetch attendance data');
       }
     } catch (err) {
       console.error('❌ Error fetching attendance:', err);
-      setError(err.response?.data?.message || 'Error loading attendance data');
+      // setError(err.response?.data?.message || 'Error loading attendance data');
     } finally {
       setLoading(false);
     }
@@ -63,9 +63,9 @@ const AttendanceTable = () => {
   const fetchTodayAttendance = async () => {
     try {
       const response = await attendanceAPI.getMyTodayAttendance();
-      console.log('📅 Today Attendance:', response.data);
+      // console.log('📅 Today Attendance:', response.data);
     } catch (err) {
-      console.error('Error fetching today attendance:', err);
+      // console.error('Error fetching today attendance:', err);
     }
   };
 
@@ -136,7 +136,7 @@ const AttendanceTable = () => {
         throw new Error('Failed to capture image');
       }
 
-      console.log('📤 Sending face image for verification...');
+      // console.log('📤 Sending face image for verification...');
 
       const formData = new FormData();
       formData.append('faceImage', blob, 'face-capture.jpg');
@@ -253,10 +253,10 @@ const AttendanceTable = () => {
     // First check if user has face enrolled
     try {
       // You could add a pre-check here
-      console.log('👤 Starting face verification for logged-in user...');
+      // console.log('👤 Starting face verification for logged-in user...');
       startCamera();
     } catch (error) {
-      console.error('Face recognition setup error:', error);
+      // console.error('Face recognition setup error:', error);
       alert('Unable to start face recognition. Please try manual check-in.');
     }
   };
@@ -291,7 +291,7 @@ const handleSubmit = async (e) => {
         checkOutTime: formData.checkOut
       };
 
-      console.log('🎯 Marking attendance:', attendanceData);
+      // console.log('🎯 Marking attendance:', attendanceData);
       
       const response = await attendanceAPI.markMyAttendance(attendanceData);
       
@@ -367,7 +367,7 @@ const uniqueAttendance = Array.from(
         date: new Date().toISOString().split('T')[0]
       };
 
-      console.log(`🎯 Quick ${type}:`, attendanceData);
+      // console.log(`🎯 Quick ${type}:`, attendanceData);
       
       const response = await attendanceAPI.markMyAttendance(attendanceData);
       
@@ -378,7 +378,7 @@ const uniqueAttendance = Array.from(
         alert(response.data.message || `Failed to ${type}`);
       }
     } catch (err) {
-      console.error(`❌ Error during ${type}:`, err);
+      // console.error(`❌ Error during ${type}:`, err);
       alert(err.response?.data?.message || `Error during ${type}`);
     }
   };

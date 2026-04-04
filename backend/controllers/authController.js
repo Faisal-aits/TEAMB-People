@@ -253,6 +253,79 @@ const authController = {
             console.error('Get tenant by slug error:', error);
             res.status(500).json({ message: 'Server error' });
         }
+    },
+
+    // Forgot Password
+    forgotPassword: async (req, res) => {
+        try {
+            const { email, tenant_slug } = req.body;
+            if (!email || !tenant_slug) {
+                return res.status(400).json({ message: 'Email and Organization ID are required' });
+            }
+
+            // Find tenant by slug
+            const [tenantRows] = await pool.execute('SELECT id, is_active FROM tenants WHERE slug = ?', [tenant_slug]);
+            if (tenantRows.length === 0 || !tenantRows[0].is_active) {
+                return res.status(400).json({ message: 'Organization not found or inactive' });
+            }
+
+            const tenantId = tenantRows[0].id;
+            const user = await User.findByEmail(email, tenantId);
+
+            if (!user) {
+                return res.json({ message: 'If an account with that email exists in the organization, a password reset link has been sent.' });
+            }
+
+            const crypto = require('crypto');
+            const token = crypto.randomBytes(20).toString('hex');
+            
+            // Expiry 1 hour from now
+            const expiryDate = new Date();
+            expiryDate.setHours(expiryDate.getHours() + 1);
+
+            await User.setResetToken(user.id, token, expiryDate);
+
+            // Construct link
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+            const resetLink = `${frontendUrl}/reset-password/${token}`;
+
+            const { sendPasswordResetEmail } = require('../utils/emailService');
+            await sendPasswordResetEmail(user.email, user.first_name, resetLink, tenantId);
+
+            res.json({ message: 'If an account with that email exists in the organization, a password reset link has been sent.' });
+
+        } catch (error) {
+            console.error('Forgot password error:', error);
+            res.status(500).json({ message: 'Server error' });
+        }
+    },
+
+    // Reset Password
+    resetPassword: async (req, res) => {
+        try {
+            const { token } = req.params;
+            const { newPassword } = req.body;
+
+            if (!newPassword || newPassword.length < 6) {
+                return res.status(400).json({ message: 'Password must be at least 6 characters long' });
+            }
+
+            const user = await User.findByResetToken(token);
+            if (!user) {
+                return res.status(400).json({ message: 'Password reset token is invalid or has expired' });
+            }
+
+            const saltRounds = 10;
+            const passwordHash = await bcrypt.hash(newPassword, saltRounds);
+
+            await User.updatePassword(user.id, passwordHash);
+
+            res.json({ message: 'Password has been successfully reset. You can now login.' });
+
+        } catch (error) {
+            console.error('Reset password error:', error);
+            res.status(500).json({ message: 'Server error' });
+        }
     }
 };
 

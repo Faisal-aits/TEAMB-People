@@ -35,7 +35,7 @@ const BillingSettings = () => {
           localStorage.setItem('deliveryChallanSettings', JSON.stringify(response.data.settings));
         }
       } catch (apiError) {
-        console.log('API not available, using localStorage settings');
+        // console.log('API not available, using localStorage settings');
         // If API fails, we already have settings from localStorage
       }
       
@@ -68,12 +68,12 @@ const BillingSettings = () => {
       try {
         const response = await deliveryAPI.updateSettings(settings);
         if (response.data && response.data.success) {
-          console.log('Settings saved to API successfully');
+          // console.log('Settings saved to API successfully');
         } else {
-          console.log('API response indicates success but no data returned');
+          // console.log('API response indicates success but no data returned');
         }
       } catch (apiError) {
-        console.log('API not available, settings saved only to localStorage');
+        // console.log('API not available, settings saved only to localStorage');
         // Don't show error to user since localStorage save worked
       }
       

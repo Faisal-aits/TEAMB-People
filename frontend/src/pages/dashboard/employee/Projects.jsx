@@ -108,7 +108,13 @@ const filterTasksByMonth = (tasks, month, year) => {
     const loadUser = () => {
       try {
         const userData = JSON.parse(localStorage.getItem('user'));
+        // console.log('=== USER DATA FROM LOCALSTORAGE ===');
+        // console.log('Raw user data:', userData);
+        
         if (userData) {
+          const userId = userData.employee_id || userData.id || userData.user_id;
+          // console.log('User ID:', userId);
+          
           setCurrentUser({
             id: userData.employee_id || userData.id,
             employeeId: userData.employee_id || userData.id,

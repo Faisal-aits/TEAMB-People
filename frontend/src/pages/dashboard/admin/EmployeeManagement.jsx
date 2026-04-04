@@ -108,14 +108,14 @@ const loadEmployees = async () => {
       apiFilters.is_active = filters.is_active === 'true';
     }
 
-    console.log('Loading employees with filters:', apiFilters);
+    // console.log('Loading employees with filters:', apiFilters);
 
     const response = await employeeAPI.getAll(apiFilters);
-    console.log('API Response:', response.data);
+    // console.log('API Response:', response.data);
     
     // Ensure we're setting the employees array correctly
     const employeesData = response.data.employees || [];
-    console.log('Number of employees received:', employeesData.length);
+    // console.log('Number of employees received:', employeesData.length);
     setEmployees(employeesData);
     
   } catch (error) {
@@ -179,7 +179,7 @@ const loadEmployees = async () => {
   };
 
  const handleFilterChange = (key, value) => {
-  console.log(`Filter changed: ${key} = ${value}`); // Debug log
+  // console.log(`Filter changed: ${key} = ${value}`); 
   setFilters(prev => ({
     ...prev,
     [key]: value
@@ -502,7 +502,7 @@ const loadEmployees = async () => {
       // Export to Excel
       XLSX.writeFile(workbook, fileName);
       
-      console.log('✅ Export successful:', fileName);
+      // console.log('✅ Export successful:', fileName);
       alert(`Exported ${employees.length} employees successfully!`);
     } catch (error) {
       console.error('❌ Error exporting data:', error);

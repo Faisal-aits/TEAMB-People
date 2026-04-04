@@ -26,20 +26,20 @@ const Reports = () => {
         // Get user data from localStorage
         const userData = localStorage.getItem('user');
         if (!userData) {
-          console.log('No user data found');
+          // console.log('No user data found');
           return;
         }
 
         const user = JSON.parse(userData);
         setCurrentUser(user);
-        console.log('Current logged-in user:', user);
+        // console.log('Current logged-in user:', user);
 
         // Get employee data using user ID
         if (user.id) {
           const employee = await getEmployeeByUserId(user.id);
           if (employee) {
             setCurrentEmployee(employee);
-            console.log('Current employee:', employee);
+            // console.log('Current employee:', employee);
           }
         }
       } catch (err) {
@@ -68,10 +68,10 @@ const Reports = () => {
 
   // Check if we have reports from dashboard navigation
   useEffect(() => {
-    console.log('Location state:', location.state);
+    // console.log('Location state:', location.state);
     
     if (location.state?.fromDashboard) {
-      console.log('Reports from dashboard navigation:', location.state.reports);
+      // console.log('Reports from dashboard navigation:', location.state.reports);
       
       let reportsData = [];
       
@@ -83,7 +83,7 @@ const Reports = () => {
         reportsData = location.state.reports.reports;
       }
       
-      console.log('Processed reports data:', reportsData);
+      // console.log('Processed reports data:', reportsData);
       
       const processedReports = reportsData.map(report => ({
         id: report.id || report.report_id || Math.random().toString(),
@@ -108,19 +108,19 @@ const Reports = () => {
   // Filter reports for current user
   const filterReportsForCurrentUser = (reportsList) => {
     if (!currentUser || !currentUser.id) {
-      console.log('No current user found, returning empty array');
+      // console.log('No current user found, returning empty array');
       return [];
     }
     
-    console.log('Filtering reports for user ID:', currentUser.id);
-    console.log('Current employee:', currentEmployee);
+    // console.log('Filtering reports for user ID:', currentUser.id);
+    // console.log('Current employee:', currentEmployee);
     
     // Get the employee name for comparison
     const employeeName = currentEmployee 
       ? `${currentEmployee.first_name} ${currentEmployee.last_name}`.toLowerCase()
       : (currentUser.name || '').toLowerCase();
     
-    console.log('Looking for reports with name:', employeeName);
+    // console.log('Looking for reports with name:', employeeName);
     
     // Filter reports where generated_by matches the current user
     const filtered = reportsList.filter(report => {
@@ -129,13 +129,13 @@ const Reports = () => {
       
       // Check by user ID (most reliable)
       if (reportUserId && reportUserId === currentUser.id) {
-        console.log('Match by user ID:', report.id);
+        // console.log('Match by user ID:', report.id);
         return true;
       }
       
       // Check by employee name
       if (employeeName && reportName && reportName.includes(employeeName)) {
-        console.log('Match by name:', report.id, reportName);
+        // console.log('Match by name:', report.id, reportName);
         return true;
       }
       
@@ -144,7 +144,7 @@ const Reports = () => {
         const nameParts = employeeName.split(' ');
         for (const part of nameParts) {
           if (part.length > 2 && reportName.includes(part)) {
-            console.log('Match by name part:', report.id, part);
+            // console.log('Match by name part:', report.id, part);
             return true;
           }
         }
@@ -153,7 +153,7 @@ const Reports = () => {
       return false;
     });
     
-    console.log(`Filtered ${reportsList.length} reports to ${filtered.length} reports for current user`);
+    // console.log(`Filtered ${reportsList.length} reports to ${filtered.length} reports for current user`);
     return filtered;
   };
 
@@ -166,7 +166,7 @@ const Reports = () => {
     try {
       setLoading(true);
       const response = await reportAPI.getRecent(100);
-      console.log('getRecent response:', response);
+      // console.log('getRecent response:', response);
       
       let reportsData = [];
       
@@ -178,7 +178,7 @@ const Reports = () => {
         reportsData = response.data.data;
       }
       
-      console.log('Extracted reports data:', reportsData);
+      // console.log('Extracted reports data:', reportsData);
       
       // Enhance reports with user info if available
       const enhancedReports = await enhanceReportsWithUserInfo(reportsData);
@@ -217,7 +217,7 @@ const Reports = () => {
         }
       });
       
-      console.log('User map created:', userMap);
+      // console.log('User map created:', userMap);
       
       // Enhance each report with user info
       return reportsData.map(report => {
@@ -239,8 +239,8 @@ const Reports = () => {
   };
 
   const applyFilters = () => {
-    console.log('Applying filters with:', filters);
-    console.log('Current reports:', reports);
+    // console.log('Applying filters with:', filters);
+    // console.log('Current reports:', reports);
     
     let filtered = [...reports];
 
@@ -265,7 +265,7 @@ const Reports = () => {
     // Sort by date (newest first)
     filtered.sort((a, b) => new Date(b.date_generated) - new Date(a.date_generated));
     
-    console.log('Filtered results:', filtered);
+    // console.log('Filtered results:', filtered);
     setFilteredReports(filtered);
   };
 

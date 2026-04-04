@@ -26,6 +26,11 @@ router.put('/gst', serviceSettingController.updateGstDetails);
 // GET /api/service-settings/quotation - Get settings for quotation
 router.get('/quotation', serviceSettingController.getQuotationSettings);
 
-module.exports = router;
+// ==================== SMTP SETTINGS ROUTES ====================
+// GET /api/service-settings/smtp - Get SMTP details
+router.get('/smtp', serviceSettingController.getSmtpDetails);
+
+// PUT /api/service-settings/smtp - Update SMTP details
+router.put('/smtp', serviceSettingController.updateSmtpDetails);
 
 module.exports = router;

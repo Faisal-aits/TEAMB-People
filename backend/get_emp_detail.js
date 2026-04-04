@@ -13,7 +13,7 @@ async function check() {
 
     try {
         const [emps] = await pool.execute('SELECT id, user_id FROM employee_details LIMIT 5');
-        console.log('Employees:', JSON.stringify(emps));
+        // console.log('Employees:', JSON.stringify(emps));
         process.exit(0);
     } catch (err) {
         console.error(err);
