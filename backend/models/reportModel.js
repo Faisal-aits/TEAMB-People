@@ -71,21 +71,41 @@ const Report = {
     },
 
     // Update report - with access control
-    update: async (tenantId, id, reportData, userId, userRole) => {
-        const { date_generated, description } = reportData;
+update: async (tenantId, id, reportData, userId, userRole) => {
+    const { date_generated, description } = reportData;
+    
+    console.log('Model update - received date:', date_generated);
+    
+    // Ensure date is in MySQL format
+    let formattedDate = date_generated;
+    
+    // If date is in ISO format, convert it
+    if (formattedDate && formattedDate.includes('T')) {
+        const date = new Date(formattedDate);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        formattedDate = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    }
+    
+    let query = 'UPDATE reports SET date_generated = ?, description = ?, updated_at = NOW() WHERE id = ? AND tenant_id = ?';
+    const params = [formattedDate, description, id, tenantId];
 
-        let query = 'UPDATE reports SET date_generated = ?, description = ?, updated_at = NOW() WHERE id = ? AND tenant_id = ?';
-        const params = [date_generated, description, id, tenantId];
+    // If user is not admin, only allow updating their own reports
+    if (userRole !== 1 && userRole !== 'admin') {
+        query += ' AND generated_by = ?';
+        params.push(userId);
+    }
 
-        // If user is not admin (role_id = 1), only allow updating their own reports
-        if (userRole !== 1 && userRole !== 'admin') {
-            query += ' AND generated_by = ?';
-            params.push(userId);
-        }
+    console.log('Update query:', query);
+    console.log('Update params:', params);
 
-        const [result] = await pool.execute(query, params);
-        return result.affectedRows;
-    },
+    const [result] = await pool.execute(query, params);
+    return result.affectedRows;
+},
 
     // Delete report - with access control
     delete: async (tenantId, id, userId, userRole) => {

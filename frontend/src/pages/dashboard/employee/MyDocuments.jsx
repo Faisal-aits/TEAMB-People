@@ -36,27 +36,31 @@ const MyDocuments = () => {
   const [resignData, setResignData] = useState({ requested_last_day: '', reason: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const fetchDocs = async () => {
-    try {
-      setLoading(true);
-      const [letterRes, slipRes, resigRes, expRes, incRes] = await Promise.all([
-        offerLetterAPI.getMyOfferLetters(),
-        salaryAPI.getMySalaryRecords(slipFilters),
-        resignationAPI.getMyRequests(),
-        experienceLetterAPI.getMyLetters(),
-        incrementLetterAPI.getMyLetters()
-      ]);
-      setLetters(letterRes.data.letters || []);
-      setSlips(slipRes.data.salaryRecords || []);
-      setResignations(resigRes.data?.data || []);
-      setExperiences(expRes.data?.data || []);
-      setIncrements(incRes.data?.data || []);
-    } catch (err) {
-      console.error("Error fetching documents:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+ const fetchDocs = async () => {
+  try {
+    setLoading(true);
+    const [letterRes, slipRes, resigRes, expRes, incRes] = await Promise.all([
+      offerLetterAPI.getMyOfferLetters(),
+      salaryAPI.getMySalaryRecords(slipFilters),
+      resignationAPI.getMyRequests(),
+      experienceLetterAPI.getMyLetters(),
+      incrementLetterAPI.getMyLetters()
+    ]);
+    setLetters(letterRes.data.letters || []);
+    setSlips(slipRes.data.salaryRecords || []);
+    
+    // FIX: Check the data structure properly
+    console.log("Resignation API Response:", resigRes.data);
+    setResignations(resigRes.data?.data || resigRes.data?.resignations || []);
+    
+    setExperiences(expRes.data?.data || []);
+    setIncrements(incRes.data?.data || []);
+  } catch (err) {
+    console.error("Error fetching documents:", err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchDocs();

@@ -40,6 +40,7 @@ const ProjectManagement = () => {
   const [isTaskDetailsModalOpen, setIsTaskDetailsModalOpen] = useState(false);
   const [isDeleteTeamModalOpen, setIsDeleteTeamModalOpen] = useState(false);
   const [isDeleteTaskModalOpen, setIsDeleteTaskModalOpen] = useState(false);
+  const [isExcelTaskModalOpen, setIsExcelTaskModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
   const [selectedProjectTeams, setSelectedProjectTeams] = useState([]);
@@ -88,14 +89,15 @@ const ProjectManagement = () => {
     delayedProjects: 0,
     completedProjects: 0
   });
-const filterTasksByMonth = (tasks, month, year) => {
-  return tasks.filter(task => {
-    if (!task.created_at && !task.due_date) return true;
-    const taskDate = task.created_at ? new Date(task.created_at) : (task.due_date ? new Date(task.due_date) : null);
-    if (!taskDate) return true;
-    return taskDate.getMonth() === month && taskDate.getFullYear() === year;
-  });
-};
+
+  const filterTasksByMonth = (tasks, month, year) => {
+    return tasks.filter(task => {
+      if (!task.created_at && !task.due_date) return true;
+      const taskDate = task.created_at ? new Date(task.created_at) : (task.due_date ? new Date(task.due_date) : null);
+      if (!taskDate) return true;
+      return taskDate.getMonth() === month && taskDate.getFullYear() === year;
+    });
+  };
 
   const phases = ['Requirement Specification', 'System Design', 'Development', 'Integration & Testing', 'Deployment', 'Maintenance & Repeat Cycle'];
   const projectStatuses = ['On Track', 'Delayed', 'At Risk', 'Completed', 'On Hold'];
@@ -138,25 +140,20 @@ const filterTasksByMonth = (tasks, month, year) => {
     }
   }, [projects, currentUser.name]);
 
- // Load teams when project is selected
-useEffect(() => {
+  // Load teams when project is selected
+  useEffect(() => {
     if (taskFormData.project_id) {
-        console.log('=== LOADING TEAMS FOR PROJECT ===');
-        console.log('Selected project ID:', taskFormData.project_id);
-        console.log('All teams:', teams);
-        
-        const projectTeams = teams.filter(t => t.project_id === parseInt(taskFormData.project_id));
-        console.log('Filtered teams for project:', projectTeams);
-        
-        setSelectedProjectTeams(projectTeams);
-        setTaskFormData(prev => ({ ...prev, team_id: '' }));
-        setAvailableTeamMembers([]);
-        setSelectedTaskEmployees([]);
+      const projectTeams = teams.filter(t => t.project_id === parseInt(taskFormData.project_id));
+      setSelectedProjectTeams(projectTeams);
+      setTaskFormData(prev => ({ ...prev, team_id: '' }));
+      setAvailableTeamMembers([]);
+      setSelectedTaskEmployees([]);
     } else {
-        setSelectedProjectTeams([]);
-        setAvailableTeamMembers([]);
+      setSelectedProjectTeams([]);
+      setAvailableTeamMembers([]);
     }
-}, [taskFormData.project_id, teams]);
+  }, [taskFormData.project_id, teams]);
+
   // Load team members when team is selected
   useEffect(() => {
     if (taskFormData.team_id) {
@@ -166,176 +163,150 @@ useEffect(() => {
       setSelectedTaskEmployees([]);
     }
   }, [taskFormData.team_id]);
-// Set project_id when opening task modal
-// Set project_id when opening task modal
-useEffect(() => {
+
+  // Set project_id when opening task modal
+  useEffect(() => {
     if (isTaskModalOpen && selectedProject?.id) {
-        setTaskFormData(prev => ({
-            ...prev,
-            project_id: selectedProject.id
-        }));
+      setTaskFormData(prev => ({
+        ...prev,
+        project_id: selectedProject.id
+      }));
     }
-}, [isTaskModalOpen, selectedProject]);
-const loadTeamMembers = async (teamId) => {
+  }, [isTaskModalOpen, selectedProject]);
+
+  const loadTeamMembers = async (teamId) => {
     try {
-        setLoadingTeamMembers(true);
-        console.log('=== LOADING TEAM MEMBERS ===');
-        console.log('Team ID:', teamId);
-        
-        // First, check if we already have team data with members
-        const existingTeam = teams.find(t => t.id === parseInt(teamId));
-        console.log('Existing team data:', existingTeam);
-        
-        if (existingTeam && existingTeam.members && existingTeam.members.length > 0) {
-            console.log('Using cached members:', existingTeam.members);
-            setAvailableTeamMembers(existingTeam.members);
-            setLoadingTeamMembers(false);
-            return;
-        }
-        
-        // Fetch from API
-        console.log('Fetching from API for team:', teamId);
-        const response = await projectAPI.getTeamMembers(teamId);
-        console.log('API Response Status:', response.status);
-        console.log('API Response Data:', response.data);
-        
-        let membersList = [];
-        
-        if (response.data && response.data.success && response.data.data) {
-            membersList = response.data.data;
-            console.log('Raw members from API:', membersList);
-            console.log('Number of members:', membersList.length);
-        } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
-            membersList = response.data.data;
-        } else if (Array.isArray(response.data)) {
-            membersList = response.data;
-        }
-        
-        if (membersList.length === 0) {
-            console.warn(`⚠️ No members found for team ${teamId}`);
-            setAvailableTeamMembers([]);
-            setLoadingTeamMembers(false);
-            return;
-        }
-        
-        // Format members - use user_id as the ID for assignment
-        const formattedMembers = membersList.map(member => ({
-            id: member.user_id,
-            user_id: member.user_id,
-            employee_detail_id: member.employee_detail_id || member.employee_id,
-            name: member.name,
-            position: member.position || 'Team Member',
-            email: member.email || ''
+      setLoadingTeamMembers(true);
+      
+      const existingTeam = teams.find(t => t.id === parseInt(teamId));
+      
+      if (existingTeam && existingTeam.members && existingTeam.members.length > 0) {
+        const formattedMembers = existingTeam.members.map(member => ({
+          id: member.user_id || member.id,
+          user_id: member.user_id || member.id,
+          employee_detail_id: member.employee_detail_id || member.employee_id,
+          name: member.name,
+          position: member.position || 'Team Member',
+          email: member.email || ''
         }));
-        
-        console.log('Formatted members:', formattedMembers);
         setAvailableTeamMembers(formattedMembers);
-        
-        // Update teams state with members
-        setTeams(prevTeams => 
-            prevTeams.map(team => 
-                team.id === parseInt(teamId) 
-                    ? { ...team, members: formattedMembers, member_count: formattedMembers.length }
-                    : team
-            )
-        );
-        
-    } catch (err) {
-        console.error('Error fetching team members:', err);
-        setAvailableTeamMembers([]);
-    } finally {
         setLoadingTeamMembers(false);
+        return;
+      }
+      
+      const response = await projectAPI.getTeamMembers(teamId);
+      
+      let membersList = [];
+      
+      if (response.data && response.data.success && response.data.data) {
+        membersList = response.data.data;
+      } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
+        membersList = response.data.data;
+      } else if (Array.isArray(response.data)) {
+        membersList = response.data;
+      }
+      
+      if (membersList.length === 0) {
+        console.warn(`⚠️ No members found for team ${teamId}`);
+        setAvailableTeamMembers([]);
+        setLoadingTeamMembers(false);
+        return;
+      }
+      
+      const formattedMembers = membersList.map(member => ({
+        id: member.user_id,
+        user_id: member.user_id,
+        employee_detail_id: member.employee_detail_id || member.employee_id,
+        name: member.name,
+        position: member.position || 'Team Member',
+        email: member.email || ''
+      }));
+      
+      setAvailableTeamMembers(formattedMembers);
+      
+      setTeams(prevTeams => 
+        prevTeams.map(team => 
+          team.id === parseInt(teamId) 
+            ? { ...team, members: formattedMembers, member_count: formattedMembers.length }
+            : team
+        )
+      );
+      
+    } catch (err) {
+      console.error('Error fetching team members:', err);
+      setAvailableTeamMembers([]);
+    } finally {
+      setLoadingTeamMembers(false);
     }
-};
+  };
 
- const fetchAllData = async () => {
+  const fetchAllData = async () => {
     try {
-        setLoading(true);
+      setLoading(true);
 
-        const [projectsRes, statsRes, employeesRes, departmentsRes, teamsRes, tasksRes] = await Promise.allSettled([
-            projectAPI.getAll(),
-            projectAPI.getStats(),
-            projectAPI.getEmployees(),
-            projectAPI.getDepartments(),
-            projectAPI.getAllTeams(),
-            projectAPI.getAllTasks()
-        ]);
+      const [projectsRes, statsRes, employeesRes, departmentsRes, teamsRes, tasksRes] = await Promise.allSettled([
+        projectAPI.getAll(),
+        projectAPI.getStats(),
+        projectAPI.getEmployees(),
+        projectAPI.getDepartments(),
+        projectAPI.getAllTeams(),
+        projectAPI.getAllTasks()
+      ]);
 
-        if (projectsRes.status === 'fulfilled' && projectsRes.value?.data?.success) {
-            setProjects(projectsRes.value.data.data || []);
-        } else if (projectsRes.status === 'rejected') {
-            console.error('Projects API failed:', projectsRes.reason);
+      if (projectsRes.status === 'fulfilled' && projectsRes.value?.data?.success) {
+        setProjects(projectsRes.value.data.data || []);
+      } else if (projectsRes.status === 'rejected') {
+        console.error('Projects API failed:', projectsRes.reason);
+      }
+
+      if (statsRes.status === 'fulfilled' && statsRes.value?.data?.success) {
+        setDashboardStats(statsRes.value.data.data || {});
+      }
+
+      if (employeesRes.status === 'fulfilled') {
+        if (employeesRes.value?.data?.success) {
+          const employeesData = employeesRes.value.data.data || [];
+          const validEmployees = employeesData.filter(emp => {
+            return emp && emp.id && emp.id !== 'null' && emp.id !== 'undefined' && emp.id !== '';
+          });
+          setEmployees(validEmployees);
+          
+          const leads = validEmployees.filter(emp => {
+            const role = emp.role_name?.toLowerCase();
+            const position = emp.position?.toLowerCase();
+            return role !== 'hr' && position !== 'hr' && position !== 'human resources';
+          });
+          setProjectLeads(leads);
+        } else {
+          setEmployees([]);
         }
+      } else if (employeesRes.status === 'rejected') {
+        console.error('Employees API request failed:', employeesRes.reason);
+        setEmployees([]);
+      }
 
-        if (statsRes.status === 'fulfilled' && statsRes.value?.data?.success) {
-            setDashboardStats(statsRes.value.data.data || {});
-        }
+      if (departmentsRes.status === 'fulfilled' && departmentsRes.value?.data?.success) {
+        setDepartments(departmentsRes.value.data.data || []);
+      }
 
-        // FIXED: Better employee loading with error handling
-        if (employeesRes.status === 'fulfilled') {
-            console.log('Employees response status:', employeesRes.status);
-            console.log('Employees response data:', employeesRes.value?.data);
-            
-            if (employeesRes.value?.data?.success) {
-                const employeesData = employeesRes.value.data.data || [];
-                console.log('Employees loaded successfully:', employeesData.length);
-                console.log('Sample employee:', employeesData[0]);
-                
-                // Filter out invalid employees
-                const validEmployees = employeesData.filter(emp => {
-                    return emp && emp.id && emp.id !== 'null' && emp.id !== 'undefined' && emp.id !== '';
-                });
-                
-                console.log('Valid employees after filtering:', validEmployees.length);
-                setEmployees(validEmployees);
-                
-                // Set project leads
-                const leads = validEmployees.filter(emp => {
-                    const role = emp.role_name?.toLowerCase();
-                    const position = emp.position?.toLowerCase();
-                    return role !== 'hr' && position !== 'hr' && position !== 'human resources';
-                });
-                setProjectLeads(leads);
-                console.log('Project leads:', leads.length);
-            } else {
-                console.error('Employees API returned unsuccessful:', employeesRes.value?.data?.message);
-                setEmployees([]);
-            }
-        } else if (employeesRes.status === 'rejected') {
-            console.error('Employees API request failed:', employeesRes.reason);
-            setEmployees([]);
-        }
-
-        if (departmentsRes.status === 'fulfilled' && departmentsRes.value?.data?.success) {
-            setDepartments(departmentsRes.value.data.data || []);
-        }
-
-        if (teamsRes.status === 'fulfilled' && teamsRes.value?.data?.success) {
-            const teamsData = teamsRes.value.data.data || [];
-            setTeams(teamsData);
-        }
+      if (teamsRes.status === 'fulfilled' && teamsRes.value?.data?.success) {
+        const teamsData = teamsRes.value.data.data || [];
+        setTeams(teamsData);
+      }
 
       if (tasksRes.status === 'fulfilled' && tasksRes.value?.data?.success) {
-    const tasksData = tasksRes.value.data.data || [];
-    console.log('=== TASKS LOADED ===');
-    console.log('Total tasks:', tasksData.length);
-    console.log('First task sample:', {
-        id: tasksData[0]?.id,
-        title: tasksData[0]?.title,
-        assigned_to_member: tasksData[0]?.assigned_to_member,
-        assigned_to_name: tasksData[0]?.assigned_to_name
-    });
-    setTasks(tasksData);
-}
+        const tasksData = tasksRes.value.data.data || [];
+        setTasks(tasksData);
+      }
 
-        setError('');
+      setError('');
     } catch (err) {
-        console.error('Error fetching data:', err);
-        setError('Failed to load data. Please refresh the page.');
+      console.error('Error fetching data:', err);
+      setError('Failed to load data. Please refresh the page.');
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
-};
+  };
 
   const getUserProjects = () => {
     if (currentUser.role === 'hr') return projects;
@@ -362,6 +333,7 @@ const loadTeamMembers = async (teamId) => {
     return task.assigned_to_member === currentUser.employeeId;
   };
   const canViewTeamManagement = () => currentUser.isProjectLead;
+  const canDeleteTeam = (team) => currentUser.isProjectLead && currentUser.managedProjects.includes(team.project_id);
 
   const handleEmployeeSelection = (employeeId) => {
     if (!employeeId || employeeId === 'null' || employeeId === 'undefined' || employeeId === '') {
@@ -378,11 +350,6 @@ const loadTeamMembers = async (teamId) => {
   const handleCreateTeam = async (e) => {
     e.preventDefault();
     
-    console.log('=== CREATING TEAM ===');
-    console.log('Team Name:', teamFormData.name);
-    console.log('Project ID:', teamFormData.project_id);
-    console.log('Selected Employees (RAW):', selectedEmployees);
-    
     if (!teamFormData.name) {
       alert('Team name is required');
       return;
@@ -395,8 +362,6 @@ const loadTeamMembers = async (teamId) => {
     const validMembers = selectedEmployees.filter(id => {
       return id && id !== 'null' && id !== 'undefined' && id !== '' && id !== null;
     });
-    
-    console.log('Valid Members after filtering:', validMembers);
     
     if (validMembers.length === 0) {
       alert('Please select at least one valid team member');
@@ -413,10 +378,7 @@ const loadTeamMembers = async (teamId) => {
         members: validMembers
       };
       
-      console.log('Sending to backend:', teamData);
-      
       const response = await projectAPI.createTeam(teamData);
-      console.log('Response:', response.data);
       
       if (response.data.success) {
         setTeamFormData({ 
@@ -440,92 +402,77 @@ const loadTeamMembers = async (teamId) => {
     }
   };
 
-const handleCreateTask = async (e) => {
+  const handleCreateTask = async (e) => {
     e.preventDefault();
     
-    console.log('=== CREATING TASK ===');
-    console.log('Task Form Data:', taskFormData);
-    console.log('Selected Task Employees (selectedTaskEmployees):', selectedTaskEmployees);
-    console.log('Available Team Members:', availableTeamMembers);
-    
     if (!taskFormData.title || !taskFormData.title.trim()) {
-        alert('Task title is required');
-        return;
+      alert('Task title is required');
+      return;
     }
     if (!taskFormData.project_id) {
-        alert('Project is required');
-        return;
+      alert('Project is required');
+      return;
     }
     if (selectedTaskEmployees.length === 0) {
-        alert('Please select at least one employee to assign this task to');
-        return;
+      alert('Please select at least one employee to assign this task to');
+      return;
     }
 
     try {
-        let createdCount = 0;
+      let createdCount = 0;
+      
+      for (const userId of selectedTaskEmployees) {
+        const taskData = {
+          title: taskFormData.title.trim(),
+          description: taskFormData.description?.trim() || '',
+          priority: taskFormData.priority || 'Medium',
+          estimated_hours: Number(taskFormData.estimated_hours) || 0,
+          due_date: taskFormData.due_date || null,
+          project_id: Number(taskFormData.project_id),
+          team_id: taskFormData.team_id ? Number(taskFormData.team_id) : null,
+          assigned_by: currentUser?.id ? Number(currentUser.id) : null,
+          assigned_by_name: currentUser?.name || null,
+          status: 'To-Do',
+          review_status: 'Not Reviewed',
+          progress: 0,
+          assigned_to_member: Number(userId)
+        };
         
-        for (const userId of selectedTaskEmployees) {
-            console.log(`\n--- Creating task for user_id: ${userId} ---`);
-            
-            // Find the member details to verify
-            const memberDetails = availableTeamMembers.find(m => m.user_id === userId);
-            console.log('Member details found:', memberDetails);
-            
-            const taskData = {
-                title: taskFormData.title.trim(),
-                description: taskFormData.description?.trim() || '',
-                priority: taskFormData.priority || 'Medium',
-                estimated_hours: Number(taskFormData.estimated_hours) || 0,
-                due_date: taskFormData.due_date || null,
-                project_id: Number(taskFormData.project_id),
-                team_id: taskFormData.team_id ? Number(taskFormData.team_id) : null,
-                assigned_by: currentUser?.id ? Number(currentUser.id) : null,
-                assigned_by_name: currentUser?.name || null,
-                status: 'To-Do',
-                review_status: 'Not Reviewed',
-                progress: 0,
-                assigned_to_member: Number(userId)  // This should be a number like 76, 88, etc.
-            };
-            
-            console.log('Sending task data:', JSON.stringify(taskData, null, 2));
-            
-            const response = await projectAPI.createTask(taskData);
-            console.log('Task creation response:', response.data);
-            
-            if (response.data.success) {
-                createdCount++;
-                console.log(`✅ Task created with assigned_to_member: ${userId}`);
-            } else {
-                console.error('❌ Failed to create task:', response.data.message);
-            }
-        }
+        const response = await projectAPI.createTask(taskData);
         
-        // Reset form
-        setTaskFormData({ 
-            title: '', 
-            description: '', 
-            priority: 'Medium', 
-            estimated_hours: 0, 
-            due_date: '', 
-            project_id: selectedProject?.id || '',
-            team_id: '',
-            assigned_to_members: [] 
-        });
-        setSelectedTaskEmployees([]);
-        setIsTaskModalOpen(false);
-        
-        await fetchAllData();
-        
-        if (createdCount > 0) {
-            alert(`${createdCount} task(s) created successfully!`);
+        if (response.data.success) {
+          createdCount++;
         } else {
-            alert('Failed to create tasks. Please check the console for details.');
+          console.error('Failed to create task:', response.data.message);
         }
+      }
+      
+      setTaskFormData({ 
+        title: '', 
+        description: '', 
+        priority: 'Medium', 
+        estimated_hours: 0, 
+        due_date: '', 
+        project_id: selectedProject?.id || '',
+        team_id: '',
+        assigned_to_members: [] 
+      });
+      setSelectedTaskEmployees([]);
+      setIsTaskModalOpen(false);
+      
+      await fetchAllData();
+      
+      if (createdCount > 0) {
+        alert(`${createdCount} task(s) created successfully!`);
+      } else {
+        alert('Failed to create tasks. Please check the console for details.');
+      }
     } catch (err) {
-        console.error('Error creating task:', err);
-        alert(err.response?.data?.message || 'Failed to create task');
+      console.error('Error creating task:', err);
+      alert(err.response?.data?.message || 'Failed to create task');
     }
-};
+  };
+
   const getTaskStatusIcon = (status) => {
     switch(status) {
       case 'Completed': return <FaCheckCircle style={{ color: '#28a745' }} />;
@@ -547,134 +494,31 @@ const handleCreateTask = async (e) => {
     return <span className={`review-badge ${config.class}`}>{config.text}</span>;
   };
 
-  const handleExportTaskTemplate = () => {
-    if (!selectedProject) {
-      alert('Please select a project first');
-      return;
-    }
-    if (!canCreateTask(selectedProject.id)) {
-      alert('Only Project Leads can export task templates');
-      return;
-    }
-
-    const projectTeams = teams.filter(t => t.project_id === selectedProject.id);
-    const workbook = XLSX.utils.book_new();
-    
-    const mainSheetData = [
-      ['Task Title*', 'Description', 'Priority', 'Estimated Hours', 'Due Date (YYYY-MM-DD)', 'Team Name', 'Assigned To (Employee Name)', 'Status', 'Remarks'],
-      ['Example Task 1', 'Task description here', 'Medium', '4', new Date().toISOString().split('T')[0], projectTeams[0]?.name || 'Team Name', 'Employee Name', 'To-Do', ''],
-      ['Example Task 2', 'Another task description', 'High', '8', new Date().toISOString().split('T')[0], projectTeams[0]?.name || 'Team Name', 'Employee Name', 'In Progress', ''],
-      ['Instructions:', '', '', '', '', '', '', '', ''],
-      ['- Fill all fields marked with *', '', '', '', '', '', '', '', ''],
-      ['- Priority: High, Medium, Low', '', '', '', '', '', '', '', ''],
-      ['- Status: To-Do, In Progress, Ready for Review, Completed, Blocked, Cancelled', '', '', '', '', '', '', '', ''],
-      ['- Team Name: Enter the team name exactly as shown in the teams list', '', '', '', '', '', '', '', ''],
-      ['- Assigned To: Enter employee name exactly as in the system', '', '', '', '', '', '', '', '']
-    ];
-    
-    const mainSheet = XLSX.utils.aoa_to_sheet(mainSheetData);
-    XLSX.utils.book_append_sheet(workbook, mainSheet, 'Tasks_Assignment');
-
-    const teamsSheetData = [
-      ['Team Name', 'Project', 'Team Lead', 'Members'],
-      ...projectTeams.map(team => [
-        team.name,
-        selectedProject.name,
-        team.team_lead_name || 'Not Assigned',
-        team.members?.map(m => m.name).join(', ') || 'No members'
-      ])
-    ];
-    
-    const teamsSheet = XLSX.utils.aoa_to_sheet(teamsSheetData);
-    XLSX.utils.book_append_sheet(workbook, teamsSheet, 'Teams_Reference');
-
-    const employeesSheetData = [
-      ['Employee Name', 'Position', 'Email'],
-      ...employees.filter(emp => emp.role_name?.toLowerCase() !== 'hr').map(emp => [
-        emp.name,
-        emp.position || 'Employee',
-        emp.email || ''
-      ])
-    ];
-    
-    const employeesSheet = XLSX.utils.aoa_to_sheet(employeesSheetData);
-    XLSX.utils.book_append_sheet(workbook, employeesSheet, 'Employees_Reference');
-
-    XLSX.writeFile(workbook, `Task_Assignment_Template_${selectedProject.name}_${new Date().toISOString().split('T')[0]}.xlsx`);
-    alert('Task template exported!');
+  const getStatusBadge = (project) => {
+    const statusMap = {
+      'On Track': { class: 'status-ontrack', text: '✓ On Track' },
+      'Delayed': { class: 'status-delayed', text: '⚠ Delayed' },
+      'At Risk': { class: 'status-atrisk', text: '⚠ At Risk' },
+      'Completed': { class: 'status-completed', text: '✓ Completed' },
+      'On Hold': { class: 'status-onhold', text: '⏸ On Hold' }
+    };
+    const config = statusMap[project.status] || statusMap['On Track'];
+    return <span className={`status-badge ${config.class}`}>{config.text}</span>;
   };
 
-  const handleImportTasks = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-    if (!selectedProject || !canCreateTask(selectedProject.id)) {
-      alert('Only Project Leads can import tasks');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const mainSheet = workbook.Sheets['Tasks_Assignment'];
-        if (!mainSheet) {
-          alert('Tasks_Assignment sheet not found.');
-          return;
-        }
-
-        const jsonData = XLSX.utils.sheet_to_json(mainSheet);
-        let createdCount = 0;
-        let skippedCount = 0;
-
-        for (const row of jsonData) {
-          const taskTitle = row['Task Title*'] || row['Task Title'];
-          if (taskTitle && taskTitle !== 'Example Task 1' && taskTitle !== 'Example Task 2' && !taskTitle.includes('Instructions')) {
-            
-            const teamName = row['Team Name'];
-            const team = teams.find(t => t.name === teamName && t.project_id === selectedProject.id);
-            
-            const employeeName = row['Assigned To (Employee Name)'];
-            const employee = employees.find(e => e.name === employeeName);
-            
-            if (!employee) {
-              console.warn(`Employee ${employeeName} not found, skipping task ${taskTitle}`);
-              skippedCount++;
-              continue;
-            }
-            
-            const taskData = {
-              title: taskTitle,
-              description: row['Description'] || '',
-              priority: row['Priority'] || 'Medium',
-              estimated_hours: parseFloat(row['Estimated Hours']) || 0,
-              due_date: row['Due Date (YYYY-MM-DD)'],
-              project_id: selectedProject?.id,
-              team_id: team?.id || null,
-              assigned_by: currentUser.id,
-              assigned_by_name: currentUser.name,
-              status: row['Status'] || 'To-Do',
-              review_status: 'Not Reviewed',
-              remarks: row['Remarks'] || '',
-              progress: 0,
-              assigned_to_member: employee?.id
-            };
-            
-            await projectAPI.createTask(taskData);
-            createdCount++;
-          }
-        }
-
-        alert(`${createdCount} tasks created successfully! ${skippedCount} tasks skipped.`);
-        await fetchAllData();
-        setIsExcelTaskModalOpen(false);
-        event.target.value = '';
-      } catch (err) {
-        console.error('Error importing tasks:', err);
-        alert('Failed to import tasks.');
-      }
+  const getTaskPriorityBadge = (priority) => {
+    const priorityMap = {
+      'High': { class: 'priority-high', text: '🔴 High' },
+      'Medium': { class: 'priority-medium', text: '🟡 Medium' },
+      'Low': { class: 'priority-low', text: '🟢 Low' }
     };
-    reader.readAsArrayBuffer(file);
+    const config = priorityMap[priority] || priorityMap['Medium'];
+    return <span className={`priority-badge ${config.class}`}>{config.text}</span>;
+  };
+
+  const formatDate = (date) => {
+    if (!date) return 'Not set';
+    return new Date(date).toLocaleDateString();
   };
 
   const handleUpdateTask = async (taskId, updateData) => {
@@ -696,6 +540,13 @@ const handleCreateTask = async (e) => {
       updateData.review_status = 'Approved';
     }
     await handleUpdateTask(taskId, updateData);
+  };
+
+  const handleUpdateReviewStatus = async (taskId, reviewStatus, comments) => {
+    await handleUpdateTask(taskId, { 
+      review_status: reviewStatus,
+      review_comments: comments 
+    });
   };
 
   const handleAcceptTask = async (taskId) => {
@@ -761,7 +612,6 @@ const handleCreateTask = async (e) => {
     }
   };
 
-  // Delete project handler
   const handleDeleteProject = async () => {
     if (!selectedProject) return;
     try {
@@ -776,111 +626,8 @@ const handleCreateTask = async (e) => {
     } catch (err) {
       alert('Failed to delete project');
     }
-    
-    const exportData = projectTasks.map(task => ({
-      'Date': new Date().toLocaleDateString(),
-      'Project': project.name,
-      'Task/Activity': task.title,
-      'Description': task.description || '',
-      'Status': task.status,
-      'Remarks': task.remarks || '',
-      'Priority': task.priority,
-      'Due Date': task.due_date ? formatDate(task.due_date) : 'Not set',
-      'Progress': `${task.progress || 0}%`,
-      'Assigned To': task.assigned_to_name || 'Not Assigned'
-    }));
-    
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, `Monthly_Report_${project.name}`);
-    
-    const fileName = `Monthly_Report_${project.name}_${new Date().toISOString().split('T')[0]}.xlsx`;
-    XLSX.writeFile(workbook, fileName);
-    
-    alert(`Monthly report exported successfully!`);
   };
 
-  // Load team members
-  const loadTeamMembers = async (teamId) => {
-    try {
-      setLoadingTeamMembers(true);
-      const existingTeam = teams.find(t => t.id === parseInt(teamId));
-      if (existingTeam && existingTeam.members && existingTeam.members.length > 0) {
-        const formattedMembers = existingTeam.members.map(member => ({
-          user_id: member.user_id || member.id,
-          name: member.name,
-          position: member.position || 'Team Member'
-        }));
-        setAvailableTeamMembers(formattedMembers);
-        return;
-      }
-      const response = await projectAPI.getTeamMembers(teamId);
-      let membersList = [];
-      if (response.data && response.data.success && response.data.data) {
-        membersList = response.data.data;
-      }
-      const formattedMembers = membersList.map(member => ({
-        user_id: member.user_id,
-        name: member.name,
-        position: member.position || 'Team Member'
-      }));
-      setAvailableTeamMembers(formattedMembers);
-    } catch (err) {
-      setAvailableTeamMembers([]);
-    } finally {
-      setLoadingTeamMembers(false);
-    }
-  };
-
-  // Handle team change in task form
-  const handleTeamChange = async (teamId) => {
-    setTaskFormData(prev => ({ ...prev, team_id: teamId }));
-    
-    if (teamId) {
-      try {
-        setLoadingTeamMembers(true);
-        const selectedTeamData = teams.find(t => t.id === parseInt(teamId));
-        
-        if (selectedTeamData && selectedTeamData.members && selectedTeamData.members.length > 0) {
-          const formattedMembers = selectedTeamData.members.map(member => ({
-            user_id: member.user_id || member.id,
-            name: member.name,
-            position: member.position || 'Team Member'
-          }));
-          setAvailableTeamMembers(formattedMembers);
-        } else {
-          const response = await projectAPI.getTeamMembers(teamId);
-          let membersList = [];
-          if (response.data && response.data.success && response.data.data) {
-            membersList = response.data.data;
-          }
-          const formattedMembers = membersList.map(member => ({
-            user_id: member.user_id,
-            name: member.name,
-            position: member.position || 'Team Member'
-          }));
-          setAvailableTeamMembers(formattedMembers);
-        }
-      } catch (err) {
-        console.error('Error loading team members:', err);
-        setAvailableTeamMembers([]);
-      } finally {
-        setLoadingTeamMembers(false);
-      }
-    } else {
-      setAvailableTeamMembers([]);
-      setSelectedTaskEmployees([]);
-    }
-  };
-
-  // Handle employee selection for team
-  const handleEmployeeSelection = (employeeId) => {
-    if (!employeeId) return;
-    const id = String(employeeId).trim();
-    setSelectedEmployees(prev => prev.includes(id) ? prev.filter(eid => eid !== id) : [...prev, id]);
-  };
-
-  // Export projects
   const handleExportProjects = () => {
     const exportData = filteredProjects.map(project => ({
       'Project Name': project.name,
@@ -899,120 +646,11 @@ const handleCreateTask = async (e) => {
     alert(`Exported ${filteredProjects.length} projects successfully!`);
   };
 
-  // Filter change handler
   const handleFilterChange = (key, value) => setFilters(prev => ({ ...prev, [key]: value }));
 
-  // Fetch all data
-  const fetchAllData = async () => {
-    try {
-      setLoading(true);
-      const [projectsRes, statsRes, employeesRes, departmentsRes, teamsRes, tasksRes] = await Promise.allSettled([
-        projectAPI.getAll(),
-        projectAPI.getStats(),
-        projectAPI.getEmployees(),
-        projectAPI.getDepartments(),
-        projectAPI.getAllTeams(),
-        projectAPI.getAllTasks()
-      ]);
-
-      if (projectsRes.status === 'fulfilled' && projectsRes.value?.data?.success) {
-        setProjects(projectsRes.value.data.data.filter(p => p.status !== 'Inactive'));
-      }
-      if (statsRes.status === 'fulfilled' && statsRes.value?.data?.success) {
-        setDashboardStats(statsRes.value.data.data);
-      }
-      if (employeesRes.status === 'fulfilled' && employeesRes.value?.data?.success) {
-        const employeesData = employeesRes.value.data.data;
-        setEmployees(employeesData);
-        setProjectLeads(employeesData.filter(emp => emp.role_name?.toLowerCase() !== 'hr'));
-      }
-      if (departmentsRes.status === 'fulfilled' && departmentsRes.value?.data?.success) {
-        setDepartments(departmentsRes.value.data.data);
-      }
-      if (teamsRes.status === 'fulfilled' && teamsRes.value?.data?.success) {
-        setTeams(teamsRes.value.data.data.filter(team => team.status !== 'Inactive'));
-      }
-      if (tasksRes.status === 'fulfilled' && tasksRes.value?.data?.success) {
-        setTasks(tasksRes.value.data.data.filter(t => t.status !== 'Deleted'));
-      }
-      setError('');
-    } catch (err) {
-      setError('Failed to load data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Load user
-  useEffect(() => {
-    const loadUser = () => {
-      try {
-        const userData = JSON.parse(localStorage.getItem('user'));
-        if (userData) {
-          const userId = userData.employee_id || userData.id || userData.user_id;
-          setCurrentUser({
-            id: userId,
-            employeeId: userId,
-            name: userData.name || `${userData.first_name} ${userData.last_name}` || 'User',
-            role: userData.role || userData.user_role || 'team_member',
-            isProjectLead: false,
-            managedProjects: []
-          });
-        }
-      } catch (err) {
-        console.error('Error loading user:', err);
-      }
-    };
-    loadUser();
-    fetchAllData();
-  }, []);
-
-  // Set project lead status
-  useEffect(() => {
-    if (projects.length > 0 && currentUser.name) {
-      const managed = projects.filter(p => p.manager === currentUser.name && p.status !== 'Inactive');
-      setCurrentUser(prev => ({
-        ...prev,
-        isProjectLead: managed.length > 0,
-        managedProjects: managed.map(p => p.id)
-      }));
-    }
-  }, [projects, currentUser.name]);
-
-  // Load teams for task form
-  useEffect(() => {
-    if (taskFormData.project_id && isTaskModalOpen) {
-      const projectTeamsList = teams.filter(t => t.project_id === parseInt(taskFormData.project_id) && t.status === 'Active');
-      setSelectedProjectTeams(projectTeamsList);
-    }
-  }, [taskFormData.project_id, teams, isTaskModalOpen]);
-
-  // Set task form project when modal opens
-  useEffect(() => {
-    if (isTaskModalOpen && selectedProject?.id) {
-      setTaskFormData(prev => ({ 
-        ...prev, 
-        project_id: selectedProject.id,
-        team_id: ''
-      }));
-      const projectTeamsList = teams.filter(t => t.project_id === selectedProject.id && t.status === 'Active');
-      setSelectedProjectTeams(projectTeamsList);
-    }
-  }, [isTaskModalOpen, selectedProject, teams]);
-
-  // Sync editable tasks
-  useEffect(() => {
-    if (isExcelEditorOpen && selectedProject && activeSheet) {
-      const projectTasks = tasks.filter(task => task.project_id == selectedProject.id && task.status !== 'Deleted');
-      const monthIndex = months.indexOf(activeSheet);
-      if (monthIndex !== -1) {
-        const updatedSheetData = generateMonthData(selectedProject, projectTasks, excelCurrentYear, monthIndex);
-        setExcelSheets(prev => ({ ...prev, [activeSheet]: updatedSheetData }));
-        setEditableTasks(updatedSheetData);
-      }
-    }
-  }, [tasks, isExcelEditorOpen, selectedProject, activeSheet, excelCurrentYear]);
-
+  const userProjects = getUserProjects();
+  const userTasks = getUserTasks();
+  const filteredTeams = teams.filter(team => currentUser.managedProjects.includes(team.project_id));
   const filteredProjects = userProjects.filter(project => {
     if (searchTerm && !project.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
     if (filters.status && project.status !== filters.status) return false;
@@ -1173,7 +811,6 @@ const handleCreateTask = async (e) => {
                   if (projectId) {
                     const project = projects.find(p => p.id == projectId);
                     setSelectedProject(project);
-                    console.log('Selected project for tasks:', project);
                   } else {
                     setSelectedProject(null);
                   }
@@ -1265,15 +902,15 @@ const handleCreateTask = async (e) => {
                           ) : <span>{task.progress || 0}%</span>}
                         </td>
                         <td>{formatDate(task.due_date)}</td>
-                       <td>
-    <div className="assigned-to-list">
-        {task.assigned_to_name ? (
-            <span className="assigned-badge">{task.assigned_to_name}</span>
-        ) : (
-            <span className="text-muted">Not Assigned</span>
-        )}
-    </div>
-</td>
+                        <td>
+                          <div className="assigned-to-list">
+                            {task.assigned_to_name ? (
+                              <span className="assigned-badge">{task.assigned_to_name}</span>
+                            ) : (
+                              <span className="text-muted">Not Assigned</span>
+                            )}
+                          </div>
+                        </td>
                         <td>
                           {canEditTask(task) && currentUser.isProjectLead ? (
                             <select 
@@ -1403,72 +1040,72 @@ const handleCreateTask = async (e) => {
                   )}
                 </div>
 
-               <div style={{ 
-    maxHeight: '240px', 
-    overflowY: 'auto', 
-    border: '1px solid #ced4da', 
-    borderRadius: '4px',
-    background: 'white'
-}}>
-    <div style={{ 
-        padding: '8px 12px', 
-        background: '#e9ecef', 
-        fontWeight: '600', 
-        fontSize: '13px',
-        position: 'sticky',
-        top: 0,
-        borderBottom: '1px solid #ced4da'
-    }}>
-        Available Employees ({employees.filter(emp => emp.role_name?.toLowerCase() !== 'hr').length})
-    </div>
-    {employees.length === 0 ? (
-        <div style={{ padding: '20px', textAlign: 'center', color: '#6c757d' }}>
-            ⚠️ No employees found. Please check if employees are loaded.
-            <button 
-                onClick={() => fetchAllData()} 
-                style={{ marginLeft: '10px', padding: '4px 8px', cursor: 'pointer' }}
-            >
-                Refresh
-            </button>
-        </div>
-    ) : (
-        employees
-            .filter(emp => emp.role_name?.toLowerCase() !== 'hr')
-            .map(emp => {
-                const empId = String(emp.id);
-                const isSelected = selectedEmployees.includes(empId);
-                return (
-                    <label 
-                        key={emp.id} 
-                        style={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            padding: '10px 12px', 
-                            cursor: 'pointer',
-                            borderBottom: '1px solid #f0f0f0',
-                            background: isSelected ? '#e3f2fd' : 'white'
-                        }}
-                    >
-                        <input 
-                            type="checkbox" 
-                            checked={isSelected}
-                            onChange={() => handleEmployeeSelection(empId)} 
-                            style={{ marginRight: '12px', width: '16px', height: '16px', cursor: 'pointer' }}
-                        />
-                        <span style={{ flex: 1, fontWeight: isSelected ? '600' : '400' }}>
-                            {emp.name}
-                        </span>
-                        <small style={{ color: '#6c757d', fontSize: '12px', marginRight: '8px' }}>
-                            {emp.position || 'Employee'}
-                        </small>
-                        <small style={{ color: '#adb5bd', fontSize: '10px' }}>
-                            ID: {emp.id}
-                        </small>
-                    </label>
-                );
-            })
-    )}
-</div>
+                <div style={{ 
+                  maxHeight: '240px', 
+                  overflowY: 'auto', 
+                  border: '1px solid #ced4da', 
+                  borderRadius: '4px',
+                  background: 'white'
+                }}>
+                  <div style={{ 
+                    padding: '8px 12px', 
+                    background: '#e9ecef', 
+                    fontWeight: '600', 
+                    fontSize: '13px',
+                    position: 'sticky',
+                    top: 0,
+                    borderBottom: '1px solid #ced4da'
+                  }}>
+                    Available Employees ({employees.filter(emp => emp.role_name?.toLowerCase() !== 'hr').length})
+                  </div>
+                  {employees.length === 0 ? (
+                    <div style={{ padding: '20px', textAlign: 'center', color: '#6c757d' }}>
+                      ⚠️ No employees found. Please check if employees are loaded.
+                      <button 
+                        onClick={() => fetchAllData()} 
+                        style={{ marginLeft: '10px', padding: '4px 8px', cursor: 'pointer' }}
+                      >
+                        Refresh
+                      </button>
+                    </div>
+                  ) : (
+                    employees
+                      .filter(emp => emp.role_name?.toLowerCase() !== 'hr')
+                      .map(emp => {
+                        const empId = String(emp.id);
+                        const isSelected = selectedEmployees.includes(empId);
+                        return (
+                          <label 
+                            key={emp.id} 
+                            style={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              padding: '10px 12px', 
+                              cursor: 'pointer',
+                              borderBottom: '1px solid #f0f0f0',
+                              background: isSelected ? '#e3f2fd' : 'white'
+                            }}
+                          >
+                            <input 
+                              type="checkbox" 
+                              checked={isSelected}
+                              onChange={() => handleEmployeeSelection(empId)} 
+                              style={{ marginRight: '12px', width: '16px', height: '16px', cursor: 'pointer' }}
+                            />
+                            <span style={{ flex: 1, fontWeight: isSelected ? '600' : '400' }}>
+                              {emp.name}
+                            </span>
+                            <small style={{ color: '#6c757d', fontSize: '12px', marginRight: '8px' }}>
+                              {emp.position || 'Employee'}
+                            </small>
+                            <small style={{ color: '#adb5bd', fontSize: '10px' }}>
+                              ID: {emp.id}
+                            </small>
+                          </label>
+                        );
+                      })
+                  )}
+                </div>
                 
                 <small style={{ color: '#dc3545', display: 'block', marginTop: '5px' }}>
                   * Required: Select at least one member for the team
@@ -1480,182 +1117,176 @@ const handleCreateTask = async (e) => {
           </div>
         </div>
       )}
-{/* Create Task Modal */}
-{isTaskModalOpen && canCreateTask(selectedProject?.id) && (
-  <div className="proj-modal-overlay">
-    <div className="proj-modal-content proj-large-modal">
-      <div className="proj-modal-header">
-        <h2>Create New Task for {selectedProject?.name}</h2>
-        <button className="proj-close-btn" onClick={() => setIsTaskModalOpen(false)}>×</button>
-      </div>
-      
-      <form onSubmit={handleCreateTask} className="proj-form">
-        <div className="proj-form-group">
-          <label className="required">Project *</label>
-          <input 
-            type="text" 
-            value={selectedProject?.name || 'No project selected'} 
-            disabled 
-            style={{ background: '#f5f5f5' }}
-          />
-          <input 
-            type="hidden" 
-            name="project_id" 
-            value={selectedProject?.id || ''} 
-          />
-        </div>
-        
-        <div className="proj-form-group">
-          <label className="required">Task Title *</label>
-          <input 
-            type="text" 
-            name="title" 
-            value={taskFormData.title} 
-            onChange={(e) => setTaskFormData({...taskFormData, title: e.target.value})} 
-            required 
-          />
-        </div>
-        
-        <div className="proj-form-group">
-          <label>Select Team</label>
-        <select 
-    name="team_id" 
-    value={taskFormData.team_id} 
-    onChange={(e) => {
-        const teamId = e.target.value;
-        console.log('=== TEAM SELECTED ===');
-        console.log('Team ID:', teamId);
-        console.log('All teams:', teams);
-        
-        setTaskFormData({...taskFormData, team_id: teamId});
-        
-        if (teamId) {
-            console.log('Calling loadTeamMembers for team:', teamId);
-            loadTeamMembers(teamId);
-        } else {
-            setAvailableTeamMembers([]);
-            setSelectedTaskEmployees([]);
-        }
-    }}
->
-    <option value="">Select Team (Optional)</option>
-    {teams
-        .filter(team => team.project_id === selectedProject?.id)
-        .map(team => (
-            <option key={team.id} value={team.id}>
-                {team.name} (Members: {team.member_count || 0})
-            </option>
-        ))}
-</select>
-          {teams.filter(team => team.project_id === selectedProject?.id).length === 0 && (
-            <small style={{ color: '#f44336', display: 'block', marginTop: '5px' }}>
-              No teams found for this project. Please create a team first in the Teams tab.
-            </small>
-          )}
-        </div>
-  {taskFormData.team_id && (
-    <div className="proj-form-group">
-        <label className="required">Assign to Team Members *</label>
-        <div style={{ marginBottom: '10px' }}>
-            <button 
-                type="button" 
-                onClick={() => {
-                    console.log('Manual refresh triggered');
-                    loadTeamMembers(taskFormData.team_id);
-                }}
-                style={{ padding: '4px 8px', fontSize: '12px', cursor: 'pointer' }}
-            >
-                🔄 Refresh Members
-            </button>
-        </div>
-        
-        {loadingTeamMembers ? (
-            <div className="loading-members">Loading team members...</div>
-        ) : availableTeamMembers.length > 0 ? (
-            // Member list display
-            <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #ddd', borderRadius: '4px' }}>
-                {availableTeamMembers.map(member => (
-                    <label key={member.user_id} style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        padding: '10px', 
-                        cursor: 'pointer', 
-                        borderBottom: '1px solid #f0f0f0',
-                        background: selectedTaskEmployees.includes(member.user_id) ? '#e3f2fd' : 'white'
-                    }}>
-                        <input 
+
+      {/* Create Task Modal */}
+      {isTaskModalOpen && canCreateTask(selectedProject?.id) && (
+        <div className="proj-modal-overlay">
+          <div className="proj-modal-content proj-large-modal">
+            <div className="proj-modal-header">
+              <h2>Create New Task for {selectedProject?.name}</h2>
+              <button className="proj-close-btn" onClick={() => setIsTaskModalOpen(false)}>×</button>
+            </div>
+            
+            <form onSubmit={handleCreateTask} className="proj-form">
+              <div className="proj-form-group">
+                <label className="required">Project *</label>
+                <input 
+                  type="text" 
+                  value={selectedProject?.name || 'No project selected'} 
+                  disabled 
+                  style={{ background: '#f5f5f5' }}
+                />
+                <input 
+                  type="hidden" 
+                  name="project_id" 
+                  value={selectedProject?.id || ''} 
+                />
+              </div>
+              
+              <div className="proj-form-group">
+                <label className="required">Task Title *</label>
+                <input 
+                  type="text" 
+                  name="title" 
+                  value={taskFormData.title} 
+                  onChange={(e) => setTaskFormData({...taskFormData, title: e.target.value})} 
+                  required 
+                />
+              </div>
+              
+              <div className="proj-form-group">
+                <label>Select Team</label>
+                <select 
+                  name="team_id" 
+                  value={taskFormData.team_id} 
+                  onChange={(e) => {
+                    const teamId = e.target.value;
+                    setTaskFormData({...taskFormData, team_id: teamId});
+                    
+                    if (teamId) {
+                      loadTeamMembers(teamId);
+                    } else {
+                      setAvailableTeamMembers([]);
+                      setSelectedTaskEmployees([]);
+                    }
+                  }}
+                >
+                  <option value="">Select Team (Optional)</option>
+                  {teams
+                    .filter(team => team.project_id === selectedProject?.id)
+                    .map(team => (
+                      <option key={team.id} value={team.id}>
+                        {team.name} (Members: {team.member_count || 0})
+                      </option>
+                    ))}
+                </select>
+                {teams.filter(team => team.project_id === selectedProject?.id).length === 0 && (
+                  <small style={{ color: '#f44336', display: 'block', marginTop: '5px' }}>
+                    No teams found for this project. Please create a team first in the Teams tab.
+                  </small>
+                )}
+              </div>
+
+              {taskFormData.team_id && (
+                <div className="proj-form-group">
+                  <label className="required">Assign to Team Members *</label>
+                  <div style={{ marginBottom: '10px' }}>
+                    <button 
+                      type="button" 
+                      onClick={() => loadTeamMembers(taskFormData.team_id)}
+                      style={{ padding: '4px 8px', fontSize: '12px', cursor: 'pointer' }}
+                    >
+                      🔄 Refresh Members
+                    </button>
+                  </div>
+                  
+                  {loadingTeamMembers ? (
+                    <div className="loading-members">Loading team members...</div>
+                  ) : availableTeamMembers.length > 0 ? (
+                    <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #ddd', borderRadius: '4px' }}>
+                      {availableTeamMembers.map(member => (
+                        <label key={member.user_id} style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          padding: '10px', 
+                          cursor: 'pointer', 
+                          borderBottom: '1px solid #f0f0f0',
+                          background: selectedTaskEmployees.includes(member.user_id) ? '#e3f2fd' : 'white'
+                        }}>
+                          <input 
                             type="checkbox" 
                             checked={selectedTaskEmployees.includes(member.user_id)} 
                             onChange={() => {
-                                const userId = member.user_id;
-                                setSelectedTaskEmployees(prev => 
-                                    prev.includes(userId) 
-                                        ? prev.filter(id => id !== userId) 
-                                        : [...prev, userId]
-                                );
+                              const userId = member.user_id;
+                              setSelectedTaskEmployees(prev => 
+                                prev.includes(userId) 
+                                  ? prev.filter(id => id !== userId) 
+                                  : [...prev, userId]
+                              );
                             }} 
                             style={{ marginRight: '10px' }}
-                        />
-                        <span style={{ flex: 1 }}>{member.name}</span>
-                        <small style={{ color: '#666' }}>{member.position || 'Team Member'}</small>
-                        <small style={{ color: '#999', fontSize: '10px', marginLeft: '8px' }}>
+                          />
+                          <span style={{ flex: 1 }}>{member.name}</span>
+                          <small style={{ color: '#666' }}>{member.position || 'Team Member'}</small>
+                          <small style={{ color: '#999', fontSize: '10px', marginLeft: '8px' }}>
                             (ID: {member.user_id})
-                        </small>
-                    </label>
-                ))}
-            </div>
-        ) : (
-            <div style={{ padding: '20px', textAlign: 'center', color: '#f44336', background: '#ffebee', borderRadius: '4px' }}>
-                ⚠️ No members found in this team.
+                          </small>
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ padding: '20px', textAlign: 'center', color: '#f44336', background: '#ffebee', borderRadius: '4px' }}>
+                      ⚠️ No members found in this team.
+                      <button 
+                        onClick={() => loadTeamMembers(taskFormData.team_id)} 
+                        style={{ marginLeft: '10px', padding: '4px 8px', cursor: 'pointer' }}
+                      >
+                        Try Again
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              <div className="proj-form-row">
+                <div className="proj-form-group">
+                  <label>Priority</label>
+                  <select name="priority" value={taskFormData.priority} onChange={(e) => setTaskFormData({...taskFormData, priority: e.target.value})}>
+                    {taskPriorities.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </div>
+                <div className="proj-form-group">
+                  <label>Estimated Hours</label>
+                  <input type="number" name="estimated_hours" value={taskFormData.estimated_hours} onChange={(e) => setTaskFormData({...taskFormData, estimated_hours: parseFloat(e.target.value)})} step="0.5" min="0" />
+                </div>
+              </div>
+              
+              <div className="proj-form-group">
+                <label>Due Date</label>
+                <input type="date" name="due_date" value={taskFormData.due_date} onChange={(e) => setTaskFormData({...taskFormData, due_date: e.target.value})} />
+              </div>
+              
+              <div className="proj-form-group">
+                <label>Description</label>
+                <textarea name="description" value={taskFormData.description} onChange={(e) => setTaskFormData({...taskFormData, description: e.target.value})} rows="3" />
+              </div>
+              
+              <div className="proj-form-actions">
+                <button type="button" onClick={() => setIsTaskModalOpen(false)} className="proj-cancel-btn">Cancel</button>
                 <button 
-                    onClick={() => loadTeamMembers(taskFormData.team_id)} 
-                    style={{ marginLeft: '10px', padding: '4px 8px', cursor: 'pointer' }}
+                  type="submit" 
+                  className="proj-submit-btn"
+                  disabled={!taskFormData.title || selectedTaskEmployees.length === 0}
+                  style={(!taskFormData.title || selectedTaskEmployees.length === 0) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
                 >
-                    Try Again
+                  Create Task{selectedTaskEmployees.length > 0 ? ` for ${selectedTaskEmployees.length} Member(s)` : ''}
                 </button>
-            </div>
-        )}
-    </div>
-)}
-        
-        <div className="proj-form-row">
-          <div className="proj-form-group">
-            <label>Priority</label>
-            <select name="priority" value={taskFormData.priority} onChange={(e) => setTaskFormData({...taskFormData, priority: e.target.value})}>
-              {taskPriorities.map(p => <option key={p} value={p}>{p}</option>)}
-            </select>
-          </div>
-          <div className="proj-form-group">
-            <label>Estimated Hours</label>
-            <input type="number" name="estimated_hours" value={taskFormData.estimated_hours} onChange={(e) => setTaskFormData({...taskFormData, estimated_hours: parseFloat(e.target.value)})} step="0.5" min="0" />
+              </div>
+            </form>
           </div>
         </div>
-        
-        <div className="proj-form-group">
-          <label>Due Date</label>
-          <input type="date" name="due_date" value={taskFormData.due_date} onChange={(e) => setTaskFormData({...taskFormData, due_date: e.target.value})} />
-        </div>
-        
-        <div className="proj-form-group">
-          <label>Description</label>
-          <textarea name="description" value={taskFormData.description} onChange={(e) => setTaskFormData({...taskFormData, description: e.target.value})} rows="3" />
-        </div>
-        
-        <div className="proj-form-actions">
-          <button type="button" onClick={() => setIsTaskModalOpen(false)} className="proj-cancel-btn">Cancel</button>
-          <button 
-            type="submit" 
-            className="proj-submit-btn"
-            disabled={!taskFormData.title || selectedTaskEmployees.length === 0}
-            style={(!taskFormData.title || selectedTaskEmployees.length === 0) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
-          >
-            Create Task{selectedTaskEmployees.length > 0 ? ` for ${selectedTaskEmployees.length} Member(s)` : ''}
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-)}
+      )}
+
       {/* Create Project Modal */}
       {isModalOpen && canCreateProject() && (
         <div className="proj-modal-overlay">
@@ -1676,8 +1307,8 @@ const handleCreateTask = async (e) => {
         </div>
       )}
 
-      {/* Task Details Modal */}
-      {isTaskDetailsModalOpen && selectedTask && (
+      {/* Excel Task Import Modal */}
+      {isExcelTaskModalOpen && (
         <div className="proj-modal-overlay">
           <div className="proj-modal-content">
             <div className="proj-modal-header">

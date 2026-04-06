@@ -18,6 +18,17 @@ const Reports = () => {
     description: ''
   });
 
+  // Helper function to get local datetime string with time
+  const getLocalDateTimeString = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  };
+
   // Fetch reports on component mount
   useEffect(() => {
     fetchReports();
@@ -97,26 +108,30 @@ const Reports = () => {
     }));
   };
 
-  // Handle edit button click
-  const handleEditClick = async (report) => {
-    const newDescription = prompt('Edit report description:', report.description);
-    
-    if (newDescription && newDescription !== report.description) {
-      try {
-        const updatedReportData = {
-          date_generated: report.date_generated.split('T')[0],
-          description: newDescription
-        };
+// Handle edit button click
+const handleEditClick = async (report) => {
+  const newDescription = prompt('Edit report description:', report.description);
+  
+  if (newDescription && newDescription !== report.description) {
+    try {
+      // Create a copy of the report data
+      const updatedReportData = {
+        date_generated: report.date_generated, // Keep original date
+        description: newDescription
+      };
 
-        await reportAPI.update(report.id, updatedReportData);
-        await fetchReports();
-        alert('Report updated successfully!');
-      } catch (err) {
-        console.error('Failed to update report:', err);
-        alert('Failed to update report. Please try again.');
-      }
+      console.log('Sending update for report:', report.id, updatedReportData);
+      
+      await reportAPI.update(report.id, updatedReportData);
+      await fetchReports();
+      alert('Report updated successfully!');
+    } catch (err) {
+      console.error('Failed to update report:', err);
+      console.error('Error details:', err.response?.data);
+      alert('Failed to update report. Please try again.');
     }
-  };
+  }
+};
 
   // Handle delete button click
   const handleDeleteClick = async (report) => {
@@ -124,7 +139,6 @@ const Reports = () => {
       try {
         await reportAPI.delete(report.id);
         await fetchReports();
-        // alert('Report deleted successfully!');
       } catch (err) {
         console.error('Failed to delete report:', err);
         alert('Failed to delete report. Please try again.');
@@ -132,34 +146,65 @@ const Reports = () => {
     }
   };
 
-  // Handle new report submission
-  const handleReportSubmit = async (e) => {
-    e.preventDefault();
+// Handle new report submission - FIXED to include time
+const handleReportSubmit = async (e) => {
+  e.preventDefault();
+  
+  if (!reportFormData.date || !reportFormData.description) {
+    alert('Please fill all required fields');
+    return;
+  }
+
+  try {
+    // Create datetime by combining selected date with current time
+    const selectedDate = new Date(reportFormData.date);
+    const now = new Date();
     
-    if (!reportFormData.date || !reportFormData.description) {
-      alert('Please fill all required fields');
-      return;
-    }
+    // Use the selected date but current time
+    selectedDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
+    
+    // Format as YYYY-MM-DD HH:MM:SS for MySQL
+    const dateTimeString = getLocalDateTimeString(selectedDate);
+    
+    const newReportData = {
+      date_generated: dateTimeString,
+      description: reportFormData.description
+    };
 
+    console.log('Creating report with data:', newReportData); // Debug log
+    
+    await reportAPI.create(newReportData);
+    await fetchReports();
+    
+    setReportFormData({
+      date: new Date().toISOString().split('T')[0],
+      description: ''
+    });
+    
+    setIsReportModalOpen(false);
+    alert('Report added successfully!');
+  } catch (err) {
+    console.error('Failed to create report:', err);
+    console.error('Error response:', err.response?.data); // Debug log
+    alert('Failed to create report. Please try again.');
+  }
+};
+
+  // Format date with time for display
+  const formatDateTime = (dateString) => {
+    if (!dateString) return 'N/A';
     try {
-      const newReportData = {
-        date_generated: reportFormData.date,
-        description: reportFormData.description
-      };
-
-      await reportAPI.create(newReportData);
-      await fetchReports();
-      
-      setReportFormData({
-        date: new Date().toISOString().split('T')[0],
-        description: ''
+      const date = new Date(dateString);
+      return date.toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
       });
-      
-      setIsReportModalOpen(false);
-      alert('Report added successfully!');
-    } catch (err) {
-      console.error('Failed to create report:', err);
-      alert('Failed to create report. Please try again.');
+    } catch (error) {
+      return 'Invalid date';
     }
   };
 
@@ -211,38 +256,35 @@ const Reports = () => {
               <h3 className="reports-table-title">All Reports</h3>
             </div>
             <div className="filter-controls-header">
-  <div className="date-filter-group">
-    <input
-      type="date"
-      name="dateFrom"
-      value={filters.dateFrom}
-      onChange={handleFilterChange}
-      className="date-filter-input"
-      placeholder="From"
-    />
-    <span className="date-separator">to</span>
-    <input
-      type="date"
-      name="dateTo"
-      value={filters.dateTo}
-      onChange={handleFilterChange}
-      className="date-filter-input"
-      placeholder="To"
-    />
-  </div>
-  {/* Clear button always visible */}
-  <button className="clear-filters-btn-small" onClick={clearFilters}>
-    Clear
-  </button>
-</div>
+              <div className="date-filter-group">
+                <input
+                  type="date"
+                  name="dateFrom"
+                  value={filters.dateFrom}
+                  onChange={handleFilterChange}
+                  className="date-filter-input"
+                  placeholder="From"
+                />
+                <span className="date-separator">to</span>
+                <input
+                  type="date"
+                  name="dateTo"
+                  value={filters.dateTo}
+                  onChange={handleFilterChange}
+                  className="date-filter-input"
+                  placeholder="To"
+                />
+              </div>
+              <button className="clear-filters-btn-small" onClick={clearFilters}>
+                Clear
+              </button>
+            </div>
           </div>
 
-      
-          
           <table className="reports-records-table">
             <thead>
               <tr>
-                <th>Date</th>
+                <th>Date & Time</th>
                 <th>Description</th>
                 <th>Actions</th>
               </tr>
@@ -252,7 +294,7 @@ const Reports = () => {
                 <tr key={report.id} className="reports-table-row">
                   <td>
                     <div className="reports-date-cell">
-                      {new Date(report.date_generated).toLocaleDateString()}
+                      {formatDateTime(report.date_generated)}
                     </div>
                   </td>
                   <td>
@@ -267,8 +309,8 @@ const Reports = () => {
                         className="action-btn edit-btn"
                         title="Edit Report"
                       >
-                     <FaEdit />
-                  </button>
+                        <FaEdit />
+                      </button>
                       <button
                         onClick={() => handleDeleteClick(report)}
                         className="action-btn delete-btn"
@@ -331,6 +373,7 @@ const Reports = () => {
                   required
                   className="leave-form-input"
                 />
+                <small className="form-help-text">Time will be set to current time</small>
               </div>
 
               <div className="leave-form-group">

@@ -21,7 +21,6 @@ const Expense = {
         `;
         const params = [tenantId];
 
-        // Add filters based on user role
         if (filters.user_id) {
             query += ' AND e.user_id = ?';
             params.push(filters.user_id);
@@ -35,6 +34,11 @@ const Expense = {
         if (filters.category_id) {
             query += ' AND e.category_id = ?';
             params.push(filters.category_id);
+        }
+
+        if (filters.payment_status) {
+            query += ' AND e.payment_status = ?';
+            params.push(filters.payment_status);
         }
 
         query += ' ORDER BY e.submitted_at DESC';
@@ -66,23 +70,44 @@ const Expense = {
 
     // Create new expense
     create: async (tenantId, expenseData) => {
-        const { user_id, category_id, amount, description, receipt_url } = expenseData;
+        const { user_id, category_id, amount, description, image } = expenseData;
         const [result] = await pool.execute(
-            'INSERT INTO expenses (tenant_id, user_id, category_id, amount, description, receipt_url, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [tenantId, user_id, category_id, amount, description, receipt_url, 'pending']
+            'INSERT INTO expenses (tenant_id, user_id, category_id, amount, description, image, status, payment_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [tenantId, user_id, category_id, amount, description, image || null, 'pending', 'pending']
         );
         return result.insertId;
     },
 
     // Update expense status
     updateStatus: async (tenantId, id, status, approved_by = null) => {
-        const approved_at = status !== 'pending' ? 'CURRENT_TIMESTAMP' : 'NULL';
+        const approved_at = status !== 'pending' ? new Date() : null;
         const [result] = await pool.execute(
-            `UPDATE expenses SET status = ?, approved_by = ?, approved_at = ${approved_at}, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ?`,
-            [status, approved_by, id, tenantId]
+            `UPDATE expenses SET status = ?, approved_by = ?, approved_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ?`,
+            [status, approved_by, approved_at, id, tenantId]
         );
         return result.affectedRows;
     },
+
+    // Update payment status
+   // backend/models/expenseModel.js
+
+// Add this method if it doesn't exist
+updatePaymentStatus: async (tenantId, id, payment_status) => {
+  console.log('Updating payment status:', { tenantId, id, payment_status });
+  
+  try {
+    const [result] = await pool.execute(
+      'UPDATE expenses SET payment_status = ?, updated_at = NOW() WHERE id = ? AND tenant_id = ?',
+      [payment_status, id, tenantId]
+    );
+    
+    console.log('Update result:', result);
+    return result.affectedRows;
+  } catch (error) {
+    console.error('Database error:', error);
+    throw error;
+  }
+},
 
     // Get expenses by user ID
     getByUserId: async (tenantId, user_id) => {

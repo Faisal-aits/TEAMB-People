@@ -639,3 +639,24 @@
   background-color: #198754;
   color: white;
 }
+.multi-select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+}
+
+.multi-select option {
+  padding: 8px;
+  cursor: pointer;
+}
+
+.multi-select option:hover {
+  background-color: #f0f0f0;
+}
+
+.multi-select option:checked {
+  background-color: #4CAF50;
+  color: white;
+}

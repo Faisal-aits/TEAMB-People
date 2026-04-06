@@ -444,36 +444,47 @@ const uniqueAttendance = Array.from(
         </div>
       </div>
 
-      {/* Attendance Statistics */}
-      <div className="attendance-stats">
-        <div className="stat-card">
-          <h3>Total Records</h3>
-          <p className="stat-number">{attendance.length}</p>
-        </div>
-        <div className="stat-card">
-          <h3>Present</h3>
-          <p className="stat-number present">
-            {attendance.filter(record => record.status === 'Present').length}
-          </p>
-        </div>
-        <div className="stat-card">
-          <h3>Absent</h3>
-          <p className="stat-number absent">
-            {attendance.filter(record => record.status === 'Absent').length}
-          </p>
-        </div>
-        <div className="stat-card">
-          <h3>Face Verified Today</h3>
-          <p className="stat-number">
-            {attendance.filter(record => {
-              const today = new Date().toISOString().split('T')[0];
-              const recordDate = new Date(record.date).toISOString().split('T')[0];
-              return recordDate === today && 
-                record.remarks && record.remarks.includes('Face');
-            }).length}
-          </p>
-        </div>
-      </div>
+     {/* Attendance Statistics - FIXED for unique daily records */}
+<div className="attendance-stats">
+  <div className="stat-card">
+    <h3>Total Records</h3>
+    <p className="stat-number">{uniqueAttendance.length}</p>
+   
+  </div>
+  <div className="stat-card">
+    <h3>Present Days</h3>
+    <p className="stat-number present">
+      {uniqueAttendance.filter(record => 
+        record.status === 'Present' || 
+        record.status === 'Delayed' || 
+        record.status === 'Late'
+      ).length}
+    </p>
+   
+  </div>
+  <div className="stat-card">
+    <h3>Absent Days</h3>
+    <p className="stat-number absent">
+      {uniqueAttendance.filter(record => 
+        record.status === 'Absent' || 
+        record.status === 'On Leave'
+      ).length}
+    </p>
+
+  </div>
+  <div className="stat-card">
+    <h3>Face Verified Today</h3>
+    <p className="stat-number">
+      {uniqueAttendance.filter(record => {
+        const today = new Date().toISOString().split('T')[0];
+        const recordDate = new Date(record.date).toISOString().split('T')[0];
+        return recordDate === today && 
+          record.remarks && record.remarks.includes('Face');
+      }).length}
+    </p>
+
+  </div>
+</div>
 
       {/* Face Verification Modal */}
       {isCameraOpen && (

@@ -1,55 +1,70 @@
+// Complete updated Admin component - One-time click only
 import React, { useState, useEffect } from 'react';
 import { expenseAPI } from '../../../services/expenseAPI';
 import { useAuth } from '../../../contexts/AuthContext';
 import AddExpenseModal from '../../../components/expenses/AddExpenseModal';
 import './Employee.css';
 
+const API_URL = 'http://localhost:3000';
+
 const ExpenseManagement = () => {
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all');
+  const [paymentFilter, setPaymentFilter] = useState('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [updatingId, setUpdatingId] = useState(null);
   const { user } = useAuth();
 
   useEffect(() => {
     loadExpenses();
-  }, [filter]);
+  }, [paymentFilter]);
 
   const loadExpenses = async () => {
     try {
       setLoading(true);
-      const filters = filter !== 'all' ? { status: filter } : {};
+      const filters = {};
+      if (paymentFilter !== 'all') filters.payment_status = paymentFilter;
+      
       const response = await expenseAPI.getAll(filters);
-      setExpenses(response.data.expenses);
+      const expensesData = response.data.expenses || [];
+      setExpenses(expensesData);
     } catch (error) {
       console.error('Error loading expenses:', error);
+      setExpenses([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleStatusUpdate = async (expenseId, status) => {
+  const handlePaymentUpdate = async (expenseId, paymentStatus) => {
+    setUpdatingId(expenseId);
+    
     try {
-      await expenseAPI.updateStatus(expenseId, status);
-      loadExpenses(); // Reload expenses
+      await expenseAPI.updatePaymentStatus(expenseId, paymentStatus);
+      await loadExpenses();
+      alert(`Payment marked as ${paymentStatus.toUpperCase()} successfully!`);
     } catch (error) {
-      console.error('Error updating expense status:', error);
-      alert('Failed to update expense status');
+      console.error('Error updating payment status:', error);
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || 'Failed to update payment status';
+      alert(errorMessage);
+    } finally {
+      setUpdatingId(null);
     }
   };
 
   const handleExpenseAdded = () => {
-    loadExpenses(); // Refresh the list after adding
+    loadExpenses();
   };
 
-  const getStatusBadge = (status) => {
-    const statusColors = {
-      pending: { background: '#fef3c7', color: '#92400e' },
-      approved: { background: '#d1fae5', color: '#065f46' },
-      rejected: { background: '#fee2e2', color: '#991b1b' }
+  const getPaymentBadge = (paymentStatus) => {
+    const status = paymentStatus || 'pending';
+    const paymentColors = {
+      pending: { background: '#fef3c7', color: '#92400e', icon: '⏳' },
+      paid: { background: '#d1fae5', color: '#065f46', icon: '✅' },
+      cancelled: { background: '#fee2e2', color: '#991b1b', icon: '❌' }
     };
     
-    const colors = statusColors[status] || { background: '#f3f4f6', color: '#374151' };
+    const colors = paymentColors[status] || paymentColors.pending;
     
     return (
       <span style={{
@@ -58,22 +73,27 @@ const ExpenseManagement = () => {
         fontSize: '0.75rem',
         fontWeight: '500',
         background: colors.background,
-        color: colors.color
+        color: colors.color,
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '0.25rem'
       }}>
-        {status.toUpperCase()}
+        {colors.icon} {status.toUpperCase()}
       </span>
     );
   };
 
   if (loading) {
-    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
-      Loading expenses...
-    </div>;
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+        <div className="loading-spinner"></div>
+        <span style={{ marginLeft: '1rem' }}>Loading expenses...</span>
+      </div>
+    );
   }
 
   return (
     <div style={{ padding: '2rem' }}>
-      {/* Add Expense Modal */}
       <AddExpenseModal 
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
@@ -87,32 +107,30 @@ const ExpenseManagement = () => {
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
         border: '1px solid #e2e8f0'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
           <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '600', color: '#2d3748' }}>
             Expense Management
           </h1>
           
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            {/* Add Expense Button */}
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <button
               onClick={() => setIsAddModalOpen(true)}
-           style={{
-  background: 'linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%)',
-  border: 'none',
-  color: 'white',
-  padding: '0.75rem 1.5rem',
-  borderRadius: '10px',
-  cursor: 'pointer',
-  fontFamily: 'inherit',
-  fontWeight: 600,
-  fontSize: '0.9rem',
-  display: 'flex',
-  alignItems: 'center',
-  gap: '0.5rem',
-  transition: 'all 0.3s ease',
-  boxShadow: '0 4px 12px rgba(138, 135, 201, 0.3)',
-}}
-
+              style={{
+                background: 'linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%)',
+                border: 'none',
+                color: 'white',
+                padding: '0.75rem 1.5rem',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                fontWeight: 600,
+                fontSize: '0.9rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                transition: 'all 0.3s ease',
+                boxShadow: '0 4px 12px rgba(138, 135, 201, 0.3)',
+              }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 6V12M12 12V18M12 12H18M12 12H6" stroke="white" strokeWidth="2" strokeLinecap="round"/>
@@ -120,27 +138,26 @@ const ExpenseManagement = () => {
               Add Expense
             </button>
 
-            {/* Status Filter */}
             <select 
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
+              value={paymentFilter}
+              onChange={(e) => setPaymentFilter(e.target.value)}
               style={{
                 padding: '0.5rem 1rem',
                 border: '1px solid #e2e8f0',
                 borderRadius: '6px',
                 background: 'white',
-                fontSize: '0.9rem'
+                fontSize: '0.9rem',
+                cursor: 'pointer'
               }}
             >
-              <option value="all">All Status</option>
+              <option value="all">All Payment Status</option>
               <option value="pending">Pending</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
+              <option value="paid">Paid</option>
+              <option value="cancelled">Cancelled</option>
             </select>
           </div>
         </div>
 
-        {/* Rest of your expense table code remains the same */}
         {expenses.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '3rem', color: '#718096' }}>
             <div style={{ marginBottom: '1rem' }}>
@@ -150,11 +167,11 @@ const ExpenseManagement = () => {
             </div>
             <p style={{ marginBottom: '0.5rem', fontSize: '1.1rem' }}>No expenses found</p>
             <p style={{ margin: 0, fontSize: '0.9rem' }}>
-              {filter === 'all' 
-                ? 'Get started by submitting your first expense.'
-                : `No ${filter} expenses found.`}
+              {paymentFilter !== 'all'
+                ? 'Try changing your filters to see more results.'
+                : 'Get started by submitting your first expense.'}
             </p>
-            {filter === 'all' && (
+            {paymentFilter === 'all' && (
               <button
                 onClick={() => setIsAddModalOpen(true)}
                 style={{
@@ -163,87 +180,128 @@ const ExpenseManagement = () => {
                   background: '#6d6ab8',
                   color: 'white',
                   border: 'none',
-                  borderRadius: '4px',
+                  borderRadius: '6px',
                   cursor: 'pointer',
                   fontSize: '0.9rem'
                 }}
               >
-                Submit Your First Expense
+                Submit First Expense
               </button>
             )}
           </div>
         ) : (
-          // Your existing expense table code here
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              {/* Table headers and rows remain the same */}
               <thead>
-                <tr style={{ borderBottom: '2px solid #e2e8f0' }}>
+                <tr style={{ borderBottom: '2px solid #e2e8f0', background: '#f9fafb' }}>
                   <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#4a5568' }}>Employee</th>
                   <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#4a5568' }}>Category</th>
                   <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#4a5568' }}>Amount</th>
                   <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#4a5568' }}>Description</th>
-                  <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#4a5568' }}>Status</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#4a5568' }}>Receipt</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#4a5568' }}>Payment Status</th>
                   <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#4a5568' }}>Date</th>
                   <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#4a5568' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {expenses.map((expense) => (
-                  <tr key={expense.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                {expenses.map((expense, index) => (
+                  <tr key={expense.id || index} style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '1rem' }}>
                       <div>
                         <div style={{ fontWeight: '500', color: '#2d3748' }}>
-                          {expense.first_name} {expense.last_name}
+                          {expense.first_name || 'Unknown'} {expense.last_name || ''}
                         </div>
                         <div style={{ fontSize: '0.875rem', color: '#718096' }}>
-                          {expense.user_role}
+                          {expense.user_role || 'Employee'}
                         </div>
                       </div>
                     </td>
-                    <td style={{ padding: '1rem', color: '#4a5568' }}>{expense.category_name}</td>
+                    <td style={{ padding: '1rem', color: '#4a5568' }}>{expense.category_name || 'N/A'}</td>
                     <td style={{ padding: '1rem', fontWeight: '600', color: '#2d3748' }}>
-                      ₹{parseFloat(expense.amount).toFixed(2)}
+                      ₹{parseFloat(expense.amount || 0).toFixed(2)}
                     </td>
-                    <td style={{ padding: '1rem', color: '#4a5568', maxWidth: '200px' }}>
-                      {expense.description}
+                    <td style={{ padding: '1rem', color: '#4a5568', maxWidth: '250px', wordWrap: 'break-word' }}>
+                      {expense.description || 'N/A'}
                     </td>
                     <td style={{ padding: '1rem' }}>
-                      {getStatusBadge(expense.status)}
+                      {expense.image ? (
+                        <a 
+                          href={`${API_URL}${expense.image}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            color: '#6d6ab8',
+                            textDecoration: 'none',
+                            fontSize: '0.875rem'
+                          }}
+                        >
+                          
+                          <span>View Receipt</span>
+                        </a>
+                      ) : (
+                        <span style={{ color: '#94a3b8', fontSize: '0.875rem' }}>No receipt</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '1rem' }}>
+                      {getPaymentBadge(expense.payment_status)}
                     </td>
                     <td style={{ padding: '1rem', color: '#718096', fontSize: '0.875rem' }}>
-                      {new Date(expense.submitted_at).toLocaleDateString()}
+                      {expense.submitted_at ? new Date(expense.submitted_at).toLocaleDateString() : 'N/A'}
                     </td>
                     <td style={{ padding: '1rem' }}>
-                      {expense.status === 'pending' && (user.role === 'admin' || user.role === 'hr') && (
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      {(user?.role === 'admin' || user?.role === 'hr') && (
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                           <button
-                            onClick={() => handleStatusUpdate(expense.id, 'approved')}
+                            onClick={() => handlePaymentUpdate(expense.id, 'paid')}
+                            disabled={updatingId === expense.id || expense.payment_status === 'paid' || expense.payment_status === 'cancelled'}
                             style={{
                               padding: '0.25rem 0.75rem',
-                              background: '#48bb78',
+                              background: (expense.payment_status === 'paid' || expense.payment_status === 'cancelled') ? '#9ca3af' : '#10b981',
                               color: 'white',
                               border: 'none',
                               borderRadius: '4px',
                               fontSize: '0.75rem',
-                              cursor: 'pointer'
+                              cursor: (updatingId === expense.id || expense.payment_status === 'paid' || expense.payment_status === 'cancelled') ? 'not-allowed' : 'pointer',
+                              opacity: (updatingId === expense.id || expense.payment_status === 'paid' || expense.payment_status === 'cancelled') ? 0.6 : 1
                             }}
                           >
-                            Approve
+                            {updatingId === expense.id ? '...' : '✅ Paid'}
                           </button>
                           <button
-                            onClick={() => handleStatusUpdate(expense.id, 'rejected')}
+                            onClick={() => handlePaymentUpdate(expense.id, 'pending')}
+                            disabled={updatingId === expense.id || expense.payment_status === 'paid' || expense.payment_status === 'cancelled'}
                             style={{
                               padding: '0.25rem 0.75rem',
-                              background: '#f56565',
+                              background: (expense.payment_status === 'paid' || expense.payment_status === 'cancelled') ? '#9ca3af' : '#f59e0b',
                               color: 'white',
                               border: 'none',
                               borderRadius: '4px',
                               fontSize: '0.75rem',
-                              cursor: 'pointer'
+                              cursor: (updatingId === expense.id || expense.payment_status === 'paid' || expense.payment_status === 'cancelled') ? 'not-allowed' : 'pointer',
+                              opacity: (updatingId === expense.id || expense.payment_status === 'paid' || expense.payment_status === 'cancelled') ? 0.6 : 1
                             }}
                           >
-                            Reject
+                            {updatingId === expense.id ? '...' : '⏳ Pending'}
+                          </button>
+                          <button
+                            onClick={() => handlePaymentUpdate(expense.id, 'cancelled')}
+                            disabled={updatingId === expense.id || expense.payment_status === 'paid' || expense.payment_status === 'cancelled'}
+                            style={{
+                              padding: '0.25rem 0.75rem',
+                              background: (expense.payment_status === 'paid' || expense.payment_status === 'cancelled') ? '#9ca3af' : '#ef4444',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              fontSize: '0.75rem',
+                              cursor: (updatingId === expense.id || expense.payment_status === 'paid' || expense.payment_status === 'cancelled') ? 'not-allowed' : 'pointer',
+                              opacity: (updatingId === expense.id || expense.payment_status === 'paid' || expense.payment_status === 'cancelled') ? 0.6 : 1
+                            }}
+                          >
+                            {updatingId === expense.id ? '...' : '❌ Cancel'}
                           </button>
                         </div>
                       )}

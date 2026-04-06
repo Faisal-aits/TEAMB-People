@@ -13,17 +13,17 @@ const EmployeeManagement = () => {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
- const [filters, setFilters] = useState({
-  department_id: '',
-  is_active: '',       // ✅ DEFAULT = ALL
-  role_id: ''
-});
+  const [filters, setFilters] = useState({
+    department_id: '',
+    is_active: '',
+    role_id: ''
+  });
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
     email: '',
     phone: '',
-    department_id: '',
+    department_ids: [], // Changed to array for multiple departments
     position: '',
     joining_date: '',
     date_of_birth: '',
@@ -33,8 +33,8 @@ const EmployeeManagement = () => {
     ifsc_code: '',
     pan_number: '',
     aadhar_number: '',
-    employee_id: '', // Manual employee ID
-    role_id: '' // Will be set after roles are fetched
+    employee_id: '',
+    role_id: ''
   });
 
   const [editFormData, setEditFormData] = useState({
@@ -42,7 +42,7 @@ const EmployeeManagement = () => {
     last_name: '',
     email: '',
     phone: '',
-    department_id: '',
+    department_ids: [], // Changed to array for multiple departments
     position: '',
     joining_date: '',
     date_of_birth: '',
@@ -52,79 +52,75 @@ const EmployeeManagement = () => {
     ifsc_code: '',
     pan_number: '',
     aadhar_number: '',
+    employee_id: '',
     role_id: ''
   });
 
   const [showCustomPosition, setShowCustomPosition] = useState(false);
   const [customPosition, setCustomPosition] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Role options - fetched dynamically from API
   const [roleOptions, setRoleOptions] = useState([]);
 
-  // Helper: check if selected role is a non-student role (show employment/bank fields)
+  // Helper: check if selected role is a non-student role
   const isNonStudentRole = (roleId) => {
-    if (!roleId || roleOptions.length === 0) return true; // Show by default while loading
+    if (!roleId || roleOptions.length === 0) return true;
     const role = roleOptions.find(r => r.id === String(roleId));
     return !role || role.name.toLowerCase() !== 'student';
   };
 
-// Load initial data only once
-useEffect(() => {
-  const loadInitialData = async () => {
-    await Promise.all([
-      loadDepartments(),
-      loadSuggestedPositions(),
-      loadRoles()
-    ]);
-    await loadEmployees();
+  // Load initial data only once
+  useEffect(() => {
+    const loadInitialData = async () => {
+      await Promise.all([
+        loadDepartments(),
+        loadSuggestedPositions(),
+        loadRoles()
+      ]);
+      await loadEmployees();
+    };
+    
+    loadInitialData();
+  }, []);
+
+  // Load employees when filters change
+  useEffect(() => {
+    if (departments.length > 0) {
+      loadEmployees();
+    }
+  }, [filters.department_id, filters.role_id, filters.is_active]);
+
+  const loadEmployees = async () => {
+    try {
+      setLoading(true);
+      const apiFilters = {};
+
+      if (filters.department_id) {
+        apiFilters.department_id = filters.department_id;
+      }
+      if (filters.role_id) {
+        apiFilters.role_id = filters.role_id;
+      }
+      if (filters.is_active && filters.is_active !== '') {
+        apiFilters.is_active = filters.is_active === 'true';
+      }
+
+      const response = await employeeAPI.getAll(apiFilters);
+      const employeesData = response.data.employees || [];
+      
+      // Ensure department_ids is always an array for each employee
+      const processedEmployees = employeesData.map(emp => ({
+        ...emp,
+        department_ids: emp.department_ids || (emp.department_id ? [emp.department_id] : [])
+      }));
+      
+      setEmployees(processedEmployees);
+    } catch (error) {
+      console.error('Error loading employees:', error);
+      setEmployees([]);
+    } finally {
+      setLoading(false);
+    }
   };
-  
-  loadInitialData();
-}, []); // Empty dependency array
-
-// Load employees when filters change
-useEffect(() => {
-  // Only load if not the initial load (departments have been loaded)
-  if (departments.length > 0) {
-    loadEmployees();
-  }
-}, [filters.department_id, filters.role_id, filters.is_active]);
-const loadEmployees = async () => {
-  try {
-    setLoading(true);
-
-    const apiFilters = {};
-
-    if (filters.department_id) {
-      apiFilters.department_id = filters.department_id;
-    }
-    if (filters.role_id) {
-      apiFilters.role_id = filters.role_id;
-    }
-    // Important: Don't filter by is_active if it's empty string
-    if (filters.is_active && filters.is_active !== '') {
-      // Send as string, not boolean - check your backend expects
-      apiFilters.is_active = filters.is_active === 'true';
-    }
-
-    // console.log('Loading employees with filters:', apiFilters);
-
-    const response = await employeeAPI.getAll(apiFilters);
-    // console.log('API Response:', response.data);
-    
-    // Ensure we're setting the employees array correctly
-    const employeesData = response.data.employees || [];
-    // console.log('Number of employees received:', employeesData.length);
-    setEmployees(employeesData);
-    
-  } catch (error) {
-    console.error('Error loading employees:', error);
-    setEmployees([]); // Set empty array on error
-  } finally {
-    setLoading(false);
-  }
-};
 
   const loadRoles = async () => {
     try {
@@ -134,7 +130,6 @@ const loadEmployees = async () => {
         id: String(r.id),
         name: r.name.charAt(0).toUpperCase() + r.name.slice(1)
       })));
-      // Set default role to employee
       const employeeRole = roles.find(r => r.name === 'employee');
       if (employeeRole) {
         setFormData(prev => ({ ...prev, role_id: String(employeeRole.id) }));
@@ -170,6 +165,16 @@ const loadEmployees = async () => {
     }));
   };
 
+  // Handle multiple department selection for create form
+  const handleDepartmentChange = (e) => {
+    const selectedOptions = Array.from(e.target.selectedOptions);
+    const selectedIds = selectedOptions.map(option => option.value);
+    setFormData(prev => ({
+      ...prev,
+      department_ids: selectedIds
+    }));
+  };
+
   const handleEditInputChange = (e) => {
     const { name, value } = e.target;
     setEditFormData(prev => ({
@@ -178,13 +183,22 @@ const loadEmployees = async () => {
     }));
   };
 
- const handleFilterChange = (key, value) => {
-  // console.log(`Filter changed: ${key} = ${value}`); 
-  setFilters(prev => ({
-    ...prev,
-    [key]: value
-  }));
-};
+  // Handle multiple department selection for edit form
+  const handleEditDepartmentChange = (e) => {
+    const selectedOptions = Array.from(e.target.selectedOptions);
+    const selectedIds = selectedOptions.map(option => option.value);
+    setEditFormData(prev => ({
+      ...prev,
+      department_ids: selectedIds
+    }));
+  };
+
+  const handleFilterChange = (key, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
 
   const handlePositionChange = (e) => {
     const value = e.target.value;
@@ -206,80 +220,76 @@ const loadEmployees = async () => {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  if (!formData.first_name || !formData.last_name || !formData.email) {
-    alert('Please fill in all required fields');
-    return;
-  }
+    e.preventDefault();
+    
+    if (!formData.first_name || !formData.last_name || !formData.email) {
+      alert('Please fill in all required fields');
+      return;
+    }
 
-  setIsSubmitting(true);
+    setIsSubmitting(true);
 
-  try {
-    const employeeData = {
-      first_name: formData.first_name,
-      last_name: formData.last_name,
-      email: formData.email,
-      phone: formData.phone || null,
-      department_id: formData.department_id || null,
-      position: formData.position || null,
-      joining_date: formData.joining_date || null,
-      date_of_birth: formData.date_of_birth || null,
-      address: formData.address || null,
-      emergency_contact: formData.emergency_contact || null,
-      bank_account_number: formData.bank_account_number || null,
-      ifsc_code: formData.ifsc_code || null,
-      pan_number: formData.pan_number || null,
-      aadhar_number: formData.aadhar_number || null,
-      employee_id: formData.employee_id || null,
-      role_id: formData.role_id || roleOptions.find(r => r.name === 'Employee')?.id || ''
-    };
+    try {
+      const employeeData = {
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        email: formData.email,
+        phone: formData.phone || null,
+        department_ids: formData.department_ids || [], // Send array of department IDs
+        position: formData.position || null,
+        joining_date: formData.joining_date || null,
+        date_of_birth: formData.date_of_birth || null,
+        address: formData.address || null,
+        emergency_contact: formData.emergency_contact || null,
+        bank_account_number: formData.bank_account_number || null,
+        ifsc_code: formData.ifsc_code || null,
+        pan_number: formData.pan_number || null,
+        aadhar_number: formData.aadhar_number || null,
+        employee_id: formData.employee_id || null,
+        role_id: formData.role_id || roleOptions.find(r => r.name === 'Employee')?.id || ''
+      };
 
-    const response = await employeeAPI.create(employeeData);
-    
-    // Reset form
-    setFormData({
-      first_name: '',
-      last_name: '',
-      email: '',
-      phone: '',
-      department_id: '',
-      position: '',
-      joining_date: '',
-      date_of_birth: '',
-      address: '',
-      emergency_contact: '',
-      bank_account_number: '',
-      ifsc_code: '',
-      pan_number: '',
-      aadhar_number: '',
-      employee_id: '',
-      role_id: roleOptions.find(r => r.name === 'Employee')?.id || ''
-    });
-    
-    setShowCustomPosition(false);
-    setCustomPosition('');
-    setIsModalOpen(false);
-    
-    // Important: Reset filters to show all employees after adding
-    setFilters({
-      department_id: '',
-      is_active: '',
-      role_id: ''
-    });
-    
-    // Reload employees to show the new one
-    await loadEmployees();
-    
-    alert('Employee added successfully!');
-  } catch (error) {
-    console.error('Error creating employee:', error);
-    const errorMessage = error.response?.data?.message || 'Error creating employee. Please try again.';
-    alert(errorMessage);
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+      const response = await employeeAPI.create(employeeData);
+      
+      setFormData({
+        first_name: '',
+        last_name: '',
+        email: '',
+        phone: '',
+        department_ids: [],
+        position: '',
+        joining_date: '',
+        date_of_birth: '',
+        address: '',
+        emergency_contact: '',
+        bank_account_number: '',
+        ifsc_code: '',
+        pan_number: '',
+        aadhar_number: '',
+        employee_id: '',
+        role_id: roleOptions.find(r => r.name === 'Employee')?.id || ''
+      });
+      
+      setShowCustomPosition(false);
+      setCustomPosition('');
+      setIsModalOpen(false);
+      
+      setFilters({
+        department_id: '',
+        is_active: '',
+        role_id: ''
+      });
+      
+      await loadEmployees();
+      alert('Employee added successfully!');
+    } catch (error) {
+      console.error('Error creating employee:', error);
+      const errorMessage = error.response?.data?.message || 'Error creating employee. Please try again.';
+      alert(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleViewEmployee = (employee) => {
     setSelectedEmployee(employee);
@@ -289,22 +299,16 @@ const loadEmployees = async () => {
   const handleEditEmployee = (employee) => {
     setSelectedEmployee(employee);
     
-    // Simple date formatting - just use the string as is
     const formatDateForInput = (dateString) => {
       if (!dateString) return '';
-      
-      // If it's already in YYYY-MM-DD format, return as is
       if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
         return dateString;
       }
-      
-      // If it's a Date object or other format, convert it
       try {
         const date = new Date(dateString);
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
-        
         return `${year}-${month}-${day}`;
       } catch (error) {
         console.error('Error formatting date:', error);
@@ -317,7 +321,7 @@ const loadEmployees = async () => {
       last_name: employee.last_name,
       email: employee.email,
       phone: employee.phone || '',
-      department_id: employee.department_id || '',
+      department_ids: employee.department_ids || (employee.department_id ? [employee.department_id] : []),
       position: employee.position || '',
       joining_date: formatDateForInput(employee.joining_date),
       date_of_birth: formatDateForInput(employee.date_of_birth),
@@ -327,6 +331,7 @@ const loadEmployees = async () => {
       ifsc_code: employee.ifsc_code || '',
       pan_number: employee.pan_number || '',
       aadhar_number: employee.aadhar_number || '',
+      employee_id: employee.employee_id || '', // Include employee_id in edit form
       role_id: String(employee.role_id) || getRoleIdFromRoleName(employee.role_name) || ''
     });
     
@@ -334,14 +339,12 @@ const loadEmployees = async () => {
     setIsEditModalOpen(true);
   };
 
-  // Helper function to get role ID from role name (uses dynamic roleOptions)
   const getRoleIdFromRoleName = (roleName) => {
     const role = roleOptions.find(r => r.name.toLowerCase() === roleName?.toLowerCase() ||
       (roleName?.toLowerCase() === 'hr' && r.name.toLowerCase() === 'sub admin'));
     return role?.id || roleOptions.find(r => r.name === 'Employee')?.id || '';
   };
 
-  // Helper function to get role name from role ID
   const getRoleNameFromId = (roleId) => {
     const role = roleOptions.find(r => r.id === roleId);
     return role ? role.name : 'Employee';
@@ -363,7 +366,7 @@ const loadEmployees = async () => {
         last_name: editFormData.last_name,
         email: editFormData.email,
         phone: editFormData.phone || null,
-        department_id: editFormData.department_id || null,
+        department_ids: editFormData.department_ids || [], // Send array of department IDs
         position: editFormData.position || null,
         joining_date: editFormData.joining_date || null,
         date_of_birth: editFormData.date_of_birth || null,
@@ -373,6 +376,7 @@ const loadEmployees = async () => {
         ifsc_code: editFormData.ifsc_code || null,
         pan_number: editFormData.pan_number || null,
         aadhar_number: editFormData.aadhar_number || null,
+        employee_id: editFormData.employee_id || null, // Include employee_id in update
         role_id: editFormData.role_id || roleOptions.find(r => r.name === 'Employee')?.id || ''
       };
 
@@ -380,10 +384,7 @@ const loadEmployees = async () => {
 
       setIsEditModalOpen(false);
       setSelectedEmployee(null);
-      
-      // Reload employees to show updated data
       await loadEmployees();
-      
       alert('Employee updated successfully!');
     } catch (error) {
       console.error('Error updating employee:', error);
@@ -395,38 +396,33 @@ const loadEmployees = async () => {
   };
 
   const handleDeleteEmployee = async (employee) => {
-      // Prevent deleting admin users
-      if (employee.email === 'admin@arhamitsolutions.com') {
-          alert('Cannot delete the system administrator.');
-          return;
-      }
+    if (employee.email === 'admin@arhamitsolutions.com') {
+      alert('Cannot delete the system administrator.');
+      return;
+    }
 
-      if (window.confirm(`Are you sure you want to PERMANENTLY DELETE ${employee.first_name} ${employee.last_name}? This action cannot be undone and all user data will be lost.`)) {
-          try {
-              setIsSubmitting(true);
-              
-              // Use the delete endpoint to permanently remove from database
-              await employeeAPI.delete(employee.employee_id);
-              
-              // Remove from local state
-              setEmployees(prev => prev.filter(emp => emp.employee_id !== employee.employee_id));
-              setIsViewModalOpen(false);
-              alert('Employee permanently deleted from database!');
-          } catch (error) {
-              console.error('Error deleting employee:', error);
-              
-              if (error.response?.status === 404) {
-                  alert('Employee not found in database.');
-              } else if (error.response?.status === 400) {
-                  alert(error.response.data.message);
-              } else {
-                  const errorMessage = error.response?.data?.message || 'Error deleting employee. Please try again.';
-                  alert(errorMessage);
-              }
-          } finally {
-              setIsSubmitting(false);
-          }
+    if (window.confirm(`Are you sure you want to PERMANENTLY DELETE ${employee.first_name} ${employee.last_name}? This action cannot be undone and all user data will be lost.`)) {
+      try {
+        setIsSubmitting(true);
+        await employeeAPI.delete(employee.employee_id);
+        setEmployees(prev => prev.filter(emp => emp.employee_id !== employee.employee_id));
+        setIsViewModalOpen(false);
+        alert('Employee permanently deleted from database!');
+      } catch (error) {
+        console.error('Error deleting employee:', error);
+        
+        if (error.response?.status === 404) {
+          alert('Employee not found in database.');
+        } else if (error.response?.status === 400) {
+          alert(error.response.data.message);
+        } else {
+          const errorMessage = error.response?.data?.message || 'Error deleting employee. Please try again.';
+          alert(errorMessage);
+        }
+      } finally {
+        setIsSubmitting(false);
       }
+    }
   };
 
   const getStatusBadge = (isActive) => {
@@ -439,21 +435,18 @@ const loadEmployees = async () => {
 
   const handleExport = () => {
     try {
-      // If no data to export
-         if (employees.length === 0) {
+      if (employees.length === 0) {
         alert('No data to export!');
         return;
       }
 
-      // Prepare data for export
-     const exportData = employees.map(employee => ({
-
+      const exportData = employees.map(employee => ({
         'User ID': employee.employee_id || `UID-${employee.user_id}`,
         'First Name': employee.first_name,
         'Last Name': employee.last_name,
         'Email': employee.email,
         'Phone': employee.phone || '-',
-        'Department': employee.department_name || '-',
+        'Departments': employee.department_names?.join(', ') || employee.department_name || '-',
         'Position': employee.position || '-',
         'Role': employee.role_name || 'Employee',
         'Status': employee.is_active ? 'ACTIVE' : 'INACTIVE',
@@ -467,45 +460,24 @@ const loadEmployees = async () => {
         'Aadhar Number': employee.aadhar_number || '-'
       }));
 
-      // Create worksheet
       const worksheet = XLSX.utils.json_to_sheet(exportData);
       
-      // Set column widths
       const wscols = [
-        { wch: 12 },  // User ID
-        { wch: 15 },  // First Name
-        { wch: 15 },  // Last Name
-        { wch: 25 },  // Email
-        { wch: 15 },  // Phone
-        { wch: 20 },  // Department
-        { wch: 20 },  // Position
-        { wch: 12 },  // Role
-        { wch: 10 },  // Status
-        { wch: 12 },  // Join Date
-        { wch: 12 },  // Date of Birth
-        { wch: 30 },  // Address
-        { wch: 20 },  // Emergency Contact
-        { wch: 20 },  // Bank Account
-        { wch: 15 },  // IFSC Code
-        { wch: 15 },  // PAN Number
-        { wch: 15 }   // Aadhar Number
+        { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 25 },
+        { wch: 15 }, { wch: 30 }, { wch: 20 }, { wch: 12 },
+        { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 30 },
+        { wch: 20 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 15 }
       ];
       worksheet['!cols'] = wscols;
 
-      // Create workbook
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Employees Data');
-
-      // Generate file name with current date
       const fileName = `Employees_Export_${new Date().toISOString().split('T')[0]}.xlsx`;
-
-      // Export to Excel
       XLSX.writeFile(workbook, fileName);
       
-      // console.log('✅ Export successful:', fileName);
       alert(`Exported ${employees.length} employees successfully!`);
     } catch (error) {
-      console.error('❌ Error exporting data:', error);
+      console.error('Error exporting data:', error);
       alert('Error exporting data. Please try again.');
     }
   };
@@ -541,6 +513,17 @@ const loadEmployees = async () => {
     return new Date(dateString).toLocaleDateString('en-IN');
   };
 
+  // Get department names for display
+  const getDepartmentNames = (employee) => {
+    if (employee.department_names && employee.department_names.length > 0) {
+      return employee.department_names.join(', ');
+    }
+    if (employee.department_name) {
+      return employee.department_name;
+    }
+    return '-';
+  };
+
   // Group positions by category
   const groupedPositions = suggestedPositions.reduce((groups, position) => {
     const category = position.category || 'Other';
@@ -550,8 +533,6 @@ const loadEmployees = async () => {
     groups[category].push(position);
     return groups;
   }, {});
-
-
 
   if (loading) {
     return (
@@ -608,15 +589,15 @@ const loadEmployees = async () => {
               ))}
             </select>
             
-           <select 
-  className="filter-btn"
-  value={filters.is_active}
-  onChange={(e) => handleFilterChange('is_active', e.target.value)}
->
-  <option value="">All Status</option>
-  <option value="true">Active</option>
-  <option value="false">Inactive</option>
-</select>
+            <select 
+              className="filter-btn"
+              value={filters.is_active}
+              onChange={(e) => handleFilterChange('is_active', e.target.value)}
+            >
+              <option value="">All Status</option>
+              <option value="true">Active</option>
+              <option value="false">Inactive</option>
+            </select>
             
             <button className="export-btn" onClick={handleExport} disabled={employees.length === 0}>Export</button>
           </div>
@@ -629,7 +610,7 @@ const loadEmployees = async () => {
                 <th>Employee ID</th>
                 <th>Employee</th>
                 <th>Contact</th>
-                <th>Department</th>
+                <th>Departments</th>
                 <th>Position</th>
                 <th>Role</th>
                 <th>Status</th>
@@ -637,7 +618,7 @@ const loadEmployees = async () => {
               </tr>
             </thead>
             <tbody>
-               {employees.map(employee => (
+              {employees.map(employee => (
                 <tr key={employee.employee_id}>
                   <td>
                     <div className="employee-id-cell">
@@ -664,7 +645,7 @@ const loadEmployees = async () => {
                   </td>
                   <td>
                     <div className="department-cell">
-                      {employee.department_name || '-'}
+                      {getDepartmentNames(employee)}
                     </div>
                   </td>
                   <td>
@@ -814,19 +795,22 @@ const loadEmployees = async () => {
                   <h3 className="section-title">Employment Details</h3>
                   <div className="form-row-four">
                     <div className="form-group">
-                      <label>Department</label>
+                      <label>Departments (Multiple selection allowed)</label>
                       <select
-                        name="department_id"
-                        value={formData.department_id}
-                        onChange={handleInputChange}
+                        name="department_ids"
+                        multiple
+                        value={formData.department_ids}
+                        onChange={handleDepartmentChange}
+                        className="multi-select"
+                        size="4"
                       >
-                        <option value="">Select Department</option>
                         {departments.map(dept => (
                           <option key={dept.id} value={dept.id}>
                             {dept.name}
                           </option>
                         ))}
                       </select>
+                      <small className="form-help">Hold Ctrl (Windows) or Cmd (Mac) to select multiple departments</small>
                     </div>
                     <div className="form-group">
                       <label>Position</label>
@@ -1039,8 +1023,8 @@ const loadEmployees = async () => {
                   <h3 className="section-title">Employment Details</h3>
                   <div className="details-grid">
                     <div className="detail-item">
-                      <label>Department</label>
-                      <span>{selectedEmployee.department_name || '-'}</span>
+                      <label>Departments</label>
+                      <span>{getDepartmentNames(selectedEmployee)}</span>
                     </div>
                     <div className="detail-item">
                       <label>Position</label>
@@ -1134,6 +1118,16 @@ const loadEmployees = async () => {
                 <h3 className="section-title">Basic Information</h3>
                 <div className="form-row-four">
                   <div className="form-group">
+                    <label>Employee ID</label>
+                    <input
+                      type="text"
+                      name="employee_id"
+                      value={editFormData.employee_id}
+                      onChange={handleEditInputChange}
+                      placeholder="Employee ID"
+                    />
+                  </div>
+                  <div className="form-group">
                     <label>First Name *</label>
                     <input
                       type="text"
@@ -1185,19 +1179,22 @@ const loadEmployees = async () => {
                   <h3 className="section-title">Employment Details</h3>
                   <div className="form-row-four">
                     <div className="form-group">
-                      <label>Department</label>
+                      <label>Departments (Multiple selection allowed)</label>
                       <select
-                        name="department_id"
-                        value={editFormData.department_id}
-                        onChange={handleEditInputChange}
+                        name="department_ids"
+                        multiple
+                        value={editFormData.department_ids}
+                        onChange={handleEditDepartmentChange}
+                        className="multi-select"
+                        size="4"
                       >
-                        <option value="">Select Department</option>
                         {departments.map(dept => (
                           <option key={dept.id} value={dept.id}>
                             {dept.name}
                           </option>
                         ))}
                       </select>
+                      <small className="form-help">Hold Ctrl (Windows) or Cmd (Mac) to select multiple departments</small>
                     </div>
                     <div className="form-group">
                       <label>Position</label>

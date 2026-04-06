@@ -43,6 +43,7 @@ const AdminLayout = () => {
   const [activeTab, setActiveTab] = useState(() => {
     return localStorage.getItem("activeTab") || "dashboard";
   });
+  const [navigationState, setNavigationState] = useState(null); // Add this state
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [manageOpen, setManageOpen] = useState(false);
   const [coursesOpen, setCoursesOpen] = useState(false);
@@ -52,6 +53,7 @@ const AdminLayout = () => {
   useEffect(() => {
     localStorage.setItem("activeTab", activeTab);
   }, [activeTab]);
+  
   useEffect(() => {
     // Close all dropdowns first
     setManageOpen(false);
@@ -66,12 +68,6 @@ const AdminLayout = () => {
       setManageOpen(true);
     }
 
-    // if (
-    //   ["student", "student-attendance", "courses", "internship"].includes(activeTab)
-    // ) {
-    //   setCoursesOpen(true);
-    // }
-
     if (
       ["attendance", "leave", "shift"].includes(activeTab)
     ) {
@@ -83,9 +79,17 @@ const AdminLayout = () => {
     ) {
       setBillingOpen(true);
     }
-
   }, [activeTab]);
 
+  // Function to navigate to a tab with optional state
+  const navigateToTab = (tabName, state = null) => {
+    setActiveTab(tabName);
+    setNavigationState(state);
+    // Clear navigation state after a delay to prevent stale data
+    setTimeout(() => {
+      setNavigationState(null);
+    }, 500);
+  };
 
   // Get user data from backend
   const { user, logout } = useAuth();
@@ -246,7 +250,7 @@ const AdminLayout = () => {
             <ul>
               {/* Dashboard */}
               <li className={activeTab === 'dashboard' ? 'active' : ''}>
-                <button onClick={() => setActiveTab('dashboard')}>
+                <button onClick={() => navigateToTab('dashboard')}>
                   <span className="nav-icon"><DashboardIcon /></span>
                   {sidebarOpen && <span className="nav-text">Dashboard</span>}
                 </button>
@@ -268,17 +272,17 @@ const AdminLayout = () => {
                 {sidebarOpen && attendanceOpen && (
                   <ul className="dropdown-menu">
                     <li>
-                      <button onClick={() => setActiveTab('attendance')}>
+                      <button onClick={() => navigateToTab('attendance')}>
                         <span className="dropdown-text">Employee Attendance</span>
                       </button>
                     </li>
                     <li>
-                      <button onClick={() => setActiveTab('leave')}>
+                      <button onClick={() => navigateToTab('leave')}>
                         <span className="dropdown-text">Leave Management</span>
                       </button>
                     </li>
                     <li>
-                      <button onClick={() => setActiveTab('shift')}>
+                      <button onClick={() => navigateToTab('shift')}>
                         <span className="dropdown-text">Shift Management</span>
                       </button>
                     </li>
@@ -302,37 +306,37 @@ const AdminLayout = () => {
                 {sidebarOpen && manageOpen && (
                   <ul className="dropdown-menu">
                     <li>
-                      <button onClick={() => setActiveTab('employee')}>
+                      <button onClick={() => navigateToTab('employee')}>
                         <span className="dropdown-text">Employee</span>
                       </button>
                     </li>
                     <li>
-                      <button onClick={() => setActiveTab('department')}>
+                      <button onClick={() => navigateToTab('department')}>
                         <span className="dropdown-text">Department</span>
                       </button>
                     </li>
                     <li>
-                      <button onClick={() => setActiveTab('project')}>
+                      <button onClick={() => navigateToTab('project')}>
                         <span className="dropdown-text">Project</span>
                       </button>
                     </li>
                     <li>
-                      <button onClick={() => setActiveTab('salary')}>
+                      <button onClick={() => navigateToTab('salary')}>
                         <span className="dropdown-text">Salary</span>
                       </button>
                     </li>
                     <li>
-                      <button onClick={() => setActiveTab('client')}>
+                      <button onClick={() => navigateToTab('client')}>
                         <span className="dropdown-text">Client</span>
                       </button>
                     </li>
                     <li>
-                      <button onClick={() => setActiveTab('services')}>
+                      <button onClick={() => navigateToTab('services')}>
                         <span className="dropdown-text">Services</span>
                       </button>
                     </li>
                     <li>
-                      <button onClick={() => setActiveTab('reports')}>
+                      <button onClick={() => navigateToTab('reports')}>
                         <span className="dropdown-text">Reports</span>
                       </button>
                     </li>
@@ -340,51 +344,9 @@ const AdminLayout = () => {
                 )}
               </li>
 
-              {/* Courses Dropdown - UPDATED WITH STUDENT ATTENDANCE */}
-              {/* <li className={`dropdown ${coursesOpen ? 'open' : ''}`}>
-                <button className="dropdown-toggle" onClick={toggleCourses}>
-                  <span className="nav-icon"><CoursesIcon /></span>
-                  {sidebarOpen && (
-                    <>
-                      <span className="nav-text">Courses</span>
-                      <span className="dropdown-arrow">
-                        {coursesOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
-                      </span>
-                    </>
-                  )}
-                </button>
-                {sidebarOpen && coursesOpen && (
-                  <ul className="dropdown-menu">
-                    <li>
-                      <button onClick={() => setActiveTab('student')}>
-                        <span className="dropdown-text">Student Management</span>
-                      </button>
-                    </li>
-                    <li>
-                      <button onClick={() => setActiveTab('student-attendance')}>
-                        <span className="dropdown-text">
-                          Student Attendance
-                        </span>
-                      </button>
-                    </li>
-                    <li>
-                      <button onClick={() => setActiveTab('courses')}>
-                        <span className="dropdown-text">Course Management</span>
-                      </button>
-                    </li>
-                    <li>
-                      <button onClick={() => setActiveTab('internship')}>
-                        <span className="dropdown-text">Internship</span>
-                      </button>
-                    </li>
-                  </ul>
-                )}
-              </li> */}
-
-
               {/* Hiring Manager Nav */}
               <li className={activeTab === 'hr' ? 'active' : ''}>
-                <button onClick={() => setActiveTab('hr')}>
+                <button onClick={() => navigateToTab('hr')}>
                   <span className="nav-icon"><BsPersonCircle /></span>
                   {sidebarOpen && <span className="nav-text">HR Dashboard</span>}
                 </button>
@@ -392,7 +354,7 @@ const AdminLayout = () => {
 
               {/* Expenses */}
               <li className={activeTab === 'expenses' ? 'active' : ''}>
-                <button onClick={() => setActiveTab('expenses')}>
+                <button onClick={() => navigateToTab('expenses')}>
                   <span className="nav-icon"><ExpensesIcon /></span>
                   {sidebarOpen && <span className="nav-text">Expenses</span>}
                 </button>
@@ -414,35 +376,33 @@ const AdminLayout = () => {
                 {sidebarOpen && billingOpen && (
                   <ul className="dropdown-menu">
                     <li>
-                      <button onClick={() => setActiveTab('billing')}>
+                      <button onClick={() => navigateToTab('billing')}>
                         <span className="dropdown-text">Billing</span>
                       </button>
                     </li>
                     <li>
-                      <button onClick={() => setActiveTab('quotation')}>
+                      <button onClick={() => navigateToTab('quotation')}>
                         <span className="dropdown-text">Quotation</span>
                       </button>
                     </li>
                     {/* Delivery Challan as sub-item under Billing */}
                     <li>
-                      <button onClick={() => setActiveTab('deliveryChallan')}>
+                      <button onClick={() => navigateToTab('deliveryChallan')}>
                         <span className="dropdown-text">Delivery Challan</span>
                       </button>
                     </li>
                     <li>
-                      <button onClick={() => setActiveTab('billing_settings')}>
+                      <button onClick={() => navigateToTab('billing_settings')}>
                         <span className="dropdown-text">Billing Settings</span>
                       </button>
                     </li>
-
                   </ul>
                 )}
               </li>
 
-
               {/* Settings */}
               <li className={activeTab === 'settings' ? 'active' : ''}>
-                <button onClick={() => setActiveTab('settings')}>
+                <button onClick={() => navigateToTab('settings')}>
                   <span className="nav-icon"><SettingsIcon /></span>
                   {sidebarOpen && <span className="nav-text">Settings</span>}
                 </button>
@@ -450,7 +410,7 @@ const AdminLayout = () => {
 
               {/* Company Branding */}
               <li className={activeTab === 'company-branding' ? 'active' : ''}>
-                <button onClick={() => setActiveTab('company-branding')}>
+                <button onClick={() => navigateToTab('company-branding')}>
                   <span className="nav-icon"><BsPersonCircle /></span>
                   {sidebarOpen && <span className="nav-text">Company Branding</span>}
                 </button>
@@ -485,7 +445,7 @@ const AdminLayout = () => {
 
         {/* Main Content */}
         <main className="dashboard-main">
-          {activeTab === 'dashboard' && <Dashboard user={user} navigateToTab={setActiveTab} />}
+          {activeTab === 'dashboard' && <Dashboard user={user} navigateToTab={navigateToTab} />}
           {activeTab === 'attendance' && <AttendanceManagement />}
           {activeTab === 'leave' && <LeaveManagement />}
           {activeTab === 'shift' && <ShiftManagement />}
@@ -495,10 +455,11 @@ const AdminLayout = () => {
           {activeTab === 'salary' && <SalaryManagement />}
           {activeTab === 'client' && <ClientMangement />}
           {activeTab === 'services' && <ServiceManagement />}
-          {activeTab === 'reports' && <Reports />}
+          {/* Pass navigationState to Reports component */}
+          {activeTab === 'reports' && <Reports navigationState={navigationState} />}
           {activeTab === 'student' && <StudentManagement />}
           {activeTab === 'student-attendance' && <StudentAttendanceManagement />}
-          {activeTab === 'courses' && <CourseManagement />}
+          {/* {activeTab === 'courses' && <CourseManagement />} */}
           {activeTab === 'internship' && <InternshipManagement />}
           {activeTab === 'expenses' && <ExpenseManagement />}
           {activeTab === 'billing' && <BillingManagement />}
@@ -507,8 +468,8 @@ const AdminLayout = () => {
           {activeTab === 'billing_settings' && <BillingSettings />}
           {activeTab === 'settings' && <Settings />}
 
-          {/* Hirirng manager module  */}
-          {activeTab === 'hr' && <HRDashboard setActiveTab={setActiveTab} />}
+          {/* Hiring manager module  */}
+          {activeTab === 'hr' && <HRDashboard setActiveTab={navigateToTab} />}
           {activeTab === 'offer-letter' && <OfferLetter />}
           {activeTab === 'salary-slip' && <SalarySlip />}
           {activeTab === 'salary-history' && <SalaryHistory />}
