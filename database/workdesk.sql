@@ -44,7 +44,7 @@ CREATE TABLE `attendance_history` (
 
 LOCK TABLES `attendance_history` WRITE;
 /*!40000 ALTER TABLE `attendance_history` DISABLE KEYS */;
-INSERT INTO `attendance_history` VALUES (71,1,'AITS001','2026-03-12','Manual entry - Delayed','Delayed','2026-03-12 05:25:15'),(72,1,'AITS001','2026-03-14','Manual entry - Delayed','Delayed','2026-03-14 07:31:10'),(73,NULL,'AITS004','2026-03-22','Face verification - Delayed','Delayed','2026-03-22 15:54:39'),(74,NULL,'AITS004','2026-03-22','Face verified attendance - Delayed','Delayed','2026-03-22 15:54:39'),(75,1,'AITS004','2026-03-22',' dynamic, versatile, and full-service Digital Marketing, Web Application, Android & IOS, AI/ML, iOT/ Embedded Development agency that doesn\'t rely on gimmicks or smoke and mirrors to earn clients. We ','On Leave','2026-03-22 16:05:40'),(76,1,'AITS004','2026-03-23',' dynamic, versatile, and full-service Digital Marketing, Web Application, Android & IOS, AI/ML, iOT/ Embedded Development agency that doesn\'t rely on gimmicks or smoke and mirrors to earn clients. We ','On Leave','2026-03-22 16:05:40'),(77,1,'AITS004','2026-03-24',' dynamic, versatile, and full-service Digital Marketing, Web Application, Android & IOS, AI/ML, iOT/ Embedded Development agency that doesn\'t rely on gimmicks or smoke and mirrors to earn clients. We ','On Leave','2026-03-22 16:05:40'),(78,1,'AITS004','2026-03-25',' dynamic, versatile, and full-service Digital Marketing, Web Application, Android & IOS, AI/ML, iOT/ Embedded Development agency that doesn\'t rely on gimmicks or smoke and mirrors to earn clients. We ','On Leave','2026-03-22 16:05:40'),(79,NULL,'AITS004','2026-04-02','Manual entry - Delayed','Delayed','2026-04-02 05:45:09');
+INSERT INTO `attendance_history` VALUES (71,1,'AITS001','2026-03-12','Manual entry - Delayed','Delayed','2026-03-12 05:25:15'),(72,1,'AITS001','2026-03-14','Manual entry - Delayed','Delayed','2026-03-14 07:31:10'),(73,NULL,'AITS004','2026-03-22','Face verification - Delayed','Delayed','2026-03-22 15:54:39'),(74,NULL,'AITS004','2026-03-22','Face verified attendance - Delayed','Delayed','2026-03-22 15:54:39'),(75,1,'AITS004','2026-03-22',' dynamic, versatile, and full-service Digital Marketing, Web Application, Android & IOS, AI/ML, iOT/ Embedded Development agency that doesn\'t rely on gimmicks or smoke and mirrors to earn clients. We ','On Leave','2026-03-22 16:05:40'),(76,1,'AITS004','2026-03-23',' dynamic, versatile, and full-service Digital Marketing, Web Application, Android & IOS, AI/ML, iOT/ Embedded Development agency that doesn\'t rely on gimmicks or smoke and mirrors to earn clients. We ','On Leave','2026-03-22 16:05:40'),(77,1,'AITS004','2026-03-24',' dynamic, versatile, and full-service Digital Marketing, Web Application, Android & IOS, AI/ML, iOT/ Embedded Development agency that doesn\'t rely on gimmicks or smoke and mirrors to earn clients. We ','On Leave','2026-03-22 16:05:40'),(78,1,'AITS004','2026-03-25',' dynamic, versatile, and full-service Digital Marketing, Web Application, Android & IOS, AI/ML, iOT/ Embedded Development agency that doesn\'t rely on gimmicks or smoke and mirrors to earn clients. We ','On Leave','2026-03-22 16:05:40'),(79,NULL,'AITS001','2026-04-02','Manual entry - Present','Present','2026-04-02 04:12:44');
 /*!40000 ALTER TABLE `attendance_history` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -446,6 +446,38 @@ INSERT INTO `departments` VALUES (13,1,'IT','Creating Apps, WebApplication and W
 UNLOCK TABLES;
 
 --
+-- Table structure for table `employee_departments`
+--
+
+DROP TABLE IF EXISTS `employee_departments`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `employee_departments` (
+  `id` int NOT NULL,
+  `employee_id` varchar(50) NOT NULL,
+  `department_id` int NOT NULL,
+  `tenant_id` int NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_employee_department` (`employee_id`,`department_id`),
+  KEY `department_id` (`department_id`),
+  KEY `tenant_id` (`tenant_id`),
+  CONSTRAINT `fk_employee_departments_department_id` FOREIGN KEY (`department_id`) REFERENCES `departments` (`id`),
+  CONSTRAINT `fk_employee_departments_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `employee_details` (`id`),
+  CONSTRAINT `fk_employee_departments_tenant_id` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `employee_departments`
+--
+
+LOCK TABLES `employee_departments` WRITE;
+/*!40000 ALTER TABLE `employee_departments` DISABLE KEYS */;
+/*!40000 ALTER TABLE `employee_departments` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `employee_details`
 --
 
@@ -490,7 +522,7 @@ CREATE TABLE `employee_details` (
 
 LOCK TABLES `employee_details` WRITE;
 /*!40000 ALTER TABLE `employee_details` DISABLE KEYS */;
-INSERT INTO `employee_details` VALUES ('AITS001',1,76,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'2026-02-27 07:36:14','2026-03-19 04:21:05',NULL,NULL,NULL,NULL,NULL,'active',9),('AITS0010',1,88,14,'Software Developer',NULL,'2026-03-09',NULL,NULL,NULL,'2026-03-23 06:31:06','2026-03-23 06:31:06',NULL,NULL,NULL,NULL,NULL,'active',NULL),('AITS00123',1,107,13,'Malik',NULL,'2026-04-03',NULL,'no',NULL,'2026-04-02 05:34:48','2026-04-02 05:34:48',NULL,NULL,NULL,NULL,NULL,'active',NULL),('AITS003',1,79,NULL,NULL,NULL,'2025-10-01','2004-01-09',NULL,NULL,'2026-03-16 07:05:02','2026-03-19 04:21:05',NULL,NULL,NULL,NULL,NULL,'active',NULL),('AITS004',1,80,NULL,'Manager',NULL,NULL,NULL,NULL,NULL,'2026-03-16 07:06:45','2026-03-22 15:50:50',NULL,NULL,NULL,NULL,'{\"enrolled\":true,\"employeeId\":\"AITS004\",\"timestamp\":\"2026-03-22T15:50:50.716Z\",\"encoding\":[-0.1318303346633911,0.11292099207639694,0.05681673437356949,-0.09025653451681137,0.034520070999860764,0.02745535597205162,-0.018931137397885323,-0.05320015549659729,0.19409382343292236,-0.1332515925168991,0.21052436530590057,0.01870122365653515,-0.13922692835330963,-0.17059724032878876,-0.02806260623037815,0.093653604388237,-0.10297437757253647,-0.2248658388853073,-0.04176170751452446,-0.12585997581481934,-0.013428326696157455,0.004016770049929619,0.004300632048398256,0.01475477498024702,-0.1781102567911148,-0.4054567217826843,-0.10813724994659424,-0.14010827243328094,-0.024110794067382812,-0.05795692279934883,0.02159912697970867,0.04212021827697754,-0.2442382574081421,-0.03807060047984123,-0.02204802818596363,0.09494569897651672,0.03150355443358421,0.029886718839406967,0.1658019721508026,0.05521169677376747,-0.1049332544207573,-0.03940765559673309,0.053810544312000275,0.3157542049884796,0.12350692600011826,0.03137781098484993,-0.016302717849612236,0.02485298365354538,0.05226536840200424,-0.17708779871463776,0.14523163437843323,0.10737016797065735,0.136855810880661,0.07545356452465057,0.0733722373843193,-0.052382487803697586,0.013846524059772491,0.014618647284805775,-0.16435903310775757,0.05140688270330429,-0.026024293154478073,-0.0708102285861969,-0.10210863500833511,0.0005945797893218696,0.27704381942749023,0.1562155783176422,-0.078584223985672,-0.168326273560524,0.20587123930454254,-0.12596242129802704,-0.02730000577867031,0.034586165100336075,-0.08818541467189789,-0.0965290293097496,-0.2640390396118164,0.16386504471302032,0.3770250082015991,0.14001472294330597,-0.1800575703382492,0.044188205152750015,-0.11570849269628525,-0.0498150959610939,0.04404439032077789,0.04400535672903061,-0.11977566033601761,0.06522815674543381,-0.05888001248240471,0.045555051416158676,0.19251422584056854,0.061789371073246,-0.13773758709430695,0.15947453677654266,-0.059659022837877274,0.05617965757846832,0.06830790638923645,-0.016373245045542717,-0.08021195232868195,0.01064580399543047,-0.1715966910123825,-0.02404111623764038,0.07009512931108475,-0.013114884495735168,-0.05343589931726456,0.13451440632343292,-0.14478729665279388,0.09187715500593185,0.009089741855859756,-0.07324523478746414,0.004942759405821562,0.13319113850593567,-0.1665022075176239,-0.1507394164800644,0.1062278151512146,-0.20956726372241974,0.16785356402397156,0.1324484497308731,0.05046164244413376,0.15936432778835297,0.1558144986629486,0.04469671845436096,0.05200033262372017,-0.02459099516272545,-0.13366073369979858,-0.0653105154633522,0.09501859545707703,-0.007547044660896063,0.06721186637878418,0.04272669181227684],\"encodingVersion\":\"1.0\"}','active',NULL),('AITS011',1,99,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'2026-03-27 05:14:03','2026-03-27 05:14:03',NULL,NULL,NULL,NULL,NULL,'active',NULL),('AITS012',1,101,NULL,NULL,NULL,'2026-03-31',NULL,NULL,NULL,'2026-03-31 07:06:00','2026-03-31 07:06:00',NULL,NULL,NULL,NULL,NULL,'active',NULL),('AITS013',1,102,NULL,'manager',NULL,'2026-03-24',NULL,NULL,NULL,'2026-03-31 07:08:03','2026-03-31 07:08:03',NULL,NULL,NULL,NULL,NULL,'active',NULL);
+INSERT INTO `employee_details` VALUES ('AITS001',1,76,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'2026-02-27 07:36:14','2026-03-19 04:21:05',NULL,NULL,NULL,NULL,NULL,'active',9),('AITS0010',1,88,14,'Software Developer',NULL,'2026-03-09',NULL,NULL,NULL,'2026-03-23 06:31:06','2026-03-23 06:31:06',NULL,NULL,NULL,NULL,NULL,'active',NULL),('AITS003',1,79,NULL,NULL,NULL,'2025-10-01','2004-01-09',NULL,NULL,'2026-03-16 07:05:02','2026-03-19 04:21:05',NULL,NULL,NULL,NULL,NULL,'active',NULL),('AITS004',1,80,NULL,'Manager',NULL,NULL,NULL,NULL,NULL,'2026-03-16 07:06:45','2026-03-22 15:50:50',NULL,NULL,NULL,NULL,'{\"enrolled\":true,\"employeeId\":\"AITS004\",\"timestamp\":\"2026-03-22T15:50:50.716Z\",\"encoding\":[-0.1318303346633911,0.11292099207639694,0.05681673437356949,-0.09025653451681137,0.034520070999860764,0.02745535597205162,-0.018931137397885323,-0.05320015549659729,0.19409382343292236,-0.1332515925168991,0.21052436530590057,0.01870122365653515,-0.13922692835330963,-0.17059724032878876,-0.02806260623037815,0.093653604388237,-0.10297437757253647,-0.2248658388853073,-0.04176170751452446,-0.12585997581481934,-0.013428326696157455,0.004016770049929619,0.004300632048398256,0.01475477498024702,-0.1781102567911148,-0.4054567217826843,-0.10813724994659424,-0.14010827243328094,-0.024110794067382812,-0.05795692279934883,0.02159912697970867,0.04212021827697754,-0.2442382574081421,-0.03807060047984123,-0.02204802818596363,0.09494569897651672,0.03150355443358421,0.029886718839406967,0.1658019721508026,0.05521169677376747,-0.1049332544207573,-0.03940765559673309,0.053810544312000275,0.3157542049884796,0.12350692600011826,0.03137781098484993,-0.016302717849612236,0.02485298365354538,0.05226536840200424,-0.17708779871463776,0.14523163437843323,0.10737016797065735,0.136855810880661,0.07545356452465057,0.0733722373843193,-0.052382487803697586,0.013846524059772491,0.014618647284805775,-0.16435903310775757,0.05140688270330429,-0.026024293154478073,-0.0708102285861969,-0.10210863500833511,0.0005945797893218696,0.27704381942749023,0.1562155783176422,-0.078584223985672,-0.168326273560524,0.20587123930454254,-0.12596242129802704,-0.02730000577867031,0.034586165100336075,-0.08818541467189789,-0.0965290293097496,-0.2640390396118164,0.16386504471302032,0.3770250082015991,0.14001472294330597,-0.1800575703382492,0.044188205152750015,-0.11570849269628525,-0.0498150959610939,0.04404439032077789,0.04400535672903061,-0.11977566033601761,0.06522815674543381,-0.05888001248240471,0.045555051416158676,0.19251422584056854,0.061789371073246,-0.13773758709430695,0.15947453677654266,-0.059659022837877274,0.05617965757846832,0.06830790638923645,-0.016373245045542717,-0.08021195232868195,0.01064580399543047,-0.1715966910123825,-0.02404111623764038,0.07009512931108475,-0.013114884495735168,-0.05343589931726456,0.13451440632343292,-0.14478729665279388,0.09187715500593185,0.009089741855859756,-0.07324523478746414,0.004942759405821562,0.13319113850593567,-0.1665022075176239,-0.1507394164800644,0.1062278151512146,-0.20956726372241974,0.16785356402397156,0.1324484497308731,0.05046164244413376,0.15936432778835297,0.1558144986629486,0.04469671845436096,0.05200033262372017,-0.02459099516272545,-0.13366073369979858,-0.0653105154633522,0.09501859545707703,-0.007547044660896063,0.06721186637878418,0.04272669181227684],\"encodingVersion\":\"1.0\"}','active',NULL),('AITS011',1,99,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'2026-03-27 05:14:03','2026-03-27 05:14:03',NULL,NULL,NULL,NULL,NULL,'active',NULL),('AITS012',1,101,NULL,NULL,NULL,'2026-03-31',NULL,NULL,NULL,'2026-03-31 07:06:00','2026-03-31 07:06:00',NULL,NULL,NULL,NULL,NULL,'active',NULL),('AITS013',1,102,NULL,'manager',NULL,'2026-03-24',NULL,NULL,NULL,'2026-03-31 07:08:03','2026-03-31 07:08:03',NULL,NULL,NULL,NULL,NULL,'active',NULL),('AITS014',1,103,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'2026-03-31 08:13:17','2026-03-31 08:13:17',NULL,NULL,NULL,NULL,NULL,'active',NULL);
 /*!40000 ALTER TABLE `employee_details` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -511,7 +543,7 @@ CREATE TABLE `expense_categories` (
   PRIMARY KEY (`id`),
   KEY `idx_expense_categories_tenant` (`tenant_id`),
   CONSTRAINT `fk_expense_categories_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=179 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -520,6 +552,7 @@ CREATE TABLE `expense_categories` (
 
 LOCK TABLES `expense_categories` WRITE;
 /*!40000 ALTER TABLE `expense_categories` DISABLE KEYS */;
+INSERT INTO `expense_categories` VALUES (9,1,'Travel',NULL,50000.00,'2026-04-03 09:43:19'),(10,1,'Food & Meals',NULL,5000.00,'2026-04-03 09:43:19'),(11,1,'Office Supplies',NULL,5000.00,'2026-04-03 09:43:19'),(12,1,'Software',NULL,25000.00,'2026-04-03 09:43:19'),(13,1,'Hardware',NULL,100000.00,'2026-04-03 09:43:19'),(14,1,'Training',NULL,30000.00,'2026-04-03 09:43:19'),(15,1,'Client Entertainment',NULL,15000.00,'2026-04-03 09:43:19'),(16,1,'Internet & Communication',NULL,5000.00,'2026-04-03 09:43:19'),(17,1,'Marketing',NULL,50000.00,'2026-04-03 09:43:19'),(18,1,'Other',NULL,NULL,'2026-04-03 09:43:19');
 /*!40000 ALTER TABLE `expense_categories` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -537,8 +570,10 @@ CREATE TABLE `expenses` (
   `category_id` int NOT NULL,
   `amount` decimal(10,2) NOT NULL,
   `description` text NOT NULL,
+  `image` varchar(500) DEFAULT NULL,
   `receipt_url` varchar(500) DEFAULT NULL,
   `status` enum('pending','approved','rejected') DEFAULT 'pending',
+  `payment_status` enum('paid','pending','cancelled') DEFAULT 'pending',
   `submitted_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `approved_by` int DEFAULT NULL,
   `approved_at` timestamp NULL DEFAULT NULL,
@@ -553,7 +588,7 @@ CREATE TABLE `expenses` (
   CONSTRAINT `expenses_ibfk_2` FOREIGN KEY (`category_id`) REFERENCES `expense_categories` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `expenses_ibfk_3` FOREIGN KEY (`approved_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_expenses_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=36 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=39 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -562,6 +597,7 @@ CREATE TABLE `expenses` (
 
 LOCK TABLES `expenses` WRITE;
 /*!40000 ALTER TABLE `expenses` DISABLE KEYS */;
+INSERT INTO `expenses` VALUES (36,1,76,18,5000.00,'nothing',NULL,NULL,'approved','paid','2026-04-03 09:47:00',3,'2026-04-03 09:54:10','2026-04-03 09:47:00','2026-04-03 10:38:34'),(37,1,76,18,100.00,'testing',NULL,NULL,'pending','paid','2026-04-03 10:00:52',NULL,NULL,'2026-04-03 10:00:52','2026-04-03 11:27:21'),(38,1,76,15,100.00,'aa','/uploads/expenses/expense_1775212993511_Screenshot 2026-02-11 212655.png',NULL,'pending','cancelled','2026-04-03 10:43:13',NULL,NULL,'2026-04-03 10:43:13','2026-04-03 11:21:39');
 /*!40000 ALTER TABLE `expenses` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1055,7 +1091,7 @@ CREATE TABLE `project_phases` (
   PRIMARY KEY (`id`),
   KEY `project_id` (`project_id`,`phase_order`),
   CONSTRAINT `project_phases_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=120 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=125 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1064,7 +1100,7 @@ CREATE TABLE `project_phases` (
 
 LOCK TABLES `project_phases` WRITE;
 /*!40000 ALTER TABLE `project_phases` DISABLE KEYS */;
-INSERT INTO `project_phases` VALUES (85,27,1,'Planning','Not Started',0,'','[]',1,'2026-03-27 07:32:18','2026-03-27 07:32:18'),(86,27,1,'Design','Not Started',0,'','[]',2,'2026-03-27 07:32:18','2026-03-27 07:32:18'),(87,27,1,'Development','Not Started',0,'','[]',3,'2026-03-27 07:32:18','2026-03-27 07:32:18'),(88,27,1,'Testing','Not Started',0,'','[]',4,'2026-03-27 07:32:18','2026-03-27 07:32:18'),(89,27,1,'Deployment','Not Started',0,'','[]',5,'2026-03-27 07:32:18','2026-03-27 07:32:18'),(90,28,1,'Planning','Not Started',0,'','[]',1,'2026-03-27 07:34:06','2026-03-27 07:34:06'),(91,28,1,'Design','Not Started',0,'','[]',2,'2026-03-27 07:34:06','2026-03-27 07:34:06'),(92,28,1,'Development','Not Started',0,'','[]',3,'2026-03-27 07:34:06','2026-03-27 07:34:06'),(93,28,1,'Testing','Not Started',0,'','[]',4,'2026-03-27 07:34:06','2026-03-27 07:34:06'),(94,28,1,'Deployment','Not Started',0,'','[]',5,'2026-03-27 07:34:06','2026-03-27 07:34:06'),(95,29,1,'Planning','Not Started',0,'','[]',1,'2026-03-27 07:36:14','2026-03-27 07:36:14'),(96,29,1,'Design','Not Started',0,'','[]',2,'2026-03-27 07:36:14','2026-03-27 07:36:14'),(97,29,1,'Development','Not Started',0,'','[]',3,'2026-03-27 07:36:14','2026-03-27 07:36:14'),(98,29,1,'Testing','Not Started',0,'','[]',4,'2026-03-27 07:36:14','2026-03-27 07:36:14'),(99,29,1,'Deployment','Not Started',0,'','[]',5,'2026-03-27 07:36:14','2026-03-27 07:36:14'),(100,30,1,'Planning','Not Started',0,'','[]',1,'2026-03-27 08:04:27','2026-03-27 08:04:27'),(101,30,1,'Design','Not Started',0,'','[]',2,'2026-03-27 08:04:27','2026-03-27 08:04:27'),(102,30,1,'Development','Not Started',0,'','[]',3,'2026-03-27 08:04:27','2026-03-27 08:04:27'),(103,30,1,'Testing','Not Started',0,'','[]',4,'2026-03-27 08:04:27','2026-03-27 08:04:27'),(104,30,1,'Deployment','Not Started',0,'','[]',5,'2026-03-27 08:04:27','2026-03-27 08:04:27'),(105,31,1,'Planning','Not Started',0,'','[]',1,'2026-03-28 09:40:58','2026-03-28 09:40:58'),(106,31,1,'Design','Not Started',0,'','[]',2,'2026-03-28 09:40:58','2026-03-28 09:40:58'),(107,31,1,'Development','Not Started',0,'','[]',3,'2026-03-28 09:40:58','2026-03-28 09:40:58'),(108,31,1,'Testing','Not Started',0,'','[]',4,'2026-03-28 09:40:58','2026-03-28 09:40:58'),(109,31,1,'Deployment','Not Started',0,'','[]',5,'2026-03-28 09:40:58','2026-03-28 09:40:58'),(110,32,1,'Planning','Not Started',0,'','[]',1,'2026-03-30 04:50:06','2026-03-30 04:50:06'),(111,32,1,'Design','Not Started',0,'','[]',2,'2026-03-30 04:50:06','2026-03-30 04:50:06'),(112,32,1,'Development','Not Started',0,'','[]',3,'2026-03-30 04:50:06','2026-03-30 04:50:06'),(113,32,1,'Testing','Not Started',0,'','[]',4,'2026-03-30 04:50:06','2026-03-30 04:50:06'),(114,32,1,'Deployment','Not Started',0,'','[]',5,'2026-03-30 04:50:06','2026-03-30 04:50:06'),(115,33,1,'Planning','Not Started',0,'','[]',1,'2026-03-31 06:50:32','2026-03-31 06:50:32'),(116,33,1,'Design','Not Started',0,'','[]',2,'2026-03-31 06:50:32','2026-03-31 06:50:32'),(117,33,1,'Development','Not Started',0,'','[]',3,'2026-03-31 06:50:32','2026-03-31 06:50:32'),(118,33,1,'Testing','Not Started',0,'','[]',4,'2026-03-31 06:50:32','2026-03-31 06:50:32'),(119,33,1,'Deployment','Not Started',0,'','[]',5,'2026-03-31 06:50:32','2026-03-31 06:50:32');
+INSERT INTO `project_phases` VALUES (85,27,1,'Planning','Not Started',0,'','[]',1,'2026-03-27 07:32:18','2026-03-27 07:32:18'),(86,27,1,'Design','Not Started',0,'','[]',2,'2026-03-27 07:32:18','2026-03-27 07:32:18'),(87,27,1,'Development','Not Started',0,'','[]',3,'2026-03-27 07:32:18','2026-03-27 07:32:18'),(88,27,1,'Testing','Not Started',0,'','[]',4,'2026-03-27 07:32:18','2026-03-27 07:32:18'),(89,27,1,'Deployment','Not Started',0,'','[]',5,'2026-03-27 07:32:18','2026-03-27 07:32:18'),(120,34,1,'Planning','Not Started',0,'','[]',1,'2026-04-02 10:52:34','2026-04-02 10:52:34'),(121,34,1,'Design','Not Started',0,'','[]',2,'2026-04-02 10:52:34','2026-04-02 10:52:34'),(122,34,1,'Development','Not Started',0,'','[]',3,'2026-04-02 10:52:34','2026-04-02 10:52:34'),(123,34,1,'Testing','Not Started',0,'','[]',4,'2026-04-02 10:52:34','2026-04-02 10:52:34'),(124,34,1,'Deployment','Not Started',0,'','[]',5,'2026-04-02 10:52:34','2026-04-02 10:52:34');
 /*!40000 ALTER TABLE `project_phases` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1141,7 +1177,7 @@ CREATE TABLE `projects` (
   PRIMARY KEY (`id`),
   KEY `idx_projects_tenant` (`tenant_id`),
   CONSTRAINT `fk_projects_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=34 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=35 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1150,7 +1186,7 @@ CREATE TABLE `projects` (
 
 LOCK TABLES `projects` WRITE;
 /*!40000 ALTER TABLE `projects` DISABLE KEYS */;
-INSERT INTO `projects` VALUES (27,NULL,1,'Eseel_Propack','','IT & Development','jubeda shaikh',NULL,NULL,'Planning',0,'On Track','2026-03-27 07:32:18','2026-03-27 07:32:18'),(28,NULL,1,'workdeskh','','IT & Development','jubeda shaikh',NULL,NULL,'Planning',0,'On Track','2026-03-27 07:34:06','2026-03-27 07:34:06'),(29,NULL,1,'workdeskh1','','IT & Development','jubeda shaikh',NULL,NULL,'Planning',0,'On Track','2026-03-27 07:36:14','2026-03-27 07:36:14'),(30,NULL,1,'a','','IT & Development','Aniruddha Manmode',NULL,NULL,'Planning',0,'On Track','2026-03-27 08:04:27','2026-03-27 08:04:27'),(31,NULL,1,'ahmednagar ','','IT & Development','jubeda shaikh',NULL,NULL,'Planning',0,'On Track','2026-03-28 09:40:58','2026-03-28 09:40:58'),(32,NULL,1,'testing','dfs','IT','jubeda shaikh','2026-03-30','2026-07-31','System Design',0,'On Track','2026-03-30 04:50:06','2026-03-30 04:50:06'),(33,NULL,1,'abcd','testing that everything is working fine or noe','IT & Development','Asifa Sarkar','2026-03-31','2026-06-30','Requirement Specification',0,'On Track','2026-03-31 06:50:32','2026-03-31 06:50:32');
+INSERT INTO `projects` VALUES (27,NULL,1,'Eseel_Propack','','IT & Development','jubeda shaikh','2026-04-07','2026-04-09','Requirement Specification',0,'Delayed','2026-03-27 07:32:18','2026-04-02 05:42:48'),(34,NULL,1,'workdesk','','IT & Development','jubeda shaikh','2026-04-02','2026-06-30','Planning',0,'On Track','2026-04-02 10:52:34','2026-04-02 10:52:34');
 /*!40000 ALTER TABLE `projects` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1303,7 +1339,7 @@ DROP TABLE IF EXISTS `reports`;
 CREATE TABLE `reports` (
   `id` int NOT NULL AUTO_INCREMENT,
   `tenant_id` int DEFAULT NULL,
-  `date_generated` date NOT NULL,
+  `date_generated` datetime NOT NULL,
   `description` text NOT NULL,
   `generated_by` int NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
@@ -1322,7 +1358,7 @@ CREATE TABLE `reports` (
 
 LOCK TABLES `reports` WRITE;
 /*!40000 ALTER TABLE `reports` DISABLE KEYS */;
-INSERT INTO `reports` VALUES (18,1,'2026-03-22','Working',80,'2026-03-22 15:55:20','2026-03-22 15:55:20');
+INSERT INTO `reports` VALUES (18,1,'2026-03-22 00:00:00','Working',80,'2026-03-22 15:55:20','2026-03-22 15:55:20');
 /*!40000 ALTER TABLE `reports` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1967,13 +2003,14 @@ CREATE TABLE `tasks` (
   `created_by` int DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `remarks` text,
   PRIMARY KEY (`id`),
   KEY `tenant_id` (`tenant_id`),
   KEY `idx_project` (`project_id`),
   KEY `idx_assigned_member` (`assigned_to_member`),
   CONSTRAINT `tasks_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
   CONSTRAINT `tasks_ibfk_2` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=31 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1982,7 +2019,7 @@ CREATE TABLE `tasks` (
 
 LOCK TABLES `tasks` WRITE;
 /*!40000 ALTER TABLE `tasks` DISABLE KEYS */;
-INSERT INTO `tasks` VALUES (8,1,29,10,'jhkuhkjhjkhjk',NULL,'Medium','To-Do',71,0.00,0.00,NULL,'79',76,'jubeda shaikh',NULL,NULL,NULL,0,NULL,'Not Reviewed',NULL,NULL,NULL,NULL,NULL,'2026-03-30 11:44:43','2026-03-31 05:30:19'),(11,1,32,13,'lkiiiioiio','dfkjslkjflks','Medium','Ready for Review',80,0.00,0.00,NULL,'79',76,'jubeda shaikh',NULL,NULL,NULL,0,NULL,'Not Reviewed',NULL,NULL,NULL,NULL,NULL,'2026-03-30 11:56:06','2026-03-31 06:47:54'),(16,1,32,13,'kjlkjlkjeflkjslkj','doday i ','Medium','In Progress',36,0.00,1.00,NULL,'79',76,'jubeda shaikh',NULL,NULL,NULL,0,NULL,'Not Reviewed',NULL,NULL,NULL,NULL,NULL,'2026-03-30 12:17:10','2026-03-31 06:22:22'),(17,1,33,14,'working on frontend and backend','noting is doking here ','High','In Progress',50,150.00,0.00,NULL,'76',79,'Asifa Sarkar','2026-04-30',NULL,NULL,0,NULL,'Not Reviewed',NULL,NULL,NULL,NULL,NULL,'2026-03-31 06:52:25','2026-03-31 06:53:26');
+INSERT INTO `tasks` VALUES (27,1,27,36,'jhkjhkjhdkldkjdljd',NULL,'Medium','In Progress',50,0.00,0.00,NULL,'80',76,'jubeda shaikh',NULL,NULL,NULL,0,NULL,'Not Reviewed','dddd',NULL,NULL,NULL,NULL,'2026-04-02 10:51:43','2026-04-02 11:24:24',NULL),(28,1,34,37,'dfd',NULL,'High','In Progress',76,0.00,0.00,NULL,'80',76,'jubeda shaikh',NULL,NULL,NULL,0,NULL,'Not Reviewed','ssss',NULL,NULL,NULL,NULL,'2026-04-02 11:11:27','2026-04-03 07:20:33',NULL),(29,1,27,20,'jhkjhkjhk',NULL,'Medium','To-Do',0,0.00,0.00,NULL,'79',76,'jubeda shaikh',NULL,NULL,NULL,0,NULL,'Not Reviewed',NULL,NULL,NULL,NULL,NULL,'2026-04-02 11:25:00','2026-04-02 11:25:00',NULL),(30,1,27,20,'jhkjhkjhk','kjkjlkjkljlkjlkjkl','Medium','In Progress',50,0.00,0.00,NULL,'76',76,'jubeda shaikh',NULL,NULL,NULL,0,NULL,'Not Reviewed','jhjkhjk',NULL,NULL,NULL,NULL,'2026-04-02 11:25:00','2026-04-02 11:25:27',NULL);
 /*!40000 ALTER TABLE `tasks` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -2025,7 +2062,7 @@ CREATE TABLE `tb_attendance` (
 
 LOCK TABLES `tb_attendance` WRITE;
 /*!40000 ALTER TABLE `tb_attendance` DISABLE KEYS */;
-INSERT INTO `tb_attendance` VALUES (51,1,'AITS001',9,'2026-03-12','2026-03-12 10:55:15',NULL,'Delayed',NULL,NULL,'Manual entry at 10:55:14 AM','2026-03-12 05:25:15','2026-03-19 04:21:05'),(53,1,'AITS001',9,'2026-03-14','2026-03-14 13:01:11','2026-03-14 13:01:35','Delayed',NULL,NULL,'Manual entry at 1:01:10 PM','2026-03-14 07:31:10','2026-03-19 04:21:05'),(54,NULL,'AITS004',9,'2026-03-22','2026-03-22 21:24:39',NULL,'Delayed',NULL,NULL,'Face verified (92.5 confidence)','2026-03-22 15:54:39','2026-03-22 15:54:39'),(55,NULL,'AITS004',9,'2026-04-02','2026-04-02 11:15:09',NULL,'Delayed',NULL,NULL,'Manual entry at 11:15:09 am','2026-04-02 05:45:09','2026-04-02 05:45:09');
+INSERT INTO `tb_attendance` VALUES (51,1,'AITS001',9,'2026-03-12','2026-03-12 10:55:15',NULL,'Delayed',NULL,NULL,'Manual entry at 10:55:14 AM','2026-03-12 05:25:15','2026-03-19 04:21:05'),(53,1,'AITS001',9,'2026-03-14','2026-03-14 13:01:11','2026-03-14 13:01:35','Delayed',NULL,NULL,'Manual entry at 1:01:10 PM','2026-03-14 07:31:10','2026-03-19 04:21:05'),(54,NULL,'AITS004',9,'2026-03-22','2026-03-22 21:24:39',NULL,'Delayed',NULL,NULL,'Face verified (92.5 confidence)','2026-03-22 15:54:39','2026-03-22 15:54:39'),(55,NULL,'AITS001',9,'2026-04-02','2026-04-02 09:42:44',NULL,'Present',NULL,NULL,'Manual entry at 9:42:44 AM','2026-04-02 04:12:44','2026-04-02 04:12:44');
 /*!40000 ALTER TABLE `tb_attendance` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -2060,7 +2097,7 @@ CREATE TABLE `tb_employee_shifts` (
 
 LOCK TABLES `tb_employee_shifts` WRITE;
 /*!40000 ALTER TABLE `tb_employee_shifts` DISABLE KEYS */;
-INSERT INTO `tb_employee_shifts` VALUES (183,1,'AITS001',9,'2026-03-12','2026-03-12 05:24:48','2026-03-19 04:21:05'),(185,1,'AITS001',9,'2026-03-14','2026-03-14 07:31:10','2026-03-19 04:21:05'),(186,1,'AITS001',9,'2026-03-16','2026-03-16 06:39:23','2026-03-19 04:21:05'),(188,NULL,'AITS004',9,'2026-03-22','2026-03-22 15:54:39','2026-03-22 15:54:39'),(189,NULL,'AITS001',9,'2026-03-22','2026-03-22 15:59:12','2026-03-22 15:59:12'),(191,NULL,'AITS003',9,'2026-03-22','2026-03-22 15:59:12','2026-03-22 15:59:12'),(192,NULL,'AITS004',10,'2026-03-22','2026-03-22 16:14:19','2026-03-22 16:14:19'),(193,NULL,'AITS003',10,'2026-03-22','2026-03-22 16:14:19','2026-03-22 16:14:19'),(194,NULL,'AITS001',10,'2026-03-22','2026-03-22 16:14:19','2026-03-22 16:14:19'),(195,NULL,'AITS001',9,'2026-03-28','2026-03-28 04:14:25','2026-03-28 04:14:25'),(196,NULL,'AITS0010',9,'2026-03-28','2026-03-28 04:14:25','2026-03-28 04:14:25'),(197,NULL,'AITS003',9,'2026-03-28','2026-03-28 04:14:25','2026-03-28 04:14:25'),(198,NULL,'AITS004',9,'2026-03-28','2026-03-28 04:14:25','2026-03-28 04:14:25'),(199,NULL,'AITS011',9,'2026-03-28','2026-03-28 04:14:25','2026-03-28 04:14:25'),(200,NULL,'AITS004',9,'2026-04-02','2026-04-02 05:45:09','2026-04-02 05:45:09');
+INSERT INTO `tb_employee_shifts` VALUES (183,1,'AITS001',9,'2026-03-12','2026-03-12 05:24:48','2026-03-19 04:21:05'),(185,1,'AITS001',9,'2026-03-14','2026-03-14 07:31:10','2026-03-19 04:21:05'),(186,1,'AITS001',9,'2026-03-16','2026-03-16 06:39:23','2026-03-19 04:21:05'),(188,NULL,'AITS004',9,'2026-03-22','2026-03-22 15:54:39','2026-03-22 15:54:39'),(189,NULL,'AITS001',9,'2026-03-22','2026-03-22 15:59:12','2026-03-22 15:59:12'),(191,NULL,'AITS003',9,'2026-03-22','2026-03-22 15:59:12','2026-03-22 15:59:12'),(192,NULL,'AITS004',10,'2026-03-22','2026-03-22 16:14:19','2026-03-22 16:14:19'),(193,NULL,'AITS003',10,'2026-03-22','2026-03-22 16:14:19','2026-03-22 16:14:19'),(194,NULL,'AITS001',10,'2026-03-22','2026-03-22 16:14:19','2026-03-22 16:14:19'),(195,NULL,'AITS001',9,'2026-03-28','2026-03-28 04:14:25','2026-03-28 04:14:25'),(196,NULL,'AITS0010',9,'2026-03-28','2026-03-28 04:14:25','2026-03-28 04:14:25'),(197,NULL,'AITS003',9,'2026-03-28','2026-03-28 04:14:25','2026-03-28 04:14:25'),(198,NULL,'AITS004',9,'2026-03-28','2026-03-28 04:14:25','2026-03-28 04:14:25'),(199,NULL,'AITS011',9,'2026-03-28','2026-03-28 04:14:25','2026-03-28 04:14:25'),(200,NULL,'AITS001',9,'2026-04-02','2026-04-02 04:12:43','2026-04-02 04:12:43');
 /*!40000 ALTER TABLE `tb_employee_shifts` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -2119,7 +2156,7 @@ CREATE TABLE `team_members` (
   KEY `idx_is_active` (`is_active`),
   CONSTRAINT `team_members_ibfk_1` FOREIGN KEY (`team_id`) REFERENCES `teams` (`id`) ON DELETE CASCADE,
   CONSTRAINT `team_members_ibfk_2` FOREIGN KEY (`employee_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=37 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2128,7 +2165,7 @@ CREATE TABLE `team_members` (
 
 LOCK TABLES `team_members` WRITE;
 /*!40000 ALTER TABLE `team_members` DISABLE KEYS */;
-INSERT INTO `team_members` VALUES (1,1,10,99,'Member','2026-03-30 11:10:10',NULL,1),(2,1,10,79,'Member','2026-03-30 11:10:10',NULL,1),(3,1,11,80,'Member','2026-03-30 11:28:51',NULL,1),(4,1,11,79,'Member','2026-03-30 11:28:51',NULL,1),(5,1,11,76,'Member','2026-03-30 11:28:51',NULL,1),(6,1,12,79,'Member','2026-03-30 11:49:39',NULL,1),(7,1,13,79,'Member','2026-03-30 11:52:34',NULL,1),(8,1,13,88,'Member','2026-03-30 11:52:35',NULL,1),(9,1,14,76,'Member','2026-03-31 06:51:30',NULL,1);
+INSERT INTO `team_members` VALUES (16,1,19,79,'Member','2026-03-31 07:45:25',NULL,1),(17,1,19,76,'Member','2026-03-31 07:45:25',NULL,1),(18,1,20,79,'Member','2026-03-31 07:47:48',NULL,1),(19,1,20,76,'Member','2026-03-31 07:47:48',NULL,1),(22,1,22,103,'Member','2026-03-31 11:48:02',NULL,1),(23,1,22,88,'Member','2026-03-31 11:48:02',NULL,1),(24,1,22,76,'Member','2026-03-31 11:48:02',NULL,1),(25,1,22,79,'Member','2026-03-31 11:48:02',NULL,1),(28,1,36,80,'Member','2026-04-02 06:01:51',NULL,1),(29,1,36,79,'Member','2026-04-02 06:01:51',NULL,1),(30,1,36,102,'Member','2026-04-02 06:01:51',NULL,1),(31,1,37,101,'Member','2026-04-02 11:11:04',NULL,1),(32,1,37,80,'Member','2026-04-02 11:11:04',NULL,1),(33,1,37,76,'Member','2026-04-02 11:11:04',NULL,1),(34,1,38,88,'Member','2026-04-03 07:23:34',NULL,1),(35,1,38,101,'Member','2026-04-03 07:23:34',NULL,1),(36,1,38,79,'Member','2026-04-03 07:23:34',NULL,1);
 /*!40000 ALTER TABLE `team_members` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -2156,7 +2193,7 @@ CREATE TABLE `teams` (
   KEY `team_lead_id` (`team_lead_id`),
   CONSTRAINT `teams_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
   CONSTRAINT `teams_ibfk_2` FOREIGN KEY (`team_lead_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=39 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2165,7 +2202,7 @@ CREATE TABLE `teams` (
 
 LOCK TABLES `teams` WRITE;
 /*!40000 ALTER TABLE `teams` DISABLE KEYS */;
-INSERT INTO `teams` VALUES (1,1,'frontednd development teamm',31,NULL,NULL,'Active','2026-03-30 09:48:35','2026-03-30 09:48:35'),(2,1,'frontednd development teamm',31,NULL,NULL,'Active','2026-03-30 09:50:56','2026-03-30 09:50:56'),(3,1,'frontend ',29,NULL,NULL,'Active','2026-03-30 09:54:34','2026-03-30 09:54:34'),(4,1,'workdesk',29,NULL,NULL,'Active','2026-03-30 10:02:11','2026-03-30 10:02:11'),(5,1,'ahmednagar ',31,NULL,NULL,'Inactive','2026-03-30 10:07:50','2026-03-31 07:23:48'),(10,1,'ahmednagar ',29,NULL,NULL,'Active','2026-03-30 11:10:10','2026-03-30 11:10:10'),(11,1,'frontend with backend ',32,NULL,NULL,'Active','2026-03-30 11:28:51','2026-03-30 11:28:51'),(12,1,'hkjhkjkjh',31,NULL,NULL,'Active','2026-03-30 11:49:39','2026-03-30 11:49:39'),(13,1,'ahmednagar ',32,NULL,NULL,'Active','2026-03-30 11:52:34','2026-03-30 11:52:34'),(14,1,'frontend development',33,NULL,'not necessory','Active','2026-03-31 06:51:29','2026-03-31 06:51:29');
+INSERT INTO `teams` VALUES (19,1,'frontend team',27,NULL,'testing','Inactive','2026-03-31 07:45:25','2026-04-02 06:21:28'),(20,1,'frontednd development team',27,NULL,NULL,'Active','2026-03-31 07:47:48','2026-03-31 07:47:48'),(22,1,'frontednd development teamm',27,NULL,NULL,'Inactive','2026-03-31 11:48:02','2026-04-01 11:53:57'),(23,1,'ahmednagar ',27,NULL,NULL,'Inactive','2026-04-01 07:11:25','2026-04-02 06:01:18'),(26,1,'aa',27,NULL,NULL,'Inactive','2026-04-01 07:28:11','2026-04-01 11:53:05'),(27,1,'ahmednagar',27,NULL,NULL,'Inactive','2026-04-01 07:32:23','2026-04-01 11:53:43'),(28,1,'frontend',27,NULL,NULL,'Inactive','2026-04-01 07:35:31','2026-04-02 06:01:25'),(36,1,'workdesk',27,NULL,NULL,'Inactive','2026-04-02 06:01:51','2026-04-02 11:10:40'),(37,1,'sddas',34,NULL,NULL,'Active','2026-04-02 11:11:04','2026-04-02 11:11:04'),(38,1,'ff',34,NULL,NULL,'Active','2026-04-03 07:23:34','2026-04-03 07:23:34');
 /*!40000 ALTER TABLE `teams` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -2227,9 +2264,6 @@ CREATE TABLE `tenants` (
   `max_employees` int DEFAULT '10',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `smtp_provider` varchar(50) DEFAULT NULL,
-  `smtp_user` varchar(255) DEFAULT NULL,
-  `smtp_password` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `slug` (`slug`)
 ) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -2241,7 +2275,7 @@ CREATE TABLE `tenants` (
 
 LOCK TABLES `tenants` WRITE;
 /*!40000 ALTER TABLE `tenants` DISABLE KEYS */;
-INSERT INTO `tenants` VALUES (1,'Arham IT Solutions','arham-it','admin@arhamitsolutions.com',NULL,NULL,NULL,'free',1,10,'2026-03-19 04:20:46','2026-04-02 05:51:06','gmail','aniruddha.aits@gmail.com','tbcz xroc lttx blso'),(3,'Kosque Technolabs','kosque-technolabs','superadmin@workdesk.com','+91 812320365',NULL,NULL,'premium',0,10,'2026-03-19 04:31:20','2026-04-01 19:14:58',NULL,NULL,NULL),(4,'entgra','entgra','entgra@gmail.com','+91 234343284',NULL,NULL,'premium',0,10,'2026-03-19 04:36:12','2026-04-01 19:15:09',NULL,NULL,NULL),(6,'Test Tenant','test-tenant-1773897958402','company@test-tenant-1773897958402.com',NULL,NULL,NULL,'free',0,10,'2026-03-19 05:25:58','2026-04-01 19:15:04',NULL,NULL,NULL),(7,'Tenant A','tenant-a-1773897987745','company@tenant-a-1773897987745.com',NULL,NULL,NULL,'free',0,10,'2026-03-19 05:26:27','2026-04-01 19:15:01',NULL,NULL,NULL),(8,'Tenant B','tenant-b-1773897987998','company@tenant-b-1773897987998.com',NULL,NULL,NULL,'free',0,10,'2026-03-19 05:26:28','2026-04-01 19:14:59',NULL,NULL,NULL),(9,'Microsoft','microsoft','micro@gmail.com','+91 54665465531',NULL,NULL,'premium',0,100,'2026-03-20 06:21:03','2026-04-01 19:15:00',NULL,NULL,NULL);
+INSERT INTO `tenants` VALUES (1,'Arham IT Solutions','arham-it','admin@arhamitsolutions.com',NULL,NULL,NULL,'free',1,10,'2026-03-19 04:20:46','2026-03-19 04:20:46'),(3,'Kosque Technolabs','kosque-technolabs','superadmin@workdesk.com','+91 812320365',NULL,NULL,'premium',1,10,'2026-03-19 04:31:20','2026-03-19 05:25:14'),(4,'entgra','entgra','entgra@gmail.com','+91 234343284',NULL,NULL,'premium',1,10,'2026-03-19 04:36:12','2026-03-19 04:36:12'),(6,'Test Tenant','test-tenant-1773897958402','company@test-tenant-1773897958402.com',NULL,NULL,NULL,'free',1,10,'2026-03-19 05:25:58','2026-03-19 05:25:58'),(7,'Tenant A','tenant-a-1773897987745','company@tenant-a-1773897987745.com',NULL,NULL,NULL,'free',1,10,'2026-03-19 05:26:27','2026-03-19 05:26:27'),(8,'Tenant B','tenant-b-1773897987998','company@tenant-b-1773897987998.com',NULL,NULL,NULL,'free',1,10,'2026-03-19 05:26:28','2026-03-19 05:26:28'),(9,'Microsoft','microsoft','micro@gmail.com','+91 54665465531',NULL,NULL,'premium',1,100,'2026-03-20 06:21:03','2026-03-20 06:21:03');
 /*!40000 ALTER TABLE `tenants` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -2265,15 +2299,13 @@ CREATE TABLE `users` (
   `is_active` tinyint(1) DEFAULT '1',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `reset_password_token` varchar(255) DEFAULT NULL,
-  `reset_password_expires` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`),
   KEY `role_id` (`role_id`),
   KEY `idx_users_tenant` (`tenant_id`),
   CONSTRAINT `fk_users_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
   CONSTRAINT `users_ibfk_1` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE RESTRICT
-) ENGINE=InnoDB AUTO_INCREMENT=108 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=104 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2282,7 +2314,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (3,1,1,'Arham','Admin','admin@arhamitsolutions.com','$2a$10$VvUy/GeJbd9f6/F6Li8KAevlzRBolNLtbwosD0KrGD4psmkt/Sv6m','+1234567890',NULL,1,'2025-10-28 12:41:05','2026-03-19 04:21:05',NULL,NULL),(76,1,3,'jubeda','shaikh','jubeda.aits@gmail.com','$2a$10$YfeUG16xGHyMYTzl5dDASe8sjvOkNmWL.qKcEH0cpzJwht2JPfTxS',NULL,NULL,1,'2026-02-27 07:36:14','2026-03-19 04:21:05',NULL,NULL),(77,1,4,'student','.','student@gmail.com','$2a$10$eQ7UZO7CDcdB639UIiS1BeIbUBbQjyVzPSdeyLNZLTw1RfoiCdVE2',NULL,NULL,1,'2026-02-27 07:39:09','2026-03-19 04:21:05',NULL,NULL),(79,1,3,'Asifa','Sarkar','asifa.aits0010@gmail.com','$2a$10$RVE44SUDxcmEXZTS18US2OTrHE29YnEEvtUBafKU4E.UNbagVlim2','9284027990',NULL,1,'2026-03-16 07:05:02','2026-03-30 05:54:32',NULL,NULL),(80,1,3,'Aniruddha','Manmode','aniruddha.aits@gmail.com','$2a$10$syKGfZbbdOPpREj3E/E4U.DVPFesg.RF1./gOuq3mcgVREBJe1/UW','+918830681554',NULL,1,'2026-03-16 07:06:45','2026-04-02 05:44:22',NULL,NULL),(82,3,9,'Aniruddha','Manmode','aniruddhamanmode@gmail.com','$2a$10$3CxNO8a4WdYd8hBj6DnJheLCjH46v176jc7snSz6FXewpnE4pW4B.',NULL,NULL,1,'2026-03-19 04:31:20','2026-03-19 04:31:20',NULL,NULL),(83,4,13,'test','user','test@gmail.com','$2a$10$MI5PlBhHYY8SIJ1GxsuT4.t.igwUA0MmGiowZXRoUzcS8lCQFT/wu',NULL,NULL,1,'2026-03-19 04:36:12','2026-03-19 04:36:12',NULL,NULL),(84,6,17,'Test','Admin','admin@test-tenant-1773897958402.com','$2a$10$hCPF751hZ0vINpCK5YV41Op7AH4bOJxIZNqP6O7ZieeNnCF96BMWC',NULL,NULL,1,'2026-03-19 05:25:58','2026-03-19 05:25:58',NULL,NULL),(85,7,21,'Test','Admin','admin@tenant-a-1773897987745.com','$2a$10$m4kPaOVHX/bGWRucRKuCvuy4Z1y5DazD6clseyEnC2u6rRUL4W9z2',NULL,NULL,1,'2026-03-19 05:26:27','2026-03-19 05:26:27',NULL,NULL),(86,8,25,'Test','Admin','admin@tenant-b-1773897987998.com','$2a$10$WfrxxG8pGYecmaReoxIjoOcpiIYEtMXKA37sZ5SJKn5Gq6z1CESoS',NULL,NULL,1,'2026-03-19 05:26:28','2026-03-19 05:26:28',NULL,NULL),(87,9,29,'Bill','Gates','bill@gmail.com','$2a$10$NRKkplINpSMr7/rMYUdTgOt63xN9Fo/ptJB21GGHHnybrK1umWaFy',NULL,NULL,1,'2026-03-20 06:21:03','2026-03-20 06:21:03',NULL,NULL),(88,1,2,'Arshan','Shaikh','arshanshaikh200@gmail.com','$2a$10$oYurddKGgc.IpCijQJmFf.meEYNC7n0gz8Ox2ffm3mrr3MOcrRXwe','8793740825',NULL,1,'2026-03-23 06:31:06','2026-03-26 07:58:28',NULL,NULL),(99,1,2,'H','R','hr6@gmail.com','$2a$10$XigZmdnnTArfAHzIY0X.PuX0jNkmUYRiuhyZz9aWVtumhyjooxbce',NULL,NULL,1,'2026-03-27 05:14:03','2026-03-27 05:15:59',NULL,NULL),(101,1,2,'Aniruddha','Manmode','aniruddha123.aits@gmail.com',NULL,'9874563210',NULL,1,'2026-03-31 07:06:00','2026-03-31 07:06:00',NULL,NULL),(102,1,1,'Jubeda','ff','tg@edfg',NULL,'123456789',NULL,1,'2026-03-31 07:08:03','2026-03-31 07:08:03',NULL,NULL),(107,1,3,'tech','stack','techstack901@gmail.com','$2a$10$6PdL7c1XmPNG4y2V8lIM9esLYjZtqnydhRMsBkQlo9MD69Y6j3ye6','02884444540',NULL,1,'2026-04-02 05:34:48','2026-04-02 05:34:48',NULL,NULL);
+INSERT INTO `users` VALUES (3,1,1,'Arham','Admin','admin@arhamitsolutions.com','$2a$10$VvUy/GeJbd9f6/F6Li8KAevlzRBolNLtbwosD0KrGD4psmkt/Sv6m','+1234567890',NULL,1,'2025-10-28 12:41:05','2026-03-19 04:21:05'),(76,1,3,'jubeda','shaikh','jubeda.aits@gmail.com','$2a$10$YfeUG16xGHyMYTzl5dDASe8sjvOkNmWL.qKcEH0cpzJwht2JPfTxS',NULL,NULL,1,'2026-02-27 07:36:14','2026-03-19 04:21:05'),(77,1,4,'student','.','student@gmail.com','$2a$10$eQ7UZO7CDcdB639UIiS1BeIbUBbQjyVzPSdeyLNZLTw1RfoiCdVE2',NULL,NULL,1,'2026-02-27 07:39:09','2026-03-19 04:21:05'),(79,1,3,'Asifa','Sarkar','asifa.aits0010@gmail.com','$2a$10$RVE44SUDxcmEXZTS18US2OTrHE29YnEEvtUBafKU4E.UNbagVlim2','9284027990',NULL,1,'2026-03-16 07:05:02','2026-03-30 05:54:32'),(80,1,3,'Aniruddha','Manmode','aniruddha.aits@gmail.com','$2a$10$pBO2uep8e16DjpMR.H99Eetm6gyTF7I7GGsspnExV9QP3630s94V2','+918830681554',NULL,1,'2026-03-16 07:06:45','2026-03-22 15:20:55'),(82,3,9,'Aniruddha','Manmode','aniruddhamanmode@gmail.com','$2a$10$3CxNO8a4WdYd8hBj6DnJheLCjH46v176jc7snSz6FXewpnE4pW4B.',NULL,NULL,1,'2026-03-19 04:31:20','2026-03-19 04:31:20'),(83,4,13,'test','user','test@gmail.com','$2a$10$MI5PlBhHYY8SIJ1GxsuT4.t.igwUA0MmGiowZXRoUzcS8lCQFT/wu',NULL,NULL,1,'2026-03-19 04:36:12','2026-03-19 04:36:12'),(84,6,17,'Test','Admin','admin@test-tenant-1773897958402.com','$2a$10$hCPF751hZ0vINpCK5YV41Op7AH4bOJxIZNqP6O7ZieeNnCF96BMWC',NULL,NULL,1,'2026-03-19 05:25:58','2026-03-19 05:25:58'),(85,7,21,'Test','Admin','admin@tenant-a-1773897987745.com','$2a$10$m4kPaOVHX/bGWRucRKuCvuy4Z1y5DazD6clseyEnC2u6rRUL4W9z2',NULL,NULL,1,'2026-03-19 05:26:27','2026-03-19 05:26:27'),(86,8,25,'Test','Admin','admin@tenant-b-1773897987998.com','$2a$10$WfrxxG8pGYecmaReoxIjoOcpiIYEtMXKA37sZ5SJKn5Gq6z1CESoS',NULL,NULL,1,'2026-03-19 05:26:28','2026-03-19 05:26:28'),(87,9,29,'Bill','Gates','bill@gmail.com','$2a$10$NRKkplINpSMr7/rMYUdTgOt63xN9Fo/ptJB21GGHHnybrK1umWaFy',NULL,NULL,1,'2026-03-20 06:21:03','2026-03-20 06:21:03'),(88,1,2,'Arshan','Shaikh','arshanshaikh200@gmail.com','$2a$10$oYurddKGgc.IpCijQJmFf.meEYNC7n0gz8Ox2ffm3mrr3MOcrRXwe','8793740825',NULL,1,'2026-03-23 06:31:06','2026-03-26 07:58:28'),(99,1,2,'H','R','hr6@gmail.com','$2a$10$XigZmdnnTArfAHzIY0X.PuX0jNkmUYRiuhyZz9aWVtumhyjooxbce',NULL,NULL,1,'2026-03-27 05:14:03','2026-03-27 05:15:59'),(101,1,2,'Aniruddha','Manmode','aniruddha123.aits@gmail.com',NULL,'9874563210',NULL,1,'2026-03-31 07:06:00','2026-03-31 07:06:00'),(102,1,1,'Jubeda','ff','tg@edfg',NULL,'123456789',NULL,1,'2026-03-31 07:08:03','2026-03-31 07:08:03'),(103,1,3,'aa','bb','ab@gamil.com',NULL,NULL,NULL,1,'2026-03-31 08:13:17','2026-03-31 08:13:17');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -2313,4 +2345,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-04-04 16:48:59
+-- Dump completed on 2026-04-06 11:31:20
