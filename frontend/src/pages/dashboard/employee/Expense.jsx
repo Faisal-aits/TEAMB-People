@@ -1,21 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import './Expense.css';
 import { expenseAPI } from '../../../services/expenseAPI';
-import * as XLSX from 'xlsx'; 
+import * as XLSX from 'xlsx';
+
+const API_URL = 'http://localhost:3000';
 
 const ExpenseTable = () => {
   const [expenses, setExpenses] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [filterStatus, setFilterStatus] = useState('All');
+  const [filterPayment, setFilterPayment] = useState('All');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [receiptImage, setReceiptImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   
   const [formData, setFormData] = useState({
     category_id: '',
     amount: '',
     description: '',
-    receipt_url: ''
+    receipt_image: null
   });
 
   // Get current user from localStorage
@@ -31,11 +35,23 @@ const ExpenseTable = () => {
     loadCategories();
   }, []);
 
+  useEffect(() => {
+    // Reload expenses when payment filter changes
+    loadExpenses();
+  }, [filterPayment]);
+
   const loadExpenses = async () => {
     try {
       setLoading(true);
       const response = await expenseAPI.getMyExpenses();
-      setExpenses(response.data.expenses || []);
+      let expensesData = response.data.expenses || [];
+      
+      // Apply payment filter
+      if (filterPayment !== 'All') {
+        expensesData = expensesData.filter(expense => (expense.payment_status || 'pending') === filterPayment);
+      }
+      
+      setExpenses(expensesData);
     } catch (error) {
       console.error('Error loading expenses:', error);
       alert('Error loading expenses. Please try again.');
@@ -46,61 +62,44 @@ const ExpenseTable = () => {
 
   const handleExport = () => {
     try {
-      // If no data to export
-      if (filteredExpenses.length === 0) {
+      if (expenses.length === 0) {
         alert('No expenses to export!');
         return;
       }
 
-      // Prepare data for export
-      const exportData = filteredExpenses.map(expense => ({
+      const exportData = expenses.map(expense => ({
         'Expense ID': expense.id,
         'Category': expense.category_name,
         'Amount (₹)': expense.amount,
         'Formatted Amount': formatCurrency(expense.amount),
         'Description': expense.description,
-        'Status': expense.status.charAt(0).toUpperCase() + expense.status.slice(1),
+        'Payment Status': expense.payment_status ? expense.payment_status.toUpperCase() : 'PENDING',
         'Submitted Date': formatDate(expense.submitted_at),
         'Processed Date': expense.approved_at ? formatDate(expense.approved_at) : 'Not Processed',
-        'Receipt URL': expense.receipt_url || 'No Receipt',
+        'Has Receipt': expense.image ? 'Yes' : 'No',
         'Employee Name': currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : 'Unknown',
         'Employee ID': currentUser?.employee_id || `UID-${currentUser?.id || 'N/A'}`
       }));
 
-      // Create worksheet
       const worksheet = XLSX.utils.json_to_sheet(exportData);
       
-      // Set column widths
       const wscols = [
-        { wch: 12 },  // Expense ID
-        { wch: 20 },  // Category
-        { wch: 15 },  // Amount (₹)
-        { wch: 20 },  // Formatted Amount
-        { wch: 40 },  // Description
-        { wch: 15 },  // Status
-        { wch: 15 },  // Submitted Date
-        { wch: 15 },  // Processed Date
-        { wch: 30 },  // Receipt URL
-        { wch: 25 },  // Employee Name
-        { wch: 15 }   // Employee ID
+        { wch: 12 }, { wch: 20 }, { wch: 15 }, { wch: 20 },
+        { wch: 40 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
+        { wch: 15 }, { wch: 10 }, { wch: 25 }, { wch: 15 }
       ];
       worksheet['!cols'] = wscols;
 
-      // Create workbook
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Expenses');
 
-      // Generate file name with current date and user name
       const userName = currentUser ? `${currentUser.first_name}_${currentUser.last_name}` : 'User';
       const fileName = `Expenses_${userName}_${new Date().toISOString().split('T')[0]}.xlsx`;
 
-      // Export to Excel
       XLSX.writeFile(workbook, fileName);
-      
-      // console.log('✅ Export successful:', fileName);
-      alert(`Exported ${filteredExpenses.length} expenses successfully!`);
+      alert(`Exported ${expenses.length} expenses successfully!`);
     } catch (error) {
-      console.error('❌ Error exporting data:', error);
+      console.error('Error exporting data:', error);
       alert('Error exporting data. Please try again.');
     }
   };
@@ -108,7 +107,17 @@ const ExpenseTable = () => {
   const loadCategories = async () => {
     try {
       const response = await expenseAPI.getCategories();
-      setCategories(response.data.categories || []);
+      let categoriesData = [];
+      
+      if (response.data?.categories) {
+        categoriesData = response.data.categories;
+      } else if (response.data?.data) {
+        categoriesData = response.data.data;
+      } else if (Array.isArray(response.data)) {
+        categoriesData = response.data;
+      }
+      
+      setCategories(categoriesData);
     } catch (error) {
       console.error('Error loading categories:', error);
     }
@@ -122,6 +131,31 @@ const ExpenseTable = () => {
     }));
   };
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif'];
+      if (!allowedTypes.includes(file.type)) {
+        alert('Please select a valid image file (JPEG, PNG, GIF)');
+        return;
+      }
+      
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Image size should be less than 5MB');
+        return;
+      }
+      
+      setReceiptImage(file);
+      setFormData(prev => ({ ...prev, receipt_image: file }));
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -130,62 +164,55 @@ const ExpenseTable = () => {
       return;
     }
 
-    if (parseFloat(formData.amount) <= 0) {
-      alert('Amount must be greater than 0');
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
-      const expenseData = {
-        category_id: formData.category_id,
-        amount: parseFloat(formData.amount),
-        description: formData.description,
-        receipt_url: formData.receipt_url || null
-      };
+      const submitData = new FormData();
+      submitData.append('category_id', formData.category_id);
+      submitData.append('amount', parseFloat(formData.amount));
+      submitData.append('description', formData.description);
+      if (receiptImage) {
+        submitData.append('image', receiptImage);
+      }
 
-      await expenseAPI.create(expenseData);
+      await expenseAPI.create(submitData);
       
       // Reset form
       setFormData({
         category_id: '',
         amount: '',
-        description: '',
-        receipt_url: ''
+        description: ''
       });
-      
+      setReceiptImage(null);
+      setImagePreview(null);
       setIsModalOpen(false);
       
-      // Reload expenses to show the new one
       await loadExpenses();
-      
       alert('Expense submitted successfully!');
     } catch (error) {
       console.error('Error submitting expense:', error);
-      const errorMessage = error.response?.data?.message || 'Error submitting expense. Please try again.';
-      alert(errorMessage);
+      alert(error.response?.data?.message || 'Error submitting expense');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const getStatusBadge = (status) => {
-    const statusClasses = {
-      'approved': 'status-approved',
+  const getPaymentBadge = (paymentStatus) => {
+    const paymentClasses = {
+      'paid': 'status-approved',
       'pending': 'status-pending',
-      'rejected': 'status-rejected'
+      'cancelled': 'status-rejected'
     };
     
-    const statusLabels = {
-      'approved': 'Approved',
-      'pending': 'Pending',
-      'rejected': 'Rejected'
+    const paymentLabels = {
+      'paid': '✅ Paid',
+      'pending': '⏳ Pending',
+      'cancelled': '❌ Cancelled'
     };
     
     return (
-      <span className={`status-badge ${statusClasses[status]}`}>
-        {statusLabels[status]}
+      <span className={`status-badge ${paymentClasses[paymentStatus || 'pending']}`}>
+        {paymentLabels[paymentStatus || 'pending']}
       </span>
     );
   };
@@ -205,10 +232,6 @@ const ExpenseTable = () => {
       day: 'numeric'
     });
   };
-
-  const filteredExpenses = filterStatus === 'All' 
-    ? expenses 
-    : expenses.filter(expense => expense.status === filterStatus);
 
   if (loading) {
     return (
@@ -243,22 +266,23 @@ const ExpenseTable = () => {
           <div className="table-actions">
             <select 
               className="filter-btn"
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
+              value={filterPayment}
+              onChange={(e) => setFilterPayment(e.target.value)}
             >
-              <option value="All">All Status</option>
+              <option value="All">All Payment Status</option>
               <option value="pending">Pending</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
+              <option value="paid">Paid</option>
+              <option value="cancelled">Cancelled</option>
             </select>
+            
             <button 
               className="export-btn"
               onClick={handleExport}
-              disabled={filteredExpenses.length === 0}
+              disabled={expenses.length === 0}
             >
-              Export
+              Export to Excel
             </button>
-        </div>
+          </div>
         </div>
         
         <table className="expense-table">
@@ -268,11 +292,12 @@ const ExpenseTable = () => {
               <th>Description</th>
               <th>Amount</th>
               <th>Date Submitted</th>
-              <th>Status</th>
+              <th>Payment Status</th>
+              <th>Receipt</th>
             </tr>
           </thead>
           <tbody>
-            {filteredExpenses.map(expense => (
+            {expenses.map(expense => (
               <tr key={expense.id}>
                 <td>
                   <div className="category-cell">
@@ -283,13 +308,6 @@ const ExpenseTable = () => {
                 <td>
                   <div className="description-cell">
                     {expense.description}
-                    {expense.receipt_url && (
-                      <div className="receipt-link">
-                        <a href={expense.receipt_url} target="_blank" rel="noopener noreferrer">
-                          📎 View Receipt
-                        </a>
-                      </div>
-                    )}
                   </div>
                 </td>
                 <td>
@@ -303,11 +321,27 @@ const ExpenseTable = () => {
                   </div>
                 </td>
                 <td>
-                  {getStatusBadge(expense.status)}
-                  {expense.approved_at && (
-                    <div className="processed-date">
-                      {formatDate(expense.approved_at)}
-                    </div>
+                  {getPaymentBadge(expense.payment_status)}
+                </td>
+                <td style={{ padding: '1rem' }}>
+                  {expense.image ? (
+                    <a 
+                      href={`${API_URL}${expense.image}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        color: '#6d6ab8',
+                        textDecoration: 'none',
+                        fontSize: '0.875rem'
+                      }}
+                    >
+                      View Receipt
+                    </a>
+                  ) : (
+                    <span style={{ color: '#94a3b8', fontSize: '0.875rem' }}>No receipt</span>
                   )}
                 </td>
               </tr>
@@ -315,16 +349,16 @@ const ExpenseTable = () => {
           </tbody>
         </table>
 
-        {filteredExpenses.length === 0 && (
+        {expenses.length === 0 && (
           <div className="no-expenses">
             <div className="no-data-icon">💰</div>
             <p>No expenses found</p>
             <p className="no-data-subtext">
-              {filterStatus !== 'All' 
-                ? 'Try changing your status filter to see more results.'
+              {filterPayment !== 'All'
+                ? 'Try changing your filters to see more results.'
                 : 'Get started by submitting your first expense.'}
             </p>
-            {filterStatus === 'All' && (
+            {filterPayment === 'All' && (
               <button
                 onClick={() => setIsModalOpen(true)}
                 className="add-first-btn"
@@ -387,24 +421,37 @@ const ExpenseTable = () => {
                   name="description"
                   value={formData.description}
                   onChange={handleInputChange}
-                  placeholder="Describe the expense purpose, including who, what, when, and why..."
+                  placeholder="Describe the expense purpose..."
                   rows="3"
                   required
                 />
               </div>
 
               <div className="form-group">
-                <label>Receipt URL (Optional)</label>
+                <label>Receipt Image (Optional)</label>
                 <input
-                  type="url"
-                  name="receipt_url"
-                  value={formData.receipt_url}
-                  onChange={handleInputChange}
-                  placeholder="https://example.com/receipt.jpg"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  style={{ padding: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '6px' }}
                 />
-                <small className="helper-text">
-                  Provide a link to your receipt image or document
-                </small>
+                {imagePreview && (
+                  <div style={{ marginTop: '1rem' }}>
+                    <img src={imagePreview} alt="Receipt preview" style={{ maxWidth: '200px', borderRadius: '8px' }} />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setReceiptImage(null);
+                        setImagePreview(null);
+                        setFormData(prev => ({ ...prev, receipt_image: null }));
+                      }}
+                      style={{ marginLeft: '1rem', padding: '0.25rem 0.5rem', background: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+                <small className="helper-text">Upload receipt image (Max 5MB, JPEG, PNG, GIF)</small>
               </div>
 
               <div className="form-actions">

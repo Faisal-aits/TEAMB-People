@@ -3,7 +3,7 @@ const pool = require('../config/database');
 const bcrypt = require('bcryptjs');
 
 const Employee = {
-    // Get all employees (tenant-scoped)
+// Get all employees (tenant-scoped)
 getAll: async (tenantId, filters = {}) => {
     try {
         let query = `
@@ -38,11 +38,9 @@ getAll: async (tenantId, filters = {}) => {
         `;
         const params = [tenantId];
 
-        if (filters.department_id) {
-            query += ' AND ed.department_id = ?';
-            params.push(filters.department_id);
-        }
-
+        // Remove department_id filter from here - we'll handle in controller
+        // because of many-to-many relationship
+        
         if (filters.role_id) {
             query += ' AND u.role_id = ?';
             params.push(filters.role_id);
@@ -62,7 +60,6 @@ getAll: async (tenantId, filters = {}) => {
         throw error;
     }
 },
-
     // Get employee role ID (tenant-scoped)
     getEmployeeRoleId: async (tenantId) => {
         try {
@@ -273,75 +270,78 @@ getById: async (tenantId, id) => {
         }
     },
 
-    // Update employee (tenant-scoped)
-    update: async (tenantId, id, employeeData) => {
-        const connection = await pool.getConnection();
-        
-        try {
-            await connection.beginTransaction();
+   // Update the update function in employeeModel.js
+update: async (tenantId, id, employeeData) => {
+    const connection = await pool.getConnection();
+    
+    try {
+        await connection.beginTransaction();
 
-            const [employee] = await connection.execute(
-                `SELECT ed.id, u.email, u.id as user_id FROM employee_details ed 
-                 JOIN users u ON ed.user_id = u.id 
-                 WHERE ed.id = ? AND ed.tenant_id = ?`,
-                [id, tenantId]
-            );
+        const [employee] = await connection.execute(
+            `SELECT ed.id, u.email, u.id as user_id FROM employee_details ed 
+             JOIN users u ON ed.user_id = u.id 
+             WHERE ed.id = ? AND ed.tenant_id = ?`,
+            [id, tenantId]
+        );
 
-            if (employee.length === 0) {
-                throw new Error('Employee not found');
-            }
-
-            const userId = employee[0].user_id;
-
-            await connection.execute(
-                `UPDATE users 
-                 SET first_name = ?, last_name = ?, email = ?, phone = ?, is_active = ?, role_id = ?
-                 WHERE id = ? AND tenant_id = ?`,
-                [
-                    employeeData.first_name,
-                    employeeData.last_name,
-                    employeeData.email,
-                    employeeData.phone,
-                    employeeData.is_active,
-                    employeeData.role_id || '3',
-                    userId,
-                    tenantId
-                ]
-            );
-
-            await connection.execute(
-                `UPDATE employee_details 
-                 SET department_id = ?, position = ?, joining_date = ?,
-                     date_of_birth = ?, address = ?, emergency_contact = ?,
-                     bank_account_number = ?, ifsc_code = ?, pan_number = ?, aadhar_number = ?
-                 WHERE id = ? AND tenant_id = ?`,
-                [
-                    employeeData.department_id,
-                    employeeData.position,
-                    employeeData.joining_date,
-                    employeeData.date_of_birth,
-                    employeeData.address,
-                    employeeData.emergency_contact,
-                    employeeData.bank_account_number,
-                    employeeData.ifsc_code,
-                    employeeData.pan_number,
-                    employeeData.aadhar_number,
-                    id,
-                    tenantId
-                ]
-            );
-
-            await connection.commit();
-            return true;
-
-        } catch (error) {
-            await connection.rollback();
-            console.error('Error in Employee.update:', error);
-            throw error;
-        } finally {
-            connection.release();
+        if (employee.length === 0) {
+            throw new Error('Employee not found');
         }
-    },
+
+        const userId = employee[0].user_id;
+
+        // Update users table
+        await connection.execute(
+            `UPDATE users 
+             SET first_name = ?, last_name = ?, email = ?, phone = ?, is_active = ?, role_id = ?
+             WHERE id = ? AND tenant_id = ?`,
+            [
+                employeeData.first_name,
+                employeeData.last_name,
+                employeeData.email,
+                employeeData.phone,
+                employeeData.is_active,
+                employeeData.role_id || '3',
+                userId,
+                tenantId
+            ]
+        );
+
+        // Update employee_details table including employee_id
+        await connection.execute(
+            `UPDATE employee_details 
+             SET id = ?, department_id = ?, position = ?, joining_date = ?,
+                 date_of_birth = ?, address = ?, emergency_contact = ?,
+                 bank_account_number = ?, ifsc_code = ?, pan_number = ?, aadhar_number = ?
+             WHERE id = ? AND tenant_id = ?`,
+            [
+                employeeData.employee_id, // Update employee_id
+                employeeData.department_id,
+                employeeData.position,
+                employeeData.joining_date,
+                employeeData.date_of_birth,
+                employeeData.address,
+                employeeData.emergency_contact,
+                employeeData.bank_account_number,
+                employeeData.ifsc_code,
+                employeeData.pan_number,
+                employeeData.aadhar_number,
+                id, // Original ID for WHERE clause
+                tenantId
+            ]
+        );
+
+        await connection.commit();
+        return true;
+
+    } catch (error) {
+        await connection.rollback();
+        console.error('Error in Employee.update:', error);
+        throw error;
+    } finally {
+        connection.release();
+    }
+},
 
     // Delete employee (tenant-scoped)
 delete: async (tenantId, id) => {

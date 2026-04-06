@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import './Base.css';
 import Dashboard from './Dashboard .jsx';
-// import Expense from './Expense.jsx';
+import Expense from './Expense.jsx';
 import Info from './Info.jsx';
 import Attendance from './Attendance.jsx';
 import Leave from './Leave.jsx';
@@ -116,8 +116,8 @@ useEffect(() => {
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard {...contentProps} />;
-      // case 'expense':
-      //   return <Expense {...contentProps} />;
+      case 'expense':
+        return <Expense {...contentProps} />;
       case 'personalInfo':
         return <Info {...contentProps} />;
       case 'attendance':
@@ -202,7 +202,7 @@ const ChevronRightIcon = () => (
               </li>
 
               {/* Expense */}
-              {/* <li className={activeTab === 'expense' ? 'active' : ''}>
+              <li className={activeTab === 'expense' ? 'active' : ''}>
                 <button onClick={() => setActiveTab('expense')}>
                   <span className="nav-icon">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -211,7 +211,7 @@ const ChevronRightIcon = () => (
                   </span>
                   {sidebarOpen && <span className="nav-text">Expense</span>}
                 </button>
-              </li> */}
+              </li>
 
               {/* Attendance */}
               <li className={activeTab === 'attendance' ? 'active' : ''}>

@@ -13,6 +13,7 @@ import CourseManagement from './CourseManagement.jsx';
 import InternshipManagement from './InternshipManagement.jsx';
 import Projects from './Projects.jsx';
 import Reports from './Reports.jsx';
+import ReportsHistory from './ReportsHistory.jsx'
 import Settings from './Settings.jsx';
 import HRDashboard from './HRDashboard.jsx';
 import OfferLetter from '../HR/OfferLetter.jsx'; //Offer letter jsx HR Folder  
@@ -24,6 +25,7 @@ import ExperienceLetters from '../HR/ExperienceLetters.jsx';
 import IncrementLetters from '../HR/IncrementLetters.jsx';
 import EmployeeManagement from './EmployeeManagement.jsx'; // Add this import
 
+
 const Base = () => {
   const [activeTab, setActiveTab] = useState(() => {
     return localStorage.getItem('employeeActiveTab') || 'dashboard';
@@ -32,10 +34,13 @@ const Base = () => {
   const [coursesOpen, setCoursesOpen] = useState(false); // Add courses dropdown state
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
+const [reportsOpen, setReportsOpen] = useState(false);
 
   // Get user data and logout function from auth context
   const { user, logout } = useAuth();
-
+ const toggleReports = () => {
+  setReportsOpen(!reportsOpen);
+};
   // Fetch dashboard stats
   useEffect(() => {
     if (user && activeTab === 'dashboard') {
@@ -146,8 +151,8 @@ const Base = () => {
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard {...contentProps} />;
-      // case 'expense':
-      //   return <Expense {...contentProps} />;
+      case 'expense':
+        return <Expense {...contentProps} />;
       case 'personalInfo':
         return <Info {...contentProps} />;
       case 'attendance':
@@ -159,7 +164,10 @@ const Base = () => {
       case 'student': // Add these cases
         return <StudentManagement {...contentProps} />;
 
-
+  case 'reports':
+        return <Reports {...contentProps} />;
+         case 'report_history':
+        return <ReportsHistory {...contentProps} />;
       case 'hr':
         return <HRDashboard setActiveTab={setActiveTab} />;
       case 'offer-letter':
@@ -172,6 +180,8 @@ const Base = () => {
         return <EmployeeDirectory {...contentProps} />;
       case 'resignation':
         return <ResignationRequests {...contentProps} />;
+              case 'projects':
+        return <Projects {...contentProps} />;
       case 'experience-letter':
         return <ExperienceLetters{...contentProps} />;
       case 'increment-letter':
@@ -237,7 +247,7 @@ const Base = () => {
                 </button>
               </li>
               {/* Expense */}
-              {/* <li className={activeTab === 'expense' ? 'active' : ''}>
+              <li className={activeTab === 'expense' ? 'active' : ''}>
                 <button onClick={() => setActiveTab('expense')}>
                   <span className="nav-icon">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -246,7 +256,7 @@ const Base = () => {
                   </span>
                   {sidebarOpen && <span className="nav-text">Expense</span>}
                 </button>
-              </li> */}
+              </li>
 
               {/* Attendance */}
               <li className={activeTab === 'attendance' ? 'active' : ''}>
@@ -330,16 +340,39 @@ const Base = () => {
               </li>
 
               {/* Reports */}
-              <li className={activeTab === 'reports' ? 'active' : ''}>
-                <button onClick={() => setActiveTab('reports')}>
-                  <span className="nav-icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z" fill="currentColor" />
-                    </svg>
-                  </span>
-                  {sidebarOpen && <span className="nav-text">Reports</span>}
-                </button>
-              </li>
+             <li className={`dropdown ${reportsOpen ? 'open' : ''}`}>
+  <button className="dropdown-toggle" onClick={toggleReports}>
+    <span className="nav-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z" fill="currentColor"/>
+      </svg>
+    </span>
+    {sidebarOpen && (
+      <>
+        <span className="nav-text">Reports</span>
+        <span className="dropdown-arrow">
+          {reportsOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
+        </span>
+      </>
+    )}
+  </button>
+  
+  {sidebarOpen && reportsOpen && (
+    <ul className="dropdown-menu">
+      <li>
+        <button onClick={() => setActiveTab('reports')}>
+          <span className="dropdown-text">All Reports</span>
+        </button>
+      </li>
+      <li>
+        <button onClick={() => setActiveTab('report_history')}>
+          <span className="dropdown-text">Reports History</span>
+        </button>
+      </li>
+    </ul>
+  )}
+            </li>
+
 
               {/* Settings */}
               <li className={activeTab === 'settings' ? 'active' : ''}>

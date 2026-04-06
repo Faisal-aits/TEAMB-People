@@ -20,8 +20,8 @@ const employeeController = {
         }
     },
 
-    // Get all employees
-   getAllEmployees: async (req, res) => {
+// Get all employees
+getAllEmployees: async (req, res) => {
     try {
         const filters = {};
         if (req.query.department_id) filters.department_id = req.query.department_id;
@@ -33,162 +33,247 @@ const employeeController = {
         console.log('Backend filters received:', req.query);
         console.log('Processed filters:', filters);
 
-        const employees = await Employee.getAll(req.tenantId, filters);
-        console.log(`Found ${employees.length} employees`);
+        let employees = await Employee.getAll(req.tenantId, filters);
+        console.log(`Found ${employees.length} employees before department filter`);
         
-        // Log first employee if exists
-        if (employees.length > 0) {
-            console.log('First employee sample:', {
-                id: employees[0].employee_id,
-                name: `${employees[0].first_name} ${employees[0].last_name}`,
-                role: employees[0].role_name,
-                is_active: employees[0].is_active
-            });
+        // Fetch departments for each employee and apply department filter
+        const filteredEmployees = [];
+        
+        for (let employee of employees) {
+            // Get departments for this employee
+            const [deptRows] = await pool.execute(
+                `SELECT d.id, d.name 
+                 FROM departments d 
+                 INNER JOIN employee_departments ed ON d.id = ed.department_id 
+                 WHERE ed.employee_id = ? AND d.tenant_id = ?`,
+                [employee.employee_id, req.tenantId]
+            );
+            
+            employee.department_ids = deptRows.map(d => d.id);
+            employee.department_names = deptRows.map(d => d.name);
+            
+            // Keep backward compatibility
+            if (deptRows.length > 0) {
+                employee.department_id = deptRows[0].id;
+                employee.department_name = deptRows[0].name;
+            }
+            
+            // Apply department filter if present
+            if (filters.department_id) {
+                // Check if employee belongs to the filtered department
+                const belongsToDepartment = employee.department_ids.includes(parseInt(filters.department_id));
+                if (belongsToDepartment) {
+                    filteredEmployees.push(employee);
+                }
+            } else {
+                filteredEmployees.push(employee);
+            }
         }
         
-        res.json({ employees });
+        const finalEmployees = filters.department_id ? filteredEmployees : employees;
+        console.log(`Found ${finalEmployees.length} employees after department filter`);
+        
+        res.json({ employees: finalEmployees });
     } catch (error) {
         console.error('Get employees error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 },
 
-    // Get employee by ID
-    getEmployee: async (req, res) => {
-        try {
-            const employee = await Employee.getById(req.tenantId, req.params.id);
-            if (!employee) {
-                return res.status(404).json({ message: 'Employee not found' });
-            }
-            res.json({ employee });
-        } catch (error) {
-            console.error('Get employee error:', error);
-            res.status(500).json({ message: 'Server error' });
+// Update getEmployee function
+getEmployee: async (req, res) => {
+    try {
+        const employee = await Employee.getById(req.tenantId, req.params.id);
+        if (!employee) {
+            return res.status(404).json({ message: 'Employee not found' });
         }
-    },
+        
+        // Fetch departments for this employee
+        const [deptRows] = await pool.execute(
+            `SELECT d.id, d.name 
+             FROM departments d 
+             INNER JOIN employee_departments ed ON d.id = ed.department_id 
+             WHERE ed.employee_id = ? AND d.tenant_id = ?`,
+            [req.params.id, req.tenantId]
+        );
+        
+        employee.department_ids = deptRows.map(d => d.id);
+        employee.department_names = deptRows.map(d => d.name);
+        
+        res.json({ employee });
+    } catch (error) {
+        console.error('Get employee error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+},
 
-    // Create new employee
-    createEmployee: async (req, res) => {
-        try {
-            const {
-                first_name, last_name, email, phone, department_id, position,
-                joining_date, date_of_birth, address, emergency_contact,
-                bank_account_number, ifsc_code, pan_number, aadhar_number,
-                employee_id, role_id
-            } = req.body;
+// Update createEmployee function
+createEmployee: async (req, res) => {
+    try {
+        const {
+            first_name, last_name, email, phone, department_ids, position,
+            joining_date, date_of_birth, address, emergency_contact,
+            bank_account_number, ifsc_code, pan_number, aadhar_number,
+            employee_id, role_id
+        } = req.body;
 
-            if (!first_name || !last_name || !email) {
-                return res.status(400).json({ message: 'First name, last name, and email are required' });
+        if (!first_name || !last_name || !email) {
+            return res.status(400).json({ message: 'First name, last name, and email are required' });
+        }
+
+        if (employee_id) {
+            const exists = await Employee.checkEmployeeIdExists(req.tenantId, employee_id);
+            if (exists) {
+                return res.status(400).json({ message: 'Employee ID already exists' });
             }
+        }
 
-            if (employee_id) {
-                const exists = await Employee.checkEmployeeIdExists(req.tenantId, employee_id);
-                if (exists) {
-                    return res.status(400).json({ message: 'Employee ID already exists' });
+        const rawPassword = crypto.randomBytes(4).toString('hex');
+        const password_hash = await bcrypt.hash(rawPassword, 10);
+
+        // Use first department as primary for backward compatibility
+        const primary_department_id = (department_ids && department_ids.length > 0) ? department_ids[0] : null;
+
+        const employeeData = {
+            first_name, last_name, email, password_hash,
+            phone: phone || null, department_id: primary_department_id, position: position || null,
+            joining_date: joining_date || null, date_of_birth: date_of_birth || null,
+            address: address || null, emergency_contact: emergency_contact || null,
+            bank_account_number: bank_account_number || null, ifsc_code: ifsc_code || null,
+            pan_number: pan_number || null, aadhar_number: aadhar_number || null,
+            employee_id: employee_id || null, role_id: role_id || null
+        };
+
+        const result = await Employee.create(req.tenantId, employeeData);
+        
+        // Handle multiple departments
+        if (department_ids && department_ids.length > 0) {
+            for (const deptId of department_ids) {
+                await pool.execute(
+                    'INSERT INTO employee_departments (employee_id, department_id, tenant_id) VALUES (?, ?, ?)',
+                    [result.employee_id, deptId, req.tenantId]
+                );
+            }
+        }
+
+        const [tenantRows] = await pool.execute('SELECT slug FROM tenants WHERE id = ?', [req.tenantId]);
+        const tenantSlug = tenantRows[0]?.slug || 'Organization';
+        const adminEmail = req.user?.email || process.env.SMTP_USER;
+
+        if (adminEmail) {
+            await sendEmployeeCredentials(adminEmail, tenantSlug, email, rawPassword, `${first_name} ${last_name}`);
+        }
+
+        res.status(201).json({ 
+            message: 'Employee created successfully! Their login credentials have been emailed to you.', 
+            user_id: result.user_id,
+            employee_id: result.employee_id
+        });
+
+    } catch (error) {
+        console.error('Create employee error:', error);
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(400).json({ message: 'Email already exists' });
+        }
+        if (error.message.includes('Employee ID already exists')) {
+            return res.status(400).json({ message: error.message });
+        }
+        res.status(500).json({ message: 'Server error: ' + error.message });
+    }
+},
+
+// Update updateEmployee function
+updateEmployee: async (req, res) => {
+    try {
+        const { id } = req.params;
+        const {
+            first_name, last_name, email, phone, is_active, department_ids, position,
+            joining_date, date_of_birth, address, emergency_contact,
+            bank_account_number, ifsc_code, pan_number, aadhar_number, role_id, employee_id
+        } = req.body;
+
+        const existingEmployee = await Employee.getById(req.tenantId, id);
+        if (!existingEmployee) {
+            return res.status(404).json({ message: 'Employee not found' });
+        }
+
+        // Use first department as primary for backward compatibility
+        const primary_department_id = (department_ids && department_ids.length > 0) ? department_ids[0] : null;
+
+        const employeeData = {
+            first_name, last_name, email, 
+            employee_id: employee_id || existingEmployee.employee_id,
+            phone: phone || null, is_active: is_active !== undefined ? is_active : true,
+            department_id: primary_department_id, position: position || null,
+            joining_date: joining_date || null, date_of_birth: date_of_birth || null,
+            address: address || null, emergency_contact: emergency_contact || null,
+            bank_account_number: bank_account_number || null, ifsc_code: ifsc_code || null,
+            pan_number: pan_number || null, aadhar_number: aadhar_number || null,
+            role_id: role_id || '3'
+        };
+
+        await Employee.update(req.tenantId, id, employeeData);
+        
+        // Update multiple departments
+        if (department_ids !== undefined) {
+            // Delete existing associations
+            await pool.execute(
+                'DELETE FROM employee_departments WHERE employee_id = ? AND tenant_id = ?',
+                [id, req.tenantId]
+            );
+            
+            // Insert new associations
+            if (department_ids && department_ids.length > 0) {
+                for (const deptId of department_ids) {
+                    await pool.execute(
+                        'INSERT INTO employee_departments (employee_id, department_id, tenant_id) VALUES (?, ?, ?)',
+                        [id, deptId, req.tenantId]
+                    );
                 }
             }
+        }
+        
+        res.json({ message: 'Employee updated successfully' });
 
-            const rawPassword = crypto.randomBytes(4).toString('hex');
-            const password_hash = await bcrypt.hash(rawPassword, 10);
+    } catch (error) {
+        console.error('Update employee error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+},
 
-            const employeeData = {
-                first_name, last_name, email, password_hash,
-                phone: phone || null, department_id: department_id || null, position: position || null,
-                joining_date: joining_date || null, date_of_birth: date_of_birth || null,
-                address: address || null, emergency_contact: emergency_contact || null,
-                bank_account_number: bank_account_number || null, ifsc_code: ifsc_code || null,
-                pan_number: pan_number || null, aadhar_number: aadhar_number || null,
-                employee_id: employee_id || null, role_id: role_id || null
-            };
+// Update deleteEmployee function to clean up department associations
+deleteEmployee: async (req, res) => {
+    try {
+        const { id } = req.params;
+        const existingEmployee = await Employee.getById(req.tenantId, id);
+        if (!existingEmployee) {
+            return res.status(404).json({ message: 'Employee not found' });
+        }
 
-            const result = await Employee.create(req.tenantId, employeeData);
+        // Delete department associations first
+        await pool.execute(
+            'DELETE FROM employee_departments WHERE employee_id = ? AND tenant_id = ?',
+            [id, req.tenantId]
+        );
 
-            // Fetch tenant slug to use as Organization ID
-            const [tenantRows] = await pool.execute('SELECT slug FROM tenants WHERE id = ?', [req.tenantId]);
-            const tenantSlug = tenantRows[0]?.slug || 'Organization';
+        await Employee.delete(req.tenantId, id);
+        res.json({ message: 'Employee deleted successfully' });
 
-            // req.user has the email of the logged-in admin or HR
-            const adminEmail = req.user?.email || process.env.SMTP_USER;
-
-            if (adminEmail) {
-                await sendEmployeeCredentials(adminEmail, tenantSlug, email, rawPassword, `${first_name} ${last_name}`);
-            }
-
-            res.status(201).json({ 
-                message: 'Employee created successfully! Their login credentials have been emailed to you.', 
-                user_id: result.user_id,
-                employee_id: result.employee_id
+    } catch (error) {
+        console.error('Delete employee error:', error);
+        if (error.code === 'ER_ROW_IS_REFERENCED_2') {
+            return res.status(400).json({ 
+                message: 'Cannot delete this employee because they have associated records (attendance, tasks, etc.). Please edit and change their status to INACTIVE instead.' 
             });
-
-        } catch (error) {
-            console.error('Create employee error:', error);
-            if (error.code === 'ER_DUP_ENTRY') {
-                return res.status(400).json({ message: 'Email already exists' });
-            }
-            if (error.message.includes('Employee ID already exists')) {
-                return res.status(400).json({ message: error.message });
-            }
-            res.status(500).json({ message: 'Server error: ' + error.message });
         }
-    },
+        res.status(500).json({ message: 'Server error' });
+    }
+},
 
-    // Update employee
-    updateEmployee: async (req, res) => {
-        try {
-            const { id } = req.params;
-            const {
-                first_name, last_name, email, phone, is_active, department_id, position,
-                joining_date, date_of_birth, address, emergency_contact,
-                bank_account_number, ifsc_code, pan_number, aadhar_number, role_id
-            } = req.body;
+  
 
-            const existingEmployee = await Employee.getById(req.tenantId, id);
-            if (!existingEmployee) {
-                return res.status(404).json({ message: 'Employee not found' });
-            }
+   
 
-            const employeeData = {
-                first_name, last_name, email,
-                phone: phone || null, is_active: is_active !== undefined ? is_active : true,
-                department_id: department_id || null, position: position || null,
-                joining_date: joining_date || null, date_of_birth: date_of_birth || null,
-                address: address || null, emergency_contact: emergency_contact || null,
-                bank_account_number: bank_account_number || null, ifsc_code: ifsc_code || null,
-                pan_number: pan_number || null, aadhar_number: aadhar_number || null,
-                role_id: role_id || '3'
-            };
-
-            await Employee.update(req.tenantId, id, employeeData);
-            res.json({ message: 'Employee updated successfully' });
-
-        } catch (error) {
-            console.error('Update employee error:', error);
-            res.status(500).json({ message: 'Server error' });
-        }
-    },
-
-    // Delete employee
-    deleteEmployee: async (req, res) => {
-        try {
-            const { id } = req.params;
-            const existingEmployee = await Employee.getById(req.tenantId, id);
-            if (!existingEmployee) {
-                return res.status(404).json({ message: 'Employee not found' });
-            }
-
-            await Employee.delete(req.tenantId, id);
-            res.json({ message: 'Employee deleted successfully' });
-
-        } catch (error) {
-            console.error('Delete employee error:', error);
-            if (error.code === 'ER_ROW_IS_REFERENCED_2') {
-                return res.status(400).json({ 
-                    message: 'Cannot delete this employee because they have associated records (attendance, tasks, etc.). Please edit and change their status to INACTIVE instead.' 
-                });
-            }
-            res.status(500).json({ message: 'Server error' });
-        }
-    },
 
     // Get departments
     getDepartments: async (req, res) => {

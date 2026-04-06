@@ -61,33 +61,36 @@ const reportController = {
         }
     },
 
-    // Update report - with access control
-    updateReport: async (req, res) => {
-        try {
-            const { date_generated, description } = req.body;
-            const reportId = req.params.id;
-            const userId = req.user.id;
-            const userRole = req.user.role_name; // ← was req.user.role
+   // Update report - with access control
+updateReport: async (req, res) => {
+    try {
+        const { date_generated, description } = req.body;
+        const reportId = req.params.id;
+        const userId = req.user.id;
+        const userRole = req.user.role_name;
 
-            if (!date_generated || !description) {
-                return res.status(400).json({ message: 'Date and description are required' });
-            }
+        console.log('Update request received:', { reportId, date_generated, description, userId, userRole });
 
-            const affectedRows = await Report.update(
-                req.tenantId, reportId, { date_generated, description }, userId, userRole
-            );
-
-            if (affectedRows === 0) {
-                return res.status(404).json({ message: 'Report not found or access denied' });
-            }
-
-            res.json({ message: 'Report updated successfully' });
-        } catch (error) {
-            console.error('Update report error:', error);
-            res.status(500).json({ message: 'Server error while updating report' });
+        if (!date_generated || !description) {
+            return res.status(400).json({ message: 'Date and description are required' });
         }
-    },
 
+        const affectedRows = await Report.update(
+            req.tenantId, reportId, { date_generated, description }, userId, userRole
+        );
+
+        console.log('Update affected rows:', affectedRows);
+
+        if (affectedRows === 0) {
+            return res.status(404).json({ message: 'Report not found or access denied' });
+        }
+
+        res.json({ message: 'Report updated successfully' });
+    } catch (error) {
+        console.error('Update report error:', error);
+        res.status(500).json({ message: 'Server error while updating report: ' + error.message });
+    }
+},
     // Delete report - with access control
     deleteReport: async (req, res) => {
         try {
