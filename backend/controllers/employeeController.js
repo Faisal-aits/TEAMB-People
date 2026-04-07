@@ -36,32 +36,53 @@ getAllEmployees: async (req, res) => {
         let employees = await Employee.getAll(req.tenantId, filters);
         console.log(`Found ${employees.length} employees before department filter`);
         
+        // Detect whether many-to-many department mapping table exists.
+        // Production may still be on a schema that only has employee_details.department_id.
+        let hasEmployeeDepartmentsTable = true;
+        try {
+            await pool.execute('SELECT 1 FROM employee_departments LIMIT 1');
+        } catch (tableError) {
+            if (tableError.code === 'ER_NO_SUCH_TABLE') {
+                hasEmployeeDepartmentsTable = false;
+                console.warn('employee_departments table not found; using single department fallback.');
+            } else {
+                throw tableError;
+            }
+        }
+
         // Fetch departments for each employee and apply department filter
         const filteredEmployees = [];
         
         for (let employee of employees) {
-            // Get departments for this employee
-            const [deptRows] = await pool.execute(
-                `SELECT d.id, d.name 
-                 FROM departments d 
-                 INNER JOIN employee_departments ed ON d.id = ed.department_id 
-                 WHERE ed.employee_id = ? AND d.tenant_id = ?`,
-                [employee.employee_id, req.tenantId]
-            );
-            
-            employee.department_ids = deptRows.map(d => d.id);
-            employee.department_names = deptRows.map(d => d.name);
-            
-            // Keep backward compatibility
-            if (deptRows.length > 0) {
-                employee.department_id = deptRows[0].id;
-                employee.department_name = deptRows[0].name;
+            if (hasEmployeeDepartmentsTable) {
+                // Get departments for this employee from mapping table
+                const [deptRows] = await pool.execute(
+                    `SELECT d.id, d.name 
+                     FROM departments d 
+                     INNER JOIN employee_departments ed ON d.id = ed.department_id 
+                     WHERE ed.employee_id = ? AND d.tenant_id = ?`,
+                    [employee.employee_id, req.tenantId]
+                );
+
+                employee.department_ids = deptRows.map(d => d.id);
+                employee.department_names = deptRows.map(d => d.name);
+
+                // Keep backward compatibility
+                if (deptRows.length > 0) {
+                    employee.department_id = deptRows[0].id;
+                    employee.department_name = deptRows[0].name;
+                }
+            } else {
+                // Fallback to single-department schema
+                employee.department_ids = employee.department_id ? [employee.department_id] : [];
+                employee.department_names = employee.department_name ? [employee.department_name] : [];
             }
             
             // Apply department filter if present
             if (filters.department_id) {
                 // Check if employee belongs to the filtered department
-                const belongsToDepartment = employee.department_ids.includes(parseInt(filters.department_id));
+                const filterDepartmentId = parseInt(filters.department_id, 10);
+                const belongsToDepartment = employee.department_ids.includes(filterDepartmentId);
                 if (belongsToDepartment) {
                     filteredEmployees.push(employee);
                 }
@@ -88,17 +109,26 @@ getEmployee: async (req, res) => {
             return res.status(404).json({ message: 'Employee not found' });
         }
         
-        // Fetch departments for this employee
-        const [deptRows] = await pool.execute(
-            `SELECT d.id, d.name 
-             FROM departments d 
-             INNER JOIN employee_departments ed ON d.id = ed.department_id 
-             WHERE ed.employee_id = ? AND d.tenant_id = ?`,
-            [req.params.id, req.tenantId]
-        );
-        
-        employee.department_ids = deptRows.map(d => d.id);
-        employee.department_names = deptRows.map(d => d.name);
+        // Fetch departments from mapping table when available; otherwise fallback.
+        try {
+            const [deptRows] = await pool.execute(
+                `SELECT d.id, d.name 
+                 FROM departments d 
+                 INNER JOIN employee_departments ed ON d.id = ed.department_id 
+                 WHERE ed.employee_id = ? AND d.tenant_id = ?`,
+                [req.params.id, req.tenantId]
+            );
+
+            employee.department_ids = deptRows.map(d => d.id);
+            employee.department_names = deptRows.map(d => d.name);
+        } catch (tableError) {
+            if (tableError.code === 'ER_NO_SUCH_TABLE') {
+                employee.department_ids = employee.department_id ? [employee.department_id] : [];
+                employee.department_names = employee.department_name ? [employee.department_name] : [];
+            } else {
+                throw tableError;
+            }
+        }
         
         res.json({ employee });
     } catch (error) {
