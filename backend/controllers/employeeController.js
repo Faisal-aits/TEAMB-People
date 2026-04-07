@@ -272,7 +272,34 @@ deleteEmployee: async (req, res) => {
 
   
 
-   
+    // Reset employee password
+    resetPassword: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { new_password } = req.body;
+
+            if (!new_password) {
+                return res.status(400).json({ message: 'New password is required' });
+            }
+
+            const existingEmployee = await Employee.getById(req.tenantId, id);
+            if (!existingEmployee) {
+                return res.status(404).json({ message: 'Employee not found' });
+            }
+
+            const password_hash = await bcrypt.hash(new_password, 10);
+            
+            await pool.execute(
+                'UPDATE users SET password_hash = ? WHERE id = ? AND tenant_id = ?',
+                [password_hash, existingEmployee.user_id, req.tenantId]
+            );
+
+            res.json({ message: 'Password reset successfully' });
+        } catch (error) {
+            console.error('Reset password error:', error);
+            res.status(500).json({ message: 'Server error' });
+        }
+    },
 
 
     // Get departments

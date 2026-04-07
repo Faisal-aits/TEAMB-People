@@ -660,3 +660,129 @@
   background-color: #4CAF50;
   color: white;
 }
+
+/* Reset Password Specific Styles - Minimal & Professional */
+.reset-pass-section {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #edf2f7;
+}
+
+.admin-action-label {
+  display: block;
+  font-size: 0.75rem;
+  color: #718096;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.75rem;
+}
+
+.minimal-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.625rem 1.25rem;
+  background: white;
+  color: #d97706; /* Dark amber for visibility without being aggressive */
+  border: 1px solid #fbbf24;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.minimal-reset-btn:hover {
+  background: #fffbeb;
+  border-color: #f59e0b;
+  color: #b45309;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.minimal-reset-btn:active {
+  transform: translateY(0);
+}
+
+.password-modal {
+  max-width: 480px !important;
+}
+
+.password-modal-content {
+  padding: 1.5rem !important;
+}
+
+.password-input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-group input {
+  padding-right: 3rem !important;
+}
+
+.password-toggle-icon {
+  position: absolute;
+  right: 0.75rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  cursor: pointer;
+  padding: 2px 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.password-toggle-icon:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+  border-color: #cbd5e0;
+}
+
+.reset-help-text {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #64748b;
+  line-height: 1.5;
+  background: #f8fafc;
+  padding: 0.75rem;
+  border-radius: 6px;
+  border-left: 3px solid #fbbf24;
+}
+
+.reset-summary-card {
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.reset-summary-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.reset-summary-item:last-child {
+  margin-bottom: 0;
+}
+
+.reset-summary-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.reset-summary-value {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #1e293b;
+}

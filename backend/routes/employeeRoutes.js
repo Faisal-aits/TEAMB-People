@@ -34,6 +34,9 @@ router.post('/', employeeController.createEmployee);
 // PUT /api/employees/:id - Update employee
 router.put('/:id', employeeController.updateEmployee);
 
+// POST /api/employees/:id/reset-password - Reset employee password (admin/hr restricted handled externally or via token check)
+router.post('/:id/reset-password', authMiddleware.requireRole(['admin']), employeeController.resetPassword);
+
 // DELETE /api/employees/:id - Delete employee
 router.delete('/:id', employeeController.deleteEmployee);
 

@@ -1,7 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
-/* Projects.css - Complete CSS for Project Management System */
-
+﻿/* Projects.css - Complete CSS for Project Management System */
 
 /* ==================== MAIN CONTAINER ==================== */
 /* Add to Projects.css */
@@ -709,32 +706,26 @@
     opacity: 0;
     transform: translateY(10px);
   }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  
+  .proj-header-actions {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .proj-excel-btn,
+  .proj-import-btn {
+    padding: 8px 15px;
+    font-size: 12px;
+  }
+  
+  .employee-list {
+    max-height: 150px;
+  }
+  
+  .member-badge {
+    font-size: 10px;
   }
 }
-
-.proj-header-actions {
-  width: 100%;
-  justify-content: center;
-}
-
-.proj-excel-btn,
-.proj-import-btn {
-  padding: 8px 15px;
-  font-size: 12px;
-}
-
-.employee-list {
-  max-height: 150px;
-}
-
-.member-badge {
-  font-size: 10px;
-}
-
 /* Add to Projects.css */
 
 /* Review Status Badges */

@@ -3,7 +3,7 @@ import './Expense.css';
 import { expenseAPI } from '../../../services/expenseAPI';
 import * as XLSX from 'xlsx';
 
-const API_URL = 'http://localhost:3000';
+import { API_BASE_URL as API_URL } from '../../../services/api';
 
 const ExpenseTable = () => {
   const [expenses, setExpenses] = useState([]);

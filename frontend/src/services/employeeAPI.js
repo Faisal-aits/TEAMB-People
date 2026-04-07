@@ -23,6 +23,9 @@ export const employeeAPI = {
   // Delete employee
   delete: (id) => api.delete(`/employees/${id}`),
 
+  // Reset employee password
+  resetPassword: (id, data) => api.post(`/employees/${id}/reset-password`, data),
+
   // Get roles for this tenant
   getRoles: () => api.get('/employees/roles'),
 

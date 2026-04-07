@@ -11,7 +11,8 @@ const Reports = () => {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [filters, setFilters] = useState({
     dateFrom: '',
-    dateTo: ''
+    dateTo: '',
+    employeeName: ''
   });
   const [reportFormData, setReportFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -65,6 +66,14 @@ const Reports = () => {
       );
     }
 
+    // Employee name filter
+    if (filters.employeeName) {
+      const searchTerm = filters.employeeName.toLowerCase();
+      filtered = filtered.filter(report => 
+        report.generated_by_name && report.generated_by_name.toLowerCase().includes(searchTerm)
+      );
+    }
+
     // Sort by newest first (default)
     filtered.sort((a, b) => new Date(b.date_generated) - new Date(a.date_generated));
 
@@ -75,7 +84,8 @@ const Reports = () => {
   const clearFilters = () => {
     setFilters({
       dateFrom: '',
-      dateTo: ''
+      dateTo: '',
+      employeeName: ''
     });
   };
 
@@ -211,7 +221,16 @@ const Reports = () => {
               <h3 className="reports-table-title">All Reports</h3>
             </div>
             <div className="filter-controls-header">
-  <div className="date-filter-group">
+  <div className="date-filter-group" style={{ display: 'flex', gap: '10px' }}>
+    <input
+      type="text"
+      name="employeeName"
+      value={filters.employeeName}
+      onChange={handleFilterChange}
+      className="date-filter-input"
+      placeholder="Search Employee..."
+      style={{ minWidth: '150px' }}
+    />
     <input
       type="date"
       name="dateFrom"
@@ -220,7 +239,7 @@ const Reports = () => {
       className="date-filter-input"
       placeholder="From"
     />
-    <span className="date-separator">to</span>
+    <span className="date-separator" style={{ alignSelf: 'center' }}>to</span>
     <input
       type="date"
       name="dateTo"
@@ -243,6 +262,7 @@ const Reports = () => {
             <thead>
               <tr>
                 <th>Date</th>
+                <th>Employee</th>
                 <th>Description</th>
                 <th>Actions</th>
               </tr>
@@ -253,6 +273,11 @@ const Reports = () => {
                   <td>
                     <div className="reports-date-cell">
                       {new Date(report.date_generated).toLocaleDateString()}
+                    </div>
+                  </td>
+                  <td>
+                    <div className="reports-employee-cell" style={{ fontWeight: '500' }}>
+                      {report.generated_by_name || 'Unknown'}
                     </div>
                   </td>
                   <td>

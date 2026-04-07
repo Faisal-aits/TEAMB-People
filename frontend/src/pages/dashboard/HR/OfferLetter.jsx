@@ -9,6 +9,22 @@ import { HiOutlineDocumentText, HiOutlineUserGroup, HiOutlineBriefcase, HiOutlin
 import offerLetterAPI from "../../../services/offerLetterAPI";
 import brandingAPI from "../../../services/brandingAPI";
 
+// Helper function to convert number to words (Indian numbering system)
+const numberToWords = (num) => {
+  if (!num || isNaN(num) || num <= 0) return "";
+  const a = ["", "One ", "Two ", "Three ", "Four ", "Five ", "Six ", "Seven ", "Eight ", "Nine ", "Ten ", "Eleven ", "Twelve ", "Thirteen ", "Fourteen ", "Fifteen ", "Sixteen ", "Seventeen ", "Eighteen ", "Nineteen "];
+  const b = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+  const n = ("000000000" + num).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
+  if (!n) return "";
+  let str = "";
+  str += (n[1] != 0) ? (a[Number(n[1])] || b[n[1][0]] + " " + a[n[1][1]]) + "Crore " : "";
+  str += (n[2] != 0) ? (a[Number(n[2])] || b[n[2][0]] + " " + a[n[2][1]]) + "Lakh " : "";
+  str += (n[3] != 0) ? (a[Number(n[3])] || b[n[3][0]] + " " + a[n[3][1]]) + "Thousand " : "";
+  str += (n[4] != 0) ? (a[Number(n[4])] || b[n[4][0]] + " " + a[n[4][1]]) + "Hundred " : "";
+  str += (n[5] != 0) ? ((str != "") ? "and " : "") + (a[Number(n[5])] || b[n[5][0]] + " " + a[n[5][1]]) : "";
+  return str.trim();
+};
+
 const OfferLetter = () => {
   const [employees, setEmployees] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState("");
@@ -344,10 +360,13 @@ const OfferLetter = () => {
             </div>
 
             <label style={labelStyle}>Annual CTC</label>
-            <input placeholder="e.g. 96,000" value={formData.ctc} onChange={(e) => setFormData({ ...formData, ctc: e.target.value })} style={inputStyle} />
+            <input placeholder="e.g. 96000" value={formData.ctc} onChange={(e) => {
+              const val = e.target.value;
+              setFormData({ ...formData, ctc: val, ctcInWords: numberToWords(val) });
+            }} style={inputStyle} type="number" />
 
             <label style={labelStyle}>CTC in Words</label>
-            <input placeholder="e.g. Ninety Six Thousand" value={formData.ctcInWords} onChange={(e) => setFormData({ ...formData, ctcInWords: e.target.value })} style={inputStyle} />
+            <input placeholder="Auto generated or enter manually" value={formData.ctcInWords} onChange={(e) => setFormData({ ...formData, ctcInWords: e.target.value })} style={inputStyle} />
           </section>
         </div>
 
