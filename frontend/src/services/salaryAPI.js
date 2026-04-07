@@ -18,7 +18,10 @@ export const salaryAPI = {
   getById: (id) => api.get(`/salary/records/${id}`),
 
   // Create new salary record
-  create: (salaryData) => api.post('/salary/records', salaryData),
+  create: (salaryData) => {
+    console.log('API create called with:', salaryData);
+    return api.post('/salary/records', salaryData);
+  },
 
   // Update salary record
   update: (id, salaryData) => api.put(`/salary/records/${id}`, salaryData),
@@ -35,7 +38,7 @@ export const salaryAPI = {
   // Generate payslip PDF download
   generatePayslip: (id) => {
     return api.get(`/salary/payslip/${id}`, {
-      responseType: 'blob' // Important for file download
+      responseType: 'blob'
     });
   },
 

@@ -10,6 +10,7 @@ const storage = multer.diskStorage({
         const tenantId = req.tenantId;
         const uploadDir = path.join(__dirname, '..', 'uploads', 'branding', String(tenantId), 'letters', 'resignation');
         
+        // Ensure directory exists
         if (!fs.existsSync(uploadDir)) {
             fs.mkdirSync(uploadDir, { recursive: true });
         }
@@ -17,13 +18,14 @@ const storage = multer.diskStorage({
     },
     filename: (req, file, cb) => {
         const resignationId = req.params.id;
-        cb(null, `${resignationId}.pdf`);
+        // Add timestamp to avoid caching issues
+        cb(null, `${resignationId}_${Date.now()}.pdf`);
     }
 });
 
 const upload = multer({
     storage,
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
+    limits: { fileSize: 50 * 1024 * 1024 }, // Increase to 50MB (from 10MB)
     fileFilter: (req, file, cb) => {
         if (file.mimetype === 'application/pdf') {
             cb(null, true);
@@ -87,7 +89,6 @@ const resignationController = {
         }
     },
 
-    // GET /api/resignation-requests/my
     getMyRequests: async (req, res) => {
         try {
             const tenantId = req.tenantId;
@@ -107,13 +108,13 @@ const resignationController = {
         }
     },
 
-    // GET /api/resignation-requests
     getAllRequests: async (req, res) => {
         try {
             const tenantId = req.tenantId;
             
             const [requests] = await pool.execute(
-                `SELECT r.*, u.first_name, u.last_name, d.name as department, ed.position as designation 
+                `SELECT r.*, u.first_name, u.last_name, d.name as department, ed.position as designation,
+                ed.joining_date
                  FROM resignation_requests r
                  JOIN employee_details ed ON r.employee_id = ed.id
                  JOIN users u ON ed.user_id = u.id
@@ -130,7 +131,6 @@ const resignationController = {
         }
     },
 
-    // GET /api/resignation-requests/:id
     getRequestById: async (req, res) => {
         try {
             const tenantId = req.tenantId;
@@ -157,24 +157,52 @@ const resignationController = {
         }
     },
 
-    // PUT /api/resignation-requests/:id/accept
     acceptRequest: async (req, res) => {
         try {
             const tenantId = req.tenantId;
             const { id } = req.params;
             const { accepted_last_day, hr_note } = req.body;
 
-            console.log('ACCEPT DEBUG:', { id, tenantId, accepted_last_day, hasFile: !!req.file });
+            console.log('ACCEPT DEBUG - Request params:', { id, tenantId });
+            console.log('ACCEPT DEBUG - Body:', { accepted_last_day, hr_note });
+            console.log('ACCEPT DEBUG - File:', req.file ? {
+                filename: req.file.filename,
+                path: req.file.path,
+                size: req.file.size
+            } : 'No file received');
 
+            // Check if file was uploaded
             if (!req.file) {
+                console.error('No PDF file in request');
                 return res.status(400).json({ success: false, message: 'PDF document is required' });
             }
 
+            // Construct the URL for the PDF
             const letter_url = `/uploads/branding/${tenantId}/letters/resignation/${req.file.filename}`;
+            console.log('ACCEPT DEBUG - Letter URL:', letter_url);
 
+            // First, check if the request exists and is pending
+            const [checkResult] = await pool.execute(
+                'SELECT id, status FROM resignation_requests WHERE id = ? AND tenant_id = ?',
+                [id, tenantId]
+            );
+
+            if (checkResult.length === 0) {
+                return res.status(404).json({ success: false, message: 'Request not found' });
+            }
+
+            if (checkResult[0].status !== 'pending') {
+                return res.status(400).json({ success: false, message: `Request is already ${checkResult[0].status}` });
+            }
+
+            // Update the request
             const [result] = await pool.execute(
                 `UPDATE resignation_requests 
-                 SET status = 'accepted', accepted_last_day = ?, hr_note = ?, letter_url = ?, letter_generated_at = NOW() 
+                 SET status = 'accepted', 
+                     accepted_last_day = ?, 
+                     hr_note = ?, 
+                     letter_url = ?, 
+                     letter_generated_at = NOW() 
                  WHERE id = ? AND tenant_id = ? AND status = 'pending'`,
                 [accepted_last_day || null, hr_note || null, letter_url, id, tenantId]
             );
@@ -182,17 +210,30 @@ const resignationController = {
             console.log('SQL UPDATE RESULT:', result);
 
             if (result.affectedRows === 0) {
-                return res.status(404).json({ success: false, message: 'Request not found or not in pending state' });
+                return res.status(404).json({ success: false, message: 'Failed to update request' });
             }
 
-            res.json({ success: true, message: 'Resignation accepted and letter generated.', letter_url });
+            // Return success with the letter URL
+            res.json({ 
+                success: true, 
+                message: 'Resignation accepted and letter generated.',
+                letter_url: letter_url 
+            });
+            
         } catch (error) {
             console.error('ACCEPT ERROR:', error);
+            // If there was an error and a file was uploaded, clean it up
+            if (req.file && req.file.path) {
+                try {
+                    fs.unlinkSync(req.file.path);
+                } catch (unlinkError) {
+                    console.error('Error cleaning up file:', unlinkError);
+                }
+            }
             res.status(500).json({ success: false, message: 'Failed to accept request: ' + error.message });
         }
     },
 
-    // PUT /api/resignation-requests/:id/reject
     rejectRequest: async (req, res) => {
         try {
             const tenantId = req.tenantId;
@@ -224,4 +265,5 @@ const resignationController = {
     uploadPDFMiddleware: upload.single('pdf')
 };
 
+// IMPORTANT: Make sure module.exports is correct
 module.exports = resignationController;

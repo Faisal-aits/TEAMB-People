@@ -90,15 +90,6 @@ const ProjectManagement = () => {
     completedProjects: 0
   });
 
-  const filterTasksByMonth = (tasks, month, year) => {
-    return tasks.filter(task => {
-      if (!task.created_at && !task.due_date) return true;
-      const taskDate = task.created_at ? new Date(task.created_at) : (task.due_date ? new Date(task.due_date) : null);
-      if (!taskDate) return true;
-      return taskDate.getMonth() === month && taskDate.getFullYear() === year;
-    });
-  };
-
   const phases = ['Requirement Specification', 'System Design', 'Development', 'Integration & Testing', 'Deployment', 'Maintenance & Repeat Cycle'];
   const projectStatuses = ['On Track', 'Delayed', 'At Risk', 'Completed', 'On Hold'];
   const taskPriorities = ['High', 'Medium', 'Low'];
@@ -111,9 +102,6 @@ const ProjectManagement = () => {
       try {
         const userData = JSON.parse(localStorage.getItem('user'));
         if (userData) {
-          const userId = userData.employee_id || userData.id || userData.user_id;
-          // console.log('User ID:', userId);
-          
           setCurrentUser({
             id: userData.employee_id || userData.id,
             employeeId: userData.employee_id || userData.id,
@@ -143,8 +131,8 @@ const ProjectManagement = () => {
     }
   }, [projects, currentUser.name]);
 
- // Load teams when project is selected
-useEffect(() => {
+  // Load teams when project is selected
+  useEffect(() => {
     if (taskFormData.project_id) {
       const projectTeams = teams.filter(t => t.project_id === parseInt(taskFormData.project_id));
       setSelectedProjectTeams(projectTeams);
@@ -152,8 +140,8 @@ useEffect(() => {
       setAvailableTeamMembers([]);
       setSelectedTaskEmployees([]);
     } else {
-        setSelectedProjectTeams([]);
-        setAvailableTeamMembers([]);
+      setSelectedProjectTeams([]);
+      setAvailableTeamMembers([]);
     }
   }, [taskFormData.project_id, teams]);
 
@@ -170,13 +158,14 @@ useEffect(() => {
   // Set project_id when opening task modal
   useEffect(() => {
     if (isTaskModalOpen && selectedProject?.id) {
-        setTaskFormData(prev => ({
-            ...prev,
-            project_id: selectedProject.id
-        }));
+      setTaskFormData(prev => ({
+        ...prev,
+        project_id: selectedProject.id
+      }));
     }
-}, [isTaskModalOpen, selectedProject]);
-const loadTeamMembers = async (teamId) => {
+  }, [isTaskModalOpen, selectedProject]);
+
+  const loadTeamMembers = async (teamId) => {
     try {
       setLoadingTeamMembers(true);
       
@@ -192,14 +181,12 @@ const loadTeamMembers = async (teamId) => {
           email: member.email || ''
         }));
         
-        console.log('Formatted members:', formattedMembers);
         setAvailableTeamMembers(formattedMembers);
         setLoadingTeamMembers(false);
         return;
       }
       
       const response = await projectAPI.getTeamMembers(teamId);
-      
       let membersList = [];
       
       if (response.data && response.data.success && response.data.data) {
@@ -211,7 +198,6 @@ const loadTeamMembers = async (teamId) => {
       }
       
       if (membersList.length === 0) {
-        console.warn(`⚠️ No members found for team ${teamId}`);
         setAvailableTeamMembers([]);
         setLoadingTeamMembers(false);
         return;
@@ -237,30 +223,28 @@ const loadTeamMembers = async (teamId) => {
       );
       
     } catch (err) {
-        console.error('Error fetching team members:', err);
-        setAvailableTeamMembers([]);
+      console.error('Error fetching team members:', err);
+      setAvailableTeamMembers([]);
     } finally {
-        setLoadingTeamMembers(false);
+      setLoadingTeamMembers(false);
     }
-};
+  };
 
- const fetchAllData = async () => {
+  const fetchAllData = async () => {
     try {
       setLoading(true);
 
-        const [projectsRes, statsRes, employeesRes, departmentsRes, teamsRes, tasksRes] = await Promise.allSettled([
-            projectAPI.getAll(),
-            projectAPI.getStats(),
-            projectAPI.getEmployees(),
-            projectAPI.getDepartments(),
-            projectAPI.getAllTeams(),
-            projectAPI.getAllTasks()
-        ]);
+      const [projectsRes, statsRes, employeesRes, departmentsRes, teamsRes, tasksRes] = await Promise.allSettled([
+        projectAPI.getAll(),
+        projectAPI.getStats(),
+        projectAPI.getEmployees(),
+        projectAPI.getDepartments(),
+        projectAPI.getAllTeams(),
+        projectAPI.getAllTasks()
+      ]);
 
       if (projectsRes.status === 'fulfilled' && projectsRes.value?.data?.success) {
         setProjects(projectsRes.value.data.data || []);
-      } else if (projectsRes.status === 'rejected') {
-        console.error('Projects API failed:', projectsRes.reason);
       }
 
       if (statsRes.status === 'fulfilled' && statsRes.value?.data?.success) {
@@ -284,14 +268,11 @@ const loadTeamMembers = async (teamId) => {
         } else {
           setEmployees([]);
         }
-      } else if (employeesRes.status === 'rejected') {
-        console.error('Employees API request failed:', employeesRes.reason);
-        setEmployees([]);
       }
 
-        if (departmentsRes.status === 'fulfilled' && departmentsRes.value?.data?.success) {
-            setDepartments(departmentsRes.value.data.data || []);
-        }
+      if (departmentsRes.status === 'fulfilled' && departmentsRes.value?.data?.success) {
+        setDepartments(departmentsRes.value.data.data || []);
+      }
 
       if (teamsRes.status === 'fulfilled' && teamsRes.value?.data?.success) {
         const teamsData = teamsRes.value.data.data || [];
@@ -303,14 +284,14 @@ const loadTeamMembers = async (teamId) => {
         setTasks(tasksData);
       }
 
-        setError('');
+      setError('');
     } catch (err) {
-        console.error('Error fetching data:', err);
-        setError('Failed to load data. Please refresh the page.');
+      console.error('Error fetching data:', err);
+      setError('Failed to load data. Please refresh the page.');
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
-};
+  };
 
   const getUserProjects = () => {
     if (currentUser.role === 'hr') return projects;
@@ -523,190 +504,6 @@ const loadTeamMembers = async (teamId) => {
   const formatDate = (date) => {
     if (!date) return 'Not set';
     return new Date(date).toLocaleDateString();
-  };
-
-  const handleEmployeeSelection = (employeeId) => {
-    if (!employeeId || employeeId === 'null' || employeeId === 'undefined' || employeeId === '') {
-      console.warn('Invalid employee ID attempted:', employeeId);
-      return;
-    }
-    
-    const id = String(employeeId).trim();
-    setSelectedEmployees(prev => 
-      prev.includes(id) ? prev.filter(eid => eid !== id) : [...prev, id]
-    );
-  };
-
-  const handleCreateTeam = async (e) => {
-    e.preventDefault();
-    
-    console.log('=== CREATING TEAM ===');
-    console.log('Team Name:', teamFormData.name);
-    console.log('Project ID:', teamFormData.project_id);
-    console.log('Selected Employees (RAW):', selectedEmployees);
-    
-    if (!teamFormData.name) {
-      alert('Team name is required');
-      return;
-    }
-    if (!teamFormData.project_id) {
-      alert('Please select a project for this team');
-      return;
-    }
-    
-    const validMembers = selectedEmployees.filter(id => {
-      return id && id !== 'null' && id !== 'undefined' && id !== '' && id !== null;
-    });
-    
-    console.log('Valid Members after filtering:', validMembers);
-    
-    if (validMembers.length === 0) {
-      alert('Please select at least one valid team member');
-      return;
-    }
-
-    try {
-      const teamData = {
-        name: teamFormData.name,
-        project_id: parseInt(teamFormData.project_id),
-        team_lead_id: teamFormData.team_lead_id ? parseInt(teamFormData.team_lead_id) : null,
-        description: teamFormData.description || '',
-        status: 'Active',
-        members: validMembers
-      };
-      
-      console.log('Sending to backend:', teamData);
-      
-      const response = await projectAPI.createTeam(teamData);
-      console.log('Response:', response.data);
-      
-      if (response.data.success) {
-        setTeamFormData({ 
-          name: '', 
-          team_lead_id: '', 
-          project_id: '', 
-          description: '', 
-          members: [] 
-        });
-        setSelectedEmployees([]);
-        setIsTeamModalOpen(false);
-        await fetchAllData();
-        alert(response.data.message);
-        setActiveTab('teams');
-      } else {
-        alert(response.data.message || 'Failed to create team');
-      }
-    } catch (error) {
-      console.error('Error creating team:', error);
-      alert(error.response?.data?.message || 'Failed to create team');
-    }
-  };
-
-const handleCreateTask = async (e) => {
-    e.preventDefault();
-    
-    console.log('=== CREATING TASK ===');
-    console.log('Task Form Data:', taskFormData);
-    console.log('Selected Task Employees (selectedTaskEmployees):', selectedTaskEmployees);
-    console.log('Available Team Members:', availableTeamMembers);
-    
-    if (!taskFormData.title || !taskFormData.title.trim()) {
-        alert('Task title is required');
-        return;
-    }
-    if (!taskFormData.project_id) {
-        alert('Project is required');
-        return;
-    }
-    if (selectedTaskEmployees.length === 0) {
-        alert('Please select at least one employee to assign this task to');
-        return;
-    }
-
-    try {
-        let createdCount = 0;
-        
-        for (const userId of selectedTaskEmployees) {
-            console.log(`\n--- Creating task for user_id: ${userId} ---`);
-            
-            // Find the member details to verify
-            const memberDetails = availableTeamMembers.find(m => m.user_id === userId);
-            console.log('Member details found:', memberDetails);
-            
-            const taskData = {
-                title: taskFormData.title.trim(),
-                description: taskFormData.description?.trim() || '',
-                priority: taskFormData.priority || 'Medium',
-                estimated_hours: Number(taskFormData.estimated_hours) || 0,
-                due_date: taskFormData.due_date || null,
-                project_id: Number(taskFormData.project_id),
-                team_id: taskFormData.team_id ? Number(taskFormData.team_id) : null,
-                assigned_by: currentUser?.id ? Number(currentUser.id) : null,
-                assigned_by_name: currentUser?.name || null,
-                status: 'To-Do',
-                review_status: 'Not Reviewed',
-                progress: 0,
-                assigned_to_member: Number(userId)  // This should be a number like 76, 88, etc.
-            };
-            
-            console.log('Sending task data:', JSON.stringify(taskData, null, 2));
-            
-            const response = await projectAPI.createTask(taskData);
-            console.log('Task creation response:', response.data);
-            
-            if (response.data.success) {
-                createdCount++;
-                console.log(`✅ Task created with assigned_to_member: ${userId}`);
-            } else {
-                console.error('❌ Failed to create task:', response.data.message);
-            }
-        }
-        
-        // Reset form
-        setTaskFormData({ 
-            title: '', 
-            description: '', 
-            priority: 'Medium', 
-            estimated_hours: 0, 
-            due_date: '', 
-            project_id: selectedProject?.id || '',
-            team_id: '',
-            assigned_to_members: [] 
-        });
-        setSelectedTaskEmployees([]);
-        setIsTaskModalOpen(false);
-        
-        await fetchAllData();
-        
-        if (createdCount > 0) {
-            alert(`${createdCount} task(s) created successfully!`);
-        } else {
-            alert('Failed to create tasks. Please check the console for details.');
-        }
-    } catch (err) {
-        console.error('Error creating task:', err);
-        alert(err.response?.data?.message || 'Failed to create task');
-    }
-};
-  const getTaskStatusIcon = (status) => {
-    switch(status) {
-      case 'Completed': return <FaCheckCircle style={{ color: '#28a745' }} />;
-      case 'In Progress': return <FaHourglassHalf style={{ color: '#ffc107' }} />;
-      case 'To-Do': return <FaClock style={{ color: '#6c757d' }} />;
-      case 'Blocked': return <FaExclamationTriangle style={{ color: '#dc3545' }} />;
-      default: return null;
-    }
-  };
-
-  const getReviewStatusBadge = (status) => {
-    const statusMap = {
-      'Approved': { class: 'review-approved', text: '✓ Approved' },
-      'Rejected': { class: 'review-rejected', text: '✗ Rejected' },
-      'Needs Rework': { class: 'review-rework', text: '⟳ Needs Rework' },
-      'Not Reviewed': { class: 'review-pending', text: '⏳ Pending' }
-    };
-    const config = statusMap[status] || statusMap['Not Reviewed'];
-    return <span className={`review-badge ${config.class}`}>{config.text}</span>;
   };
 
   const handleExportTaskTemplate = () => {
@@ -1535,12 +1332,12 @@ const handleCreateTask = async (e) => {
                             type="checkbox" 
                             checked={selectedTaskEmployees.includes(member.user_id)} 
                             onChange={() => {
-                                const userId = member.user_id;
-                                setSelectedTaskEmployees(prev => 
-                                    prev.includes(userId) 
-                                        ? prev.filter(id => id !== userId) 
-                                        : [...prev, userId]
-                                );
+                              const userId = member.user_id;
+                              setSelectedTaskEmployees(prev => 
+                                prev.includes(userId) 
+                                  ? prev.filter(id => id !== userId) 
+                                  : [...prev, userId]
+                              );
                             }} 
                             style={{ marginRight: '10px' }}
                           />
@@ -1556,6 +1353,7 @@ const handleCreateTask = async (e) => {
                     <div style={{ padding: '20px', textAlign: 'center', color: '#f44336', background: '#ffebee', borderRadius: '4px' }}>
                       ⚠️ No members found in this team.
                       <button 
+                        type="button"
                         onClick={() => loadTeamMembers(taskFormData.team_id)} 
                         style={{ marginLeft: '10px', padding: '4px 8px', cursor: 'pointer' }}
                       >
@@ -1592,54 +1390,19 @@ const handleCreateTask = async (e) => {
               <div className="proj-form-actions">
                 <button type="button" onClick={() => setIsTaskModalOpen(false)} className="proj-cancel-btn">Cancel</button>
                 <button 
-                    onClick={() => loadTeamMembers(taskFormData.team_id)} 
-                    style={{ marginLeft: '10px', padding: '4px 8px', cursor: 'pointer' }}
+                  type="submit" 
+                  className="proj-submit-btn"
+                  disabled={!taskFormData.title || selectedTaskEmployees.length === 0}
+                  style={(!taskFormData.title || selectedTaskEmployees.length === 0) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
                 >
-                    Try Again
+                  Create Task{selectedTaskEmployees.length > 0 ? ` for ${selectedTaskEmployees.length} Member(s)` : ''}
                 </button>
-            </div>
-        )}
-    </div>
-)}
-        
-        <div className="proj-form-row">
-          <div className="proj-form-group">
-            <label>Priority</label>
-            <select name="priority" value={taskFormData.priority} onChange={(e) => setTaskFormData({...taskFormData, priority: e.target.value})}>
-              {taskPriorities.map(p => <option key={p} value={p}>{p}</option>)}
-            </select>
-          </div>
-          <div className="proj-form-group">
-            <label>Estimated Hours</label>
-            <input type="number" name="estimated_hours" value={taskFormData.estimated_hours} onChange={(e) => setTaskFormData({...taskFormData, estimated_hours: parseFloat(e.target.value)})} step="0.5" min="0" />
+              </div>
+            </form>
           </div>
         </div>
-        
-        <div className="proj-form-group">
-          <label>Due Date</label>
-          <input type="date" name="due_date" value={taskFormData.due_date} onChange={(e) => setTaskFormData({...taskFormData, due_date: e.target.value})} />
-        </div>
-        
-        <div className="proj-form-group">
-          <label>Description</label>
-          <textarea name="description" value={taskFormData.description} onChange={(e) => setTaskFormData({...taskFormData, description: e.target.value})} rows="3" />
-        </div>
-        
-        <div className="proj-form-actions">
-          <button type="button" onClick={() => setIsTaskModalOpen(false)} className="proj-cancel-btn">Cancel</button>
-          <button 
-            type="submit" 
-            className="proj-submit-btn"
-            disabled={!taskFormData.title || selectedTaskEmployees.length === 0}
-            style={(!taskFormData.title || selectedTaskEmployees.length === 0) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
-          >
-            Create Task{selectedTaskEmployees.length > 0 ? ` for ${selectedTaskEmployees.length} Member(s)` : ''}
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-)}
+      )}
+
       {/* Create Project Modal */}
       {isModalOpen && canCreateProject() && (
         <div className="proj-modal-overlay">

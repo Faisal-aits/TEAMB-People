@@ -36,9 +36,10 @@ const MyDocuments = () => {
   const [resignData, setResignData] = useState({ requested_last_day: '', reason: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
- const fetchDocs = async () => {
+const fetchDocs = async () => {
   try {
     setLoading(true);
+    
     const [letterRes, slipRes, resigRes, expRes, incRes] = await Promise.all([
       offerLetterAPI.getMyOfferLetters(),
       salaryAPI.getMySalaryRecords(slipFilters),
@@ -46,17 +47,28 @@ const MyDocuments = () => {
       experienceLetterAPI.getMyLetters(),
       incrementLetterAPI.getMyLetters()
     ]);
-    setLetters(letterRes.data.letters || []);
-    setSlips(slipRes.data.salaryRecords || []);
     
-    // FIX: Check the data structure properly
-    console.log("Resignation API Response:", resigRes.data);
+    console.log("Offer Letters Response:", letterRes.data);
+    console.log("Experience Letters Response:", expRes.data);
+    console.log("Increment Letters Response:", incRes.data);
+    
+    setLetters(letterRes.data?.letters || letterRes.data?.data || []);
+    setSlips(slipRes.data?.salaryRecords || slipRes.data?.data || []);
     setResignations(resigRes.data?.data || resigRes.data?.resignations || []);
     
-    setExperiences(expRes.data?.data || []);
-    setIncrements(incRes.data?.data || []);
+    // Fix: Handle different response structures for experience letters
+    const expData = expRes.data?.data || expRes.data?.letters || expRes.data || [];
+    setExperiences(Array.isArray(expData) ? expData : []);
+    
+    // Fix: Handle different response structures for increment letters
+    const incData = incRes.data?.data || incRes.data?.letters || incRes.data || [];
+    setIncrements(Array.isArray(incData) ? incData : []);
+    
   } catch (err) {
     console.error("Error fetching documents:", err);
+    // Don't show error to user, just set empty arrays
+    setExperiences([]);
+    setIncrements([]);
   } finally {
     setLoading(false);
   }
@@ -85,23 +97,38 @@ const MyDocuments = () => {
     }
   });
 
-  const handleDocAction = async (type, action, doc) => {
-    try {
-      if (type === 'offer') {
-        if (action === 'view') await offerLetterPDFService.viewOfferLetter(doc.form_data);
-        else await offerLetterPDFService.downloadOfferLetter(doc.form_data);
-      } else if (type === 'salary') {
-        const formData = mapRecordToFormData(doc);
-        if (action === 'view') await salarySlipPDFService.viewSalarySlip(formData);
-        else await salarySlipPDFService.downloadSalarySlip(formData);
-      } else if (type === 'backend-pdf') {
-        // Direct URL open for backend-generated PDFs (Resign, Exp, Inc)
-        window.open(API_BASE_URL + doc.letter_url, "_blank");
+const handleDocAction = async (type, action, doc) => {
+  try {
+    if (type === 'offer') {
+      if (action === 'view') await offerLetterPDFService.viewOfferLetter(doc.form_data);
+      else await offerLetterPDFService.downloadOfferLetter(doc.form_data);
+    } else if (type === 'salary') {
+      const formData = mapRecordToFormData(doc);
+      if (action === 'view') await salarySlipPDFService.viewSalarySlip(formData);
+      else await salarySlipPDFService.downloadSalarySlip(formData);
+    } else if (type === 'backend-pdf') {
+      // Fix: Properly construct the PDF URL
+      let pdfUrl = doc.letter_url;
+      
+      // If the URL starts with /uploads, use it directly with API_BASE_URL
+      if (pdfUrl && pdfUrl.startsWith('/uploads')) {
+        pdfUrl = API_BASE_URL + pdfUrl;
+      } 
+      // If it's a relative path without leading slash
+      else if (pdfUrl && !pdfUrl.startsWith('http')) {
+        pdfUrl = API_BASE_URL + '/' + pdfUrl;
       }
-    } catch (err) {
-      alert("Failed to process document. Please try again.");
+      
+      console.log("Opening PDF URL:", pdfUrl);
+      
+      // Open in new tab
+      window.open(pdfUrl, "_blank");
     }
-  };
+  } catch (err) {
+    console.error("Error in handleDocAction:", err);
+    alert("Failed to process document. Please try again.");
+  }
+};
 
   const handleResignationSubmit = async (e) => {
     e.preventDefault();

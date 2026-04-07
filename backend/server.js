@@ -136,6 +136,7 @@ app.use('/api/teams', teamRoutes);           // Add this
 app.use('/api/tasks', taskRoutes);           // Add this
 app.use('/api/daily-reports', dailyReportRoutes); 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static('uploads'));
 
 // Basic route
 app.get('/', (req, res) => {

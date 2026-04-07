@@ -83,5 +83,9 @@ router.post('/mark-absent', async (req, res) => {
         });
     }
 });
-
+// Get monthly attendance summary for salary calculation
+router.get('/summary/:employeeId', 
+    authMiddleware.verifyToken, 
+    attendanceController.getMonthlyAttendanceSummary
+);
 module.exports = router;

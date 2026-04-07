@@ -18,7 +18,8 @@ const ShiftManagement = () => {
     check_in_time: '',
     check_out_time: '',
     employees: [],
-    is_default: false
+    is_default: false,
+    grace_period_minutes: 15  // Default value, but fully editable
   });
 
   // Load initial data
@@ -68,25 +69,35 @@ const ShiftManagement = () => {
       check_in_time: '',
       check_out_time: '',
       employees: [],
-      is_default: false
+      is_default: false,
+      grace_period_minutes: 15
     });
   };
 
-  const handleSaveShift = async () => {
+ const handleSaveShift = async () => {
     if (newShift.shift_name && newShift.check_in_time && newShift.check_out_time) {
-      try {
-        await shiftAPI.create(newShift);
-        await loadShiftData();
-        setIsShiftModalOpen(false);
-        alert('Shift added successfully!');
-      } catch (error) {
-        console.error('Error creating shift:', error);
-        alert('Error creating shift. Please try again.');
-      }
+        try {
+            const saveData = {
+                shift_name: newShift.shift_name,
+                check_in_time: newShift.check_in_time,
+                check_out_time: newShift.check_out_time,
+                grace_period_minutes: newShift.grace_period_minutes || 15,
+                is_default: newShift.is_default || false,
+                employees: newShift.employees || []
+            };
+            
+            await shiftAPI.create(saveData);
+            await loadShiftData();
+            setIsShiftModalOpen(false);
+            alert('Shift added successfully!');
+        } catch (error) {
+            console.error('Error creating shift:', error);
+            alert(error.response?.data?.message || 'Error creating shift. Please try again.');
+        }
     } else {
-      alert('Please fill all required fields!');
+        alert('Please fill all required fields!');
     }
-  };
+};
 
   const handleViewEmployees = async (shift) => {
     try {
@@ -107,11 +118,12 @@ const ShiftManagement = () => {
       const employees = await loadShiftEmployees(shift.shift_id);
       setSelectedShift(shift);
       setNewShift({
-        shift_name: shift.shift_name,
-        check_in_time: shift.check_in_time,
-        check_out_time: shift.check_out_time,
+        shift_name: shift.shift_name || '',
+        check_in_time: shift.check_in_time || '',
+        check_out_time: shift.check_out_time || '',
         employees: employees.map(emp => emp.employee_id),
-        is_default: shift.is_default
+        is_default: shift.is_default || false,
+        grace_period_minutes: shift.grace_period_minutes || 0
       });
       setIsShiftModalOpen(true);
     } catch (error) {
@@ -151,26 +163,32 @@ const ShiftManagement = () => {
     }
   };
 
-  const handleUpdateShift = async () => {
+ const handleUpdateShift = async () => {
     if (newShift.shift_name && newShift.check_in_time && newShift.check_out_time) {
-      try {
-        await shiftAPI.update(selectedShift.shift_id, newShift);
-        await loadShiftData();
-        setIsShiftModalOpen(false);
-        setSelectedShift(null);
-        alert('Shift updated successfully!');
-      } catch (error) {
-        console.error('Error updating shift:', error);
-        alert('Error updating shift. Please try again.');
-      }
+        try {
+            const updateData = {
+                shift_name: newShift.shift_name,
+                check_in_time: newShift.check_in_time,
+                check_out_time: newShift.check_out_time,
+                grace_period_minutes: newShift.grace_period_minutes || 15,
+                employees: newShift.employees || []
+            };
+            
+            await shiftAPI.update(selectedShift.shift_id, updateData);
+            await loadShiftData();
+            setIsShiftModalOpen(false);
+            setSelectedShift(null);
+            alert('Shift updated successfully!');
+        } catch (error) {
+            console.error('Error updating shift:', error);
+            alert(error.response?.data?.message || 'Error updating shift. Please try again.');
+        }
     } else {
-      alert('Please fill all required fields!');
+        alert('Please fill all required fields!');
     }
-  };
-
+};
   const formatTime = (timeString) => {
     if (!timeString) return '';
-    // Convert HH:MM:SS to HH:MM
     return timeString.substring(0, 5);
   };
 
@@ -208,17 +226,18 @@ const ShiftManagement = () => {
           <table className="lm-data-table" style={{tableLayout: 'fixed', width: '100%'}}>
             <thead>
               <tr>
-                <th style={{width: '25%'}}>Shift Name</th>
-                <th style={{width: '20%'}}>Shift Times</th>
-                <th style={{width: '15%'}}>Status</th>
-                <th style={{width: '15%'}}>Employees in Shift</th>
-                <th style={{width: '25%'}}>Actions</th>
+                <th style={{width: '20%'}}>Shift Name</th>
+                <th style={{width: '15%'}}>Shift Times</th>
+                <th style={{width: '10%'}}>Grace Period</th>
+                <th style={{width: '12%'}}>Status</th>
+                <th style={{width: '13%'}}>Employees</th>
+                <th style={{width: '30%'}}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {shiftData.map(shift => (
                 <tr key={shift.shift_id} className={shift.is_default ? 'lm-default-shift-row' : ''}>
-                  <td style={{width: '25%'}}>
+                  <td style={{width: '20%'}}>
                     <div className="lm-cell-content">
                       <div className="lm-primary-text">
                         {shift.shift_name}
@@ -229,13 +248,18 @@ const ShiftManagement = () => {
                         )}
                       </div>
                     </div>
-                  </td>
-                  <td style={{width: '20%'}}>
+                   </td>
+                  <td style={{width: '15%'}}>
                     <div className="lm-time-cell">
                       {shift.check_in_time} - {shift.check_out_time}
                     </div>
-                  </td>
-                  <td style={{width: '15%'}}>
+                   </td>
+                  <td style={{width: '10%'}}>
+                    <div className="lm-grace-cell">
+                      {shift.grace_period_minutes || 0} min
+                    </div>
+                   </td>
+                  <td style={{width: '12%'}}>
                     <div className="lm-status-cell">
                       {shift.is_default ? (
                         <span className="lm-status-default">Default</span>
@@ -243,17 +267,16 @@ const ShiftManagement = () => {
                         <span className="lm-status-regular">Regular</span>
                       )}
                     </div>
-                  </td>
-                  <td style={{width: '15%'}}>
+                   </td>
+                  <td style={{width: '13%'}}>
                     <div 
                       className="lm-primary-text lm-interactive-text"
                       onClick={() => handleViewEmployees(shift)}
                     >
                       View [{shift.employee_count || 0}]
                     </div>
-                  </td>
-                 
-                  <td style={{width: '25%'}}>
+                   </td>
+                  <td style={{width: '30%'}}>
                     <div className="lm-actions-group">
                       {!shift.is_default && (
                         <button
@@ -279,11 +302,11 @@ const ShiftManagement = () => {
                         Delete
                       </button>
                     </div>
-                  </td>
-                </tr>
+                   </td>
+                 </tr>
               ))}
             </tbody>
-          </table>
+           </table>
         </div>
 
         {shiftData.length === 0 && (
@@ -325,6 +348,7 @@ const ShiftManagement = () => {
                     placeholder="Enter shift name"
                   />
                 </div>
+                
                 <div className="lm-form-row">
                   <div className="lm-form-field">
                     <label>Check In Time *</label>
@@ -343,6 +367,24 @@ const ShiftManagement = () => {
                     />
                   </div>
                 </div>
+
+                {/* Fully Editable Grace Period - No restrictions */}
+                <div className="lm-form-field">
+                  <label>Grace Period (minutes)</label>
+                  <input
+                    type="number"
+                    value={newShift.grace_period_minutes}
+                    onChange={(e) => setNewShift(prev => ({...prev, grace_period_minutes: parseInt(e.target.value) || 0}))}
+                    placeholder="Enter grace period in minutes"
+                    min="0"
+                    step="1"
+                  />
+                  <small>
+                    Employees arriving within this period after check-in time won't be marked late.
+                    Set to 0 for no grace period.
+                  </small>
+                </div>
+
                 {!selectedShift && (
                   <div className="lm-form-field lm-checkbox-field">
                     <label className="lm-checkbox-label">
@@ -359,6 +401,7 @@ const ShiftManagement = () => {
                     </small>
                   </div>
                 )}
+                
                 <div className="lm-form-field">
                   <label>Assign Employees (Optional)</label>
                   <select
@@ -469,7 +512,7 @@ const ShiftManagement = () => {
 
             <div className="lm-details-content">
               <div className="lm-form-section">
-                <h3 className="lm-section-heading">Shift Time</h3>
+                <h3 className="lm-section-heading">Shift Details</h3>
                 <div className="lm-details-grid">
                   <div className="lm-detail-item">
                     <label>Check In</label>
@@ -478,6 +521,10 @@ const ShiftManagement = () => {
                   <div className="lm-detail-item">
                     <label>Check Out</label>
                     <span>{selectedShift.check_out_time}</span>
+                  </div>
+                  <div className="lm-detail-item">
+                    <label>Grace Period</label>
+                    <span>{selectedShift.grace_period_minutes || 0} minutes</span>
                   </div>
                   <div className="lm-detail-item">
                     <label>Status</label>

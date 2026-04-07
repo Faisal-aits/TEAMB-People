@@ -3,22 +3,25 @@ const pool = require('../config/database');
 
 const Shift = {
     // Get employee shift for specific date
+// Get employee shift for specific date
 getEmployeeShiftForDate: async (tenantId, employeeId, date) => {
     try {
         console.log(`🔍 Shift.getEmployeeShiftForDate: ${employeeId} on ${date}`);
         
-        // First check for assigned shift on that date with proper time formatting
+        // First check for assigned shift on that date
         const query = `
             SELECT 
                 s.shift_id,
                 s.shift_name,
                 TIME_FORMAT(s.check_in_time, '%H:%i') as check_in_time,
                 TIME_FORMAT(s.check_out_time, '%H:%i') as check_out_time,
-                s.is_default,
-                es.assigned_date
-            FROM tb_employee_shifts es
-            INNER JOIN tb_shifts s ON es.shift_id = s.shift_id
-            WHERE es.employee_id = ? AND es.assigned_date = ? AND s.tenant_id = ?
+                s.grace_period_minutes,
+                s.is_default
+            FROM tb_shifts s
+            INNER JOIN tb_employee_shifts es ON s.shift_id = es.shift_id
+            WHERE es.employee_id = ? 
+                AND DATE(es.assigned_date) = DATE(?)
+                AND s.tenant_id = ?
             LIMIT 1
         `;
         
@@ -29,7 +32,7 @@ getEmployeeShiftForDate: async (tenantId, employeeId, date) => {
             return rows[0];
         }
         
-        // If no specific shift assigned for today, check if employee has a default shift
+        // If no specific shift assigned, check if employee has a default shift
         console.log('⚠️ No assigned shift, checking employee default shift...');
         const defaultShift = await Shift.getEmployeeDefaultShift(tenantId, employeeId);
         
@@ -54,6 +57,7 @@ getEmployeeShiftForDate: async (tenantId, employeeId, date) => {
         throw error;
     }
 },
+           
     // Get employee's default shift
     getEmployeeDefaultShift: async (tenantId, employeeId) => {
         try {
@@ -77,47 +81,48 @@ getEmployeeShiftForDate: async (tenantId, employeeId, date) => {
         }
     },
 
-    // Get all shifts with employee count
-    getAll: async (tenantId) => {
-        try {
-            const query = `
-                SELECT 
-                    s.shift_id,
-                    s.shift_name,
-                    TIME_FORMAT(s.check_in_time, '%H:%i') as check_in_time,
-                    TIME_FORMAT(s.check_out_time, '%H:%i') as check_out_time,
-                    s.is_default,
-                    s.created_at,
-                    s.updated_at,
-                    COUNT(es.employee_id) as employee_count
-                FROM tb_shifts s
-                LEFT JOIN tb_employee_shifts es ON s.shift_id = es.shift_id 
-                    AND es.assigned_date = CURDATE()
-                WHERE s.tenant_id = ?
-                GROUP BY s.shift_id, s.shift_name, s.check_in_time, s.check_out_time, s.is_default, s.created_at, s.updated_at
-                ORDER BY s.is_default DESC, s.shift_name
-            `;
-            
-            const [rows] = await pool.execute(query, [tenantId]);
-            
-            // Get employees for each shift
-            const shiftsWithEmployees = await Promise.all(
-                rows.map(async (shift) => {
-                    const employees = await Shift.getEmployees(tenantId, shift.shift_id);
-                    return {
-                        ...shift,
-                        employeesInShift: employees
-                    };
-                })
-            );
+  // Get all shifts with employee count
+getAll: async (tenantId) => {
+    try {
+        const query = `
+            SELECT 
+                s.shift_id,
+                s.shift_name,
+                TIME_FORMAT(s.check_in_time, '%H:%i') as check_in_time,
+                TIME_FORMAT(s.check_out_time, '%H:%i') as check_out_time,
+                s.grace_period_minutes,
+                s.is_default,
+                s.created_at,
+                s.updated_at,
+                COUNT(DISTINCT es.employee_id) as employee_count
+            FROM tb_shifts s
+            LEFT JOIN tb_employee_shifts es ON s.shift_id = es.shift_id 
+                AND DATE(es.assigned_date) = CURDATE()
+            WHERE s.tenant_id = ?
+            GROUP BY s.shift_id, s.shift_name, s.check_in_time, s.check_out_time, 
+                     s.grace_period_minutes, s.is_default, s.created_at, s.updated_at
+            ORDER BY s.is_default DESC, s.shift_name
+        `;
+        
+        const [rows] = await pool.execute(query, [tenantId]);
+        
+        // Get employees for each shift
+        const shiftsWithEmployees = await Promise.all(
+            rows.map(async (shift) => {
+                const employees = await Shift.getEmployees(tenantId, shift.shift_id);
+                return {
+                    ...shift,
+                    employeesInShift: employees
+                };
+            })
+        );
 
-            return shiftsWithEmployees;
-        } catch (error) {
-            console.error('Error in Shift.getAll:', error);
-            throw error;
-        }
-    },
-
+        return shiftsWithEmployees;
+    } catch (error) {
+        console.error('Error in Shift.getAll:', error);
+        throw error;
+    }
+},
     // Get shift by ID
     getById: async (tenantId, shiftId) => {
         try {
@@ -150,11 +155,11 @@ getEmployeeShiftForDate: async (tenantId, employeeId, date) => {
             await connection.beginTransaction();
 
             // Insert shift
-            const [shiftResult] = await connection.execute(
-                `INSERT INTO tb_shifts (tenant_id, shift_name, check_in_time, check_out_time, is_default) 
-                 VALUES (?, ?, ?, ?, ?)`,
-                [tenantId, shiftData.shift_name, shiftData.check_in_time, shiftData.check_out_time, shiftData.is_default || false]
-            );
+           const [shiftResult] = await connection.execute(
+    `INSERT INTO tb_shifts (tenant_id, shift_name, check_in_time, check_out_time, grace_period_minutes, is_default) 
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [tenantId, shiftData.shift_name, shiftData.check_in_time, shiftData.check_out_time, shiftData.grace_period_minutes || 15, shiftData.is_default || false]
+);
 
             const shiftId = shiftResult.insertId;
 
@@ -191,84 +196,58 @@ getEmployeeShiftForDate: async (tenantId, employeeId, date) => {
         }
     },
 
-    // Update shift
-    update: async (tenantId, shiftId, shiftData) => {
-        const connection = await pool.getConnection();
-        
-        try {
-            await connection.beginTransaction();
-
-            // Update shift
-            const [updateResult] = await connection.execute(
-                `UPDATE tb_shifts 
-                 SET shift_name = ?, check_in_time = ?, check_out_time = ?, updated_at = NOW()
-                 WHERE shift_id = ? AND tenant_id = ?`,
-                [shiftData.shift_name, shiftData.check_in_time, shiftData.check_out_time, shiftId, tenantId]
-            );
-
-            if (updateResult.affectedRows === 0) {
-                throw new Error('Shift not found');
-            }
-
-            // Remove existing employee assignments for today
-            await connection.execute(
-                `DELETE FROM tb_employee_shifts 
-                 WHERE shift_id = ? AND assigned_date = CURDATE()`,
-                [shiftId]
-            );
-
-            // Assign new employees to shift
-            if (shiftData.employees && shiftData.employees.length > 0) {
-                for (const employeeId of shiftData.employees) {
-                    await connection.execute(
-                        `INSERT INTO tb_employee_shifts (employee_id, shift_id, assigned_date) 
-                         VALUES (?, ?, CURDATE())`,
-                        [employeeId, shiftId]
-                    );
-                }
-            }
-
-            await connection.commit();
-            return true;
-        } catch (error) {
-            await connection.rollback();
-            console.error('Error in Shift.update:', error);
-            throw error;
-        } finally {
-            connection.release();
-        }
-    },
-
-// Set shift as default
-setAsDefault: async (tenantId, shiftId) => {
+  // Update shift
+update: async (tenantId, shiftId, shiftData) => {
     const connection = await pool.getConnection();
     
     try {
         await connection.beginTransaction();
 
-        // Unset any existing default shift
-        await connection.execute(
-            'UPDATE tb_shifts SET is_default = FALSE WHERE tenant_id = ?', [tenantId]
-        );
-
-        // Set new default shift
         const [updateResult] = await connection.execute(
-            'UPDATE tb_shifts SET is_default = TRUE WHERE shift_id = ? AND tenant_id = ?',
-            [shiftId, tenantId]
+            `UPDATE tb_shifts 
+             SET shift_name = ?, 
+                 check_in_time = ?, 
+                 check_out_time = ?, 
+                 grace_period_minutes = ?,
+                 updated_at = NOW()
+             WHERE shift_id = ? AND tenant_id = ?`,
+            [
+                shiftData.shift_name, 
+                shiftData.check_in_time, 
+                shiftData.check_out_time, 
+                shiftData.grace_period_minutes || 15, 
+                shiftId, 
+                tenantId
+            ]
         );
 
         if (updateResult.affectedRows === 0) {
             throw new Error('Shift not found');
         }
 
-        // Assign this shift to ALL employees as default
-        await Shift.assignDefaultShiftToEmployees(tenantId, connection, shiftId);
+        // Remove existing employee assignments for today
+        await connection.execute(
+            `DELETE FROM tb_employee_shifts 
+             WHERE shift_id = ? AND assigned_date = CURDATE()`,
+            [shiftId]
+        );
+
+        // Assign new employees to shift
+        if (shiftData.employees && shiftData.employees.length > 0) {
+            for (const employeeId of shiftData.employees) {
+                await connection.execute(
+                    `INSERT INTO tb_employee_shifts (employee_id, shift_id, assigned_date) 
+                     VALUES (?, ?, CURDATE())`,
+                    [employeeId, shiftId]
+                );
+            }
+        }
 
         await connection.commit();
         return true;
     } catch (error) {
         await connection.rollback();
-        console.error('Error in Shift.setAsDefault:', error);
+        console.error('Error in Shift.update:', error);
         throw error;
     } finally {
         connection.release();

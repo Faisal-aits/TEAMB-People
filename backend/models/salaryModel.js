@@ -177,23 +177,49 @@ const Salary = {
         return result.affectedRows;
     },
 
-    // Get employees for dropdown
-    getEmployees: async (tenantId) => {
+   // Get employees for dropdown - FIXED to return the string employee_id
+getEmployees: async (tenantId) => {
+    try {
         const [rows] = await pool.execute(
             `SELECT 
+                ed.id as db_id,
                 ed.id,
-                ed.id as employee_id,
+                ed.employee_id as employee_code,
+                ed.employee_id,
                 CONCAT(u.first_name, ' ', u.last_name) as name,
                 ed.position,
                 ed.department_id,
-                ed.salary
+                ed.salary,
+                u.email,
+                u.phone,
+                u.is_active
             FROM employee_details ed
             INNER JOIN users u ON ed.user_id = u.id
-            WHERE u.is_active = 1 AND ed.tenant_id = ? AND u.tenant_id = ?
-            ORDER BY u.first_name, u.last_name`, [tenantId, tenantId]
+            WHERE ed.tenant_id = ? AND (ed.status = 'Active' OR ed.status IS NULL)
+            ORDER BY u.first_name, u.last_name`,
+            [tenantId]
         );
-        return rows;
-    },
+        
+        // Return both numeric id and string employee_id for flexibility
+        const formattedEmployees = rows.map(emp => ({
+            id: emp.employee_id,  // Use the string employee_id as the main ID
+            db_id: emp.db_id,      // Keep numeric ID for internal use
+            name: emp.name,
+            position: emp.position,
+            department_id: emp.department_id,
+            salary: emp.salary || 0,
+            email: emp.email,
+            phone: emp.phone,
+            is_active: emp.is_active
+        }));
+        
+        console.log('📋 Employees fetched for salary:', formattedEmployees.length);
+        return formattedEmployees;
+    } catch (error) {
+        console.error('Error in Salary.getEmployees:', error);
+        throw error;
+    }
+},
 
     // Get departments for dropdown
     getDepartments: async (tenantId) => {
@@ -265,7 +291,166 @@ const Salary = {
             allowances: typeof row.allowances === 'string' ? JSON.parse(row.allowances) : row.allowances,
             deductions: typeof row.deductions === 'string' ? JSON.parse(row.deductions) : row.deductions
         }));
+    },
+    // backend/models/salaryModel.js - Add/Update these methods
+
+// Get employees for dropdown - FIXED
+getEmployees: async (tenantId) => {
+    try {
+        const [rows] = await pool.execute(
+            `SELECT 
+                ed.id,
+                ed.id as employee_id,
+                CONCAT(u.first_name, ' ', u.last_name) as name,
+                ed.position,
+                ed.department_id,
+                ed.salary,
+                u.email,
+                u.phone
+            FROM employee_details ed
+            INNER JOIN users u ON ed.user_id = u.id
+            WHERE ed.tenant_id = ? AND (ed.status = 'Active' OR ed.status IS NULL)
+            ORDER BY u.first_name, u.last_name`,
+            [tenantId]
+        );
+        
+        console.log('📋 Employees fetched for salary:', rows.length);
+        return rows;
+    } catch (error) {
+        console.error('Error in Salary.getEmployees:', error);
+        throw error;
     }
+},
+
+// Get departments for dropdown - FIXED
+getDepartments: async (tenantId) => {
+    try {
+        const [rows] = await pool.execute(
+            'SELECT id, name FROM departments WHERE tenant_id = ? ORDER BY name',
+            [tenantId]
+        );
+        
+        console.log('📋 Departments fetched for salary:', rows.length);
+        return rows;
+    } catch (error) {
+        console.error('Error in Salary.getDepartments:', error);
+        throw error;
+    }
+},
+
+// Check if salary record exists
+checkRecordExists: async (tenantId, employee_id, month, year, excludeId = null) => {
+    try {
+        let query = 'SELECT id FROM salary_records WHERE employee_id = ? AND month = ? AND year = ? AND tenant_id = ?';
+        const params = [employee_id, month, year, tenantId];
+
+        if (excludeId) {
+            query += ' AND id != ?';
+            params.push(excludeId);
+        }
+
+        const [rows] = await pool.execute(query, params);
+        return rows.length > 0;
+    } catch (error) {
+        console.error('Error in Salary.checkRecordExists:', error);
+        throw error;
+    }
+},
+
+// Get salary record by ID - FIXED
+getById: async (tenantId, id) => {
+    try {
+        const [rows] = await pool.execute(
+            `SELECT 
+                sr.*,
+                CONCAT(u.first_name, ' ', u.last_name) as employee_name,
+                ed.position as designation,
+                d.name as department_name,
+                ed.bank_account_number,
+                ed.ifsc_code,
+                ed.pan_number,
+                ed.aadhar_number
+            FROM salary_records sr
+            INNER JOIN employee_details ed ON sr.employee_id = ed.id
+            INNER JOIN users u ON ed.user_id = u.id
+            INNER JOIN departments d ON sr.department_id = d.id
+            WHERE sr.id = ? AND sr.tenant_id = ?`,
+            [id, tenantId]
+        );
+        
+        if (rows.length === 0) return null;
+        
+        const row = rows[0];
+        return {
+            ...row,
+            allowances: typeof row.allowances === 'string' ? JSON.parse(row.allowances) : row.allowances,
+            deductions: typeof row.deductions === 'string' ? JSON.parse(row.deductions) : row.deductions
+        };
+    } catch (error) {
+        console.error('Error in Salary.getById:', error);
+        throw error;
+    }
+},
+
+// Update salary record - FIXED
+update: async (tenantId, id, salaryData) => {
+    try {
+        const {
+            employee_id,
+            department_id,
+            basic_salary,
+            allowances,
+            deductions,
+            net_salary,
+            payment_date,
+            month,
+            year,
+            payment_frequency,
+            status
+        } = salaryData;
+
+        const [result] = await pool.execute(
+            `UPDATE salary_records 
+            SET employee_id = ?, department_id = ?, basic_salary = ?, allowances = ?, 
+                deductions = ?, net_salary = ?, payment_date = ?, month = ?, year = ?, 
+                payment_frequency = ?, status = ?, updated_at = NOW()
+            WHERE id = ? AND tenant_id = ?`,
+            [
+                employee_id,
+                department_id,
+                basic_salary,
+                JSON.stringify(allowances),
+                JSON.stringify(deductions),
+                net_salary,
+                payment_date,
+                month,
+                year,
+                payment_frequency,
+                status,
+                id,
+                tenantId
+            ]
+        );
+        return result.affectedRows;
+    } catch (error) {
+        console.error('Error in Salary.update:', error);
+        throw error;
+    }
+},
+
+// Delete salary record - FIXED
+delete: async (tenantId, id) => {
+    try {
+        const [result] = await pool.execute(
+            'DELETE FROM salary_records WHERE id = ? AND tenant_id = ?',
+            [id, tenantId]
+        );
+        return result.affectedRows;
+    } catch (error) {
+        console.error('Error in Salary.delete:', error);
+        throw error;
+    }
+},
 };
 
 module.exports = Salary;

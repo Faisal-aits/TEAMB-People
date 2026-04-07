@@ -4,6 +4,7 @@ const Employee = require('../models/employeeModel');
 const FaceRecognition = require('../utils/faceRecognition');
 const Shift = require('../models/shiftModel');
 const pool = require('../config/database');
+
 const attendanceController = {
     // ==================== EXISTING METHODS ====================
 
@@ -46,7 +47,7 @@ const attendanceController = {
         }
     },
 
-    // Approve attendance - UPDATED WITH FLEXIBLE APPROACH
+    // Approve attendance
     approveAttendance: async (req, res) => {
         try {
             const { attendanceId } = req.params;
@@ -54,7 +55,6 @@ const attendanceController = {
 
             console.log('👤 Approving attendance - User ID:', userId);
 
-            // ✅ FIXED: Find employee by user_id, not id
             const [employees] = await pool.execute(
                 'SELECT id, user_id FROM employee_details WHERE user_id = ?',
                 [userId]
@@ -68,12 +68,6 @@ const attendanceController = {
             }
 
             const employee = employees[0];
-            console.log('✅ Found employee record:', {
-                employeeId: employee.id,
-                userId: employee.user_id
-            });
-
-            // Approve the attendance using employee.id (the employee_details id)
             await Attendance.approve(req.tenantId, attendanceId, employee.id);
 
             res.json({
@@ -83,14 +77,12 @@ const attendanceController = {
 
         } catch (error) {
             console.error('Approve attendance error:', error);
-
             if (error.message === 'Attendance record not found') {
                 return res.status(404).json({
                     success: false,
                     message: 'Attendance record not found'
                 });
             }
-
             res.status(500).json({
                 success: false,
                 message: 'Server error while approving attendance'
@@ -98,16 +90,13 @@ const attendanceController = {
         }
     },
 
-    // Reject attendance - FIXED with correct logic
+    // Reject attendance
     rejectAttendance: async (req, res) => {
         try {
             const { attendanceId } = req.params;
             const { remarks } = req.body;
             const userId = req.user.id;
 
-            console.log('👤 Rejecting attendance - User ID:', userId);
-
-            // ✅ FIXED: Find employee by user_id, not id
             const [employees] = await pool.execute(
                 'SELECT id, user_id FROM employee_details WHERE user_id = ?',
                 [userId]
@@ -121,12 +110,6 @@ const attendanceController = {
             }
 
             const employee = employees[0];
-            console.log('✅ Found employee record:', {
-                employeeId: employee.id,
-                userId: employee.user_id
-            });
-
-            // Reject the attendance using employee.id (the employee_details id)
             await Attendance.reject(req.tenantId, attendanceId, employee.id, remarks);
 
             res.json({
@@ -136,20 +119,19 @@ const attendanceController = {
 
         } catch (error) {
             console.error('Reject attendance error:', error);
-
             if (error.message === 'Attendance record not found') {
                 return res.status(404).json({
                     success: false,
                     message: 'Attendance record not found'
                 });
             }
-
             res.status(500).json({
                 success: false,
                 message: 'Server error while rejecting attendance'
             });
         }
     },
+
     // Get shifts
     getShifts: async (req, res) => {
         try {
@@ -173,10 +155,10 @@ const attendanceController = {
         }
     },
 
-    // Mark attendance (for admin)
+    // Mark attendance (for admin) - UPDATED with new logic
     markAttendance: async (req, res) => {
         try {
-            const { employee_id, type, date } = req.body;
+            const { employee_id, type, date, check_in_time, check_out_time } = req.body;
 
             console.log('🎯 Marking attendance:', { employee_id, type, date });
 
@@ -196,7 +178,8 @@ const attendanceController = {
 
             if (attendanceExists) {
                 if (type === 'check_out') {
-                    result = await Attendance.updateCheckOut(req.tenantId, employee_id, today, currentDateTime);
+                    const checkOutTime = check_out_time || currentDateTime;
+                    result = await Attendance.updateCheckOut(req.tenantId, employee_id, today, checkOutTime);
                     console.log('✅ Updated check-out:', result);
                 } else {
                     return res.status(400).json({
@@ -206,10 +189,11 @@ const attendanceController = {
                 }
             } else {
                 if (type === 'check_in') {
+                    const checkInTime = check_in_time || currentDateTime;
                     result = await Attendance.create(req.tenantId, {
                         employee_id,
                         date: today,
-                        check_in: currentDateTime,
+                        check_in: checkInTime,
                         status: 'Present'
                     });
                     console.log('✅ Created check-in:', result);
@@ -241,9 +225,6 @@ const attendanceController = {
             const { date } = req.query;
             const userId = req.user.id;
 
-            console.log('👤 Getting today attendance for user:', userId);
-
-            // ✅ Pass req.tenantId as first argument
             const employee = await Employee.getByUserId(req.tenantId, userId);
             if (!employee || !employee.employee_id) {
                 return res.status(404).json({
@@ -253,11 +234,7 @@ const attendanceController = {
             }
 
             const today = date || new Date().toLocaleString("sv-SE", {timeZone: "Asia/Kolkata"}).split(' ')[0];
-            console.log('📅 Looking for attendance on:', today, 'for employee:', employee.employee_id);
-
             const allAttendance = await Attendance.getAll(req.tenantId, { date: today });
-
-            // ✅ Fix .find() — remove the stray req.tenantId argument
             const myAttendance = allAttendance.find(record => record.employee_id === employee.employee_id);
 
             res.json({
@@ -282,11 +259,8 @@ const attendanceController = {
     getMyHistory: async (req, res) => {
         try {
             const userId = req.user.id;
-
-            console.log('📖 Getting history for user:', userId);
-
-            // ✅ Pass req.tenantId as first argument
             const employee = await Employee.getByUserId(req.tenantId, userId);
+            
             if (!employee || !employee.employee_id) {
                 return res.status(404).json({
                     success: false,
@@ -294,7 +268,6 @@ const attendanceController = {
                 });
             }
 
-            console.log('🔍 Getting history for employee:', employee.employee_id);
             const history = await Attendance.getEmployeeHistory(req.tenantId, employee.employee_id);
 
             res.json({
@@ -310,9 +283,10 @@ const attendanceController = {
         }
     },
 
+    // Mark my attendance - UPDATED with new logic
     markMyAttendance: async (req, res) => {
         try {
-            const { type, date } = req.body;
+            const { type, date, check_in_time, check_out_time } = req.body;
             const userId = req.user.id;
 
             console.log('🎯 Marking attendance for user:', userId, 'type:', type);
@@ -336,15 +310,14 @@ const attendanceController = {
             const today = date || new Date().toLocaleString("sv-SE", {timeZone: "Asia/Kolkata"}).split(' ')[0];
             const currentDateTime = new Date();
 
-            console.log('💾 Creating attendance for:', { employeeId, type, today });
-
             const attendanceExists = await Attendance.checkExists(req.tenantId, employeeId, today);
 
             let result;
 
             if (attendanceExists) {
                 if (type === 'check_out') {
-                    result = await Attendance.updateCheckOut(req.tenantId, employeeId, today, currentDateTime);
+                    const checkOutTime = check_out_time || currentDateTime;
+                    result = await Attendance.updateCheckOut(req.tenantId, employeeId, today, checkOutTime);
                     console.log('✅ Updated check-out:', result);
                 } else {
                     return res.status(400).json({
@@ -354,10 +327,11 @@ const attendanceController = {
                 }
             } else {
                 if (type === 'check_in') {
+                    const checkInTime = check_in_time || currentDateTime;
                     result = await Attendance.create(req.tenantId, {
                         employee_id: employeeId,
                         date: today,
-                        check_in: currentDateTime,
+                        check_in: checkInTime,
                         status: 'Present'
                     });
                     console.log('✅ Created check-in:', result);
@@ -384,9 +358,7 @@ const attendanceController = {
         }
     },
 
-
-
-    // Identify employee by face and mark attendance
+    // Identify employee by face and mark attendance - UPDATED with half-day logic
     identifyAndMarkAttendance: async (req, res) => {
         try {
             const file = req.file;
@@ -400,7 +372,6 @@ const attendanceController = {
 
             console.log('🔍 Starting face identification for attendance...');
 
-            // Step 1: Extract face encoding from captured image
             const faceEncoding = await FaceRecognition.extractFaceEncoding(file.buffer);
 
             if (!faceEncoding) {
@@ -414,24 +385,16 @@ const attendanceController = {
             let identifiedEmployee = null;
             let highestSimilarity = 0;
 
-            console.log(`👥 Checking against ${employees.length} enrolled employees...`);
-
             for (const employee of employees) {
                 if (employee.face_encoding) {
                     try {
                         const storedData = JSON.parse(employee.face_encoding);
                         const storedEncoding = storedData.encoding;
-
-                        // ✅ UPDATED: 40% similarity threshold (more lenient)
                         const similarity = FaceRecognition.compareFaceSimilarity(storedEncoding, faceEncoding);
 
-                        console.log(`📊 ${employee.employee_id}: ${(similarity * 100).toFixed(1)}% similarity`);
-
-                        // ✅ UPDATED: Find best match above 53% threshold
                         if (similarity > highestSimilarity && similarity > 0.53) {
                             highestSimilarity = similarity;
                             identifiedEmployee = employee;
-                            console.log(`🎯 New best match: ${employee.employee_id} (${(similarity * 100).toFixed(1)}%)`);
                         }
                     } catch (error) {
                         console.error('Error parsing face encoding for employee:', employee.employee_id);
@@ -440,20 +403,17 @@ const attendanceController = {
             }
 
             if (!identifiedEmployee) {
-                console.log('❌ No employee found with similarity > 53%');
                 return res.json({
                     success: false,
                     message: 'No matching employee found. Please ensure you are enrolled in the system.'
                 });
             }
 
-            console.log(`✅ Employee identified: ${identifiedEmployee.employee_id} (Similarity: ${(highestSimilarity * 100).toFixed(1)}%)`);
+            console.log(`✅ Employee identified: ${identifiedEmployee.employee_id}`);
 
-            // Step 3: Get today's date
             const today = new Date().toLocaleString("sv-SE", {timeZone: "Asia/Kolkata"}).split(' ')[0];
             const currentTime = new Date();
 
-            // Step 4: Get employee's shift for today
             const employeeShift = await Shift.getEmployeeShiftForDate(req.tenantId, identifiedEmployee.employee_id, today);
 
             if (!employeeShift) {
@@ -463,7 +423,6 @@ const attendanceController = {
                 });
             }
 
-            // Step 5: Check if attendance already exists for today
             const existingAttendance = await Attendance.getByEmployeeAndDate(req.tenantId, identifiedEmployee.employee_id, today);
 
             if (existingAttendance && existingAttendance.check_in) {
@@ -473,59 +432,29 @@ const attendanceController = {
                 });
             }
 
-            // Step 6: Determine status based on shift timing with 15-minute concession
-            let status = 'Present';
-            const shiftCheckInTime = new Date(`${today}T${employeeShift.check_in_time}`);
-            const checkInTime = new Date();
-
-            // Calculate grace period (shift start time + 15 minutes)
-            const gracePeriod = new Date(shiftCheckInTime.getTime() + 15 * 60000);
-
-            // If check-in is within 15 minutes of shift start → Present
-            // If check-in is after grace period → Delayed
-            if (checkInTime > gracePeriod) {
-                status = 'Delayed';
-                console.log(`⏰ Marked as Delayed: Check-in at ${checkInTime.toLocaleTimeString()} is after grace period (${gracePeriod.toLocaleTimeString()})`);
-            } else {
-                console.log(`✅ Marked as Present: Check-in at ${checkInTime.toLocaleTimeString()} is within grace period`);
-            }
-
-            // Step 7: Create attendance record
+            // Create attendance record with automatic status calculation
             const attendanceData = {
                 employee_id: identifiedEmployee.employee_id,
-                shift_id: employeeShift.shift_id,
                 date: today,
-                check_in: checkInTime,
-                status: status,
-                remarks: `Auto-marked via face recognition (Similarity: ${(highestSimilarity * 100).toFixed(1)}%)`
+                check_in: currentTime,
+                remarks: `Face recognition check-in (${(highestSimilarity * 100).toFixed(1)}% match)`
             };
 
             const attendanceResult = await Attendance.create(req.tenantId, attendanceData);
 
-            // Step 8: Create attendance history record
-            const historyData = {
-                employee_id: identifiedEmployee.employee_id,
-                date: today,
-                description: `Checked in via face recognition - ${status}`,
-                status: status
-            };
-
-            await Attendance.createHistory(req.tenantId, historyData);
-
-            console.log(`✅ Attendance marked for ${identifiedEmployee.employee_id}: ${status}`);
-
-            // Step 9: Return success response
             res.json({
                 success: true,
-                message: `Attendance marked successfully! Status: ${status}`,
+                message: `Attendance marked successfully! Status: ${attendanceResult.status}`,
                 employee: {
                     id: identifiedEmployee.employee_id,
                     name: `${identifiedEmployee.first_name} ${identifiedEmployee.last_name}`,
                     department: identifiedEmployee.department_name
                 },
                 attendance: {
-                    status: status,
-                    check_in_time: checkInTime.toLocaleTimeString(),
+                    status: attendanceResult.status,
+                    is_half_day: attendanceResult.is_half_day,
+                    half_day_reason: attendanceResult.half_day_reason,
+                    check_in_time: currentTime.toLocaleTimeString(),
                     shift_name: employeeShift.shift_name,
                     shift_check_in: employeeShift.check_in_time
                 },
@@ -540,12 +469,12 @@ const attendanceController = {
             });
         }
     },
-    // ==================== NEW FACE RECOGNITION METHOD ====================
-    // attendanceController.js - ADD THIS METHOD
+
+    // Verify face and mark attendance for logged-in user - UPDATED
     verifyMyFaceAndMarkAttendance: async (req, res) => {
         try {
             const file = req.file;
-            const userId = req.user.id; // From auth middleware
+            const userId = req.user.id;
 
             if (!file) {
                 return res.status(400).json({
@@ -564,9 +493,6 @@ const attendanceController = {
                 });
             }
 
-            console.log(`👤 Found employee: ${employee.employee_id}`);
-
-            // Step 2: Check if employee has face enrolled
             if (!employee.face_encoding) {
                 return res.json({
                     success: false,
@@ -575,7 +501,6 @@ const attendanceController = {
                 });
             }
 
-            // Step 3: Extract face encoding from captured image
             const faceEncoding = await FaceRecognition.extractFaceEncoding(file.buffer);
 
             if (!faceEncoding) {
@@ -585,25 +510,14 @@ const attendanceController = {
                 });
             }
 
-            // Step 4: Parse ONLY logged-in user's encoding (not thousands!)
             const storedData = JSON.parse(employee.face_encoding);
             const storedEncoding = storedData.encoding;
-
-            // Step 5: Compare ONLY with logged-in user
-            const similarity = FaceRecognition.compareFaceSimilarity(
-                storedEncoding,
-                faceEncoding
-            );
-
+            const similarity = FaceRecognition.compareFaceSimilarity(storedEncoding, faceEncoding);
             const similarityPercent = (similarity * 100).toFixed(1);
-            console.log(`📊 Similarity for ${employee.employee_id}: ${similarityPercent}%`);
 
-            // Step 6: Check threshold (53% - as you requested)
             const REQUIRED_SIMILARITY = 0.53;
 
             if (similarity < REQUIRED_SIMILARITY) {
-                console.log(`❌ Face verification failed: ${similarityPercent}% < 53%`);
-
                 return res.json({
                     success: false,
                     message: `Face verification failed (${similarityPercent}% match). Please try again.`,
@@ -612,34 +526,20 @@ const attendanceController = {
                 });
             }
 
-            console.log(`✅ Face verified! Proceeding with attendance...`);
+            console.log(`✅ Face verified! ${similarityPercent}% match`);
 
-            // Step 7: Mark attendance (same as before but faster)
             const today = new Date().toLocaleString("sv-SE", {timeZone: "Asia/Kolkata"}).split(' ')[0];
             const currentTime = new Date();
-
-            console.log(`🔍 Getting shift for employee ${employee.employee_id} on date ${today}`);
 
             let employeeShift = await Shift.getEmployeeShiftForDate(req.tenantId, employee.employee_id, today);
 
             if (!employeeShift) {
-                console.log('⚠️ No shift found, checking default...');
                 return res.json({
                     success: false,
                     message: 'No shift assigned for today. Please contact administrator.'
                 });
             }
 
-            console.log(`✅ Found shift: ${employeeShift.shift_name} (${employeeShift.check_in_time} - ${employeeShift.check_out_time})`);
-
-            if (!employeeShift) {
-                return res.json({
-                    success: false,
-                    message: 'No shift assigned for today.'
-                });
-            }
-
-            // Check existing attendance
             const existingAttendance = await Attendance.getByEmployeeAndDate(req.tenantId, employee.employee_id, today);
 
             if (existingAttendance && existingAttendance.check_in) {
@@ -649,40 +549,16 @@ const attendanceController = {
                 });
             }
 
-            // Determine status with 15-minute concession
-            let status = 'Present';
-            const shiftCheckInTime = new Date(`${today}T${employeeShift.check_in_time}`);
-            const checkInTime = new Date();
-
-            const gracePeriod = new Date(shiftCheckInTime.getTime() + 15 * 60000);
-            if (checkInTime > gracePeriod) {
-                status = 'Delayed';
-                console.log(`⏰ Employee delayed: ${checkInTime.toLocaleTimeString()} > ${gracePeriod.toLocaleTimeString()}`);
-            } else {
-                console.log(`✅ Employee on time: ${checkInTime.toLocaleTimeString()} within grace period`);
-            }
-
-            // Create attendance
+            // Create attendance with automatic status calculation
             const attendanceData = {
                 employee_id: employee.employee_id,
-                shift_id: employeeShift.shift_id,
                 date: today,
-                check_in: checkInTime,
-                status: status,
-                remarks: `Face verified (${similarityPercent} confidence)`
+                check_in: currentTime,
+                remarks: `Face verified check-in (${similarityPercent}% confidence)`
             };
 
-            await Attendance.create(req.tenantId, attendanceData);
+            const attendanceResult = await Attendance.create(req.tenantId, attendanceData);
 
-            // Create history
-            await Attendance.createHistory(req.tenantId, {
-                employee_id: employee.employee_id,
-                date: today,
-                description: `Face verified attendance - ${status}`,
-                status: status
-            });
-
-            // Success response
             res.json({
                 success: true,
                 message: `Attendance marked successfully!`,
@@ -691,9 +567,12 @@ const attendanceController = {
                     department: employee.department_name
                 },
                 attendance: {
-                    status: status,
-                    check_in_time: checkInTime.toLocaleTimeString(),
-                    shift: employeeShift.shift_name
+                    status: attendanceResult.status,
+                    is_half_day: attendanceResult.is_half_day,
+                    half_day_reason: attendanceResult.half_day_reason,
+                    check_in_time: currentTime.toLocaleTimeString(),
+                    shift: employeeShift.shift_name,
+                    shift_check_in: employeeShift.check_in_time
                 },
                 confidence: `${similarityPercent}%`
             });
@@ -707,13 +586,52 @@ const attendanceController = {
         }
     },
 
-    // Add this in attendanceController.js (at the end, before module.exports)
+    // Mark check-out - UPDATED with half-day calculation
+    markCheckOut: async (req, res) => {
+        try {
+            const { employee_id, check_out_time } = req.body;
+            const userId = req.user.id;
+
+            let targetEmployeeId = employee_id;
+
+            if (!targetEmployeeId) {
+                const employee = await Employee.getByUserId(req.tenantId, userId);
+                if (!employee || !employee.employee_id) {
+                    return res.status(404).json({
+                        success: false,
+                        message: 'Employee record not found'
+                    });
+                }
+                targetEmployeeId = employee.employee_id;
+            }
+
+            const today = new Date().toLocaleString("sv-SE", {timeZone: "Asia/Kolkata"}).split(' ')[0];
+            const checkOutTime = check_out_time || new Date();
+
+            const result = await Attendance.updateCheckOut(req.tenantId, targetEmployeeId, today, checkOutTime);
+
+            res.json({
+                success: true,
+                message: result.is_half_day ? 
+                    `Check-out successful. Status updated to Half Day: ${result.half_day_reason}` : 
+                    `Check-out successful. Worked hours: ${result.worked_hours.toFixed(2)}`,
+                attendance: result
+            });
+
+        } catch (error) {
+            console.error('❌ Check-out error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error marking check-out: ' + error.message
+            });
+        }
+    },
+
+    // Get employee attendance percentage
     getEmployeeAttendancePercentage: async (req, res) => {
         try {
             const { employeeId } = req.params;
             const { month, year } = req.query;
-
-            console.log('📊 Getting attendance percentage for:', employeeId);
 
             if (!employeeId) {
                 return res.status(400).json({
@@ -722,7 +640,6 @@ const attendanceController = {
                 });
             }
 
-            // Use the new model method
             const percentage = await Attendance.getMonthlyPercentage(req.tenantId, employeeId, month, year);
 
             res.json({
@@ -740,8 +657,103 @@ const attendanceController = {
                 message: 'Error calculating attendance percentage'
             });
         }
-    }
+    },
 
+   // Get monthly attendance summary for an employee
+getMonthlyAttendanceSummary: async (req, res) => {
+    try {
+        const { employeeId } = req.params;
+        let { month, year } = req.query;
+
+        if (!employeeId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Employee ID is required'
+            });
+        }
+
+        // Get the actual employee ID from the database if employeeId is a code
+        let actualEmployeeId = employeeId;
+        
+        // Check if employeeId is numeric or a code
+        if (isNaN(employeeId)) {
+            const [employee] = await pool.execute(
+                'SELECT id FROM employee_details WHERE employee_id = ? AND tenant_id = ?',
+                [employeeId, req.tenantId]
+            );
+            if (employee.length > 0) {
+                actualEmployeeId = employee[0].id;
+            } else {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Employee not found'
+                });
+            }
+        }
+
+        const targetMonth = month || new Date().getMonth() + 1;
+        const targetYear = year || new Date().getFullYear();
+
+        const summary = await Attendance.getMonthlyAttendanceSummary(
+            req.tenantId, 
+            actualEmployeeId, 
+            parseInt(targetMonth), 
+            parseInt(targetYear)
+        );
+
+        res.json({
+            success: true,
+            summary: summary,
+            employee_id: employeeId,
+            month: targetMonth,
+            year: targetYear
+        });
+
+    } catch (error) {
+        console.error('❌ Error in getMonthlyAttendanceSummary:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching attendance summary'
+        });
+    }
+},
+
+    // Get attendance records for salary calculation
+    getAttendanceForSalary: async (req, res) => {
+        try {
+            const { employeeId } = req.params;
+            const { month, year } = req.query;
+
+            if (!employeeId || !month || !year) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Employee ID, month, and year are required'
+                });
+            }
+
+            const attendanceRecords = await Attendance.getAttendanceForSalary(
+                req.tenantId,
+                employeeId,
+                parseInt(month),
+                parseInt(year)
+            );
+
+            res.json({
+                success: true,
+                attendance: attendanceRecords,
+                employee_id: employeeId,
+                month: month,
+                year: year
+            });
+
+        } catch (error) {
+            console.error('❌ Error in getAttendanceForSalary:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error fetching attendance for salary calculation'
+            });
+        }
+    }
 };
 
 module.exports = attendanceController;
