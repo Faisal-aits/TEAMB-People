@@ -64,6 +64,9 @@ const EmployeeManagement = () => {
   const [resetPasswordValue, setResetPasswordValue] = useState('');
   const [resetPasswordConfirmValue, setResetPasswordConfirmValue] = useState('');
   const [showResetPassword, setShowResetPassword] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortConfig, setSortConfig] = useState({ key: 'first_name', direction: 'asc' });
+
 
   // Role options - including all roles
   const roleOptions = [
@@ -170,6 +173,55 @@ const loadEmployees = async () => {
     [key]: value
   }));
 };
+
+const handleSort = (key) => {
+  let direction = 'asc';
+  if (sortConfig.key === key && sortConfig.direction === 'asc') {
+    direction = 'desc';
+  }
+  setSortConfig({ key, direction });
+};
+
+const handleSearchChange = (e) => {
+  setSearchTerm(e.target.value);
+};
+
+const getFilteredAndSortedEmployees = () => {
+  let result = [...employees];
+
+  // Client-side text search
+  if (searchTerm) {
+    const lowerSearch = searchTerm.toLowerCase();
+    result = result.filter(emp => 
+      emp.first_name?.toLowerCase().includes(lowerSearch) ||
+      emp.last_name?.toLowerCase().includes(lowerSearch) ||
+      emp.email?.toLowerCase().includes(lowerSearch) ||
+      emp.employee_id?.toLowerCase().includes(lowerSearch) ||
+      emp.position?.toLowerCase().includes(lowerSearch)
+    );
+  }
+
+  // Client-side sorting
+  result.sort((a, b) => {
+    let aValue = a[sortConfig.key];
+    let bValue = b[sortConfig.key];
+
+    if (aValue === null) return 1;
+    if (bValue === null) return -1;
+
+    if (typeof aValue === 'string') {
+      aValue = aValue.toLowerCase();
+      bValue = (bValue || '').toLowerCase();
+    }
+
+    if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  return result;
+};
+
 
   const handlePositionChange = (e) => {
     const value = e.target.value;
@@ -653,6 +705,16 @@ const loadEmployees = async () => {
   <option value="false">Inactive</option>
 </select>
             
+            <div className="employee-search-container">
+              <input
+                type="text"
+                placeholder="Search name, email, ID..."
+                value={searchTerm}
+                onChange={handleSearchChange}
+                className="employee-search-input"
+              />
+            </div>
+            
             <button className="export-btn" onClick={handleExport} disabled={employees.length === 0}>Export</button>
           </div>
         </div>
@@ -661,19 +723,30 @@ const loadEmployees = async () => {
           <table className="employee-table">
             <thead>
               <tr>
-                <th>User ID</th>
-                <th>User</th>
+                <th className="sortable-header" onClick={() => handleSort('employee_id')}>
+                  User ID {sortConfig.key === 'employee_id' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                </th>
+                <th className="sortable-header" onClick={() => handleSort('first_name')}>
+                  User {sortConfig.key === 'first_name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                </th>
                 <th>Contact</th>
-                <th>Department</th>
-                <th>Position</th>
+                <th className="sortable-header" onClick={() => handleSort('department_name')}>
+                  Department {sortConfig.key === 'department_name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                </th>
+                <th className="sortable-header" onClick={() => handleSort('position')}>
+                  Position {sortConfig.key === 'position' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                </th>
                 <th>Role</th>
                 <th>Status</th>
-                <th>Join Date</th>
+                <th className="sortable-header" onClick={() => handleSort('joining_date')}>
+                  Join Date {sortConfig.key === 'joining_date' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                </th>
               </tr>
             </thead>
             <tbody>
-               {employees.map(employee => (
+               {getFilteredAndSortedEmployees().map(employee => (
                 <tr key={employee.employee_id}>
+
                   <td>
                     <div className="employee-id-cell">
                       {employee.employee_id || `UID-${employee.user_id}`}

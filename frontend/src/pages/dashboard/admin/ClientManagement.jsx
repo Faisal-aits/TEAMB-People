@@ -21,6 +21,8 @@ const ClientsManagement = () => {
   const [isAddIndustryModalOpen, setIsAddIndustryModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState(null);
   const [selectedInteraction, setSelectedInteraction] = useState(null);
+  const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
+
   
   const [filters, setFilters] = useState({
     search: '',
@@ -161,6 +163,38 @@ const ClientsManagement = () => {
       [key]: value
     }));
   };
+
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortedClients = () => {
+    let sortedList = [...clients];
+    
+    sortedList.sort((a, b) => {
+      let aValue = a[sortConfig.key];
+      let bValue = b[sortConfig.key];
+
+      if (aValue === null) return 1;
+      if (bValue === null) return -1;
+
+      if (typeof aValue === 'string') {
+        aValue = aValue.toLowerCase();
+        bValue = (bValue || '').toLowerCase();
+      }
+
+      if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return sortedList;
+  };
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -456,18 +490,31 @@ const ClientsManagement = () => {
           <table className="client-management-table">
             <thead>
               <tr>
-                <th className="client-table-head">Client Name</th>
-                <th className="client-table-head">Industry</th>
-                <th className="client-table-head">Contact Person</th>
+                <th className="client-table-head sortable" onClick={() => handleSort('name')}>
+                  Client Name {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                </th>
+                <th className="client-table-head sortable" onClick={() => handleSort('industry')}>
+                  Industry {sortConfig.key === 'industry' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                </th>
+                <th className="client-table-head sortable" onClick={() => handleSort('contact_person')}>
+                  Contact Person {sortConfig.key === 'contact_person' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                </th>
                 <th className="client-table-head">Contact Info</th>
-                <th className="client-table-head">Location</th>
-                <th className="client-table-head">Assigned Manager</th>
-                <th className="client-table-head">Status</th>
+                <th className="client-table-head sortable" onClick={() => handleSort('location')}>
+                  Location {sortConfig.key === 'location' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                </th>
+                <th className="client-table-head sortable" onClick={() => handleSort('assigned_manager')}>
+                  Assigned Manager {sortConfig.key === 'assigned_manager' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                </th>
+                <th className="client-table-head sortable" onClick={() => handleSort('status')}>
+                  Status {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                </th>
               </tr>
             </thead>
             <tbody>
-              {clients.map(client => (
+              {getSortedClients().map(client => (
                 <tr key={client.id} className="client-table-row">
+
                   <td className="client-table-cell">
                     <div className="client-name-cell">
                       <div 
