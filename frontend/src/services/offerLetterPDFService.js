@@ -202,10 +202,10 @@ const salaryBreakupRows = [
   { key: "medicalAllowance", label: "Medical Allowance" },
   { key: "professionalTax", label: "Professional Tax (PT)" },
   { key: "tds", label: "TDS" },
-  { key: "netSalary", label: "Net Pay", bold: true },
+  { key: "netSalary", label: "Net Salary", bold: true },
   { key: "employerPfContribution", label: "Employer PF Contribution" },
   { key: "employerEsiContribution", label: "Employer ESI Contribution" },
-  { key: "ctc", label: "Total Earning", bold: true }
+  { key: "ctc", label: "CTC", bold: true }
 ];
 
 const renderSalaryBreakupRows = (salaryBreakup = {}) => salaryBreakupRows.map((row) => {
