@@ -31,12 +31,12 @@ const salaryBreakupRows = [
   { key: "conveyanceAllowance", label: "Conveyance Allowance" },
   { key: "specialAllowance", label: "Special Allowance" },
   { key: "medicalAllowance", label: "Medical Allowance" },
+  { key: "netSalary", label: "Total Earning", bold: true },
   { key: "professionalTax", label: "Professional Tax (PT)" },
   { key: "tds", label: "TDS" },
-  { key: "netSalary", label: "Net Salary", bold: true },
   { key: "employerPfContribution", label: "Employer PF Contribution" },
   { key: "employerEsiContribution", label: "Employer ESI Contribution" },
-  { key: "ctc", label: "CTC", bold: true }
+  { key: "ctc", label: "Net Pay", bold: true }
 ];
 
 const emptySalaryBreakup = salaryBreakupRows.reduce((acc, row) => {
