@@ -69,7 +69,6 @@
 
 /* User Badge */
 .user-badge {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   padding: 5px 12px;
   border-radius: 20px;
@@ -317,7 +316,6 @@
 }
 
 .retry-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
   padding: 10px 25px;

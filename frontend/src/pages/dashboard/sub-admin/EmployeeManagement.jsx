@@ -1,6 +1,7 @@
 // src/pages/dashboard/admin/EmployeeManagement.jsx
 import React, { useState, useEffect } from 'react';
 import { employeeAPI } from '../../../services/employeeAPI';
+import { useAuth } from '../../../contexts/AuthContext';
 import './Employee.css';
 import * as XLSX from 'xlsx';
 
@@ -12,12 +13,14 @@ const EmployeeManagement = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
- const [filters, setFilters] = useState({
-  department_id: '',
-  is_active: '',       // ✅ DEFAULT = ALL
-  role_id: ''
-});
+  const { user } = useAuth();
+  const [filters, setFilters] = useState({
+    department_id: '',
+    is_active: '',       // ✅ DEFAULT = ALL
+    role_id: ''
+  });
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -58,6 +61,12 @@ const EmployeeManagement = () => {
   const [showCustomPosition, setShowCustomPosition] = useState(false);
   const [customPosition, setCustomPosition] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [resetPasswordValue, setResetPasswordValue] = useState('');
+  const [resetPasswordConfirmValue, setResetPasswordConfirmValue] = useState('');
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortConfig, setSortConfig] = useState({ key: 'first_name', direction: 'asc' });
+
 
   // Role options - including all roles
   const roleOptions = [
@@ -164,6 +173,55 @@ const loadEmployees = async () => {
     [key]: value
   }));
 };
+
+const handleSort = (key) => {
+  let direction = 'asc';
+  if (sortConfig.key === key && sortConfig.direction === 'asc') {
+    direction = 'desc';
+  }
+  setSortConfig({ key, direction });
+};
+
+const handleSearchChange = (e) => {
+  setSearchTerm(e.target.value);
+};
+
+const getFilteredAndSortedEmployees = () => {
+  let result = [...employees];
+
+  // Client-side text search
+  if (searchTerm) {
+    const lowerSearch = searchTerm.toLowerCase();
+    result = result.filter(emp => 
+      emp.first_name?.toLowerCase().includes(lowerSearch) ||
+      emp.last_name?.toLowerCase().includes(lowerSearch) ||
+      emp.email?.toLowerCase().includes(lowerSearch) ||
+      emp.employee_id?.toLowerCase().includes(lowerSearch) ||
+      emp.position?.toLowerCase().includes(lowerSearch)
+    );
+  }
+
+  // Client-side sorting
+  result.sort((a, b) => {
+    let aValue = a[sortConfig.key];
+    let bValue = b[sortConfig.key];
+
+    if (aValue === null) return 1;
+    if (bValue === null) return -1;
+
+    if (typeof aValue === 'string') {
+      aValue = aValue.toLowerCase();
+      bValue = (bValue || '').toLowerCase();
+    }
+
+    if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  return result;
+};
+
 
   const handlePositionChange = (e) => {
     const value = e.target.value;
@@ -412,6 +470,52 @@ const loadEmployees = async () => {
       }
   };
 
+  const openResetPasswordModal = (employee) => {
+    setSelectedEmployee(employee);
+    setResetPasswordValue('');
+    setResetPasswordConfirmValue('');
+    setShowResetPassword(false);
+    setIsResetPasswordModalOpen(true);
+  };
+
+  const closeResetPasswordModal = () => {
+    if (isSubmitting) return;
+    setIsResetPasswordModalOpen(false);
+    setResetPasswordValue('');
+    setResetPasswordConfirmValue('');
+    setShowResetPassword(false);
+  };
+
+  const submitResetPassword = async (e) => {
+    e.preventDefault();
+    if (!selectedEmployee) return;
+
+    const newPassword = resetPasswordValue;
+    if (!newPassword || newPassword.length < 6) {
+      alert('Password must be at least 6 characters.');
+      return;
+    }
+    if (newPassword !== resetPasswordConfirmValue) {
+      alert('Passwords do not match.');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await employeeAPI.resetPassword(
+        selectedEmployee.employee_id || selectedEmployee.id || selectedEmployee.user_id,
+        { new_password: newPassword }
+      );
+      alert('Password reset successfully!');
+      closeResetPasswordModal();
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      alert(error.response?.data?.message || 'Failed to reset password');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const getStatusBadge = (isActive) => {
     return (
       <span className={`status-badge ${isActive ? 'status-active' : 'status-inactive'}`}>
@@ -601,6 +705,16 @@ const loadEmployees = async () => {
   <option value="false">Inactive</option>
 </select>
             
+            <div className="employee-search-container">
+              <input
+                type="text"
+                placeholder="Search name, email, ID..."
+                value={searchTerm}
+                onChange={handleSearchChange}
+                className="employee-search-input"
+              />
+            </div>
+            
             <button className="export-btn" onClick={handleExport} disabled={employees.length === 0}>Export</button>
           </div>
         </div>
@@ -609,19 +723,30 @@ const loadEmployees = async () => {
           <table className="employee-table">
             <thead>
               <tr>
-                <th>User ID</th>
-                <th>User</th>
+                <th className="sortable-header" onClick={() => handleSort('employee_id')}>
+                  User ID {sortConfig.key === 'employee_id' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                </th>
+                <th className="sortable-header" onClick={() => handleSort('first_name')}>
+                  User {sortConfig.key === 'first_name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                </th>
                 <th>Contact</th>
-                <th>Department</th>
-                <th>Position</th>
+                <th className="sortable-header" onClick={() => handleSort('department_name')}>
+                  Department {sortConfig.key === 'department_name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                </th>
+                <th className="sortable-header" onClick={() => handleSort('position')}>
+                  Position {sortConfig.key === 'position' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                </th>
                 <th>Role</th>
                 <th>Status</th>
-                <th>Join Date</th>
+                <th className="sortable-header" onClick={() => handleSort('joining_date')}>
+                  Join Date {sortConfig.key === 'joining_date' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                </th>
               </tr>
             </thead>
             <tbody>
-               {employees.map(employee => (
+               {getFilteredAndSortedEmployees().map(employee => (
                 <tr key={employee.employee_id}>
+
                   <td>
                     <div className="employee-id-cell">
                       {employee.employee_id || `UID-${employee.user_id}`}
@@ -1014,6 +1139,19 @@ const loadEmployees = async () => {
                     <span>{selectedEmployee.emergency_contact || '-'}</span>
                   </div>
                 </div>
+
+                {/* Reset Password Action */}
+                <div className="reset-pass-section">
+                  <label className="admin-action-label">Administrative Actions</label>
+                  <button
+                    type="button"
+                    onClick={() => openResetPasswordModal(selectedEmployee)}
+                    className="minimal-reset-btn"
+                    disabled={isSubmitting}
+                  >
+                    <span role="img" aria-label="reset">🔄</span> Reset Employee Password
+                  </button>
+                </div>
               </div>
 
               {/* Employment Details - Only show for employees/admins */}
@@ -1093,6 +1231,95 @@ const loadEmployees = async () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Password Modal */}
+      {isResetPasswordModalOpen && selectedEmployee && (
+        <div className="modal-overlay">
+          <div className="modal-content1 password-modal">
+            <div className="modal-header">
+              <h2>Reset Account Password</h2>
+              <button
+                className="close-btn"
+                onClick={closeResetPasswordModal}
+                disabled={isSubmitting}
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={submitResetPassword} className="employee-form password-modal-content">
+              <div className="reset-summary-card">
+                <div className="reset-summary-item">
+                  <span className="reset-summary-label">Employee</span>
+                  <span className="reset-summary-value">{selectedEmployee.first_name} {selectedEmployee.last_name}</span>
+                </div>
+                <div className="reset-summary-item">
+                  <span className="reset-summary-label">ID</span>
+                  <span className="reset-summary-value">{selectedEmployee.employee_id || `UID-${selectedEmployee.user_id}`}</span>
+                </div>
+              </div>
+
+              <div className="form-section">
+                <div className="form-group">
+                  <label>New Secure Password *</label>
+                  <div className="password-input-group">
+                    <input
+                      type={showResetPassword ? 'text' : 'password'}
+                      value={resetPasswordValue}
+                      onChange={(e) => setResetPasswordValue(e.target.value)}
+                      placeholder="Minimum 6 characters"
+                      required
+                      autoComplete="new-password"
+                    />
+                    <button
+                      type="button"
+                      className="password-toggle-icon"
+                      onClick={() => setShowResetPassword(v => !v)}
+                    >
+                      {showResetPassword ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Confirm New Password *</label>
+                  <input
+                    type={showResetPassword ? 'text' : 'password'}
+                    value={resetPasswordConfirmValue}
+                    onChange={(e) => setResetPasswordConfirmValue(e.target.value)}
+                    placeholder="Re-enter for confirmation"
+                    required
+                    autoComplete="new-password"
+                  />
+                </div>
+                
+                <span className="reset-help-text">
+                  <strong>Warning:</strong> This will immediately replace the employee’s current password. They will be required to use the new credentials for their next login.
+                </span>
+              </div>
+
+              <div className="form-actions">
+                <button
+                  type="button"
+                  onClick={closeResetPasswordModal}
+                  className="cancel-btn"
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="submit-btn"
+                  disabled={isSubmitting}
+                  style={{ backgroundColor: '#d97706', color: 'white' }}
+                >
+                  {isSubmitting ? 'Processing...' : 'Confirm Reset'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

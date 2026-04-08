@@ -71,8 +71,8 @@ const Reports = ({ navigationState }) => {
       filtered = filtered.filter(report => {
         const reportEmployee = report.generated_by_name || '';
         const filterEmployee = filters.employeeName;
-        const match = reportEmployee.toLowerCase() === filterEmployee.toLowerCase();
-        console.log(`Filtering: ${reportEmployee} === ${filterEmployee} ? ${match}`);
+        const match = reportEmployee.toLowerCase().includes(filterEmployee.toLowerCase());
+        console.log(`Filtering: ${reportEmployee} includes ${filterEmployee} ? ${match}`);
         return match;
       });
       console.log(`After employee filter: ${filtered.length} reports`);
@@ -242,7 +242,7 @@ const Reports = ({ navigationState }) => {
               <h3 className="reports-table-title">Report History</h3>
             </div>
             <div className="filter-controls-header">
-              {filters.employeeName && (
+              {filters.employeeName && navigationState?.filterByEmployee && (
                 <div className="employee-filter-badge">
                   <span className="filter-label">Filtered by:</span>
                   <span className="employee-name-badge">{filters.employeeName}</span>
@@ -255,7 +255,16 @@ const Reports = ({ navigationState }) => {
                   </button>
                 </div>
               )}
-              <div className="date-filter-group">
+              <div className="date-filter-group" style={{ display: 'flex', gap: '10px' }}>
+                <input
+                  type="text"
+                  name="employeeName"
+                  value={filters.employeeName}
+                  onChange={handleFilterChange}
+                  className="date-filter-input"
+                  placeholder="Search Employee..."
+                  style={{ minWidth: '150px' }}
+                />
                 <input
                   type="date"
                   name="dateFrom"

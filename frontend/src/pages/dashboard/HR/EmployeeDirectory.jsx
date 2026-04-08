@@ -104,7 +104,7 @@ const EmployeeDetail = ({ emp, allOfferLetters, allSlipRecords, onBack }) => {
                 <HiOutlineDocumentText className="doc-item-icon offer" />
                 <div>
                   <div className="doc-title">Offer Letter</div>
-                  <div className="doc-sub">Issued: {new Date(letter.issue_date).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })}</div>
+                  <div className="doc-sub">Issued: {letter.issue_date ? new Date(letter.issue_date).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : 'N/A'}</div>
                 </div>
               </div>
               <div className="doc-item-actions">
@@ -182,10 +182,10 @@ const EmployeeDirectory = () => {
           offerLetterAPI.getAll(),
           salaryAPI.getAll()
         ]);
-        setEmployees(empRes.data.employees || []);
-        setDepartments(deptRes.data.departments || []);
-        setAllOfferLetters(lettersRes.data.letters || []);
-        setAllSlipRecords(slipsRes.data.salaryRecords || []);
+        setEmployees(empRes.data.employees || empRes.data.data || []);
+        setDepartments(deptRes.data.departments || deptRes.data.data || []);
+        setAllOfferLetters(lettersRes.data.letters || lettersRes.data.data || []);
+        setAllSlipRecords(slipsRes.data.salaryRecords || slipsRes.data.data || []);
       } catch (err) { console.error("Error loading directory:", err); }
       finally { setLoading(false); }
     };

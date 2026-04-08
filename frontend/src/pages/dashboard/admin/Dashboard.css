@@ -84,10 +84,12 @@
     transform: scale(1);
     box-shadow: 0 0 0 0 rgba(138, 135, 201, 0.7);
   }
+
   50% {
     transform: scale(1.1);
     box-shadow: 0 0 0 10px rgba(138, 135, 201, 0);
   }
+
   100% {
     transform: scale(1);
     box-shadow: 0 0 0 0 rgba(138, 135, 201, 0);
@@ -209,11 +211,15 @@
 }
 
 @keyframes blink {
-  0%, 50% {
+
+  0%,
+  50% {
     opacity: 1;
     transform: scale(1);
   }
-  51%, 100% {
+
+  51%,
+  100% {
     opacity: 0.6;
     transform: scale(0.9);
   }
@@ -702,6 +708,7 @@
     opacity: 0;
     transform: translate(-50%, -50%) scale(0.9);
   }
+
   to {
     opacity: 1;
     transform: translate(-50%, -50%) scale(1);
@@ -1139,20 +1146,20 @@
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .charts-section {
     grid-template-columns: 1fr;
   }
-  
+
   .combined-section {
     grid-template-columns: 1fr;
   }
-  
+
   .updates-column,
   .projects-column {
     width: 100%;
   }
-  
+
   .pie-legend {
     flex-wrap: wrap;
     gap: 0.5rem;
@@ -1163,52 +1170,52 @@
   .dashboard-content {
     padding: 0.8rem;
   }
-  
+
   .dashboard-header {
     flex-direction: column;
     gap: 1rem;
     align-items: flex-start;
   }
-  
+
   .dashboard-header h1 {
     font-size: 1.4rem;
   }
-  
+
   .notification-dropdown {
     width: 300px;
     right: -50px;
   }
-  
+
   .stats-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .pie-bottom-row {
     gap: 0.8rem;
   }
-  
+
   .pie-legend {
     flex-wrap: wrap;
     gap: 0.5rem;
   }
-  
+
   .pie-category-buttons {
     gap: 0.3rem;
   }
-  
+
   .category-btn {
     min-width: 60px;
     padding: 0.5rem 0.6rem;
   }
-  
+
   .category-icon {
     font-size: 1.1rem;
   }
-  
+
   .category-label {
     font-size: 0.6rem;
   }
-  
+
   .updates-column .glass-form {
     min-height: auto;
   }
@@ -1272,7 +1279,6 @@
   justify-content: space-between;
   align-items: center;
   padding: 24px 28px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
 }
 
@@ -1335,7 +1341,6 @@
 /* Report Count Badge */
 .report-count-badge {
   display: inline-block;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   padding: 8px 16px;
   border-radius: 12px;
@@ -1447,6 +1452,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -1457,6 +1463,7 @@
     transform: translateY(30px);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -1551,7 +1558,6 @@
 }
 
 .timeline-marker.report-marker {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   width: 12px;
   height: 12px;
 }
@@ -1576,6 +1582,7 @@
   0% {
     box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.4);
   }
+
   100% {
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   }
@@ -1613,3 +1620,89 @@
     transform: rotate(360deg);
   }
 }
+
+/* Minimal Task Reporting Styles */
+.minimal-timeline {
+  background: white;
+  border: 1px solid #edf2f7;
+  border-radius: 12px;
+  max-height: 450px;
+  overflow-y: auto;
+  padding: 0;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.minimal-item {
+  display: flex;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #f1f5f9;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border-left: 0 solid transparent;
+}
+
+.minimal-item:last-child {
+  border-bottom: none;
+}
+
+.minimal-item:hover {
+  background-color: #f8fafc;
+  border-left: 4px solid #3b82f6;
+  padding-left: calc(1.5rem - 4px);
+}
+
+.timeline-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  width: 100%;
+}
+
+.task-name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.4;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+.task-user-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.task-user {
+  color: #3b82f6;
+  font-weight: 600;
+}
+
+.task-dot {
+  color: #cbd5e1;
+  font-size: 0.5rem;
+}
+
+.task-date {
+  color: #94a3b8;
+}
+
+/* Custom Scrollbar for activity-timeline */
+.minimal-timeline::-webkit-scrollbar {
+  width: 5px;
+}
+
+.minimal-timeline::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.minimal-timeline::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 10px;
+}
+
+.minimal-timeline::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
+}
