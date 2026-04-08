@@ -152,15 +152,16 @@ create: async (tenantId, employeeData) => {
         // Create employee details with tenant_id
         await connection.execute(
             `INSERT INTO employee_details 
-            (id, tenant_id, user_id, department_id, position, joining_date, date_of_birth, address, emergency_contact,
+            (id, tenant_id, user_id, department_id, position, salary, joining_date, date_of_birth, address, emergency_contact,
              bank_account_number, ifsc_code, pan_number, aadhar_number) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 employeeId,
                 tenantId,
                 userId,
                 employeeData.department_id || null, 
                 employeeData.position || null,
+                employeeData.salary || null,
                 employeeData.joining_date || null,
                 employeeData.date_of_birth || null,
                 employeeData.address || null,
@@ -310,7 +311,7 @@ update: async (tenantId, id, employeeData) => {
         // Update employee_details table including employee_id
         await connection.execute(
             `UPDATE employee_details 
-             SET id = ?, department_id = ?, position = ?, joining_date = ?,
+             SET id = ?, department_id = ?, position = ?, salary = ?, joining_date = ?,
                  date_of_birth = ?, address = ?, emergency_contact = ?,
                  bank_account_number = ?, ifsc_code = ?, pan_number = ?, aadhar_number = ?
              WHERE id = ? AND tenant_id = ?`,
@@ -318,6 +319,7 @@ update: async (tenantId, id, employeeData) => {
                 employeeData.employee_id, // Update employee_id
                 employeeData.department_id,
                 employeeData.position,
+                employeeData.salary,
                 employeeData.joining_date,
                 employeeData.date_of_birth,
                 employeeData.address,

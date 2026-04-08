@@ -48,6 +48,9 @@ export const salaryAPI = {
   // Send payslip via email
   sendPayslipEmail: (id, emailData) => api.post(`/salary/payslip/${id}/email`, emailData),
 
+  // Calculate salary from attendance
+  calculateFromAttendance: (data) => api.post('/salary/calculate-from-attendance', data),
+
   // Get salary records for logged-in employee
   getMySalaryRecords: (filters = {}) => {
     const params = new URLSearchParams();

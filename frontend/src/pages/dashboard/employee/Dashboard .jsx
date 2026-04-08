@@ -56,7 +56,8 @@ const Dashboard = () => {
           throw new Error('User ID not found.');
         }
 
-        const employee = await getEmployeeByUserId(user.id);
+        const profileResponse = await employeeAPI.getMyProfile();
+        const employee = profileResponse.data?.employee;
         
         if (!employee) {
           throw new Error('Employee record not found for this user.');
@@ -103,21 +104,7 @@ const Dashboard = () => {
     fetchAllData();
   }, []);
 
-  // Get employee data by user ID
-  const getEmployeeByUserId = async (userId) => {
-    try {
-      const response = await employeeAPI.getAll();
-      
-      if (response.data && response.data.employees) {
-        const employee = response.data.employees.find(emp => emp.user_id === userId);
-        return employee;
-      }
-      return null;
-    } catch (err) {
-      console.error('Error fetching employees list:', err);
-      return null;
-    }
-  };
+
 
   // Check if employee is assigned to project
   const isEmployeeAssignedToProject = (project, employee) => {

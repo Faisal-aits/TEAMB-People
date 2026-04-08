@@ -24,7 +24,7 @@ const salaryController = {
     getMySalaryRecords: async (req, res) => {
         try {
             const { month, year } = req.query;
-            const salaryRecords = await Salary.getByUserId(req.user.id, { month, year });
+            const salaryRecords = await Salary.getByUserId(req.tenantId, req.user.id, { month, year });
             res.json({ salaryRecords });
         } catch (error) {
             console.error('Get my salary records error:', error);
@@ -45,35 +45,6 @@ const salaryController = {
         } catch (error) {
             console.error('Get salary record error:', error);
             res.status(500).json({ message: 'Server error' });
-        }
-    },
-
-    // Calculate salary based on attendance (helper method)
-    calculateSalaryFromAttendance: async (req, res) => {
-        try {
-            const { employee_id, month, year, basic_salary } = req.body;
-
-            if (!employee_id || !month || !year || !basic_salary) {
-                return res.status(400).json({ 
-                    message: 'Employee ID, month, year, and basic salary are required' 
-                });
-            }
-
-            const calculation = await Salary.calculateSalaryFromAttendance(
-                req.tenantId, 
-                employee_id, 
-                parseInt(month), 
-                parseInt(year), 
-                parseFloat(basic_salary)
-            );
-
-            res.json({
-                success: true,
-                calculation: calculation
-            });
-        } catch (error) {
-            console.error('Calculate salary error:', error);
-            res.status(500).json({ message: 'Error calculating salary from attendance' });
         }
     },
 
@@ -400,10 +371,11 @@ createSalaryRecord: async (req, res) => {
                     }
 
                     // Calculate salary based on attendance
+                    const monthNumber = typeof month === 'string' ? getMonthNumber(month) : parseInt(month);
                     const attendanceCalculation = await Salary.calculateSalaryFromAttendance(
                         req.tenantId,
                         employee.id,
-                        parseInt(month),
+                        monthNumber,
                         parseInt(year),
                         parseFloat(employee.salary || 0)
                     );
@@ -489,6 +461,46 @@ createSalaryRecord: async (req, res) => {
         } catch (error) {
             console.error('Send payslip email error:', error);
             res.status(500).json({ message: 'Error sending email' });
+        }
+    },
+
+    // Calculate Salary from Attendance
+    calculateSalaryFromAttendance: async (req, res) => {
+        try {
+            const { employee_id, month, year, basic_salary } = req.body;
+            
+            if (!employee_id || !month || !year) {
+                return res.status(400).json({ message: 'Missing required parameters' });
+            }
+
+            const monthNumber = typeof month === 'string' ? getMonthNumber(month) : month;
+            
+            // Allow basic_salary to come from the request (for preview), else fetch from DB
+            let employeeSalary = parseFloat(basic_salary) || 0;
+            
+            if (!employeeSalary) {
+                const Employee = require('../models/employeeModel');
+                const employee = await Employee.getById(req.tenantId, employee_id);
+                employeeSalary = parseFloat(employee?.salary) || 0;
+            }
+
+            const Salary = require('../models/salaryModel');
+            const calculation = await Salary.calculateSalaryFromAttendance(
+                req.tenantId,
+                employee_id,
+                monthNumber,
+                year,
+                employeeSalary
+            );
+
+            if (!calculation) {
+                return res.status(404).json({ message: 'No attendance data found for this period' });
+            }
+
+            res.json({ success: true, data: calculation });
+        } catch (error) {
+            console.error('Error calculating salary from attendance:', error);
+            res.status(500).json({ message: 'Server error: ' + error.message });
         }
     }
 };

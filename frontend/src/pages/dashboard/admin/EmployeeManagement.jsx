@@ -26,7 +26,7 @@ const EmployeeManagement = () => {
     last_name: '',
     email: '',
     phone: '',
-    department_ids: [], // Changed to array for multiple departments
+    department_ids: [],
     position: '',
     joining_date: '',
     date_of_birth: '',
@@ -87,7 +87,7 @@ const EmployeeManagement = () => {
       ]);
       await loadEmployees();
     };
-    
+
     loadInitialData();
   }, []);
 
@@ -115,13 +115,13 @@ const EmployeeManagement = () => {
 
       const response = await employeeAPI.getAll(apiFilters);
       const employeesData = response.data.employees || [];
-      
+
       // Ensure department_ids is always an array for each employee
       const processedEmployees = employeesData.map(emp => ({
         ...emp,
         department_ids: emp.department_ids || (emp.department_id ? [emp.department_id] : [])
       }));
-      
+
       setEmployees(processedEmployees);
     } catch (error) {
       console.error('Error loading employees:', error);
@@ -227,7 +227,7 @@ const EmployeeManagement = () => {
     // Client-side text search (Case-insensitive)
     if (searchTerm) {
       const lowerSearch = searchTerm.toLowerCase();
-      result = result.filter(emp => 
+      result = result.filter(emp =>
         emp.first_name?.toLowerCase().includes(lowerSearch) ||
         emp.last_name?.toLowerCase().includes(lowerSearch) ||
         emp.email?.toLowerCase().includes(lowerSearch) ||
@@ -266,7 +266,7 @@ const EmployeeManagement = () => {
 
   const handlePositionChange = (e) => {
     const value = e.target.value;
-    
+
     if (value === 'custom') {
       setShowCustomPosition(true);
       setFormData(prev => ({ ...prev, position: '' }));
@@ -285,7 +285,7 @@ const EmployeeManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.first_name || !formData.last_name || !formData.email) {
       alert('Please fill in all required fields');
       return;
@@ -309,12 +309,13 @@ const EmployeeManagement = () => {
         ifsc_code: formData.ifsc_code || null,
         pan_number: formData.pan_number || null,
         aadhar_number: formData.aadhar_number || null,
+        salary: formData.salary || null,
         employee_id: formData.employee_id || null,
         role_id: formData.role_id || roleOptions.find(r => r.name === 'Employee')?.id || ''
       };
 
       const response = await employeeAPI.create(employeeData);
-      
+
       setFormData({
         first_name: '',
         last_name: '',
@@ -330,20 +331,21 @@ const EmployeeManagement = () => {
         ifsc_code: '',
         pan_number: '',
         aadhar_number: '',
+        salary: '',
         employee_id: '',
         role_id: roleOptions.find(r => r.name === 'Employee')?.id || ''
       });
-      
+
       setShowCustomPosition(false);
       setCustomPosition('');
       setIsModalOpen(false);
-      
+
       setFilters({
         department_id: '',
         is_active: '',
         role_id: ''
       });
-      
+
       await loadEmployees();
       alert('Employee added successfully!');
     } catch (error) {
@@ -362,7 +364,7 @@ const EmployeeManagement = () => {
 
   const handleEditEmployee = (employee) => {
     setSelectedEmployee(employee);
-    
+
     const formatDateForInput = (dateString) => {
       if (!dateString) return '';
       if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
@@ -395,10 +397,11 @@ const EmployeeManagement = () => {
       ifsc_code: employee.ifsc_code || '',
       pan_number: employee.pan_number || '',
       aadhar_number: employee.aadhar_number || '',
+      salary: employee.salary || '',
       employee_id: employee.employee_id || '', // Include employee_id in edit form
       role_id: String(employee.role_id) || getRoleIdFromRoleName(employee.role_name) || ''
     });
-    
+
     setIsViewModalOpen(false);
     setIsEditModalOpen(true);
   };
@@ -416,7 +419,7 @@ const EmployeeManagement = () => {
 
   const handleUpdateEmployee = async (e) => {
     e.preventDefault();
-    
+
     if (!editFormData.first_name || !editFormData.last_name || !editFormData.email) {
       alert('Please fill in all required fields');
       return;
@@ -440,6 +443,7 @@ const EmployeeManagement = () => {
         ifsc_code: editFormData.ifsc_code || null,
         pan_number: editFormData.pan_number || null,
         aadhar_number: editFormData.aadhar_number || null,
+        salary: editFormData.salary || null,
         employee_id: editFormData.employee_id || null, // Include employee_id in update
         role_id: editFormData.role_id || roleOptions.find(r => r.name === 'Employee')?.id || ''
       };
@@ -474,7 +478,7 @@ const EmployeeManagement = () => {
         alert('Employee permanently deleted from database!');
       } catch (error) {
         console.error('Error deleting employee:', error);
-        
+
         if (error.response?.status === 404) {
           alert('Employee not found in database.');
         } else if (error.response?.status === 400) {
@@ -567,11 +571,12 @@ const EmployeeManagement = () => {
         'Bank Account': employee.bank_account_number || '-',
         'IFSC Code': employee.ifsc_code || '-',
         'PAN Number': employee.pan_number || '-',
-        'Aadhar Number': employee.aadhar_number || '-'
+        'Aadhar Number': employee.aadhar_number || '-',
+        'Salary (CTC)': employee.salary || '-'
       }));
 
       const worksheet = XLSX.utils.json_to_sheet(exportData);
-      
+
       const wscols = [
         { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 25 },
         { wch: 15 }, { wch: 30 }, { wch: 20 }, { wch: 12 },
@@ -584,7 +589,7 @@ const EmployeeManagement = () => {
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Employees Data');
       const fileName = `Employees_Export_${new Date().toISOString().split('T')[0]}.xlsx`;
       XLSX.writeFile(workbook, fileName);
-      
+
       alert(`Exported ${employees.length} employees successfully!`);
     } catch (error) {
       console.error('Error exporting data:', error);
@@ -594,7 +599,7 @@ const EmployeeManagement = () => {
 
   const getRoleBadge = (roleName) => {
     let badgeClass = 'role-badge ';
-    switch(roleName?.toLowerCase()) {
+    switch (roleName?.toLowerCase()) {
       case 'admin':
         badgeClass += 'role-admin';
         break;
@@ -610,7 +615,7 @@ const EmployeeManagement = () => {
       default:
         badgeClass += 'role-employee';
     }
-    
+
     return (
       <span className={badgeClass}>
         {roleName?.toUpperCase() || 'EMPLOYEE'}
@@ -659,7 +664,7 @@ const EmployeeManagement = () => {
       {/* Header */}
       <div className="employee-header">
         <h2>Employee Management</h2>
-        <button 
+        <button
           className="add-employee-btn"
           onClick={() => setIsModalOpen(true)}
         >
@@ -673,7 +678,7 @@ const EmployeeManagement = () => {
         <div className="table-header">
           <h3>Employee Directory</h3>
           <div className="table-actions">
-            <select 
+            <select
               className="filter-btn"
               value={filters.department_id}
               onChange={(e) => handleFilterChange('department_id', e.target.value)}
@@ -686,7 +691,7 @@ const EmployeeManagement = () => {
               ))}
             </select>
 
-            <select 
+            <select
               className="filter-btn"
               value={filters.role_id}
               onChange={(e) => handleFilterChange('role_id', e.target.value)}
@@ -698,8 +703,8 @@ const EmployeeManagement = () => {
                 </option>
               ))}
             </select>
-            
-            <select 
+
+            <select
               className="filter-btn"
               value={filters.is_active}
               onChange={(e) => handleFilterChange('is_active', e.target.value)}
@@ -708,7 +713,7 @@ const EmployeeManagement = () => {
               <option value="true">Active</option>
               <option value="false">Inactive</option>
             </select>
-            
+
             <div className="employee-search-container">
               <input
                 type="text"
@@ -718,11 +723,11 @@ const EmployeeManagement = () => {
                 className="employee-search-input"
               />
             </div>
-            
+
             <button className="export-btn" onClick={handleExport} disabled={employees.length === 0}>Export</button>
           </div>
         </div>
-        
+
         <div className="table-wrapper">
           <table className="employee-table">
             <thead>
@@ -756,7 +761,7 @@ const EmployeeManagement = () => {
                   </td>
                   <td>
                     <div className="employee-cell">
-                      <div 
+                      <div
                         className="employee-name clickable"
                         onClick={() => handleViewEmployee(employee)}
                       >
@@ -804,7 +809,7 @@ const EmployeeManagement = () => {
             <div className="no-data-icon">👥</div>
             <p>No employees found</p>
             <p className="no-data-subtext">
-              {filters.department_id || filters.role_id || filters.is_active !== 'true' 
+              {filters.department_id || filters.role_id || filters.is_active !== 'true'
                 ? 'Try changing your filters to see more results.'
                 : 'Get started by adding your first user.'}
             </p>
@@ -826,7 +831,7 @@ const EmployeeManagement = () => {
           <div className="modal-content1 large-modal">
             <div className="modal-header">
               <h2>Add New Employee</h2>
-              <button 
+              <button
                 className="close-btn"
                 onClick={() => setIsModalOpen(false)}
               >
@@ -973,6 +978,18 @@ const EmployeeManagement = () => {
                       )}
                     </div>
                     <div className="form-group">
+                      <label>Monthly Salary (CTC)</label>
+                      <input
+                        type="number"
+                        name="salary"
+                        min="0"
+                        step="0.01"
+                        value={formData.salary || ''}
+                        onChange={handleInputChange}
+                        placeholder="Enter monthly salary"
+                      />
+                    </div>
+                    <div className="form-group">
                       <label>Joining Date</label>
                       <input
                         type="date"
@@ -1098,7 +1115,7 @@ const EmployeeManagement = () => {
           <div className="modal-content1 large-modal">
             <div className="modal-header">
               <h2>Employee Details</h2>
-              <button 
+              <button
                 className="close-btn"
                 onClick={() => setIsViewModalOpen(false)}
               >
@@ -1175,6 +1192,10 @@ const EmployeeManagement = () => {
                     <div className="detail-item">
                       <label>Joining Date</label>
                       <span>{formatDate(selectedEmployee.joining_date)}</span>
+                    </div>
+                    <div className="detail-item">
+                      <label>Monthly Salary (CTC)</label>
+                      <span>{selectedEmployee.salary ? `₹${Number(selectedEmployee.salary).toLocaleString('en-IN')}` : '-'}</span>
                     </div>
                     <div className="detail-item">
                       <label>Status</label>
@@ -1300,7 +1321,7 @@ const EmployeeManagement = () => {
                     autoComplete="new-password"
                   />
                 </div>
-                
+
                 <span className="reset-help-text">
                   <strong>Warning:</strong> This will immediately replace the employee’s current password. They will be required to use the new credentials for their next login.
                 </span>
@@ -1335,7 +1356,7 @@ const EmployeeManagement = () => {
           <div className="modal-content1 large-modal">
             <div className="modal-header">
               <h2>Edit Employee</h2>
-              <button 
+              <button
                 className="close-btn"
                 onClick={() => setIsEditModalOpen(false)}
               >
@@ -1451,6 +1472,18 @@ const EmployeeManagement = () => {
                           </option>
                         ))}
                       </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Monthly Salary (CTC)</label>
+                      <input
+                        type="number"
+                        name="salary"
+                        min="0"
+                        step="0.01"
+                        value={editFormData.salary || ''}
+                        onChange={handleEditInputChange}
+                        placeholder="Enter monthly salary"
+                      />
                     </div>
                     <div className="form-group">
                       <label>Joining Date</label>

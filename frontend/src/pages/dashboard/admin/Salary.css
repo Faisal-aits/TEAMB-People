@@ -442,6 +442,7 @@
 }
 
 .salary-form-group {
+  display: grid;
   margin-bottom: 0.25rem;
 }
 

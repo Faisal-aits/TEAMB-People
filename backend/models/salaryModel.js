@@ -258,7 +258,7 @@ getEmployees: async (tenantId) => {
     },
 
     // Get salary records for a specific user ID (Employee view)
-    getByUserId: async (userId, filters = {}) => {
+    getByUserId: async (tenantId, userId, filters = {}) => {
         let query = `
             SELECT 
                 sr.*,
@@ -269,9 +269,9 @@ getEmployees: async (tenantId) => {
             INNER JOIN employee_details ed ON sr.employee_id = ed.id
             INNER JOIN users u ON ed.user_id = u.id
             INNER JOIN departments d ON sr.department_id = d.id
-            WHERE u.id = ?
+            WHERE sr.tenant_id = ? AND u.id = ?
         `;
-        const params = [userId];
+        const params = [tenantId, userId];
 
         if (filters.month) {
             query += ' AND sr.month = ?';
@@ -439,18 +439,56 @@ update: async (tenantId, id, salaryData) => {
 },
 
 // Delete salary record - FIXED
-delete: async (tenantId, id) => {
-    try {
-        const [result] = await pool.execute(
-            'DELETE FROM salary_records WHERE id = ? AND tenant_id = ?',
-            [id, tenantId]
-        );
-        return result.affectedRows;
-    } catch (error) {
-        console.error('Error in Salary.delete:', error);
-        throw error;
+    delete: async (tenantId, id) => {
+        try {
+            const [result] = await pool.execute(
+                'DELETE FROM salary_records WHERE id = ? AND tenant_id = ?',
+                [id, tenantId]
+            );
+            return result.affectedRows;
+        } catch (error) {
+            console.error('Error in Salary.delete:', error);
+            throw error;
+        }
+    },
+
+    // Calculate Salary from Attendance
+    calculateSalaryFromAttendance: async (tenantId, employeeId, month, year, basicSalary) => {
+        try {
+            const Attendance = require('./attendanceModel');
+            const summary = await Attendance.getMonthlyAttendanceSummary(tenantId, employeeId, month, year);
+
+            if (!summary) return null;
+
+            const workingDays = 30; // System default working days per month for daily rate calculation
+            const dailyRate = basicSalary / workingDays;
+            
+            let presentDays = Number(summary.present_days) || 0;
+            let halfDays = Number(summary.half_days) || 0;
+            let absentDays = Number(summary.absent_days) || 0;
+            
+            // Calculate payable days based strictly on presence
+            let payableDays = presentDays + (halfDays * 0.5);
+            
+            // finalSalary = present days * daily rate (1-day salary)
+            let calculatedSalary = payableDays * dailyRate;
+            let finalSalary = Math.max(0, calculatedSalary);
+
+            return {
+                working_days: workingDays,
+                daily_rate: dailyRate,
+                payable_days: payableDays,
+                late_penalty_days: 0,
+                calculated_salary: finalSalary,
+                late_penalty: 0,
+                final_salary: finalSalary,
+                attendance_summary: summary
+            };
+        } catch (error) {
+            console.error('Error in calculateSalaryFromAttendance model:', error);
+            throw error;
+        }
     }
-},
 };
 
 module.exports = Salary;

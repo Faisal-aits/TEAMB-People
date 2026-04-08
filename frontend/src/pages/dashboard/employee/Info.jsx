@@ -8,23 +8,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Get employee data by user ID from all employees list
-  const getEmployeeByUserId = async (userId) => {
-    try {
-      // console.log('Fetching all employees to find user ID:', userId);
-      const response = await employeeAPI.getAll();
-      
-      if (response.data && response.data.employees) {
-        const employee = response.data.employees.find(emp => emp.user_id === userId);
-        // console.log('Found employee:', employee);
-        return employee;
-      }
-      return null;
-    } catch (err) {
-      // console.error('Error fetching employees list:', err);
-      return null;
-    }
-  };
+
 
   useEffect(() => {
     const fetchEmployeeData = async () => {
@@ -44,8 +28,9 @@ const Dashboard = () => {
           throw new Error('User ID not found.');
         }
 
-        // Get employee data using user ID
-        const employee = await getEmployeeByUserId(user.id);
+        // Get employee data
+        const profileResponse = await employeeAPI.getMyProfile();
+        const employee = profileResponse.data?.employee;
         
         if (!employee) {
           throw new Error('Employee record not found for this user.');

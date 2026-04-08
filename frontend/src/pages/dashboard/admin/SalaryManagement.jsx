@@ -82,6 +82,23 @@ const SalaryManagement = () => {
     fetchData();
   }, []);
 
+  // Auto-calculate salary from attendance when relevant dependencies change
+  useEffect(() => {
+    if (formData.calculate_from_attendance && formData.employee_id && formData.month && formData.year) {
+      const employee = employees.find(emp => emp.id === formData.employee_id);
+      if (employee && employee.salary) {
+        calculateSalaryFromAttendance(
+          formData.employee_id,
+          formData.month,
+          formData.year,
+          parseFloat(employee.salary)
+        );
+      }
+    } else if (!formData.calculate_from_attendance) {
+      setAttendanceSummary(null);
+    }
+  }, [formData.calculate_from_attendance, formData.employee_id, formData.month, formData.year, employees]);
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -316,60 +333,40 @@ const SalaryManagement = () => {
     try {
       setCalculatingSalary(true);
       
-      let monthNumber = month;
-      if (isNaN(month) && month) {
-        const months = {
-          'January': 1, 'February': 2, 'March': 3, 'April': 4,
-          'May': 5, 'June': 6, 'July': 7, 'August': 8,
-          'September': 9, 'October': 10, 'November': 11, 'December': 12
-        };
-        monthNumber = months[month];
-      }
+      const response = await salaryAPI.calculateFromAttendance({
+        employee_id: employeeId,
+        month,
+        year,
+        basic_salary: basicSalary
+      });
+
+      const data = response.data.data;
       
-      console.log('Calculating salary for:', { employeeId, monthNumber, year, basicSalary });
-      
-      const response = await attendanceAPI.getMonthlySummary(employeeId, monthNumber, year);
-      const summary = response.data.summary || response.data;
-      
-      console.log('Attendance summary:', summary);
-      
-      if (!summary || summary.total_days === 0) {
-        console.log('No attendance data found, using basic salary');
+      if (!data) {
         setAttendanceSummary(null);
         return basicSalary;
       }
       
-      const totalWorkingDays = 26;
-      const dailyRate = basicSalary / totalWorkingDays;
-      
-      const presentDays = summary.present_days || 0;
-      const halfDays = summary.half_days || 0;
-      const delayedDays = summary.delayed_days || 0;
-      
-      const payableDays = presentDays + (halfDays * 0.5);
-      const calculatedSalary = payableDays * dailyRate;
-      
-      const lateDaysBeyondGrace = Math.max(0, delayedDays - 3);
-      const latePenalty = lateDaysBeyondGrace * (dailyRate * 0.02);
-      
-      const finalSalary = Math.max(0, calculatedSalary - latePenalty);
-      
       setAttendanceSummary({
-        present_days: presentDays,
-        half_days: halfDays,
-        delayed_days: delayedDays,
-        absent_days: summary.absent_days || 0,
-        total_days: summary.total_days || 0,
-        payable_days: payableDays,
-        daily_rate: dailyRate,
-        calculated_salary: calculatedSalary,
-        late_penalty: latePenalty,
-        final_salary: finalSalary
+        present_days: data.attendance_summary.present_days || 0,
+        half_days: data.attendance_summary.half_days || 0,
+        delayed_days: data.attendance_summary.delayed_days || 0,
+        absent_days: data.attendance_summary.absent_days || 0,
+        total_days: data.attendance_summary.total_days || 0,
+        payable_days: data.payable_days,
+        daily_rate: data.daily_rate,
+        calculated_salary: data.calculated_salary,
+        late_penalty: data.late_penalty,
+        final_salary: data.final_salary
       });
       
-      return finalSalary;
+      return data.final_salary;
     } catch (err) {
       console.error('Failed to calculate salary from attendance:', err);
+      // Let user know calculation failed but don't block
+      if (err.response && err.response.status === 404) {
+        console.log('No attendance data available for calculation');
+      }
       setAttendanceSummary(null);
       return basicSalary;
     } finally {
@@ -1107,10 +1104,7 @@ const SalaryManagement = () => {
                     <select
                       name="month"
                       value={formData.month}
-                      onChange={(e) => {
-                        handleInputChange(e);
-                        handleMonthYearChange();
-                      }}
+                      onChange={handleInputChange}
                       required
                       className="salary-form-select"
                     >
@@ -1125,10 +1119,7 @@ const SalaryManagement = () => {
                     <select
                       name="year"
                       value={formData.year}
-                      onChange={(e) => {
-                        handleInputChange(e);
-                        handleMonthYearChange();
-                      }}
+                      onChange={handleInputChange}
                       required
                       className="salary-form-select"
                     >

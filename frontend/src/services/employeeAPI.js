@@ -14,6 +14,9 @@ export const employeeAPI = {
   // Get employee by ID
   getById: (id) => api.get(`/employees/${id}`),
 
+  // Get current logged-in employee profile
+  getMyProfile: () => api.get('/employees/my-profile'),
+
   // Create new employee
   create: (employeeData) => api.post('/employees', employeeData),
 

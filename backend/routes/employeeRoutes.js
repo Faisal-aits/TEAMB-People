@@ -25,6 +25,9 @@ router.get('/roles', employeeController.getRoles);
 // GET /api/employees/departments - Get departments
 router.get('/departments', employeeController.getDepartments);
 
+// GET /api/employees/my-profile - Get current employee profile
+router.get('/my-profile', employeeController.getMyProfile);
+
 // GET /api/employees/:id - Get employee by ID
 router.get('/:id', employeeController.getEmployee);
 

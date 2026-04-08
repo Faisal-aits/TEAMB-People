@@ -20,6 +20,20 @@ const employeeController = {
         }
     },
 
+    // Get current logged-in employee profile
+    getMyProfile: async (req, res) => {
+        try {
+            const employee = await Employee.getByUserId(req.tenantId, req.user.id);
+            if (!employee) {
+                return res.status(404).json({ message: 'Employee profile not found' });
+            }
+            res.json({ employee });
+        } catch (error) {
+            console.error('Get my profile error:', error);
+            res.status(500).json({ message: 'Server error' });
+        }
+    },
+
 // Get all employees
 getAllEmployees: async (req, res) => {
     try {
@@ -144,7 +158,7 @@ createEmployee: async (req, res) => {
             first_name, last_name, email, phone, department_ids, position,
             joining_date, date_of_birth, address, emergency_contact,
             bank_account_number, ifsc_code, pan_number, aadhar_number,
-            employee_id, role_id
+            employee_id, role_id, salary
         } = req.body;
 
         if (!first_name || !last_name || !email) {
@@ -167,6 +181,7 @@ createEmployee: async (req, res) => {
         const employeeData = {
             first_name, last_name, email, password_hash,
             phone: phone || null, department_id: primary_department_id, position: position || null,
+            salary: salary || null,
             joining_date: joining_date || null, date_of_birth: date_of_birth || null,
             address: address || null, emergency_contact: emergency_contact || null,
             bank_account_number: bank_account_number || null, ifsc_code: ifsc_code || null,
@@ -219,7 +234,7 @@ updateEmployee: async (req, res) => {
         const {
             first_name, last_name, email, phone, is_active, department_ids, position,
             joining_date, date_of_birth, address, emergency_contact,
-            bank_account_number, ifsc_code, pan_number, aadhar_number, role_id, employee_id
+            bank_account_number, ifsc_code, pan_number, aadhar_number, role_id, employee_id, salary
         } = req.body;
 
         const existingEmployee = await Employee.getById(req.tenantId, id);
@@ -235,6 +250,7 @@ updateEmployee: async (req, res) => {
             employee_id: employee_id || existingEmployee.employee_id,
             phone: phone || null, is_active: is_active !== undefined ? is_active : true,
             department_id: primary_department_id, position: position || null,
+            salary: salary || null,
             joining_date: joining_date || null, date_of_birth: date_of_birth || null,
             address: address || null, emergency_contact: emergency_contact || null,
             bank_account_number: bank_account_number || null, ifsc_code: ifsc_code || null,
