@@ -5,9 +5,13 @@ export const resignationAPI = {
   getMyRequests: () => api.get('/resignation-requests/my'),
   getAllRequests: () => api.get('/resignation-requests'),
   getRequestById: (id) => api.get(`/resignation-requests/${id}`),
-  acceptRequest: (id, formData) => api.put(`/resignation-requests/${id}/accept`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
+ acceptRequest: async (id, formData) => {
+    return await api.put(`/resignation-requests/${id}/accept`, formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    });
+},
   rejectRequest: (id, data) => api.put(`/resignation-requests/${id}/reject`, data)
 };
 

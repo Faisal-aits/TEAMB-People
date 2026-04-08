@@ -70,34 +70,47 @@ const ResignationRequests = () => {
     e.preventDefault();
     setIsProcessing(true);
     try {
-      // 1. Generate PDF Blob
-      const pdfData = {
-        employeeName: `${selectedRequest.first_name} ${selectedRequest.last_name}`,
-        joiningDate: selectedRequest.joining_date,
-        requestedLastDay: acceptData.acceptedLastDay,
-        hrNote: acceptData.hrNote,
-        generatedAt: new Date(),
-        refNumber: selectedRequest.ref_number
-      };
-      
-      const pdfBlob = await resignationPDFService.generatePDFBlob(pdfData);
+        // 1. Generate PDF Blob
+        const pdfData = {
+            employeeName: `${selectedRequest.first_name} ${selectedRequest.last_name}`,
+            joiningDate: selectedRequest.joining_date,
+            requestedLastDay: acceptData.acceptedLastDay,
+            hrNote: acceptData.hrNote,
+            generatedAt: new Date(),
+            refNumber: selectedRequest.ref_number
+        };
+        
+        console.log("Generating PDF with data:", pdfData);
+        
+        const pdfBlob = await resignationPDFService.generatePDFBlob(pdfData);
+        
+        console.log("PDF Blob generated:", pdfBlob.size, "bytes");
 
-      // 2. Submit to API
-      const formData = new FormData();
-      formData.append('accepted_last_day', acceptData.acceptedLastDay);
-      formData.append('hr_note', acceptData.hrNote);
-      formData.append('pdf', pdfBlob, `${selectedRequest.id}.pdf`);
+        // 2. Submit to API
+        const formData = new FormData();
+        formData.append('accepted_last_day', acceptData.acceptedLastDay);
+        formData.append('hr_note', acceptData.hrNote);
+        formData.append('pdf', pdfBlob, `resignation_${selectedRequest.id}.pdf`);
+        
+        // Log form data contents for debugging
+        for (let pair of formData.entries()) {
+            console.log(pair[0], pair[1]);
+        }
 
-      await resignationAPI.acceptRequest(selectedRequest.id, formData);
-      setShowAcceptModal(false);
-      fetchRequests();
+        const response = await resignationAPI.acceptRequest(selectedRequest.id, formData);
+        console.log("Accept response:", response);
+        
+        setShowAcceptModal(false);
+        await fetchRequests(); // Refresh the list
+        alert("Resignation accepted and letter generated successfully!");
+        
     } catch (err) {
-      console.error("Error accepting request:", err);
-      alert("Failed to accept request or generate PDF.");
+        console.error("Error accepting request:", err);
+        alert("Failed to accept request or generate PDF: " + (err.response?.data?.message || err.message));
     } finally {
-      setIsProcessing(false);
+        setIsProcessing(false);
     }
-  };
+};
 
   const handleRejectSubmit = async (e) => {
     e.preventDefault();

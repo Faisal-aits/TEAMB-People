@@ -26,9 +26,6 @@ router.get('/stats', salaryController.getSalaryStats);
 // GET /api/salary/records/:id - Get specific salary record
 router.get('/records/:id', salaryController.getSalaryRecord);
 
-// GET /api/salary/payslip/:id - Generate payslip
-router.get('/payslip/:id', salaryController.generatePayslip);
-
 // POST /api/salary/records - Create new salary record
 router.post('/records', salaryController.createSalaryRecord);
 
@@ -43,5 +40,17 @@ router.get('/payslip/:id', salaryController.generatePayslip);
 
 // GET /api/salary/payslip-preview/:id - Generate payslip preview (base64)
 router.get('/payslip-preview/:id', salaryController.generatePayslipPreview);
+
+// POST /api/salary/payslip/:id/email - Send payslip email
+router.post('/payslip/:id/email', salaryController.sendPayslipEmail);
+
+// Calculate salary from attendance (preview before creating)
+router.post('/calculate-from-attendance', salaryController.calculateSalaryFromAttendance);
+
+// Bulk create salary records for all employees
+router.post('/bulk-create', salaryController.bulkCreateSalaryRecords);
+
+// Get salary breakdown by department
+router.get('/department-breakdown', salaryController.getSalaryByDepartment);
 
 module.exports = router;
