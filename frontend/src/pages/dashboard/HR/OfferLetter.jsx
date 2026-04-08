@@ -25,6 +25,25 @@ const numberToWords = (num) => {
   return str.trim();
 };
 
+const salaryBreakupRows = [
+  { key: "basicSalary", label: "Basic Salary" },
+  { key: "hra", label: "HRA" },
+  { key: "conveyanceAllowance", label: "Conveyance Allowance" },
+  { key: "specialAllowance", label: "Special Allowance" },
+  { key: "medicalAllowance", label: "Medical Allowance" },
+  { key: "professionalTax", label: "Professional Tax (PT)" },
+  { key: "tds", label: "TDS" },
+  { key: "netSalary", label: "Net Salary", bold: true },
+  { key: "employerPfContribution", label: "Employer PF Contribution" },
+  { key: "employerEsiContribution", label: "Employer ESI Contribution" },
+  { key: "ctc", label: "CTC", bold: true }
+];
+
+const emptySalaryBreakup = salaryBreakupRows.reduce((acc, row) => {
+  acc[row.key] = { monthly: "", annual: "" };
+  return acc;
+}, {});
+
 const OfferLetter = () => {
   const [employees, setEmployees] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState("");
@@ -43,7 +62,8 @@ const OfferLetter = () => {
     designation: "",
     joiningDate: "",
     ctc: "",
-    ctcInWords: ""
+    ctcInWords: "",
+    salaryBreakup: emptySalaryBreakup
   });
 
   const [branding, setBranding] = useState({
@@ -123,7 +143,8 @@ const OfferLetter = () => {
         designation: "",
         joiningDate: "",
         ctc: "",
-        ctcInWords: ""
+        ctcInWords: "",
+        salaryBreakup: emptySalaryBreakup
       });
       return;
     }
@@ -217,6 +238,46 @@ const OfferLetter = () => {
     marginBottom: "6px",
     display: "block"
   };
+
+  const handleSalaryBreakupChange = (rowKey, column, value) => {
+    setFormData((prev) => {
+      const salaryBreakup = {
+        ...emptySalaryBreakup,
+        ...(prev.salaryBreakup || {}),
+        [rowKey]: {
+          ...emptySalaryBreakup[rowKey],
+          ...(prev.salaryBreakup?.[rowKey] || {}),
+          [column]: value
+        }
+      };
+
+      const updates = { salaryBreakup };
+      if (rowKey === "ctc" && column === "annual") {
+        updates.ctc = value;
+        updates.ctcInWords = numberToWords(value) || prev.ctcInWords;
+      }
+
+      return { ...prev, ...updates };
+    });
+  };
+
+  const salaryTableCellStyle = {
+    border: "1px solid #000",
+    padding: "6px 8px",
+    fontSize: "9pt"
+  };
+
+  const renderSalaryBreakupPreviewRows = () => salaryBreakupRows.map((row) => (
+    <tr key={row.key}>
+      <td style={{ ...salaryTableCellStyle, fontWeight: row.bold ? "bold" : "normal" }}>{row.label}</td>
+      <td style={{ ...salaryTableCellStyle, textAlign: "right", fontWeight: row.bold ? "bold" : "normal" }}>
+        {formData.salaryBreakup?.[row.key]?.monthly || "-"}
+      </td>
+      <td style={{ ...salaryTableCellStyle, textAlign: "right", fontWeight: row.bold ? "bold" : "normal" }}>
+        {formData.salaryBreakup?.[row.key]?.annual || "-"}
+      </td>
+    </tr>
+  ));
 
   const formatDate = (dateString) => {
     if (!dateString) return "DD-MM-YYYY";
@@ -362,11 +423,64 @@ const OfferLetter = () => {
             <label style={labelStyle}>Annual CTC</label>
             <input placeholder="e.g. 96000" value={formData.ctc} onChange={(e) => {
               const val = e.target.value;
-              setFormData({ ...formData, ctc: val, ctcInWords: numberToWords(val) });
+              setFormData({
+                ...formData,
+                ctc: val,
+                ctcInWords: numberToWords(val),
+                salaryBreakup: {
+                  ...emptySalaryBreakup,
+                  ...(formData.salaryBreakup || {}),
+                  ctc: {
+                    ...emptySalaryBreakup.ctc,
+                    ...(formData.salaryBreakup?.ctc || {}),
+                    annual: val
+                  }
+                }
+              });
             }} style={inputStyle} type="number" />
 
             <label style={labelStyle}>CTC in Words</label>
             <input placeholder="Auto generated or enter manually" value={formData.ctcInWords} onChange={(e) => setFormData({ ...formData, ctcInWords: e.target.value })} style={inputStyle} />
+          </section>
+
+          <section style={{ marginBottom: "20px" }}>
+            <h3 style={sectionHeaderStyle}>
+              <HiOutlineDocumentText size={20} /> Salary Breakup
+            </h3>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: "left", padding: "8px", borderBottom: "1px solid #e2e8f0" }}>Component</th>
+                    <th style={{ textAlign: "left", padding: "8px", borderBottom: "1px solid #e2e8f0" }}>Per Month</th>
+                    <th style={{ textAlign: "left", padding: "8px", borderBottom: "1px solid #e2e8f0" }}>Per Annum</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {salaryBreakupRows.map((row) => (
+                    <tr key={row.key}>
+                      <td style={{ padding: "8px", fontWeight: row.bold ? "700" : "500", color: "#334155" }}>{row.label}</td>
+                      <td style={{ padding: "8px" }}>
+                        <input
+                          placeholder="e.g. Rs. 6,000"
+                          value={formData.salaryBreakup?.[row.key]?.monthly || ""}
+                          onChange={(e) => handleSalaryBreakupChange(row.key, "monthly", e.target.value)}
+                          style={{ ...inputStyle, marginBottom: 0, padding: "8px 10px" }}
+                        />
+                      </td>
+                      <td style={{ padding: "8px" }}>
+                        <input
+                          placeholder="e.g. Rs. 72,000"
+                          value={formData.salaryBreakup?.[row.key]?.annual || ""}
+                          onChange={(e) => handleSalaryBreakupChange(row.key, "annual", e.target.value)}
+                          style={{ ...inputStyle, marginBottom: 0, padding: "8px 10px" }}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </section>
         </div>
 
@@ -418,7 +532,8 @@ const OfferLetter = () => {
                 <p>We are pleased to offer you the position of <strong>{formData.designation || "________________"}</strong> with the Company. The effective date of your appointment is agreed as <strong>{formatDate(formData.joiningDate)}</strong>.</p>
                 <p>Your annual compensation (CTC) will be <strong>Rs. {formData.ctc || "________"} ({formData.ctcInWords || "________________"} only)</strong> per annum.</p>
                 <p>Your continued employment is contingent upon your satisfactorily meeting the Company's expectations.</p>
-                <p>On your first day, please bring the documents as provided in <strong>Annexure 1</strong>.</p>
+                <p>Your salary structure is provided in <strong>Annexure 1</strong>.</p>
+                <p>On your first day, please bring the documents as provided in <strong>Annexure 2</strong>.</p>
               </div>
             </div>
           </div>
@@ -488,26 +603,67 @@ const OfferLetter = () => {
               display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "50px", borderBottom: "5px solid #000", padding: "20px 40px 10px 40px", marginBottom: "30px", boxSizing: "border-box", width: "100%"
             }}>
               <div style={{ flex: "0 0 auto" }}>
-                <img src={companyLogo} alt="Logo" style={{ height: "120px", width: "auto", maxWidth: "300px", objectFit: "contain", display: "block", padding: "0 2px" }} />
+                {branding.logo_url && <img src={branding.logo_url} alt="Logo" style={{ height: "120px", width: "auto", maxWidth: "300px", objectFit: "contain", display: "block", padding: "0 2px" }} />}
               </div>
               <div style={{ textAlign: "left", display: "flex", flexDirection: "column", gap: "10px", justifyContent: "center", maxWidth: "60%", flex: "0 0 auto", wordBreak: "break-all" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: "10px" }}>
                   <div style={{ background: "#000", color: "#fff", borderRadius: "50%", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <TbWorld size={18} />
                   </div>
-                  <span style={{ fontWeight: "bold", fontSize: "11pt" }}>www.arhamitsolution.in</span>
+                  <span style={{ fontWeight: "bold", fontSize: "11pt" }}>{branding.company_website}</span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: "10px" }}>
                   <div style={{ background: "#000", color: "#fff", borderRadius: "50%", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <TfiEmail size={16} />
                   </div>
-                  <span style={{ fontWeight: "bold", fontSize: "11pt" }}>info@arhamitsolution.in</span>
+                  <span style={{ fontWeight: "bold", fontSize: "11pt" }}>{branding.company_email}</span>
                 </div>
               </div>
             </div>
 
             <div style={{ padding: "0 40px 40px 40px", flexGrow: 1 }}>
-              <div style={{ fontWeight: "bold", marginBottom: "15px" }}>Annexure 1 - Documents required at the time of joining</div>
+              <div style={{ fontWeight: "bold", marginBottom: "15px" }}>Annexure 1 - Salary Structure</div>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9pt", border: "1px solid #000" }}>
+                <thead>
+                  <tr style={{ background: "#f1f5f9" }}>
+                    <th style={{ ...salaryTableCellStyle, textAlign: "left" }}>Component</th>
+                    <th style={{ ...salaryTableCellStyle, textAlign: "right" }}>Per Month</th>
+                    <th style={{ ...salaryTableCellStyle, textAlign: "right" }}>Per Annum</th>
+                  </tr>
+                </thead>
+                <tbody>{renderSalaryBreakupPreviewRows()}</tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* PAGE 4 PREVIEW (Annexure 2) */}
+          <div style={{ border: "1px solid #eee", minHeight: "1000px", background: "white", color: "#000", fontSize: "11pt", lineHeight: "1.6", display: "flex", flexDirection: "column", boxShadow: "0 0 10px rgba(0,0,0,0.05)" }}>
+            <div style={{ padding: "5px 10px", background: "#f8fafc", borderBottom: "1px solid #eee", fontSize: "10pt", color: "#64748b", fontWeight: "bold" }}>Page 4 (Annexure 2)</div>
+            {/* Header Mirror */}
+            <div style={{
+              display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "50px", borderBottom: "5px solid #000", padding: "20px 40px 10px 40px", marginBottom: "30px", boxSizing: "border-box", width: "100%"
+            }}>
+              <div style={{ flex: "0 0 auto" }}>
+                {branding.logo_url && <img src={branding.logo_url} alt="Logo" style={{ height: "120px", width: "auto", maxWidth: "300px", objectFit: "contain", display: "block", padding: "0 2px" }} />}
+              </div>
+              <div style={{ textAlign: "left", display: "flex", flexDirection: "column", gap: "10px", justifyContent: "center", maxWidth: "60%", flex: "0 0 auto", wordBreak: "break-all" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: "10px" }}>
+                  <div style={{ background: "#000", color: "#fff", borderRadius: "50%", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <TbWorld size={18} />
+                  </div>
+                  <span style={{ fontWeight: "bold", fontSize: "11pt" }}>{branding.company_website}</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: "10px" }}>
+                  <div style={{ background: "#000", color: "#fff", borderRadius: "50%", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <TfiEmail size={16} />
+                  </div>
+                  <span style={{ fontWeight: "bold", fontSize: "11pt" }}>{branding.company_email}</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ padding: "0 40px 40px 40px", flexGrow: 1 }}>
+              <div style={{ fontWeight: "bold", marginBottom: "15px" }}>Annexure 2 - Documents required at the time of joining</div>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9pt", border: "1px solid #000" }}>
                 <thead>
                   <tr style={{ background: "#f1f5f9" }}>
