@@ -562,6 +562,81 @@ const ProjectManagement = () => {
     const employeesSheet = XLSX.utils.aoa_to_sheet(employeesSheetData);
     XLSX.utils.book_append_sheet(workbook, employeesSheet, 'Employees_Reference');
 
+    XLSX.writeFile(workbook, `Task_Assignment_Template_${selectedProject.name}_${new Date().toISOString().split('T')[0]}.xlsx`);
+    alert('Task template exported!');
+  };
+
+  const handleImportTasks = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (!selectedProject || !canCreateTask(selectedProject.id)) {
+      alert('Only Project Leads can import tasks');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const mainSheet = workbook.Sheets['Tasks_Assignment'];
+        if (!mainSheet) {
+          alert('Tasks_Assignment sheet not found.');
+          return;
+        }
+
+        const jsonData = XLSX.utils.sheet_to_json(mainSheet);
+        let createdCount = 0;
+        let skippedCount = 0;
+
+        for (const row of jsonData) {
+          const taskTitle = row['Task Title*'] || row['Task Title'];
+          if (taskTitle && taskTitle !== 'Example Task 1' && taskTitle !== 'Example Task 2' && !taskTitle.includes('Instructions')) {
+            const teamName = row['Team Name'];
+            const team = teams.find(t => t.name === teamName && t.project_id === selectedProject.id);
+
+            const employeeName = row['Assigned To (Employee Name)'];
+            const employee = employees.find(e => e.name === employeeName);
+
+            if (!employee) {
+              console.warn(`Employee ${employeeName} not found, skipping task ${taskTitle}`);
+              skippedCount++;
+              continue;
+            }
+
+            const taskData = {
+              title: taskTitle,
+              description: row['Description'] || '',
+              priority: row['Priority'] || 'Medium',
+              estimated_hours: parseFloat(row['Estimated Hours']) || 0,
+              due_date: row['Due Date (YYYY-MM-DD)'],
+              project_id: selectedProject?.id,
+              team_id: team?.id || null,
+              assigned_by: currentUser.id,
+              assigned_by_name: currentUser.name,
+              status: row['Status'] || 'To-Do',
+              review_status: 'Not Reviewed',
+              remarks: row['Remarks'] || '',
+              progress: 0,
+              assigned_to_member: employee?.id
+            };
+
+            await projectAPI.createTask(taskData);
+            createdCount++;
+          }
+        }
+
+        alert(`${createdCount} tasks created successfully! ${skippedCount} tasks skipped.`);
+        await fetchAllData();
+        setIsExcelTaskModalOpen(false);
+        event.target.value = '';
+      } catch (err) {
+        console.error('Error importing tasks:', err);
+        alert('Failed to import tasks.');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
 
   const handleUpdateTask = async (taskId, updateData) => {
     try {
