@@ -8,7 +8,14 @@ const authController = {
     // User Login with tenant context
     login: async (req, res) => {
         try {
-            const { email, password, tenant_slug } = req.body;
+            const email = req.body.email?.trim();
+            const password = req.body.password;
+            const tenant_slug = (
+                req.body.tenant_slug ||
+                req.body.tenantSlug ||
+                req.body.organization_id ||
+                req.body.organizationId
+            )?.trim();
 
             // Basic validation
             if (!email || !password) {
@@ -258,7 +265,13 @@ const authController = {
     // Forgot Password
     forgotPassword: async (req, res) => {
         try {
-            const { email, tenant_slug } = req.body;
+            const email = req.body.email?.trim();
+            const tenant_slug = (
+                req.body.tenant_slug ||
+                req.body.tenantSlug ||
+                req.body.organization_id ||
+                req.body.organizationId
+            )?.trim();
             if (!email || !tenant_slug) {
                 return res.status(400).json({ message: 'Email and Organization ID are required' });
             }
