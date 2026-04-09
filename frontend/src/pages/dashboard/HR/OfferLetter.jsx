@@ -44,6 +44,15 @@ const emptySalaryBreakup = salaryBreakupRows.reduce((acc, row) => {
   return acc;
 }, {});
 
+const calculateAnnualFromMonthly = (value) => {
+  if (value === "" || value === null || value === undefined) return "";
+
+  const monthly = Number(value);
+  if (Number.isNaN(monthly)) return "";
+
+  return String(monthly * 12);
+};
+
 const OfferLetter = () => {
   const [employees, setEmployees] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState("");
@@ -241,20 +250,30 @@ const OfferLetter = () => {
 
   const handleSalaryBreakupChange = (rowKey, column, value) => {
     setFormData((prev) => {
+      const nextRow = {
+        ...emptySalaryBreakup[rowKey],
+        ...(prev.salaryBreakup?.[rowKey] || {}),
+        [column]: value
+      };
+
+      if (column === "monthly") {
+        nextRow.annual = calculateAnnualFromMonthly(value);
+      }
+
       const salaryBreakup = {
         ...emptySalaryBreakup,
         ...(prev.salaryBreakup || {}),
-        [rowKey]: {
-          ...emptySalaryBreakup[rowKey],
-          ...(prev.salaryBreakup?.[rowKey] || {}),
-          [column]: value
-        }
+        [rowKey]: nextRow
       };
 
       const updates = { salaryBreakup };
       if (rowKey === "ctc" && column === "annual") {
         updates.ctc = value;
         updates.ctcInWords = numberToWords(value) || prev.ctcInWords;
+      }
+      if (rowKey === "ctc" && column === "monthly") {
+        updates.ctc = nextRow.annual;
+        updates.ctcInWords = numberToWords(nextRow.annual) || prev.ctcInWords;
       }
 
       return { ...prev, ...updates };
