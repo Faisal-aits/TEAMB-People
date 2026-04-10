@@ -31,12 +31,12 @@ const salaryBreakupRows = [
   { key: "conveyanceAllowance", label: "Conveyance Allowance" },
   { key: "specialAllowance", label: "Special Allowance" },
   { key: "medicalAllowance", label: "Medical Allowance" },
-  { key: "netSalary", label: "Total Earning", bold: true },
+  { key: "ctc", label: "Net Pay", bold: true },
   { key: "professionalTax", label: "Professional Tax (PT)" },
   { key: "tds", label: "TDS" },
   { key: "employerPfContribution", label: "Employer PF Contribution" },
   { key: "employerEsiContribution", label: "Employer ESI Contribution" },
-  { key: "ctc", label: "Net Pay", bold: true }
+  { key: "netSalary", label: "Total Earning", bold: true }
 ];
 
 const emptySalaryBreakup = salaryBreakupRows.reduce((acc, row) => {
@@ -549,7 +549,7 @@ const OfferLetter = () => {
               <div style={{ textAlign: "justify", fontFamily: "'Times New Roman', Times, serif", fontSize: "11pt", marginTop: "27px" }}>
                 <p>Congratulations!</p>
                 <p>We are pleased to offer you the position of <strong>{formData.designation || "________________"}</strong> with the Company. The effective date of your appointment is agreed as <strong>{formatDate(formData.joiningDate)}</strong>.</p>
-                <p>Your annual compensation (CTC) will be <strong>Rs. {formData.ctc || "________"} ({formData.ctcInWords || "________________"} only)</strong> per annum.</p>
+                <p>Your annual compensation (CTC) will be <strong>Rs. {formData.salaryBreakup?.netSalary?.annual || "________"} ({numberToWords(formData.salaryBreakup?.netSalary?.annual) || "________________"} only)</strong> per annum.</p>
                 <p>Your continued employment is contingent upon your satisfactorily meeting the Company's expectations.</p>
                 <p>Your salary structure is provided in <strong>Annexure 1</strong>.</p>
                 <p>On your first day, please bring the documents as provided in <strong>Annexure 2</strong>.</p>
