@@ -109,9 +109,9 @@ const SalaryManagement = () => {
         salaryAPI.getDepartments()
       ]);
       
-      console.log('Raw salary records:', recordsResponse.data);
-      console.log('Employees response:', employeesResponse.data);
-      console.log('Departments response:', departmentsResponse.data);
+      // console.log('Raw salary records:', recordsResponse.data);
+      // console.log('Employees response:', employeesResponse.data);
+      // console.log('Departments response:', departmentsResponse.data);
       
       // Extract employees array
       let employeesList = [];
@@ -133,8 +133,8 @@ const SalaryManagement = () => {
         departmentsList = departmentsResponse.data.data;
       }
       
-      console.log('Extracted employees list:', employeesList);
-      console.log('Extracted departments list:', departmentsList);
+      // console.log('Extracted employees list:', employeesList);
+      // console.log('Extracted departments list:', departmentsList);
       
       const normalizedEmployees = employeesList.map(emp => ({
         id: String(emp.id || emp.employee_id || emp.employee_code),
@@ -152,8 +152,8 @@ const SalaryManagement = () => {
         name: dept.name || dept.department_name
       })).filter(dept => dept.id);
       
-      console.log('Normalized employees:', normalizedEmployees);
-      console.log('Normalized departments:', normalizedDepartments);
+      // console.log('Normalized employees:', normalizedEmployees);
+      // console.log('Normalized departments:', normalizedDepartments);
       
       setEmployees(normalizedEmployees);
       setDepartments(normalizedDepartments);
@@ -266,17 +266,17 @@ const SalaryManagement = () => {
 
   const handleEmployeeSelect = async (e) => {
     const selectedValue = e.target.value;
-    console.log('Selected value:', selectedValue);
-    console.log('All employees:', employees);
+    // console.log('Selected value:', selectedValue);
+    // console.log('All employees:', employees);
     
     if (!selectedValue) {
-      console.log('No employee selected');
+      // console.log('No employee selected');
       return;
     }
     
     const selectedEmployee = employees.find(emp => emp.id === selectedValue);
     
-    console.log('Found employee:', selectedEmployee);
+    // console.log('Found employee:', selectedEmployee);
     
     if (selectedEmployee) {
       setFormData(prev => ({
@@ -301,16 +301,16 @@ const SalaryManagement = () => {
   };
 
   const handleMonthYearChange = async () => {
-    console.log('Month/Year changed:', { 
-      calculate_from_attendance: formData.calculate_from_attendance,
-      employee_id: formData.employee_id,
-      month: formData.month, 
-      year: formData.year 
-    });
+    // console.log('Month/Year changed:', { 
+    //   calculate_from_attendance: formData.calculate_from_attendance,
+    //   employee_id: formData.employee_id,
+    //   month: formData.month, 
+    //   year: formData.year 
+    // });
     
     if (formData.calculate_from_attendance && formData.employee_id && formData.month && formData.year) {
       const employee = employees.find(emp => emp.id === formData.employee_id);
-      console.log('Found employee for calculation:', employee);
+      // console.log('Found employee for calculation:', employee);
       
       if (employee && employee.salary) {
         await calculateSalaryFromAttendance(
@@ -365,7 +365,7 @@ const SalaryManagement = () => {
       console.error('Failed to calculate salary from attendance:', err);
       // Let user know calculation failed but don't block
       if (err.response && err.response.status === 404) {
-        console.log('No attendance data available for calculation');
+        // console.log('No attendance data available for calculation');
       }
       setAttendanceSummary(null);
       return basicSalary;
@@ -377,7 +377,7 @@ const SalaryManagement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    console.log('Form data on submit:', formData);
+    // console.log('Form data on submit:', formData);
     
     if (!formData.employee_id || !formData.basic_salary || !formData.month || !formData.year) {
       alert('Please fill in all required fields');
@@ -388,12 +388,12 @@ const SalaryManagement = () => {
     
     if (formData.calculate_from_attendance) {
       try {
-        console.log('Calculating salary from attendance for:', {
-          employee_id: formData.employee_id,
-          month: formData.month,
-          year: formData.year,
-          basic_salary: formData.basic_salary
-        });
+        // console.log('Calculating salary from attendance for:', {
+        //   employee_id: formData.employee_id,
+        //   month: formData.month,
+        //   year: formData.year,
+        //   basic_salary: formData.basic_salary
+        // });
         
         const calculatedSalary = await calculateSalaryFromAttendance(
           formData.employee_id,
@@ -402,7 +402,7 @@ const SalaryManagement = () => {
           parseFloat(formData.basic_salary)
         );
         netSalary = calculatedSalary;
-        console.log('Calculated salary from attendance:', netSalary);
+        // console.log('Calculated salary from attendance:', netSalary);
       } catch (err) {
         console.error('Attendance calculation failed, using standard calculation:', err);
       }

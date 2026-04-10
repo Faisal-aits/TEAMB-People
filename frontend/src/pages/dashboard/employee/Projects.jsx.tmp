@@ -192,7 +192,6 @@ const loadTeamMembers = async (teamId) => {
           email: member.email || ''
         }));
         
-        console.log('Formatted members:', formattedMembers);
         setAvailableTeamMembers(formattedMembers);
         setLoadingTeamMembers(false);
         return;
@@ -540,10 +539,6 @@ const loadTeamMembers = async (teamId) => {
   const handleCreateTeam = async (e) => {
     e.preventDefault();
     
-    console.log('=== CREATING TEAM ===');
-    console.log('Team Name:', teamFormData.name);
-    console.log('Project ID:', teamFormData.project_id);
-    console.log('Selected Employees (RAW):', selectedEmployees);
     
     if (!teamFormData.name) {
       alert('Team name is required');
@@ -557,8 +552,7 @@ const loadTeamMembers = async (teamId) => {
     const validMembers = selectedEmployees.filter(id => {
       return id && id !== 'null' && id !== 'undefined' && id !== '' && id !== null;
     });
-    
-    console.log('Valid Members after filtering:', validMembers);
+  
     
     if (validMembers.length === 0) {
       alert('Please select at least one valid team member');

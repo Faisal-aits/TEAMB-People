@@ -80,11 +80,11 @@ const ResignationRequests = () => {
             refNumber: selectedRequest.ref_number
         };
         
-        console.log("Generating PDF with data:", pdfData);
+        // console.log("Generating PDF with data:", pdfData);
         
         const pdfBlob = await resignationPDFService.generatePDFBlob(pdfData);
         
-        console.log("PDF Blob generated:", pdfBlob.size, "bytes");
+        // console.log("PDF Blob generated:", pdfBlob.size, "bytes");
 
         // 2. Submit to API
         const formData = new FormData();
@@ -94,11 +94,11 @@ const ResignationRequests = () => {
         
         // Log form data contents for debugging
         for (let pair of formData.entries()) {
-            console.log(pair[0], pair[1]);
+            // console.log(pair[0], pair[1]);
         }
 
         const response = await resignationAPI.acceptRequest(selectedRequest.id, formData);
-        console.log("Accept response:", response);
+        // console.log("Accept response:", response);
         
         setShowAcceptModal(false);
         await fetchRequests(); // Refresh the list

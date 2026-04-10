@@ -120,7 +120,7 @@ const handleEditClick = async (report) => {
         description: newDescription
       };
 
-      console.log('Sending update for report:', report.id, updatedReportData);
+      // console.log('Sending update for report:', report.id, updatedReportData);
       
       await reportAPI.update(report.id, updatedReportData);
       await fetchReports();
@@ -171,7 +171,7 @@ const handleReportSubmit = async (e) => {
       description: reportFormData.description
     };
 
-    console.log('Creating report with data:', newReportData); // Debug log
+    // console.log('Creating report with data:', newReportData); // Debug log
     
     await reportAPI.create(newReportData);
     await fetchReports();

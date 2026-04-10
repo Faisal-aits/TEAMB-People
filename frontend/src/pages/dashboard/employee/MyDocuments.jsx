@@ -48,9 +48,9 @@ const fetchDocs = async () => {
       incrementLetterAPI.getMyLetters()
     ]);
     
-    console.log("Offer Letters Response:", letterRes.data);
-    console.log("Experience Letters Response:", expRes.data);
-    console.log("Increment Letters Response:", incRes.data);
+    // console.log("Offer Letters Response:", letterRes.data);
+    // console.log("Experience Letters Response:", expRes.data);
+    // console.log("Increment Letters Response:", incRes.data);
     
     setLetters(letterRes.data?.letters || letterRes.data?.data || []);
     setSlips(slipRes.data?.salaryRecords || slipRes.data?.data || []);
@@ -119,7 +119,7 @@ const handleDocAction = async (type, action, doc) => {
         pdfUrl = API_BASE_URL + '/' + pdfUrl;
       }
       
-      console.log("Opening PDF URL:", pdfUrl);
+      // console.log("Opening PDF URL:", pdfUrl);
       
       // Open in new tab
       window.open(pdfUrl, "_blank");
