@@ -432,11 +432,11 @@ const SalaryManagement = () => {
       status: formData.status || 'pending'
     };
     
-    console.log('Submitting salary data:', salaryData);
+    // console.log('Submitting salary data:', salaryData);
     
     try {
       const response = await salaryAPI.create(salaryData);
-      console.log('Create response:', response);
+      // console.log('Create response:', response);
       
       await fetchData();
       
