@@ -29,17 +29,17 @@ const Reports = ({ navigationState }) => {
         reportsData = response.data.data;
       }
       
-      console.log('Fetched reports:', reportsData.length);
-      console.log('Available employee names:', [...new Set(reportsData.map(r => r.generated_by_name))]);
+      // console.log('Fetched reports:', reportsData.length);
+      // console.log('Available employee names:', [...new Set(reportsData.map(r => r.generated_by_name))]);
       
       setReports(reportsData);
       
       const employeeFromNav = navigationState?.filterByEmployee;
-      console.log('Employee from navigationState:', employeeFromNav);
-      console.log('Full navigationState:', navigationState);
+      // console.log('Employee from navigationState:', employeeFromNav);
+      // console.log('Full navigationState:', navigationState);
       
       if (employeeFromNav) {
-        console.log('Setting employee filter to:', employeeFromNav);
+        // console.log('Setting employee filter to:', employeeFromNav);
         setFilters(prev => ({
           ...prev,
           employeeName: employeeFromNav
@@ -63,7 +63,7 @@ const Reports = ({ navigationState }) => {
   const applyFilters = () => {
     if (reports.length === 0) return;
     
-    console.log('Applying filters...', filters);
+    // console.log('Applying filters...', filters);
     let filtered = [...reports];
     
     // Apply employee filter
@@ -72,10 +72,10 @@ const Reports = ({ navigationState }) => {
         const reportEmployee = report.generated_by_name || '';
         const filterEmployee = filters.employeeName;
         const match = reportEmployee.toLowerCase().includes(filterEmployee.toLowerCase());
-        console.log(`Filtering: ${reportEmployee} includes ${filterEmployee} ? ${match}`);
+        // console.log(`Filtering: ${reportEmployee} includes ${filterEmployee} ? ${match}`);
         return match;
       });
-      console.log(`After employee filter: ${filtered.length} reports`);
+      // console.log(`After employee filter: ${filtered.length} reports`);
     }
     
     // Apply date from filter
@@ -101,13 +101,13 @@ const Reports = ({ navigationState }) => {
     // Sort by date (newest first)
     filtered.sort((a, b) => new Date(b.date_generated) - new Date(a.date_generated));
     
-    console.log('Final filtered reports:', filtered.length);
+    // console.log('Final filtered reports:', filtered.length);
     setFilteredReports(filtered);
   };
 
   // Initial fetch
   useEffect(() => {
-    console.log('Reports mounted, navigationState:', navigationState);
+    // console.log('Reports mounted, navigationState:', navigationState);
     fetchAllReports();
   }, [navigationState]);
 
