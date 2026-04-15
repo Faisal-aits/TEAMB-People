@@ -56,73 +56,109 @@ const expenseController = {
         }
     },
 
-    // Submit new expense (with image upload)
-    submitExpense: async (req, res) => {
-        try {
-            const { category_id, amount, description } = req.body;
-            let imagePath = null;
+   // backend/controllers/expenseController.js
+submitExpense: async (req, res) => {
+  try {
+    console.log('=== SUBMIT EXPENSE DEBUG ===');
+    console.log('Request body:', req.body);
+    console.log('Request file:', req.file);
+    console.log('User:', req.user);
+    console.log('Tenant ID:', req.tenantId);
+    
+    const { category_id, amount, description } = req.body;
+    let imagePath = null;
 
-            // Handle image upload if file exists
-            if (req.file) {
-                // Create unique filename
-                const fileName = `expense_${Date.now()}_${req.file.originalname}`;
-                const uploadDir = path.join(__dirname, '../uploads/expenses');
-                
-                // Ensure directory exists
-                if (!fs.existsSync(uploadDir)) {
-                    fs.mkdirSync(uploadDir, { recursive: true });
-                }
-                
-                const filePath = path.join(uploadDir, fileName);
-                
-                // Save file
-                fs.writeFileSync(filePath, req.file.buffer);
-                
-                // Store relative path for web access
-                imagePath = `/uploads/expenses/${fileName}`;
-            }
+    // Handle image upload if file exists
+    if (req.file) {
+      console.log('File received:', req.file.originalname, req.file.size);
+      // Create unique filename
+      const fileName = `expense_${Date.now()}_${req.file.originalname}`;
+      const uploadDir = path.join(__dirname, '../uploads/expenses');
+      
+      // Ensure directory exists
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      
+      const filePath = path.join(uploadDir, fileName);
+      
+      // Save file
+      fs.writeFileSync(filePath, req.file.buffer);
+      
+      // Store relative path for web access
+      imagePath = `/uploads/expenses/${fileName}`;
+      console.log('Image saved to:', imagePath);
+    }
 
-            // Validation
-            if (!category_id || !amount || !description) {
-                return res.status(400).json({ message: 'Category, amount, and description are required' });
-            }
+    // Validation
+    console.log('Validation checks:');
+    console.log('- category_id:', category_id, 'type:', typeof category_id);
+    console.log('- amount:', amount, 'type:', typeof amount);
+    console.log('- description:', description);
+    
+    if (!category_id || !amount || !description) {
+      console.log('Missing required fields');
+      return res.status(400).json({ 
+        message: 'Category, amount, and description are required',
+        received: { category_id, amount, description }
+      });
+    }
 
-            if (amount <= 0) {
-                return res.status(400).json({ message: 'Amount must be greater than 0' });
-            }
+    const amountNum = parseFloat(amount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      console.log('Invalid amount:', amountNum);
+      return res.status(400).json({ message: 'Amount must be a valid number greater than 0' });
+    }
 
-            // Check if category exists
-            const category = await Expense.getCategoryById(req.tenantId, category_id);
-            if (!category) {
-                return res.status(400).json({ message: 'Invalid expense category' });
-            }
+    // Check if category exists
+    const category = await Expense.getCategoryById(req.tenantId, category_id);
+    console.log('Category found:', category);
+    
+    if (!category) {
+      return res.status(400).json({ message: 'Invalid expense category' });
+    }
 
-            // Check if amount exceeds category limit
-            if (category.limit_amount > 0 && amount > category.limit_amount) {
-                return res.status(400).json({ 
-                    message: `Amount exceeds category limit of ₹${category.limit_amount}` 
-                });
-            }
+    // Check if amount exceeds category limit
+    if (category.limit_amount > 0 && amountNum > category.limit_amount) {
+      return res.status(400).json({ 
+        message: `Amount exceeds category limit of ₹${category.limit_amount}` 
+      });
+    }
 
-            const expenseId = await Expense.create(req.tenantId, {
-                user_id: req.user.id,
-                category_id,
-                amount,
-                description,
-                image: imagePath
-            });
+    console.log('Attempting to create expense with:', {
+      tenant_id: req.tenantId,
+      user_id: req.user.id,
+      category_id: parseInt(category_id),
+      amount: amountNum,
+      description: description,
+      image: imagePath
+    });
 
-            res.status(201).json({ 
-                success: true,
-                message: 'Expense submitted successfully', 
-                expense_id: expenseId,
-                image: imagePath
-            });
-        } catch (error) {
-            console.error('Submit expense error:', error);
-            res.status(500).json({ message: 'Server error' });
-        }
-    },
+    const expenseId = await Expense.create(req.tenantId, {
+      user_id: req.user.id,
+      category_id: parseInt(category_id),
+      amount: amountNum,
+      description: description,
+      image: imagePath
+    });
+
+    console.log('Expense created with ID:', expenseId);
+
+    res.status(201).json({ 
+      success: true,
+      message: 'Expense submitted successfully', 
+      expense_id: expenseId,
+      image: imagePath
+    });
+  } catch (error) {
+    console.error('Submit expense error:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      message: 'Server error: ' + error.message,
+      details: error.toString()
+    });
+  }
+},
 
     // Update expense status (Approve/Reject)
     updateExpenseStatus: async (req, res) => {

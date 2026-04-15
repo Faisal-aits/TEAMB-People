@@ -152,7 +152,7 @@ const StudentsManagement = () => {
       // Export to Excel
       XLSX.writeFile(workbook, fileName);
       
-      // console.log('✅ Export successful:', fileName);
+  
       alert(`Exported ${filteredStudents.length} students successfully!`);
     } catch (error) {
       console.error('❌ Error exporting data:', error);

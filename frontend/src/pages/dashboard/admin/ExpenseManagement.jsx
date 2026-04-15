@@ -5,7 +5,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import AddExpenseModal from '../../../components/expenses/AddExpenseModal';
 import './Employee.css';
 
-import { API_BASE_URL as API_URL } from '../../../services/api';
+const API_URL = 'http://localhost:3000';
 
 const ExpenseManagement = () => {
   const [expenses, setExpenses] = useState([]);
@@ -24,7 +24,7 @@ const ExpenseManagement = () => {
       setLoading(true);
       const filters = {};
       if (paymentFilter !== 'all') filters.payment_status = paymentFilter;
-
+      
       const response = await expenseAPI.getAll(filters);
       const expensesData = response.data.expenses || [];
       setExpenses(expensesData);
@@ -38,7 +38,7 @@ const ExpenseManagement = () => {
 
   const handlePaymentUpdate = async (expenseId, paymentStatus) => {
     setUpdatingId(expenseId);
-
+    
     try {
       await expenseAPI.updatePaymentStatus(expenseId, paymentStatus);
       await loadExpenses();
@@ -63,9 +63,9 @@ const ExpenseManagement = () => {
       paid: { background: '#d1fae5', color: '#065f46', icon: '✅' },
       cancelled: { background: '#fee2e2', color: '#991b1b', icon: '❌' }
     };
-
+    
     const colors = paymentColors[status] || paymentColors.pending;
-
+    
     return (
       <span style={{
         padding: '0.25rem 0.75rem',
@@ -94,16 +94,16 @@ const ExpenseManagement = () => {
 
   return (
     <div style={{ padding: '2rem' }}>
-      <AddExpenseModal
+      <AddExpenseModal 
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onExpenseAdded={handleExpenseAdded}
       />
 
-      <div style={{
-        background: 'white',
-        padding: '2rem',
-        borderRadius: '12px',
+      <div style={{ 
+        background: 'white', 
+        padding: '2rem', 
+        borderRadius: '12px', 
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
         border: '1px solid #e2e8f0'
       }}>
@@ -111,7 +111,7 @@ const ExpenseManagement = () => {
           <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '600', color: '#2d3748' }}>
             Expense Management
           </h1>
-
+          
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <button
               onClick={() => setIsAddModalOpen(true)}
@@ -133,12 +133,12 @@ const ExpenseManagement = () => {
               }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 6V12M12 12V18M12 12H18M12 12H6" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                <path d="M12 6V12M12 12V18M12 12H18M12 12H6" stroke="white" strokeWidth="2" strokeLinecap="round"/>
               </svg>
               Add Expense
             </button>
 
-            <select
+            <select 
               value={paymentFilter}
               onChange={(e) => setPaymentFilter(e.target.value)}
               style={{
@@ -162,7 +162,7 @@ const ExpenseManagement = () => {
           <div style={{ textAlign: 'center', padding: '3rem', color: '#718096' }}>
             <div style={{ marginBottom: '1rem' }}>
               <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
-                <path d="M19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM19 19H5V5H19V19ZM7 10H9V17H7V10ZM11 7H13V17H11V7ZM15 13H17V17H15V13Z" fill="#9CA3AF" />
+                <path d="M19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM19 19H5V5H19V19ZM7 10H9V17H7V10ZM11 7H13V17H11V7ZM15 13H17V17H15V13Z" fill="#9CA3AF"/>
               </svg>
             </div>
             <p style={{ marginBottom: '0.5rem', fontSize: '1.1rem' }}>No expenses found</p>
@@ -226,10 +226,10 @@ const ExpenseManagement = () => {
                     </td>
                     <td style={{ padding: '1rem' }}>
                       {expense.image ? (
-                        <a
-                          href={`${API_URL}${expense.image}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <a 
+                          href={`${API_URL}${expense.image}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
                           style={{
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -239,7 +239,7 @@ const ExpenseManagement = () => {
                             fontSize: '0.875rem'
                           }}
                         >
-
+                          
                           <span>View Receipt</span>
                         </a>
                       ) : (

@@ -5,50 +5,6 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { sendEmployeeCredentials } = require('../utils/emailService');
 
-let employeeDepartmentsTableAvailable = null;
-
-const hasEmployeeDepartmentsTable = async () => {
-    if (employeeDepartmentsTableAvailable !== null) {
-        return employeeDepartmentsTableAvailable;
-    }
-
-    try {
-        await pool.execute('SELECT 1 FROM employee_departments LIMIT 1');
-        employeeDepartmentsTableAvailable = true;
-    } catch (error) {
-        if (error.code === 'ER_NO_SUCH_TABLE') {
-            console.warn('employee_departments table not found; using single department fallback.');
-            employeeDepartmentsTableAvailable = false;
-        } else {
-            throw error;
-        }
-    }
-
-    return employeeDepartmentsTableAvailable;
-};
-
-const syncEmployeeDepartments = async (tenantId, employeeId, departmentIds, replaceExisting = false) => {
-    if (!(await hasEmployeeDepartmentsTable())) {
-        return;
-    }
-
-    if (replaceExisting) {
-        await pool.execute(
-            'DELETE FROM employee_departments WHERE employee_id = ? AND tenant_id = ?',
-            [employeeId, tenantId]
-        );
-    }
-
-    if (departmentIds && departmentIds.length > 0) {
-        for (const deptId of departmentIds) {
-            await pool.execute(
-                'INSERT INTO employee_departments (employee_id, department_id, tenant_id) VALUES (?, ?, ?)',
-                [employeeId, deptId, tenantId]
-            );
-        }
-    }
-};
-
 const employeeController = {
     // Get roles for this tenant
     getRoles: async (req, res) => {
@@ -96,13 +52,23 @@ getAllEmployees: async (req, res) => {
         
         // Detect whether many-to-many department mapping table exists.
         // Production may still be on a schema that only has employee_details.department_id.
-        const hasDeptMappingTable = await hasEmployeeDepartmentsTable();
+        let hasEmployeeDepartmentsTable = true;
+        try {
+            await pool.execute('SELECT 1 FROM employee_departments LIMIT 1');
+        } catch (tableError) {
+            if (tableError.code === 'ER_NO_SUCH_TABLE') {
+                hasEmployeeDepartmentsTable = false;
+                console.warn('employee_departments table not found; using single department fallback.');
+            } else {
+                throw tableError;
+            }
+        }
 
         // Fetch departments for each employee and apply department filter
         const filteredEmployees = [];
         
         for (let employee of employees) {
-            if (hasDeptMappingTable) {
+            if (hasEmployeeDepartmentsTable) {
                 // Get departments for this employee from mapping table
                 const [deptRows] = await pool.execute(
                     `SELECT d.id, d.name 
@@ -226,7 +192,14 @@ createEmployee: async (req, res) => {
         const result = await Employee.create(req.tenantId, employeeData);
         
         // Handle multiple departments
-        await syncEmployeeDepartments(req.tenantId, result.employee_id, department_ids);
+        if (department_ids && department_ids.length > 0) {
+            for (const deptId of department_ids) {
+                await pool.execute(
+                    'INSERT INTO employee_departments (employee_id, department_id, tenant_id) VALUES (?, ?, ?)',
+                    [result.employee_id, deptId, req.tenantId]
+                );
+            }
+        }
 
         const [tenantRows] = await pool.execute('SELECT slug FROM tenants WHERE id = ?', [req.tenantId]);
         const tenantSlug = tenantRows[0]?.slug || 'Organization';
@@ -286,28 +259,30 @@ updateEmployee: async (req, res) => {
         };
 
         await Employee.update(req.tenantId, id, employeeData);
-
-        const finalEmployeeId = employeeData.employee_id || existingEmployee.employee_id;
-
+        
         // Update multiple departments
         if (department_ids !== undefined) {
-            if ((await hasEmployeeDepartmentsTable()) && finalEmployeeId !== id) {
-                await pool.execute(
-                    'UPDATE employee_departments SET employee_id = ? WHERE employee_id = ? AND tenant_id = ?',
-                    [finalEmployeeId, id, req.tenantId]
-                );
+            // Delete existing associations
+            await pool.execute(
+                'DELETE FROM employee_departments WHERE employee_id = ? AND tenant_id = ?',
+                [id, req.tenantId]
+            );
+            
+            // Insert new associations
+            if (department_ids && department_ids.length > 0) {
+                for (const deptId of department_ids) {
+                    await pool.execute(
+                        'INSERT INTO employee_departments (employee_id, department_id, tenant_id) VALUES (?, ?, ?)',
+                        [id, deptId, req.tenantId]
+                    );
+                }
             }
-
-            await syncEmployeeDepartments(req.tenantId, finalEmployeeId, department_ids, true);
         }
         
         res.json({ message: 'Employee updated successfully' });
 
     } catch (error) {
         console.error('Update employee error:', error);
-        if (error.code === 'ER_DUP_ENTRY' || error.message === 'Employee ID already exists') {
-            return res.status(400).json({ message: 'Employee ID already exists' });
-        }
         res.status(500).json({ message: 'Server error' });
     }
 },
@@ -322,12 +297,10 @@ deleteEmployee: async (req, res) => {
         }
 
         // Delete department associations first
-        if (await hasEmployeeDepartmentsTable()) {
-            await pool.execute(
-                'DELETE FROM employee_departments WHERE employee_id = ? AND tenant_id = ?',
-                [id, req.tenantId]
-            );
-        }
+        await pool.execute(
+            'DELETE FROM employee_departments WHERE employee_id = ? AND tenant_id = ?',
+            [id, req.tenantId]
+        );
 
         await Employee.delete(req.tenantId, id);
         res.json({ message: 'Employee deleted successfully' });

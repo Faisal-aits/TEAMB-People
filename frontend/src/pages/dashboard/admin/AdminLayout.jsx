@@ -14,7 +14,7 @@ import ServiceManagement from './ServiceManagement.jsx';
 import Reports from './Reports.jsx';
 import InternshipManagement from './InternshipManagement.jsx';
 import StudentManagement from './StudentManagement.jsx';
-// import CourseManagement from './CourseManagement.jsx';
+import CourseManagement from './CourseManagement.jsx';
 
 import AttendanceManagement from './AttendanceManagement.jsx';
 import LeaveManagement from './LeaveManagement.jsx';
@@ -24,6 +24,7 @@ import BillingManagement from './BillingManagement.jsx';
 import QuotationManagement from './QuotationManagement.jsx';
 import BillingSettings from './BillingSettings.jsx'
 import Settings from './Setting.jsx';
+
 
 // Import the new Student Attendance Management component
 import StudentAttendanceManagement from './StudentAttendanceManagement.jsx';
@@ -38,7 +39,7 @@ import CompanyBranding from './CompanyBranding.jsx';
 import ResignationRequests from '../HR/ResignationRequests.jsx';
 import ExperienceLetters from '../HR/ExperienceLetters.jsx';
 import IncrementLetters from '../HR/IncrementLetters.jsx';
-
+import DeclarationForm from '../HR/DeclarationForm.jsx';
 const AdminLayout = () => {
   const [activeTab, setActiveTab] = useState(() => {
     return localStorage.getItem("activeTab") || "dashboard";
@@ -335,6 +336,20 @@ const AdminLayout = () => {
                         <span className="dropdown-text">Services</span>
                       </button>
                     </li>
+
+
+                      <li>
+                      <button onClick={() => navigateToTab('internship')}>
+                        <span className="dropdown-text">Intership</span>
+                      </button>
+                    </li>
+                    <li>
+                      <button onClick={() => navigateToTab('courses')}>
+                        <span className="dropdown-text">Courses</span>
+                      </button>
+                    </li>
+
+
                     <li>
                       <button onClick={() => navigateToTab('reports')}>
                         <span className="dropdown-text">Reports</span>
@@ -457,9 +472,9 @@ const AdminLayout = () => {
           {activeTab === 'services' && <ServiceManagement />}
           {/* Pass navigationState to Reports component */}
           {activeTab === 'reports' && <Reports navigationState={navigationState} />}
-          {activeTab === 'student' && <StudentManagement />}
-          {activeTab === 'student-attendance' && <StudentAttendanceManagement />}
-          {/* {activeTab === 'courses' && <CourseManagement />} */}
+          {/* {activeTab === 'student' && <StudentManagement />}
+          {activeTab === 'student-attendance' && <StudentAttendanceManagement />} */}
+          {activeTab === 'courses' && <CourseManagement />}
           {activeTab === 'internship' && <InternshipManagement />}
           {activeTab === 'expenses' && <ExpenseManagement />}
           {activeTab === 'billing' && <BillingManagement />}
@@ -478,6 +493,7 @@ const AdminLayout = () => {
           {activeTab === 'resignation' && <ResignationRequests />}
           {activeTab === 'experience-letter' && <ExperienceLetters />}
           {activeTab === 'increment-letter' && <IncrementLetters />}
+       {activeTab === 'declaration-form' && <DeclarationForm />}
         </main>
       </div>
     </div>

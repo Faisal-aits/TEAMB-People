@@ -50,7 +50,7 @@ const Dashboard = () => {
         }
 
         const user = JSON.parse(userData);
-        // console.log('Current user:', user);
+     
 
         if (!user.id) {
           throw new Error('User ID not found.');
@@ -63,7 +63,6 @@ const Dashboard = () => {
           throw new Error('Employee record not found for this user.');
         }
 
-        // console.log('Employee data for dashboard:', employee);
           
         setUserSession({
           employeeId: employee.employee_id || employee.id,

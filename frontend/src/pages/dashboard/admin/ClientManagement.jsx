@@ -388,8 +388,7 @@ const ClientsManagement = () => {
 
       // Export to Excel
       XLSX.writeFile(workbook, fileName);
-      
-      // console.log('✅ Export successful:', fileName);
+     
       alert(`Exported ${clients.length} clients successfully!`);
     } catch (error) {
       console.error('❌ Error exporting data:', error);

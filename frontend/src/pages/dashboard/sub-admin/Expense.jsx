@@ -96,8 +96,7 @@ const ExpenseTable = () => {
 
       // Export to Excel
       XLSX.writeFile(workbook, fileName);
-      
-      // console.log('✅ Export successful:', fileName);
+ 
       alert(`Exported ${filteredExpenses.length} expenses successfully!`);
     } catch (error) {
       console.error('❌ Error exporting data:', error);

@@ -34,7 +34,7 @@ const Dashboard = () => {
         }
 
         const user = JSON.parse(userData);
-        // console.log('Current user:', user);
+     
 
         if (!user.id) {
           throw new Error('User ID not found.');
@@ -47,9 +47,6 @@ const Dashboard = () => {
           throw new Error('Employee record not found for this user.');
         }
 
-        // console.log('Employee data for dashboard:', employee);
-          
-        // Set user session with actual data
         setUserSession({
           employeeId: employee.employee_id || employee.id,
           employeeName: `${employee.first_name} ${employee.last_name}`,
@@ -59,7 +56,7 @@ const Dashboard = () => {
         return employee;
 
       } catch (err) {
-        // console.error('Error fetching employee data:', err);
+        console.error('Error fetching employee data:', err);
         setError(err.message || 'Failed to load employee data');
         return null;
       }
@@ -203,43 +200,37 @@ const Dashboard = () => {
 // In Dashboard.jsx - Complete calculateAttendance function
   const calculateAttendance = async (employee) => {
     try {
-      // console.log('📊 Calculating attendance for:', employee);
-      
-      // FIX: Use employee.employee_id (from your logs)
+    
       const employeeId = employee.employee_id || employee.id;
       
       if (!employeeId) {
-        console.error('❌ Employee ID not found in:', employee);
+    
         return 95; // Default value
       }
-      
-      // console.log('✅ Using employee ID:', employeeId);
-      
-      // Use the API service
+     
       const response = await attendanceAPI.getAttendancePercentage(employeeId);
       
       // Get the percentage from response
       const percentage = response.data?.attendance_percentage;
       
       if (percentage === undefined) {
-        // console.log('⚠️ No percentage in response, using default');
+    
         return 95;
       }
-      
-      // console.log('✅ Attendance percentage:', percentage);
+  
       return percentage;
       
     } catch (error) {
-      // console.error('❌ Error calculating attendance:', error);
+      console.error('❌ Error calculating attendance:', error);
       
       // Check error type
       if (error.response?.status === 404) {
-        // console.log('⚠️ Endpoint not found yet, using default 95%');
+    
         return 95;
       }
       
       if (error.response?.status === 401) {
-        // console.log('⚠️ Unauthorized - check token');
+   
         return 0;
       }
       

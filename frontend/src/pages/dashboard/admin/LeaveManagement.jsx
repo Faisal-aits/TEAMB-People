@@ -76,7 +76,7 @@ const LeaveManagement = () => {
   // Leave Functions
   const handleApproveLeave = async (leaveId) => {
     try {
-      // console.log('Approving leave:', leaveId);
+     
       await leaveAPI.approve(leaveId);
       
       // Update local state
@@ -105,7 +105,7 @@ const LeaveManagement = () => {
 
   const handleRejectLeave = async (leaveId) => {
     try {
-      // console.log('Rejecting leave:', leaveId);
+    
       await leaveAPI.reject(leaveId);
       
       // Update local state
@@ -135,7 +135,7 @@ const LeaveManagement = () => {
 
   const handleDeleteLeave = async (leaveId) => {
     try {
-      // console.log('Deleting leave:', leaveId);
+      
       await leaveAPI.delete(leaveId);
       
       // Update local state

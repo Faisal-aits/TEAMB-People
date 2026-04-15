@@ -178,6 +178,20 @@ const HRDashboard = ({ setActiveTab }) => {
             <HiOutlineArrowRight />
           </div>
         </div>
+
+<div className="hr-tool-card" onClick={() => setActiveTab('declaration-form')}>
+  <div className="tool-icon-wrapper doc">
+    <HiOutlineDocumentText />
+  </div>
+  <div className="tool-info">
+    <h3>EPF Declaration Form</h3>
+    <p>Generate Employees' Provident Fund Declaration Form for {companyName}.</p>
+  </div>
+  <div className="tool-action">
+    <HiOutlineArrowRight />
+  </div>
+</div>
+
       </div>
     </div>
   );

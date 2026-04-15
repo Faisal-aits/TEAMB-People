@@ -22,7 +22,7 @@ const Dashboard = () => {
         }
 
         const user = JSON.parse(userData);
-        // console.log('Current user:', user);
+  
 
         if (!user.id) {
           throw new Error('User ID not found.');
@@ -36,7 +36,7 @@ const Dashboard = () => {
           throw new Error('Employee record not found for this user.');
         }
 
-        // console.log('Employee data received:', employee);
+     
           
         // Transform the API response to match your UI structure
         const transformedData = {

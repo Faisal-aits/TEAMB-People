@@ -94,8 +94,7 @@ const Dashboard = ({ user, navigateToTab }) => {
   };
 
 const handleEmployeeClick = (employeeName) => {
-  console.log('Clicking employee:', employeeName);
-  // Make sure we're passing the filter correctly
+
   navigateToTab('reports', { 
     filterByEmployee: employeeName,
     fromDashboard: true
@@ -824,22 +823,39 @@ const handleEmployeeClick = (employeeName) => {
                 View All
               </button>
             </div>
-            <div className="activity-timeline minimal-timeline equal-height-content">
-              {recentReports.length === 0 ? (
+            <div className="activity-timeline glass-form equal-height-content">
+              {employeesWithReports.length === 0 ? (
                 <div className="no-reports-message">
                   <p>No reports available</p>
                 </div>
               ) : (
-                recentReports.slice(0, 15).map((report, index) => (
-                  <div key={index} className="timeline-item minimal-item">
+                employeesWithReports.map((employee, index) => (
+                  <div key={index} className="timeline-item">
+                    <div className="timeline-marker report-marker"></div>
                     <div className="timeline-content">
-                      <div className="task-name">{report.description}</div>
-                      <div className="task-user-row">
-                        <span className="task-user">by {report.generated_by_name}</span>
-                        <span className="task-dot">•</span>
-                        <span className="task-date">{formatReportDate(report.date_generated)}</span>
-                      </div>
-                    </div>
+      <button 
+        className="employee-name-link"
+        onClick={() => handleEmployeeClick(employee.name)}
+        style={{
+          background: 'none',
+          border: 'none',
+          color: '#3b82f6',
+          cursor: 'pointer',
+          textDecoration: 'underline',
+          fontSize: '16px',
+          fontWeight: '500',
+          padding: '0',
+          margin: 0,
+          display: 'block',
+          textAlign: 'left'
+        }}
+      >
+        {employee.name}
+      </button>
+      <span className="timeline-time" style={{ fontSize: '12px', color: '#64748b' }}>
+        {employee.reportCount} report{employee.reportCount !== 1 ? 's' : ''} submitted
+      </span>
+    </div>
                   </div>
                 ))
               )}

@@ -590,6 +590,5 @@
 
 .setting-modal-content::-webkit-scrollbar-thumb:hover {
   background: #a0aec0;
-}
-
-.smtp-tutorial-alert { display: flex; align-items: flex-start; background: #ebf8ff; padding: 12px 16px; border-left: 4px solid #3182ce; border-radius: 4px; }
+}. s m t p - t u t o r i a l - a l e r t   {   d i s p l a y :   f l e x ;   a l i g n - i t e m s :   f l e x - s t a r t ;   b a c k g r o u n d :   # e b f 8 f f ;   p a d d i n g :   1 2 p x   1 6 p x ;   b o r d e r - l e f t :   4 p x   s o l i d   # 3 1 8 2 c e ;   b o r d e r - r a d i u s :   4 p x ;   }  
+ 

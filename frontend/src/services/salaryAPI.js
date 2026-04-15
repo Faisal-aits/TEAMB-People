@@ -10,21 +10,17 @@ export const salaryAPI = {
     if (filters.month) params.append('month', filters.month);
     if (filters.year) params.append('year', filters.year);
     if (filters.status) params.append('status', filters.status);
-    
     return api.get(`/salary/records?${params.toString()}`);
   },
 
   // Get salary record by ID
   getById: (id) => api.get(`/salary/records/${id}`),
 
-  // Create new salary record
-  create: (salaryData) => {
-    console.log('API create called with:', salaryData);
-    return api.post('/salary/records', salaryData);
-  },
+  // Create salary record
+  create: (data) => api.post('/salary/records', data),
 
   // Update salary record
-  update: (id, salaryData) => api.put(`/salary/records/${id}`, salaryData),
+  update: (id, data) => api.put(`/salary/records/${id}`, data),
 
   // Delete salary record
   delete: (id) => api.delete(`/salary/records/${id}`),
@@ -35,27 +31,43 @@ export const salaryAPI = {
   // Get departments for dropdown
   getDepartments: () => api.get('/salary/departments'),
 
-  // Generate payslip PDF download
-  generatePayslip: (id) => {
-    return api.get(`/salary/payslip/${id}`, {
-      responseType: 'blob'
+  // Get salary statistics
+  getStats: () => api.get('/salary/stats'),
+
+  // Get salary by department
+  getByDepartment: (month, year) => api.get(`/salary/by-department?month=${month}&year=${year}`),
+
+  // Generate payslip
+  generatePayslip: (id) => api.get(`/salary/payslip/${id}`, { responseType: 'blob' }),
+
+  // Generate payslip preview
+  generatePayslipPreview: (id) => api.get(`/salary/payslip-preview/${id}`),
+
+  // Send payslip email
+  sendPayslipEmail: (id, data) => api.post(`/salary/send-payslip/${id}`, data),
+
+  // Bulk create salary records
+  bulkCreate: (data) => api.post('/salary/bulk-create', data),
+
+  calculateFromAttendance: (data) => {
+    console.log('API call - calculateFromAttendance with data:', data);
+    return api.post('/salary/calculate-from-attendance', {
+        employee_id: data.employee_id,
+        month: data.month,
+        year: data.year,
+        basic_salary: data.basic_salary
     });
   },
 
-  // Generate payslip preview (base64)
-  generatePayslipPreview: (id) => api.get(`/salary/payslip-preview/${id}`),
-
-  // Send payslip via email
-  sendPayslipEmail: (id, emailData) => api.post(`/salary/payslip/${id}/email`, emailData),
-
-  // Calculate salary from attendance
-  calculateFromAttendance: (data) => api.post('/salary/calculate-from-attendance', data),
-
-  // Get salary records for logged-in employee
+  // 👇 ADD THIS NEW METHOD 👇
+  // Get current logged-in employee's salary records
   getMySalaryRecords: (filters = {}) => {
     const params = new URLSearchParams();
     if (filters.month) params.append('month', filters.month);
     if (filters.year) params.append('year', filters.year);
-    return api.get(`/salary/my-records?${params.toString()}`);
+    const queryString = params.toString();
+   return api.get(`/salary/my-records${queryString ? `?${queryString}` : ''}`);
   },
 };
+
+export default salaryAPI;

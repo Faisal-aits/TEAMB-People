@@ -11,17 +11,17 @@ const Dashboard = () => {
   // Get student data by user ID from all students list
   const getStudentByUserId = async (userId) => {
     try {
-      // console.log('Fetching all students to find user ID:', userId);
+   
       const response = await studentAPI.getAll();
       
       if (response.data && response.data.students) {
         const student = response.data.students.find(student => student.user_id === userId);
-        // console.log('Found student:', student);
+       
         return student;
       }
       return null;
     } catch (err) {
-      // console.error('Error fetching students list:', err);
+      console.error('Error fetching students list:', err);
       return null;
     }
   };
@@ -38,7 +38,7 @@ const Dashboard = () => {
         }
 
         const user = JSON.parse(userData);
-        // console.log('Current user:', user);
+    
 
         if (!user.id) {
           throw new Error('User ID not found.');
@@ -51,17 +51,16 @@ const Dashboard = () => {
           throw new Error('Student record not found for this user.');
         }
 
-        // console.log('Student data received:', student);
         
         // Fetch student courses
         let courses = [];
         try {
           const coursesResponse = await studentAPI.getCourses(student.id);
           courses = coursesResponse.data.courses || [];
-          // console.log('Student courses:', courses);
+       
         } catch (courseErr) {
-          // console.error('Error fetching courses:', courseErr);
-          // Continue without courses data
+          console.error('Error fetching courses:', courseErr);
+         
         }
 
         // Transform the API response to match your UI structure

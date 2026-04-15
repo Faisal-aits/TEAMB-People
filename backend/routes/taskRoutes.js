@@ -2,9 +2,11 @@
 const express = require('express');
 const router = express.Router();
 const taskController = require('../controllers/taskController');
-const authMiddleware =require('../middleware/authMiddleware');
+const authMiddleware = require('../middleware/authMiddleware');
 
-// Apply auth middleware
+
+
+// All routes are protected
 router.use(authMiddleware.verifyToken);
 
 // ========== GET Routes ==========

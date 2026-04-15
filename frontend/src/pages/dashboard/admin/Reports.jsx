@@ -29,17 +29,15 @@ const Reports = ({ navigationState }) => {
         reportsData = response.data.data;
       }
       
-      // console.log('Fetched reports:', reportsData.length);
-      // console.log('Available employee names:', [...new Set(reportsData.map(r => r.generated_by_name))]);
+      
       
       setReports(reportsData);
       
       const employeeFromNav = navigationState?.filterByEmployee;
-      // console.log('Employee from navigationState:', employeeFromNav);
-      // console.log('Full navigationState:', navigationState);
+
       
       if (employeeFromNav) {
-        // console.log('Setting employee filter to:', employeeFromNav);
+      
         setFilters(prev => ({
           ...prev,
           employeeName: employeeFromNav
@@ -63,7 +61,7 @@ const Reports = ({ navigationState }) => {
   const applyFilters = () => {
     if (reports.length === 0) return;
     
-    // console.log('Applying filters...', filters);
+ 
     let filtered = [...reports];
     
     // Apply employee filter
@@ -71,11 +69,11 @@ const Reports = ({ navigationState }) => {
       filtered = filtered.filter(report => {
         const reportEmployee = report.generated_by_name || '';
         const filterEmployee = filters.employeeName;
-        const match = reportEmployee.toLowerCase().includes(filterEmployee.toLowerCase());
-        // console.log(`Filtering: ${reportEmployee} includes ${filterEmployee} ? ${match}`);
+        const match = reportEmployee.toLowerCase() === filterEmployee.toLowerCase();
+     
         return match;
       });
-      // console.log(`After employee filter: ${filtered.length} reports`);
+    
     }
     
     // Apply date from filter
@@ -100,14 +98,13 @@ const Reports = ({ navigationState }) => {
     
     // Sort by date (newest first)
     filtered.sort((a, b) => new Date(b.date_generated) - new Date(a.date_generated));
-    
-    // console.log('Final filtered reports:', filtered.length);
+ 
     setFilteredReports(filtered);
   };
 
   // Initial fetch
   useEffect(() => {
-    // console.log('Reports mounted, navigationState:', navigationState);
+   
     fetchAllReports();
   }, [navigationState]);
 
@@ -242,7 +239,7 @@ const Reports = ({ navigationState }) => {
               <h3 className="reports-table-title">Report History</h3>
             </div>
             <div className="filter-controls-header">
-              {filters.employeeName && navigationState?.filterByEmployee && (
+              {filters.employeeName && (
                 <div className="employee-filter-badge">
                   <span className="filter-label">Filtered by:</span>
                   <span className="employee-name-badge">{filters.employeeName}</span>
@@ -255,16 +252,7 @@ const Reports = ({ navigationState }) => {
                   </button>
                 </div>
               )}
-              <div className="date-filter-group" style={{ display: 'flex', gap: '10px' }}>
-                <input
-                  type="text"
-                  name="employeeName"
-                  value={filters.employeeName}
-                  onChange={handleFilterChange}
-                  className="date-filter-input"
-                  placeholder="Search Employee..."
-                  style={{ minWidth: '150px' }}
-                />
+              <div className="date-filter-group">
                 <input
                   type="date"
                   name="dateFrom"

@@ -120,7 +120,7 @@ const ServiceManagement = () => {
       // Export to Excel
       XLSX.writeFile(workbook, fileName);
       
-      // console.log('✅ Export successful:', fileName);
+  
       alert(`Exported ${filteredServices.length} services successfully!`);
     } catch (error) {
       console.error('❌ Error exporting data:', error);

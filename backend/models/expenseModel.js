@@ -68,15 +68,33 @@ const Expense = {
         return rows[0];
     },
 
-    // Create new expense
-    create: async (tenantId, expenseData) => {
-        const { user_id, category_id, amount, description, image } = expenseData;
-        const [result] = await pool.execute(
-            'INSERT INTO expenses (tenant_id, user_id, category_id, amount, description, image, status, payment_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [tenantId, user_id, category_id, amount, description, image || null, 'pending', 'pending']
-        );
-        return result.insertId;
-    },
+   // backend/models/expenseModel.js
+create: async (tenantId, expenseData) => {
+  const { user_id, category_id, amount, description, image } = expenseData;
+  
+  console.log('Expense.create called with:', {
+    tenantId,
+    user_id,
+    category_id,
+    amount,
+    description,
+    image
+  });
+  
+  try {
+    const [result] = await pool.execute(
+      'INSERT INTO expenses (tenant_id, user_id, category_id, amount, description, image, status, payment_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [tenantId, user_id, category_id, amount, description, image || null, 'pending', 'pending']
+    );
+    console.log('Insert result:', result);
+    return result.insertId;
+  } catch (dbError) {
+    console.error('Database insert error:', dbError);
+    console.error('SQL Error code:', dbError.code);
+    console.error('SQL Error message:', dbError.message);
+    throw dbError;
+  }
+},
 
     // Update expense status
     updateStatus: async (tenantId, id, status, approved_by = null) => {

@@ -101,8 +101,9 @@ export const projectAPI = {
   // Get task by ID
   getTaskById: (id) => api.get(`/tasks/${id}`), // Fixed: was /projects/${id}
 
-  // Create task
-  createTask: (taskData) => api.post('/tasks', taskData), // Fixed: was /projects
+  createTask: (taskData) => {
+  return api.post('/tasks', taskData);
+},
 
   // Update task
   updateTask: (id, taskData) => api.put(`/tasks/${id}`, taskData), // Fixed: was /projects/${id}

@@ -2,7 +2,7 @@
 import api from './api';
 
 export const attendanceAPI = {
-  // Get all attendance records
+  // Get all attendance records (admin)
   getAll: (filters = {}) => {
     const params = new URLSearchParams();
     if (filters.date) params.append('date', filters.date);
@@ -13,7 +13,7 @@ export const attendanceAPI = {
     return api.get(`/attendance?${params.toString()}`);
   },
 
-  // Get employee attendance history - Use existing endpoint
+  // Get employee attendance history (admin)
   getEmployeeHistory: (employeeId) => api.get(`/attendance/history/${employeeId}`),
   
   mark: (attendanceData) => api.post('/attendance/mark', attendanceData),
@@ -34,10 +34,9 @@ export const attendanceAPI = {
     return api.get(`/attendance/stats?${params.toString()}`);
   },
 
-  // Employee specific methods
+  // FIXED: Get current user's today attendance - use correct path
   getMyTodayAttendance: () => {
-    const today = new Date().toISOString().split('T')[0];
-    return api.get(`/attendance/my/today?date=${today}`);
+    return api.get('/attendance/my/today');
   },
 
   getAllWithFilters: (filters = {}) => {
@@ -51,9 +50,7 @@ export const attendanceAPI = {
 
   identifyAndMarkAttendance: (formData) => {
     return api.post('/attendance/identify-and-mark', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      },
+      headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 30000
     });
   },
@@ -65,32 +62,34 @@ export const attendanceAPI = {
     return api.get(`/attendance/percentage/${employeeId}?${params.toString()}`);
   },
 
+  // FIXED: Verify face and mark attendance - use correct path
   verifyMyFaceAndMarkAttendance: (formData) => {
-    return api.post('/attendance/my/verify-face', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      },
+    return api.post('/attendance/verify-my-face', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 30000
     });
   },
 
-  getMyHistory: () => api.get('/attendance/my/history'),
+  // FIXED: Get my history - use correct path
+  getMyHistory: () => {
+    return api.get('/attendance/my/history');
+  },
 
   markAbsent: () => api.post('/attendance/mark-absent'),
 
-  markMyAttendance: (attendanceData) => api.post('/attendance/my/mark', attendanceData),
+  // FIXED: Mark my attendance - use correct path
+  markMyAttendance: (attendanceData) => {
+    return api.post('/attendance/my/mark', attendanceData);
+  },
 
-  // ✅ FIXED: Use existing getEmployeeHistory endpoint instead
+  // Get employee attendance (for admin)
   getEmployeeAttendance: (employeeId, month, year) => {
-    // Use the existing getEmployeeHistory endpoint
-    // Filter by month/year on frontend since backend might not support it
     return api.get(`/attendance/history/${employeeId}`).then(response => {
-      let attendance = response.data.attendance || response.data.data || [];
+      let attendance = response.data.history || response.data.attendance || response.data || [];
       
-      // Filter by month and year on frontend
-      if (month && year) {
+      if (month && year && Array.isArray(attendance)) {
         attendance = attendance.filter(record => {
-          const recordDate = new Date(record.date || record.check_in_time);
+          const recordDate = new Date(record.date);
           return recordDate.getMonth() + 1 === parseInt(month) && 
                  recordDate.getFullYear() === parseInt(year);
         });
@@ -107,7 +106,6 @@ export const attendanceAPI = {
   },
 
   getMonthlyAttendanceSummary: async (employeeId, month, year) => {
-    // Convert month name to number if needed
     let monthNumber = month;
     if (isNaN(month) && month) {
         const months = {
@@ -118,19 +116,33 @@ export const attendanceAPI = {
         monthNumber = months[month];
     }
     
-    // Use the correct endpoint
     return api.get(`/attendance/summary/${employeeId}?month=${monthNumber}&year=${year}`);
   },
 
   getTodayAttendance: (employeeId) => {
     const today = new Date().toISOString().split('T')[0];
     return api.get(`/attendance/history/${employeeId}`).then(response => {
-      let attendance = response.data.attendance || response.data.data || [];
-      const todayRecord = attendance.find(record => {
-        const recordDate = new Date(record.date || record.check_in_time).toISOString().split('T')[0];
+      let attendance = response.data.history || response.data.attendance || response.data || [];
+      const todayRecord = Array.isArray(attendance) ? attendance.find(record => {
+        const recordDate = new Date(record.date).toISOString().split('T')[0];
         return recordDate === today;
-      });
+      }) : null;
       return { data: { attendance: todayRecord ? [todayRecord] : [] } };
     });
   },
+  // Add this method
+markAbsentByEmployee: async (employeeId, date) => {
+  try {
+    const response = await api.post('/attendance/mark-absent-employee', {
+      employee_id: employeeId,
+      date: date,
+      status: 'Absent',
+      remarks: 'Auto-marked absent - No attendance recorded during work hours (9 AM - 6 PM)'
+    });
+    return response;
+  } catch (error) {
+    console.error('Error marking employee absent:', error);
+    throw error;
+  }
+},
 };

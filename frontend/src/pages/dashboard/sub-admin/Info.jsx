@@ -11,17 +11,17 @@ const Dashboard = () => {
   // Get employee data by user ID from all employees list
   const getEmployeeByUserId = async (userId) => {
     try {
-      // console.log('Fetching all employees to find user ID:', userId);
+   
       const response = await employeeAPI.getAll();
       
       if (response.data && response.data.employees) {
         const employee = response.data.employees.find(emp => emp.user_id === userId);
-        // console.log('Found employee:', employee);
+  
         return employee;
       }
       return null;
     } catch (err) {
-      // console.error('Error fetching employees list:', err);
+      console.error('Error fetching employees list:', err);
       return null;
     }
   };
@@ -38,7 +38,7 @@ const Dashboard = () => {
         }
 
         const user = JSON.parse(userData);
-        // console.log('Current user:', user);
+      
 
         if (!user.id) {
           throw new Error('User ID not found.');
@@ -51,9 +51,6 @@ const Dashboard = () => {
           throw new Error('Employee record not found for this user.');
         }
 
-        // console.log('Employee data received:', employee);
-          
-        // Transform the API response to match your UI structure
         const transformedData = {
           name: `${employee.first_name} ${employee.last_name}`,
           position: employee.position || 'Not specified',

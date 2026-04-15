@@ -105,23 +105,34 @@ const ExpenseTable = () => {
   };
 
   const loadCategories = async () => {
-    try {
-      const response = await expenseAPI.getCategories();
-      let categoriesData = [];
-      
-      if (response.data?.categories) {
-        categoriesData = response.data.categories;
-      } else if (response.data?.data) {
-        categoriesData = response.data.data;
-      } else if (Array.isArray(response.data)) {
-        categoriesData = response.data;
-      }
-      
-      setCategories(categoriesData);
-    } catch (error) {
-      console.error('Error loading categories:', error);
+  try {
+
+    const response = await expenseAPI.getCategories();
+   
+    
+    let categoriesData = [];
+    
+    if (response.data?.categories) {
+      categoriesData = response.data.categories;
+    
+    } else if (response.data?.data) {
+      categoriesData = response.data.data;
+   
+    } else if (Array.isArray(response.data)) {
+      categoriesData = response.data;
+
     }
-  };
+    
+
+    setCategories(categoriesData);
+   
+  } catch (error) {
+    console.error('=== Error Loading Categories ===');
+    console.error('Error:', error);
+    console.error('Error response:', error.response?.data);
+    alert('Error loading categories. Please refresh the page.');
+  }
+};
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -156,46 +167,77 @@ const ExpenseTable = () => {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+ 
+  
+  if (!formData.category_id || !formData.amount || !formData.description) {
+    alert('Please fill in all required fields');
+    return;
+  }
+
+  // Validate amount is a positive number
+  const amountNum = parseFloat(formData.amount);
+  if (isNaN(amountNum) || amountNum <= 0) {
+    alert('Please enter a valid amount greater than 0');
+    return;
+  }
+
+  setIsSubmitting(true);
+
+  try {
+    const submitData = new FormData();
+    submitData.append('category_id', String(formData.category_id));
+    submitData.append('amount', amountNum.toString());
+    submitData.append('description', formData.description.trim());
+    if (receiptImage) {
+      submitData.append('image', receiptImage);
+    }
+
+    for (let pair of submitData.entries()) {
+   
+    }
+
+  
     
-    if (!formData.category_id || !formData.amount || !formData.description) {
-      alert('Please fill in all required fields');
-      return;
+    const response = await expenseAPI.create(submitData);
+  
+    
+    // Reset form
+    setFormData({
+      category_id: '',
+      amount: '',
+      description: ''
+    });
+    setReceiptImage(null);
+    setImagePreview(null);
+    setIsModalOpen(false);
+    
+    await loadExpenses();
+    alert('Expense submitted successfully!');
+  } catch (error) {
+
+    console.error('Error response:', error.response);
+    console.error('Error response data:', error.response?.data);
+    console.error('Error response status:', error.response?.status);
+    console.error('Error response headers:', error.response?.headers);
+    
+    // Show detailed error message
+    let errorMessage = 'Error submitting expense';
+    if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    } else if (error.response?.data?.error) {
+      errorMessage = error.response.data.error;
+    } else if (error.message) {
+      errorMessage = error.message;
     }
-
-    setIsSubmitting(true);
-
-    try {
-      const submitData = new FormData();
-      submitData.append('category_id', formData.category_id);
-      submitData.append('amount', parseFloat(formData.amount));
-      submitData.append('description', formData.description);
-      if (receiptImage) {
-        submitData.append('image', receiptImage);
-      }
-
-      await expenseAPI.create(submitData);
-      
-      // Reset form
-      setFormData({
-        category_id: '',
-        amount: '',
-        description: ''
-      });
-      setReceiptImage(null);
-      setImagePreview(null);
-      setIsModalOpen(false);
-      
-      await loadExpenses();
-      alert('Expense submitted successfully!');
-    } catch (error) {
-      console.error('Error submitting expense:', error);
-      alert(error.response?.data?.message || 'Error submitting expense');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    
+    alert(`Failed to submit expense: ${errorMessage}`);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const getPaymentBadge = (paymentStatus) => {
     const paymentClasses = {
