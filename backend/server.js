@@ -65,23 +65,23 @@ const upload = multer({
 
 // 0. Helmet - Set security-related HTTP headers
 app.use(helmet({
-    contentSecurityPolicy: false, // CSP handled separately if needed
-    crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: false, // CSP handled separately if needed
+  crossOriginEmbedderPolicy: false,
 }));
 
 // 1. Rate limiting - Prevent brute force and scraping
 const generalLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 200,                   // max 200 requests per 15 min per IP
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { success: false, message: 'Too many requests. Please try again later.' }
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 200,                   // max 200 requests per 15 min per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many requests. Please try again later.' }
 });
 
 const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 15,                    // max 15 login attempts per 15 min
-    message: { success: false, message: 'Too many login attempts. Please try again after 15 minutes.' }
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 15,                    // max 15 login attempts per 15 min
+  message: { success: false, message: 'Too many login attempts. Please try again after 15 minutes.' }
 });
 
 app.use('/api/', generalLimiter);
@@ -98,16 +98,20 @@ const allowedOrigins = [
 ];
 app.use(cors({
   origin: function (origin, callback) {
+    // In development mode, allow anything to make local testing easier
+    if (process.env.NODE_ENV === 'development') {
+      return callback(null, true);
+    }
+
     // In production, REJECT requests with no origin (Postman, curl, scripts)
     if (!origin) {
-      if (process.env.NODE_ENV === 'development') {
-        return callback(null, true); // Allow in dev only
-      }
       return callback(new Error('Direct API access is not allowed'));
     }
+
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
+
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
@@ -125,15 +129,15 @@ const fs = require('fs');
 const errorLog = fs.createWriteStream(path.join(__dirname, 'error.log'), { flags: 'a' });
 const originalConsoleError = console.error;
 console.error = (...args) => {
-    errorLog.write(new Date().toISOString() + ' - ' + args.join(' ') + '\n');
-    originalConsoleError.apply(console, args);
+  errorLog.write(new Date().toISOString() + ' - ' + args.join(' ') + '\n');
+  originalConsoleError.apply(console, args);
 };
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Log all requests
 app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-    next();
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  next();
 });
 
 // ============================================================
@@ -178,40 +182,40 @@ app.use('/api/experience-letters', experienceLetterRoutes);
 app.use('/api/increment-letters', incrementLetterRoutes);
 app.use('/api/teams', teamRoutes);           // Add this
 app.use('/api/tasks', taskRoutes);           // Add this
-app.use('/api/daily-reports', dailyReportRoutes); 
+app.use('/api/daily-reports', dailyReportRoutes);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/uploads', express.static('uploads'));
 app.use('/api/declaration-form', declarationFormRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
-    res.json({ message: 'Work Desk Multi-Tenant API is running!' });
+  res.json({ message: 'Work Desk Multi-Tenant API is running!' });
 });
 
 // Health check route
 app.get('/api/health', (req, res) => {
-    res.json({ 
-        status: 'OK', 
-        timestamp: new Date().toISOString(),
-        service: 'Work Desk Multi-Tenant API',
-        version: '2.0.0'
-    });
+  res.json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    service: 'Work Desk Multi-Tenant API',
+    version: '2.0.0'
+  });
 });
 
 // Global Error Handler
 app.use((err, req, res, next) => {
-    console.error('SERVER ERROR:', err.stack || err);
-    res.status(500).json({ 
-        success: false, 
-        message: 'Internal Server Error', 
-        error: process.env.NODE_ENV === 'development' ? err.message : undefined 
-    });
+  console.error('SERVER ERROR:', err.stack || err);
+  res.status(500).json({
+    success: false,
+    message: 'Internal Server Error',
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
 });
 
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Server is running on port ${PORT}`);
-    console.log(`🌐 Access via: http://localhost:${PORT} or http://YOUR_IP:${PORT}`);
-    console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
-    console.log(`🔒 Super Admin API: http://localhost:${PORT}/api/super-admin`);
+  console.log(`🚀 Server is running on port ${PORT}`);
+  console.log(`🌐 Access via: http://localhost:${PORT} or http://YOUR_IP:${PORT}`);
+  console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+  console.log(`🔒 Super Admin API: http://localhost:${PORT}/api/super-admin`);
 });
