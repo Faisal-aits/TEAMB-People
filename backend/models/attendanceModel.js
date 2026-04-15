@@ -218,8 +218,8 @@ getAll: async (tenantId, filters = {}) => {
                         SUM(CASE WHEN a.status = 'Absent' THEN 1 ELSE 0 END) as absent,
                         SUM(CASE WHEN a.status = 'Pending' THEN 1 ELSE 0 END) as pending
                     FROM tb_attendance a
-                    JOIN employee_details ed ON a.employee_id = ed.id
-                    WHERE a.date = ? AND ed.tenant_id = ?
+                    LEFT JOIN employee_details ed ON a.employee_id = ed.id
+                    WHERE a.date = ? AND (ed.tenant_id = ? OR ed.tenant_id IS NULL)
                 `;
                 
                 const [rows] = await pool.execute(query, [targetDate, tenantId]);
@@ -249,8 +249,8 @@ getAll: async (tenantId, filters = {}) => {
                         s.shift_name
                     FROM tb_attendance a
                     LEFT JOIN tb_shifts s ON a.shift_id = s.shift_id
-                    JOIN employee_details ed ON a.employee_id = ed.id
-                    WHERE a.employee_id = ? AND ed.tenant_id = ?
+                    WHERE a.employee_id = ? 
+                    AND (a.tenant_id = ? OR a.tenant_id IS NULL)
                     ORDER BY a.date DESC
                     LIMIT 50
                 `;
@@ -274,8 +274,8 @@ getAll: async (tenantId, filters = {}) => {
                         SUM(CASE WHEN a.status = 'On Leave' THEN 1 ELSE 0 END) as on_leave,
                         SUM(CASE WHEN a.status = 'Half Day' THEN 1 ELSE 0 END) as half_day
                     FROM tb_attendance a
-                    JOIN employee_details ed ON a.employee_id = ed.id
-                    WHERE a.employee_id = ? AND ed.tenant_id = ?
+                    WHERE a.employee_id = ? 
+                    AND (a.tenant_id = ? OR a.tenant_id IS NULL)
                 `;
                 
                 const [rows] = await pool.execute(query, [employeeId, tenantId]);
@@ -425,15 +425,17 @@ create: async (tenantId, attendanceData) => {
                 );
                 
                 // Calculate consecutive late days
-                let consecutiveCount = 1;
+                let consecutiveCount = 0;
+                let previousDate = new Date(attendanceData.date);
+                
                 for (const record of recentAttendance) {
                     if (record.status === 'Delayed') {
                         const recordDate = new Date(record.date);
-                        const currentDate = new Date(attendanceData.date);
-                        const dayDiff = Math.floor((currentDate - recordDate) / (1000 * 60 * 60 * 24));
+                        const dayDiff = Math.floor((previousDate - recordDate) / (1000 * 60 * 60 * 24));
                         
-                        if (dayDiff === consecutiveCount) {
+                        if (dayDiff === 1) {
                             consecutiveCount++;
+                            previousDate = recordDate;
                         } else {
                             break;
                         }
@@ -458,32 +460,50 @@ create: async (tenantId, attendanceData) => {
             }
         }
         
-        // Calculate worked hours
+        // Calculate worked hours and check half-day status
         let workedHours = 0;
+        let isHalfDay = false;
         if (attendanceData.check_in && attendanceData.check_out) {
             const checkIn = new Date(attendanceData.check_in);
             const checkOut = new Date(attendanceData.check_out);
             workedHours = parseFloat(((checkOut - checkIn) / (1000 * 60 * 60)).toFixed(2));
             
-            // Salary deduction for short hours, but status remains Delayed or Present
-            if (workedHours < 4 && workedHours > 0 && status !== 'Half Day') {
+            if (workedHours < 4 && workedHours > 0) {
+                isHalfDay = true;
+                status = 'Half Day';
+                if (lateStreak >= 3) {
+                    deductionReason = `${lateStreak} consecutive late days + ${workedHours.toFixed(1)} hours worked - Half day salary deducted`;
+                } else {
+                    deductionReason = `Worked only ${workedHours.toFixed(1)} hours - Half day deduction`;
+                }
                 shouldDeductSalary = true;
                 const dailySalary = employeeSalary / 30;
                 deductionAmount = dailySalary * 0.5;
-                deductionReason = `Worked only ${workedHours} hours - Half day deduction`;
             }
         }
-
+        
+        // Override with Half Day status if late streak is 3+
+        if (lateStreak >= 3) {
+            isHalfDay = true;
+            status = 'Half Day';
+            if (!shouldDeductSalary) {
+                shouldDeductSalary = true;
+                const dailySalary = employeeSalary / 30;
+                deductionAmount = dailySalary * 0.5;
+                deductionReason = `${lateStreak} consecutive late days - Half day salary deducted`;
+            }
+        }
+        
         // Prepare remarks
         let remarks = attendanceData.remarks || '';
         if (isLate && !remarks) {
             remarks = `Late check-in by ${lateMinutes} minutes`;
         }
-        if (shouldDeductSalary) {
+        if (isHalfDay) {
             remarks = remarks ? `${remarks} | ${deductionReason}` : deductionReason;
         }
 
-        // Insert attendance record - is_half_day is always 0
+        // Insert attendance record
         const query = `
             INSERT INTO tb_attendance 
             (tenant_id, employee_id, shift_id, date, check_in, check_out, status, 
@@ -500,8 +520,8 @@ create: async (tenantId, attendanceData) => {
             attendanceData.date,
             attendanceData.check_in || null,
             attendanceData.check_out || null,
-            status,  // Always 'Delayed' for late arrivals, never 'Half Day'
-            0,  // is_half_day always 0 (removed from UI)
+            status,
+            isHalfDay ? 1 : 0,
             isLate ? 1 : 0,
             lateMinutes,
             lateStreak,
@@ -509,14 +529,14 @@ create: async (tenantId, attendanceData) => {
             shiftCheckInTime || null,
             gracePeriodMinutes,
             remarks,
-            shouldDeductSalary ? 1 : 0,
+            isHalfDay ? 1 : 0,
             deductionAmount,
             deductionReason
         ]);
 
         await connection.commit();
         
-        console.log(`✅ Attendance created: ${attendanceData.date}, Status: ${status}, Salary Deduct: ${shouldDeductSalary}`);
+        console.log(`✅ Attendance created: ${attendanceData.date}, Status: ${status}, Is Half Day: ${isHalfDay}, Salary Deduct: ${shouldDeductSalary}`);
         
         return { 
             attendance_id: result.insertId,
@@ -528,7 +548,7 @@ create: async (tenantId, attendanceData) => {
             should_deduct_salary: shouldDeductSalary,
             deduction_amount: deductionAmount,
             deduction_reason: deductionReason,
-            is_half_day: false,
+            is_half_day: isHalfDay,
             worked_hours: workedHours,
             shift_name: shiftInfo.shift_name,
             shift_check_in: shiftCheckInTime

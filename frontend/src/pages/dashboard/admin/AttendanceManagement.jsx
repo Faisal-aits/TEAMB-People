@@ -35,6 +35,10 @@ const AttendanceManagement = () => {
   const [cameraStream, setCameraStream] = useState(null);
   const [faceValidation, setFaceValidation] = useState({ isValid: false, message: '' });
 
+  // ==================== ATTENDANCE HISTORY SEARCH & SORT ====================
+  const [historySearchQuery, setHistorySearchQuery] = useState('');
+  const [historySortBy, setHistorySortBy] = useState('date-desc');
+
   // ==================== AUTO-ABSENT SCHEDULER ====================
   useEffect(() => {
     checkAndAutoMarkAbsent();
@@ -546,7 +550,9 @@ const handleGenerateReport = async () => {
   const attendanceStats = {
     totalPresent: attendanceData.filter(a => a.status === 'Present' || a.status === 'present').length,
     totalDelayed: attendanceData.filter(a => a.status === 'Delayed' || a.status === 'delayed' || a.status === 'Late').length,
-    totalLeaves: attendanceData.filter(a => a.status === 'On Leave' || a.status === 'Absent' || a.status === 'absent' || a.status === 'leave').length,
+    totalOnLeave: attendanceData.filter(a => a.status === 'On Leave' || a.status === 'on_leave').length,
+    totalAbsent: attendanceData.filter(a => a.status === 'Absent' || a.status === 'absent').length,
+    totalHalfDay: attendanceData.filter(a => a.status === 'Half Day' || a.status === 'half_day').length,
     totalEmployees: employees.length
   };
 
@@ -554,9 +560,45 @@ const handleGenerateReport = async () => {
     return {
       totalPresent: employeeHistory.filter(a => a.status === 'Present').length,
       totalDelayed: employeeHistory.filter(a => a.status === 'Delayed').length,
-      totalLeaves: employeeHistory.filter(a => a.status === 'On Leave' || a.status === 'Absent').length,
+      totalOnLeave: employeeHistory.filter(a => a.status === 'On Leave').length,
+      totalAbsent: employeeHistory.filter(a => a.status === 'Absent').length,
+      totalHalfDay: employeeHistory.filter(a => a.status === 'Half Day').length,
       totalRecords: employeeHistory.length
     };
+  };
+
+  // ==================== ATTENDANCE HISTORY FILTERING & SORTING ====================
+  const getFilteredAndSortedHistory = (history) => {
+    let filtered = history;
+
+    // Search filter
+    if (historySearchQuery.trim() !== '') {
+      const query = historySearchQuery.toLowerCase();
+      filtered = history.filter(record =>
+        record.status.toLowerCase().includes(query) ||
+        record.description?.toLowerCase().includes(query) ||
+        record.remarks?.toLowerCase().includes(query) ||
+        formatDate(record.date).toLowerCase().includes(query)
+      );
+    }
+
+    // Sort
+    const sorted = [...filtered].sort((a, b) => {
+      switch (historySortBy) {
+        case 'date-asc':
+          return new Date(a.date) - new Date(b.date);
+        case 'date-desc':
+          return new Date(b.date) - new Date(a.date);
+        case 'status-asc':
+          return (a.status || '').localeCompare(b.status || '');
+        case 'status-desc':
+          return (b.status || '').localeCompare(a.status || '');
+        default:
+          return 0;
+      }
+    });
+
+    return sorted;
   };
 
   // ==================== ATTENDANCE FUNCTIONS ====================
@@ -640,12 +682,16 @@ const handleViewAttendanceHistory = async (employee) => {
           setAttendanceHistory(mockHistory);
         }
         setSelectedEmployee(employee);
+        setHistorySearchQuery('');
+        setHistorySortBy('date-desc');
         setIsAttendanceModalOpen(true);
       } else {
         // No data, show mock
         const mockHistory = generateMockAttendanceHistory(employee.name);
         setAttendanceHistory(mockHistory);
         setSelectedEmployee(employee);
+        setHistorySearchQuery('');
+        setHistorySortBy('date-desc');
         setIsAttendanceModalOpen(true);
       }
     } catch (apiError) {
@@ -654,6 +700,8 @@ const handleViewAttendanceHistory = async (employee) => {
       const mockHistory = generateMockAttendanceHistory(employee.name);
       setAttendanceHistory(mockHistory);
       setSelectedEmployee(employee);
+      setHistorySearchQuery('');
+      setHistorySortBy('date-desc');
       setIsAttendanceModalOpen(true);
     }
   } catch (err) {
@@ -662,6 +710,8 @@ const handleViewAttendanceHistory = async (employee) => {
     const mockHistory = generateMockAttendanceHistory(employee?.name || 'Employee');
     setAttendanceHistory(mockHistory);
     setSelectedEmployee(employee);
+    setHistorySearchQuery('');
+    setHistorySortBy('date-desc');
     setIsAttendanceModalOpen(true);
   } finally {
     setLoading(false);
@@ -982,6 +1032,7 @@ const generateMockAttendanceHistory = (employeeName) => {
     const statusConfig = {
       'Present': 'attendance-status-active',
       'Delayed': 'attendance-status-delayed',
+      'Half Day': 'attendance-status-delayed',
       'On Leave': 'attendance-status-inactive',
       'Absent': 'attendance-status-inactive',
       'Pending': 'attendance-status-inactive',
@@ -1155,8 +1206,13 @@ const generateMockAttendanceHistory = (employeeName) => {
           <div className="attendance-stat-label">Delayed Today</div>
           <div className="attendance-stat-subtext">late arrivals</div>
         </div>
+        <div className="attendance-stat-card" id="attendance-stat-halfday">
+          <div className="attendance-stat-number">{attendanceStats.totalHalfDay}</div>
+          <div className="attendance-stat-label">Half Day</div>
+          <div className="attendance-stat-subtext">short hours</div>
+        </div>
         <div className="attendance-stat-card" id="attendance-stat-leaves">
-          <div className="attendance-stat-number">{attendanceStats.totalLeaves}</div>
+          <div className="attendance-stat-number">{attendanceStats.totalOnLeave + attendanceStats.totalAbsent}</div>
           <div className="attendance-stat-label">On Leave/Absent</div>
           <div className="attendance-stat-subtext">not present today</div>
         </div>
@@ -1446,10 +1502,84 @@ const generateMockAttendanceHistory = (employeeName) => {
       </div>
 
       <div className="attendance-details-content">
-       
+        {/* ATTENDANCE STATISTICS CARDS FOR EMPLOYEE */}
+        <div className="attendance-dashboard-stats" style={{ marginBottom: '2rem' }}>
+          <div className="attendance-stat-card" id="employee-stat-present">
+            <div className="attendance-stat-number">
+              {getEmployeeHistoryStats(attendanceHistory).totalPresent}
+            </div>
+            <div className="attendance-stat-label">Days Present</div>
+            <div className="attendance-stat-subtext">total present days</div>
+          </div>
+          <div className="attendance-stat-card" id="employee-stat-delayed">
+            <div className="attendance-stat-number">
+              {getEmployeeHistoryStats(attendanceHistory).totalDelayed}
+            </div>
+            <div className="attendance-stat-label">Days Delayed</div>
+            <div className="attendance-stat-subtext">late arrivals</div>
+          </div>
+          <div className="attendance-stat-card" id="employee-stat-halfday">
+            <div className="attendance-stat-number">
+              {getEmployeeHistoryStats(attendanceHistory).totalHalfDay}
+            </div>
+            <div className="attendance-stat-label">Days Half Day</div>
+            <div className="attendance-stat-subtext">short hours</div>
+          </div>
+          <div className="attendance-stat-card" id="employee-stat-absent">
+            <div className="attendance-stat-number">
+              {getEmployeeHistoryStats(attendanceHistory).totalOnLeave + getEmployeeHistoryStats(attendanceHistory).totalAbsent}
+            </div>
+            <div className="attendance-stat-label">Days Absent/Leave</div>
+            <div className="attendance-stat-subtext">absent or on leave</div>
+          </div>
+        </div>
 
         <div className="attendance-form-section">
           <h3 className="attendance-section-title">Recent Attendance Records</h3>
+          
+          {/* Search and Sort Controls */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+            <div className="attendance-form-group">
+              <label>Search Records</label>
+              <input
+                type="text"
+                placeholder="Search by status, date, or remarks..."
+                value={historySearchQuery}
+                onChange={(e) => setHistorySearchQuery(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '6px'
+                }}
+              />
+            </div>
+            <div className="attendance-form-group">
+              <label>Sort By</label>
+              <select
+                value={historySortBy}
+                onChange={(e) => setHistorySortBy(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '6px'
+                }}
+              >
+                <option value="date-desc">Date - Newest First</option>
+                <option value="date-asc">Date - Oldest First</option>
+                <option value="status-asc">Status - A to Z</option>
+                <option value="status-desc">Status - Z to A</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Search Results Info */}
+          {historySearchQuery && (
+            <div style={{ marginBottom: '1rem', fontSize: '14px', color: '#666' }}>
+              Found {getFilteredAndSortedHistory(attendanceHistory).length} record(s)
+            </div>
+          )}
           <div className="attendance-table-wrapper" style={{ maxHeight: '400px', overflow: 'auto' }}>
             <table className="attendance-main-table">
               <thead>
@@ -1462,8 +1592,8 @@ const generateMockAttendanceHistory = (employeeName) => {
                 </tr>
               </thead>
               <tbody>
-                {attendanceHistory.length > 0 ? (
-                  attendanceHistory.slice(0, 15).map((record, index) => (
+                {getFilteredAndSortedHistory(attendanceHistory).length > 0 ? (
+                  getFilteredAndSortedHistory(attendanceHistory).slice(0, 15).map((record, index) => (
                     <tr key={record.history_id || record.id || index}>
                       <td>
                         <div className="attendance-date-cell">
@@ -1494,8 +1624,23 @@ const generateMockAttendanceHistory = (employeeName) => {
                   <tr>
                     <td colSpan="5" style={{ textAlign: 'center', padding: '40px' }}>
                       <FaExclamationTriangle size={32} style={{ marginBottom: '16px', opacity: 0.5 }} />
-                      <p>No attendance history found</p>
-                      <p style={{ fontSize: '12px', color: '#666' }}>Mock data will be shown once available</p>
+                      <p>{historySearchQuery ? 'No records match your search' : 'No attendance history found'}</p>
+                      {historySearchQuery && (
+                        <button
+                          onClick={() => setHistorySearchQuery('')}
+                          style={{
+                            marginTop: '1rem',
+                            padding: '0.5rem 1rem',
+                            backgroundColor: '#3b82f6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Clear Search
+                        </button>
+                      )}
                     </td>
                   </tr>
                 )}
@@ -1507,7 +1652,11 @@ const generateMockAttendanceHistory = (employeeName) => {
         <div className="attendance-form-actions">
           <button
             type="button"
-            onClick={() => setIsAttendanceModalOpen(false)}
+            onClick={() => {
+              setIsAttendanceModalOpen(false);
+              setHistorySearchQuery('');
+              setHistorySortBy('date-desc');
+            }}
             className="attendance-cancel-btn"
           >
             Close

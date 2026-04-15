@@ -67,6 +67,7 @@ const upload = multer({
 app.use(helmet({
   contentSecurityPolicy: false, // CSP handled separately if needed
   crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" },
 }));
 
 // 1. Rate limiting - Prevent brute force and scraping
