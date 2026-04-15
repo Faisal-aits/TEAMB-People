@@ -306,7 +306,7 @@ deleteProject: async (req, res) => {
   // Get departments list
   getDepartments: async (req, res) => {
     try {
-   const departments = await Project.getDepartments(req.tenantId);
+      const departments = await Project.getDepartments(req.tenantId);
       res.json({ 
         success: true,
         data: departments,
@@ -377,103 +377,7 @@ deleteProject: async (req, res) => {
         error: error.message 
       });
     }
-  },
-  // In projectController.js
-getProjectLeads: async (req, res) => {
-  try {
-    const employees = await Project.getAllEmployeesForLeads(req.tenantId);
-    console.log('Employees for leads:', employees);
-    
-    res.json({ 
-      success: true,
-      data: employees,
-      message: 'Project leads retrieved successfully'
-    });
-  } catch (error) {
-    console.error('Get project leads error:', error);
-    res.json({ 
-      success: true,
-      data: [],
-      message: 'No leads found'
-    });
   }
-},
-// In projectController.js
-getProjectLeads: async (req, res) => {
-  try {
-    const employees = await Project.getAllEmployeesForLeads(req.tenantId);
-    console.log('Employees for leads:', employees);
-    
-    res.json({ 
-      success: true,
-      data: employees,
-      message: 'Project leads retrieved successfully'
-    });
-  } catch (error) {
-    console.error('Get project leads error:', error);
-    res.json({ 
-      success: true,
-      data: [],
-      message: 'No leads found'
-    });
-  }
-},
-
-getProjectEmployees: async (req, res) => {
-  try {
-    const employees = await Project.getEmployeesForDropdown(req.tenantId);
-    console.log('Employees for dropdown:', employees);
-    
-    res.json({ 
-      success: true,
-      data: employees,
-      message: 'Employees retrieved successfully'
-    });
-  } catch (error) {
-    console.error('Get employees error:', error);
-    res.json({ 
-      success: true,
-      data: [],
-      message: 'No employees found'
-    });
-  }
-},
-// In teamController.js - createTeam method
-createTeam: async (req, res) => {
-  try {
-    const tenant_id = req.user?.tenant_id || req.tenantId;
-    const { name, project_id, team_lead_id, description } = req.body;  // Add project_id
-    
-    if (!name) {
-      return res.status(400).json({ success: false, message: 'Team name is required' });
-    }
-    
-    if (!project_id) {
-      return res.status(400).json({ success: false, message: 'Project ID is required' });
-    }
-    
-    const [result] = await db.execute(`
-      INSERT INTO teams (tenant_id, name, project_id, team_lead_id, description, status)
-      VALUES (?, ?, ?, ?, ?, 'Active')
-    `, [tenant_id, name, project_id, team_lead_id || null, description || null]);
-    
-    const [newTeam] = await db.execute(`
-      SELECT t.*, e.name as team_lead_name
-      FROM teams t
-      LEFT JOIN employees e ON t.team_lead_id = e.id
-      WHERE t.id = ? AND t.tenant_id = ?
-    `, [result.insertId, tenant_id]);
-    
-    res.status(201).json({ 
-      success: true, 
-      data: newTeam[0], 
-      message: 'Team created successfully' 
-    });
-  } catch (error) {
-    console.error('Create team error:', error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-},
 };
 
 module.exports = projectController;

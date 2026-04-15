@@ -68,12 +68,11 @@ const Login = () => {
     }
 
     try {
-      // console.log('Attempting login with:', { tenant_slug, email });
+   
       const result = await login({ email, password, tenant_slug });
 
       if (result.success) {
-        // console.log('Login successful, redirecting...');
-        // The useEffect will handle the redirect automatically
+     
       } else {
         setError(result.message);
       }

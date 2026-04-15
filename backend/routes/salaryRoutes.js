@@ -1,4 +1,4 @@
-// backend/routes/salaryRoutes.js
+// backend/routes/salaryRoutes.js - CLEAN VERSION
 const express = require('express');
 const salaryController = require('../controllers/salaryController');
 const authMiddleware = require('../middleware/authMiddleware');

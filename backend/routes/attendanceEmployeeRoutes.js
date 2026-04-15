@@ -7,23 +7,16 @@ const router = express.Router();
 const multer = require('multer');
 const upload = multer({ 
     storage: multer.memoryStorage(),
-    limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+    limits: { fileSize: 5 * 1024 * 1024 }
 });
 
 // All routes require authentication
 router.use(authMiddleware.verifyToken);
 
-// Add this route
-router.post(
-    '/verify-face', 
-    upload.single('faceImage'), // Handle file upload
-    attendanceController.verifyMyFaceAndMarkAttendance
-);
-
-// Employee-specific routes
-router.get('/today', attendanceController.getMyTodayAttendance);
-router.get('/history', attendanceController.getMyHistory);
-router.post('/mark', attendanceController.markMyAttendance);
-
+// Employee-specific routes (matching frontend expectations)
+router.get('/my/today', attendanceController.getMyTodayAttendance);
+router.get('/my/history', attendanceController.getMyHistory);
+router.post('/my/mark', attendanceController.markMyAttendance);
+router.post('/verify-my-face', upload.single('faceImage'), attendanceController.verifyMyFaceAndMarkAttendance);
 
 module.exports = router;

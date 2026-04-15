@@ -290,18 +290,6 @@ update: async (tenantId, id, employeeData) => {
         }
 
         const userId = employee[0].user_id;
-        const nextEmployeeId = employeeData.employee_id?.trim();
-
-        if (nextEmployeeId && nextEmployeeId !== id) {
-            const [duplicateEmployee] = await connection.execute(
-                'SELECT id FROM employee_details WHERE id = ? AND tenant_id = ?',
-                [nextEmployeeId, tenantId]
-            );
-
-            if (duplicateEmployee.length > 0) {
-                throw new Error('Employee ID already exists');
-            }
-        }
 
         // Update users table
         await connection.execute(
@@ -328,7 +316,7 @@ update: async (tenantId, id, employeeData) => {
                  bank_account_number = ?, ifsc_code = ?, pan_number = ?, aadhar_number = ?
              WHERE id = ? AND tenant_id = ?`,
             [
-                nextEmployeeId || id,
+                employeeData.employee_id, // Update employee_id
                 employeeData.department_id,
                 employeeData.position,
                 employeeData.salary,

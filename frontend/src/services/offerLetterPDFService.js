@@ -36,7 +36,6 @@ export const offerLetterPDFService = {
       const pages = [
         generatePage1HTML(pdfData),
         generatePage2HTML(pdfData),
-        generateSalaryStructureHTML(pdfData),
         generatePage3HTML(pdfData)
       ];
 
@@ -80,7 +79,6 @@ export const offerLetterPDFService = {
       const pages = [
         generatePage1HTML(pdfData),
         generatePage2HTML(pdfData),
-        generateSalaryStructureHTML(pdfData),
         generatePage3HTML(pdfData)
       ];
 
@@ -194,34 +192,6 @@ const formatDate = (dateString) => {
   }).replace(/\//g, '-');
 };
 
-const salaryBreakupRows = [
-  { key: "basicSalary", label: "Basic Salary" },
-  { key: "hra", label: "HRA" },
-  { key: "conveyanceAllowance", label: "Conveyance Allowance" },
-  { key: "specialAllowance", label: "Special Allowance" },
-  { key: "medicalAllowance", label: "Medical Allowance" },
-  { key: "professionalTax", label: "Professional Tax (PT)" },
-  { key: "tds", label: "TDS" },
-  { key: "netSalary", label: "Net Salary", bold: true },
-  { key: "employerPfContribution", label: "Employer PF Contribution" },
-  { key: "employerEsiContribution", label: "Employer ESI Contribution" },
-  { key: "ctc", label: "CTC", bold: true }
-];
-
-const renderSalaryBreakupRows = (salaryBreakup = {}) => salaryBreakupRows.map((row) => {
-  const monthly = salaryBreakup[row.key]?.monthly || '-';
-  const annual = salaryBreakup[row.key]?.annual || '-';
-  const weight = row.bold ? 'font-weight: bold;' : '';
-
-  return `
-    <tr>
-      <td style="padding: 7px 8px; border: 1.5pt solid #000; ${weight}">${row.label}</td>
-      <td style="padding: 7px 8px; border: 1.5pt solid #000; text-align: right; ${weight}">${monthly}</td>
-      <td style="padding: 7px 8px; border: 1.5pt solid #000; text-align: right; ${weight}">${annual}</td>
-    </tr>
-  `;
-}).join('');
-
 const generatePage1HTML = ({ formData, company, hr, logo, stamp }) => `
   <div style="font-family: Arial, sans-serif; color: #000; line-height: 1.6; min-height: 297mm; display: flex; flex-direction: column;">
     ${commonHeader(logo, company.website, company.email)}
@@ -248,8 +218,7 @@ const generatePage1HTML = ({ formData, company, hr, logo, stamp }) => `
         <p>Your continued employment is contingent upon your satisfactorily meeting the Company's expectations.</p>
         <p>On your first day of work, you will be required to sign the <strong>Employment Agreement</strong>, which will contain detailed terms and conditions of your employment with the Company. You are expected to follow the policies, rules, and regulations laid out by the Company. On your first day of employment, you will be given additional information about the Company, its procedures, policies, benefit programs, and more.</p>
         <p>Any female employee who has conceived prior to joining the Company is expected to inform the Company of her pregnancy before signing the Offer Letter and the Employee Agreement.</p>
-        <p>Your salary structure is provided in <strong>Annexure 1</strong>.</p>
-        <p>This Letter of Offer is contingent upon the successful completion of all background and reference checks and required documentation. On your first day, please bring the documents as provided in <strong>Annexure 2</strong>.</p>
+        <p>This Letter of Offer is contingent upon the successful completion of all background and reference checks and required documentation. On your first day, please bring the documents as provided in <strong>Annexure 1</strong>.</p>
       </div>
     </div>
   </div>
@@ -294,32 +263,11 @@ const generatePage2HTML = ({ formData, company, hr, logo, stamp }) => `
   </div>
 `;
 
-const generateSalaryStructureHTML = ({ formData, company, hr, logo, stamp }) => `
-  <div style="font-family: Arial, sans-serif; color: #000; line-height: 1.6; min-height: 297mm; display: flex; flex-direction: column;">
-    ${commonHeader(logo, company.website, company.email)}
-    <div style="padding: 12mm 20mm 40mm 20mm; flex-grow: 1;">
-      <div style="font-weight: bold; font-size: 12pt; margin-bottom: 15px;">Annexure 1 - Salary Structure</div>
-      <table style="width: 100%; border-collapse: collapse; font-size: 10pt;">
-        <thead>
-          <tr style="background: #ccc;">
-            <th style="padding: 8px; border: 1.5pt solid #000; text-align: left;">Component</th>
-            <th style="padding: 8px; border: 1.5pt solid #000; text-align: right;">Per Month</th>
-            <th style="padding: 8px; border: 1.5pt solid #000; text-align: right;">Per Annum</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${renderSalaryBreakupRows(formData.salaryBreakup)}
-        </tbody>
-      </table>
-    </div>
-  </div>
-`;
-
 const generatePage3HTML = ({ formData, company, hr, logo, stamp }) => `
   <div style="font-family: Arial, sans-serif; color: #000; line-height: 1.6; min-height: 297mm; display: flex; flex-direction: column;">
     ${commonHeader(logo, company.website, company.email)}
     <div style="padding: 10mm 20mm 40mm 20mm; flex-grow: 1;">
-      <div style="font-weight: bold; font-size: 11pt; margin-bottom: 15px;">Annexure 2 - Documents required at the time of joining</div>
+      <div style="font-weight: bold; font-size: 11pt; margin-bottom: 15px;">Annexure 1 - Documents required at the time of joining</div>
       
       <table style="width: 100%; border-collapse: collapse; font-size: 10pt;">
         <thead>

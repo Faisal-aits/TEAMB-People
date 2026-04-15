@@ -26,6 +26,7 @@ const deliveryRoutes = require('./routes/deliveryRoutes');
 const serviceSettingRoutes = require('./routes/serviceSettingRoutes');
 const studentAttendanceRoutes = require('./routes/studentAttendanceRoutes');
 const offerLetterRoutes = require('./routes/offerLetterRoutes');
+
 const brandingRoutes = require('./routes/brandingRoutes');
 const resignationRoutes = require('./routes/resignationRoutes');
 const experienceLetterRoutes = require('./routes/experienceLetterRoutes');
@@ -35,10 +36,12 @@ const { scheduleAutoAbsentCron } = require('./cron/attendanceCron');
 const teamRoutes = require('./routes/teamRoutes');
 const taskRoutes = require('./routes/taskRoutes');
 const dailyReportRoutes = require('./routes/dailyReportRoutes');
+const declarationFormRoutes = require('./routes/declarationFormRoutes');
+
 scheduleAutoAbsentCron();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 
 // Configure multer for file uploads
 const upload = multer({
@@ -118,7 +121,7 @@ app.use('/api/courses', courseRoutes);
 app.use('/api/internships', internshipRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/leaves', leaveRoutes);
-app.use('/api/attendance/my', attendanceEmployeeRoutes);
+app.use('/api/attendance/employee', attendanceEmployeeRoutes);
 app.use('/api/face', require('./routes/faceRoutes'));
 app.use('/api/shifts', shiftRoutes);
 app.use('/api/reports', reportRoutes);
@@ -137,6 +140,7 @@ app.use('/api/tasks', taskRoutes);           // Add this
 app.use('/api/daily-reports', dailyReportRoutes); 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/uploads', express.static('uploads'));
+app.use('/api/declaration-form', declarationFormRoutes);
 
 // Basic route
 app.get('/', (req, res) => {

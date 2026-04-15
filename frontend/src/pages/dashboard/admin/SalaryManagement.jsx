@@ -109,9 +109,7 @@ const SalaryManagement = () => {
         salaryAPI.getDepartments()
       ]);
       
-      // console.log('Raw salary records:', recordsResponse.data);
-      // console.log('Employees response:', employeesResponse.data);
-      // console.log('Departments response:', departmentsResponse.data);
+    
       
       // Extract employees array
       let employeesList = [];
@@ -133,8 +131,7 @@ const SalaryManagement = () => {
         departmentsList = departmentsResponse.data.data;
       }
       
-      // console.log('Extracted employees list:', employeesList);
-      // console.log('Extracted departments list:', departmentsList);
+    
       
       const normalizedEmployees = employeesList.map(emp => ({
         id: String(emp.id || emp.employee_id || emp.employee_code),
@@ -152,8 +149,7 @@ const SalaryManagement = () => {
         name: dept.name || dept.department_name
       })).filter(dept => dept.id);
       
-      // console.log('Normalized employees:', normalizedEmployees);
-      // console.log('Normalized departments:', normalizedDepartments);
+    
       
       setEmployees(normalizedEmployees);
       setDepartments(normalizedDepartments);
@@ -198,42 +194,55 @@ const SalaryManagement = () => {
     }
   };
 
-  const handleInputChange = (e) => {
+ const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     
     if (name === 'calculate_from_attendance') {
-      setFormData(prev => ({
-        ...prev,
-        [name]: checked
-      }));
-      return;
+        setFormData(prev => ({
+            ...prev,
+            [name]: checked
+        }));
+        return;
+    }
+    
+    if (name === 'payment_frequency') {
+        // If switching away from Monthly, disable attendance calculation
+        setFormData(prev => ({
+            ...prev,
+            payment_frequency: value,
+            calculate_from_attendance: value === 'Monthly' ? prev.calculate_from_attendance : false
+        }));
+        if (value !== 'Monthly') {
+            setAttendanceSummary(null);
+        }
+        return;
     }
     
     if (name.startsWith('allowances.')) {
-      const allowanceField = name.split('.')[1];
-      setFormData(prev => ({
-        ...prev,
-        allowances: {
-          ...prev.allowances,
-          [allowanceField]: value ? parseInt(value) : 0
-        }
-      }));
+        const allowanceField = name.split('.')[1];
+        setFormData(prev => ({
+            ...prev,
+            allowances: {
+                ...prev.allowances,
+                [allowanceField]: value ? parseInt(value) : 0
+            }
+        }));
     } else if (name.startsWith('deductions.')) {
-      const deductionField = name.split('.')[1];
-      setFormData(prev => ({
-        ...prev,
-        deductions: {
-          ...prev.deductions,
-          [deductionField]: value ? parseInt(value) : 0
-        }
-      }));
+        const deductionField = name.split('.')[1];
+        setFormData(prev => ({
+            ...prev,
+            deductions: {
+                ...prev.deductions,
+                [deductionField]: value ? parseInt(value) : 0
+            }
+        }));
     } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value
-      }));
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
     }
-  };
+};
 
   const handleEditInputChange = (e) => {
     const { name, value } = e.target;
@@ -266,17 +275,12 @@ const SalaryManagement = () => {
 
   const handleEmployeeSelect = async (e) => {
     const selectedValue = e.target.value;
-    // console.log('Selected value:', selectedValue);
-    // console.log('All employees:', employees);
+
     
-    if (!selectedValue) {
-      // console.log('No employee selected');
-      return;
-    }
+   
     
     const selectedEmployee = employees.find(emp => emp.id === selectedValue);
-    
-    // console.log('Found employee:', selectedEmployee);
+   
     
     if (selectedEmployee) {
       setFormData(prev => ({
@@ -295,22 +299,17 @@ const SalaryManagement = () => {
         );
       }
     } else {
-      console.error('Employee not found with ID:', selectedValue);
+    
       alert('Please select a valid employee from the list');
     }
   };
 
   const handleMonthYearChange = async () => {
-    // console.log('Month/Year changed:', { 
-    //   calculate_from_attendance: formData.calculate_from_attendance,
-    //   employee_id: formData.employee_id,
-    //   month: formData.month, 
-    //   year: formData.year 
-    // });
+   
     
     if (formData.calculate_from_attendance && formData.employee_id && formData.month && formData.year) {
       const employee = employees.find(emp => emp.id === formData.employee_id);
-      // console.log('Found employee for calculation:', employee);
+    
       
       if (employee && employee.salary) {
         await calculateSalaryFromAttendance(
@@ -329,167 +328,205 @@ const SalaryManagement = () => {
     return (parseInt(basic) || 0) + totalAllowances - totalDeductions;
   };
 
-  const calculateSalaryFromAttendance = async (employeeId, month, year, basicSalary) => {
-    try {
-      setCalculatingSalary(true);
-      
-      const response = await salaryAPI.calculateFromAttendance({
-        employee_id: employeeId,
-        month,
-        year,
-        basic_salary: basicSalary
-      });
 
-      const data = response.data.data;
-      
-      if (!data) {
+
+// In SalaryManagement.jsx - Update the function
+
+const calculateSalaryFromAttendance = async (employeeId, month, year, basicSalary) => {
+    try {
+        setCalculatingSalary(true);
+        
+        if (!employeeId || !month || !year) {
+            return basicSalary;
+        }
+        
+        const response = await salaryAPI.calculateFromAttendance({
+            employee_id: employeeId,
+            month: month,
+            year: year,
+            basic_salary: basicSalary
+        });
+
+        const data = response.data.data;
+        
+        if (!data) {
+            setAttendanceSummary(null);
+            return basicSalary;
+        }
+        
+        // Store attendance summary with correct values
+        setAttendanceSummary({
+            present_days: data.attendance_summary?.present_days || 0,
+            half_days: data.attendance_summary?.half_days || 0,
+            delayed_days: data.attendance_summary?.delayed_days || 0,
+            absent_days: data.attendance_summary?.absent_days || 0,
+            total_days: data.working_days || 0,
+            payable_days: data.payable_days || 0,
+            daily_rate: data.daily_rate || 0,
+            deduction_amount: data.deduction_amount || 0,  // Amount to deduct
+            final_salary: data.final_salary || basicSalary  // Net salary
+        });
+        
+        // Return the net salary (basic - deductions)
+        return data.final_salary || basicSalary;
+    } catch (err) {
+        console.error('Failed to calculate salary:', err);
         setAttendanceSummary(null);
         return basicSalary;
-      }
-      
-      setAttendanceSummary({
-        present_days: data.attendance_summary.present_days || 0,
-        half_days: data.attendance_summary.half_days || 0,
-        delayed_days: data.attendance_summary.delayed_days || 0,
-        absent_days: data.attendance_summary.absent_days || 0,
-        total_days: data.attendance_summary.total_days || 0,
-        payable_days: data.payable_days,
-        daily_rate: data.daily_rate,
-        calculated_salary: data.calculated_salary,
-        late_penalty: data.late_penalty,
-        final_salary: data.final_salary
-      });
-      
-      return data.final_salary;
-    } catch (err) {
-      console.error('Failed to calculate salary from attendance:', err);
-      // Let user know calculation failed but don't block
-      if (err.response && err.response.status === 404) {
-        // console.log('No attendance data available for calculation');
-      }
-      setAttendanceSummary(null);
-      return basicSalary;
     } finally {
-      setCalculatingSalary(false);
+        setCalculatingSalary(false);
     }
-  };
+};
 
-  const handleSubmit = async (e) => {
+
+const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // console.log('Form data on submit:', formData);
-    
     if (!formData.employee_id || !formData.basic_salary || !formData.month || !formData.year) {
-      alert('Please fill in all required fields');
-      return;
+        alert('Please fill in all required fields');
+        return;
     }
     
-    let netSalary = calculateNetSalary(formData.basic_salary, formData.allowances, formData.deductions);
+    let netSalary = 0;
+    let deductionAmount = 0;
     
-    if (formData.calculate_from_attendance) {
-      try {
-        // console.log('Calculating salary from attendance for:', {
-        //   employee_id: formData.employee_id,
-        //   month: formData.month,
-        //   year: formData.year,
-        //   basic_salary: formData.basic_salary
-        // });
-        
-        const calculatedSalary = await calculateSalaryFromAttendance(
-          formData.employee_id,
-          formData.month,
-          formData.year,
-          parseFloat(formData.basic_salary)
-        );
-        netSalary = calculatedSalary;
-        // console.log('Calculated salary from attendance:', netSalary);
-      } catch (err) {
-        console.error('Attendance calculation failed, using standard calculation:', err);
-      }
-    }
+    // Calculate totals
+    const totalAllowances = Object.values(formData.allowances).reduce((sum, amount) => sum + (parseFloat(amount) || 0), 0);
+    const totalManualDeductions = Object.values(formData.deductions).reduce((sum, amount) => sum + (parseFloat(amount) || 0), 0);
     
-    const salaryData = {
-      employee_id: formData.employee_id,
-      department_id: formData.department_id ? parseInt(formData.department_id) : null,
-      basic_salary: parseFloat(formData.basic_salary),
-      allowances: {
+    const allowancesObject = {
         hra: parseFloat(formData.allowances.hra) || 0,
         transport: parseFloat(formData.allowances.transport) || 0,
         medical: parseFloat(formData.allowances.medical) || 0,
         special: parseFloat(formData.allowances.special) || 0
-      },
-      deductions: {
+    };
+    
+    const shouldCalculateFromAttendance = formData.calculate_from_attendance && formData.payment_frequency === 'Monthly';
+    
+    if (shouldCalculateFromAttendance) {
+        try {
+            const response = await salaryAPI.calculateFromAttendance({
+                employee_id: formData.employee_id,
+                month: formData.month,
+                year: formData.year,
+                basic_salary: parseFloat(formData.basic_salary)
+            });
+            
+            const calculationData = response.data.data;
+            
+            // deductionAmount is what gets deducted from salary
+            deductionAmount = calculationData.deduction_amount || 0;
+            
+            // netSalary is basic - attendance deductions + allowances - manual deductions
+            netSalary = calculationData.final_salary + totalAllowances - totalManualDeductions;
+            
+         
+            
+        } catch (err) {
+            console.error('Attendance calculation failed:', err);
+            netSalary = calculateNetSalary(formData.basic_salary, formData.allowances, formData.deductions);
+        }
+    } else {
+        netSalary = calculateNetSalary(formData.basic_salary, formData.allowances, formData.deductions);
+    }
+    
+    // Create deductions object
+    const deductionsObject = {
         tax: parseFloat(formData.deductions.tax) || 0,
         provident_fund: parseFloat(formData.deductions.provident_fund) || 0,
         insurance: parseFloat(formData.deductions.insurance) || 0,
         loan: parseFloat(formData.deductions.loan) || 0
-      },
-      net_salary: parseFloat(netSalary),
-      payment_date: formData.payment_date || new Date().toISOString().split('T')[0],
-      month: formData.month,
-      year: formData.year,
-      payment_frequency: formData.payment_frequency || 'Monthly',
-      status: formData.status || 'pending'
     };
     
-    // console.log('Submitting salary data:', salaryData);
+    // Add attendance deduction if applicable
+    if (shouldCalculateFromAttendance && deductionAmount > 0) {
+        deductionsObject.attendance_deduction = deductionAmount;
+    }
+    
+    const salaryData = {
+        employee_id: formData.employee_id,
+        department_id: formData.department_id ? parseInt(formData.department_id) : null,
+        basic_salary: parseFloat(formData.basic_salary),
+        allowances: allowancesObject,
+        deductions: deductionsObject,
+        net_salary: netSalary,
+        payment_date: formData.payment_date || new Date().toISOString().split('T')[0],
+        month: formData.month,
+        year: formData.year,
+        payment_frequency: formData.payment_frequency || 'Monthly',
+        status: formData.status || 'pending'
+    };
     
     try {
-      const response = await salaryAPI.create(salaryData);
-      // console.log('Create response:', response);
-      
-      await fetchData();
-      
-      setFormData({
-        employee_id: '',
-        department_id: '',
-        basic_salary: '',
-        allowances: {
-          hra: '',
-          transport: '',
-          medical: '',
-          special: ''
-        },
-        deductions: {
-          tax: '',
-          provident_fund: '',
-          insurance: '',
-          loan: ''
-        },
-        payment_date: '',
-        month: '',
-        year: '',
-        payment_frequency: 'Monthly',
-        status: 'pending',
-        calculate_from_attendance: true
-      });
-      setAttendanceSummary(null);
-      
-      setIsModalOpen(false);
-      alert(`Salary record added successfully! Net Salary: ${formatCurrency(netSalary)}`);
+        await salaryAPI.create(salaryData);
+        await fetchData();
+        
+        // Reset form
+        setFormData({
+            employee_id: '',
+            department_id: '',
+            basic_salary: '',
+            allowances: { hra: '', transport: '', medical: '', special: '' },
+            deductions: { tax: '', provident_fund: '', insurance: '', loan: '' },
+            payment_date: '',
+            month: '',
+            year: '',
+            payment_frequency: 'Monthly',
+            status: 'pending',
+            calculate_from_attendance: true
+        });
+        setAttendanceSummary(null);
+        
+        setIsModalOpen(false);
+        alert(`Salary record added successfully! Net Salary: ${formatCurrency(netSalary)}`);
     } catch (err) {
-      console.error('Failed to create salary record:', err);
-      console.error('Error response:', err.response?.data);
-      
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to create salary record. Please try again.';
-      alert(errorMessage);
+        console.error('Failed to create salary record:', err);
+        alert(err.response?.data?.message || 'Failed to create salary record');
     }
-  };
+};
+// Add this function to calculate total deductions including JSON fields
+// In SalaryManagement.jsx - Make sure this function is correct
 
-  // Auto-calculate when employee, month, or year changes
-  useEffect(() => {
-    if (formData.calculate_from_attendance && formData.employee_id && formData.month && formData.year) {
-      const employee = employees.find(emp => emp.id === formData.employee_id);
-      if (employee && employee.salary) {
-        calculateSalaryFromAttendance(
-          formData.employee_id,
-          formData.month,
-          formData.year,
-          parseFloat(employee.salary)
-        );
-      }
+const getTotalDeductionsWithAttendance = (deductions) => {
+    if (!deductions) return 0;
+    let total = 0;
+    
+    // Sum all numeric values in deductions object
+    Object.keys(deductions).forEach(key => {
+        const value = deductions[key];
+        if (typeof value === 'number' && !isNaN(value)) {
+            total += value;
+        } else if (typeof value === 'string' && !isNaN(parseFloat(value))) {
+            total += parseFloat(value);
+        }
+    });
+    
+  
+    return total;
+};
+// In SalaryManagement.jsx - Update the auto-calculation useEffect
+
+// Auto-calculate salary from attendance when relevant dependencies change
+useEffect(() => {
+    // ONLY calculate for Monthly frequency
+    if (formData.calculate_from_attendance && 
+        formData.payment_frequency === 'Monthly' &&
+        formData.employee_id && 
+        formData.month && 
+        formData.year) {
+        const employee = employees.find(emp => emp.id === formData.employee_id);
+        if (employee && employee.salary) {
+            calculateSalaryFromAttendance(
+                formData.employee_id,
+                formData.month,
+                formData.year,
+                parseFloat(employee.salary)
+            );
+        }
+    } else if (!formData.calculate_from_attendance || formData.payment_frequency !== 'Monthly') {
+        setAttendanceSummary(null);
     }
-  }, [formData.employee_id, formData.month, formData.year, formData.calculate_from_attendance]);
+}, [formData.calculate_from_attendance, formData.payment_frequency, formData.employee_id, formData.month, formData.year, employees]);
 
   const handleViewRecord = async (record) => {
     try {
@@ -705,21 +742,7 @@ const SalaryManagement = () => {
     }
   };
 
-  const handleSendPayslipEmail = async (record) => {
-    const email = prompt(`Enter email address to send payslip to ${record.employee_name}:`, '');
-    
-    if (email && email.includes('@')) {
-      try {
-        await salaryAPI.sendPayslipEmail(record.id, { email });
-        alert(`Payslip sent successfully to ${email}`);
-      } catch (err) {
-        console.error('Failed to send payslip email:', err);
-        alert('Failed to send payslip email. Please try again.');
-      }
-    } else if (email) {
-      alert('Please enter a valid email address.');
-    }
-  };
+ 
 
   const handleExport = () => {
     try {
@@ -854,14 +877,7 @@ const SalaryManagement = () => {
       >
         Download
       </button>
-      <button
-        type="button"
-        onClick={() => handleSendPayslipEmail(record)}
-        className="salary-payslip-email-btn"
-        style={{ padding: '4px 8px', fontSize: '12px', cursor: 'pointer' }}
-      >
-        Email
-      </button>
+      
     </div>
   );
 
@@ -990,34 +1006,34 @@ const SalaryManagement = () => {
             </thead>
             <tbody>
               {filteredRecords.map(record => (
-                <tr key={record.id}>
-                  <td>
-                    <div className="salary-employee-cell">
-                      <div 
-                        className="salary-employee-name clickable"
-                        onClick={() => handleViewRecord(record)}
-                        style={{ cursor: 'pointer', color: '#4f46e5', fontWeight: '500' }}
-                      >
-                        {record.employee_name}
-                      </div>
-                      <div className="salary-employee-id" style={{ fontSize: '12px', color: '#666' }}>
-                        ID: {record.employee_id}
-                      </div>
-                    </div>
-                  </td>
-                   <td>{record.department_name || 'N/A'}</td>
-                   <td>{record.designation || 'N/A'}</td>
-                  <td className="salary-amount-cell">{formatCurrency(record.basic_salary)}</td>
-                  <td className="salary-amount-cell">{formatCurrency(getTotalAllowances(record.allowances))}</td>
-                  <td className="salary-amount-cell">{formatCurrency(getTotalDeductions(record.deductions))}</td>
-                  <td className="salary-amount-cell">{formatCurrency(record.net_salary)}</td>
-                  <td>{formatDate(record.payment_date)}</td>
-                  <td>
-                    <div className={`salary-status-badge salary-status-${record.status}`}>
-                      {record.status === 'paid' ? 'PAID' : 'PENDING'}
-                    </div>
-                  </td>
-                </tr>
+              <tr key={record.id}>
+    <td>
+        <div className="salary-employee-cell">
+            <div 
+                className="salary-employee-name clickable"
+                onClick={() => handleViewRecord(record)}
+                style={{ cursor: 'pointer', color: '#4f46e5', fontWeight: '500' }}
+            >
+                {record.employee_name}
+            </div>
+            <div className="salary-employee-id" style={{ fontSize: '12px', color: '#666' }}>
+                ID: {record.employee_id}
+            </div>
+        </div>
+    </td>
+    <td>{record.department_name || 'N/A'}</td>
+    <td>{record.designation || 'N/A'}</td>
+    <td className="salary-amount-cell">{formatCurrency(record.basic_salary)}</td>
+    <td className="salary-amount-cell">{formatCurrency(getTotalAllowances(record.allowances))}</td>
+    <td className="salary-amount-cell">{formatCurrency(getTotalDeductionsWithAttendance(record.deductions))}</td>  {/* ← UPDATED LINE */}
+    <td className="salary-amount-cell">{formatCurrency(record.net_salary)}</td>
+    <td>{formatDate(record.payment_date)}</td>
+    <td>
+        <div className={`salary-status-badge salary-status-${record.status}`}>
+            {record.status === 'paid' ? 'PAID' : 'PENDING'}
+        </div>
+    </td>
+</tr>
               ))}
             </tbody>
           </table>
@@ -1167,39 +1183,41 @@ const SalaryManagement = () => {
                 </div>
               </div>
 
-              {/* Attendance Calculation Toggle */}
-              <div className="salary-form-section">
-                <div className="salary-form-group">
-                  <label className="salary-checkbox-label">
-                    <input
-                      type="checkbox"
-                      name="calculate_from_attendance"
-                      checked={formData.calculate_from_attendance}
-                      onChange={handleInputChange}
-                    />
-                    Calculate salary based on attendance
-                  </label>
-                  <small>When checked, net salary will be calculated based on present days, half days, and late penalties</small>
-                </div>
-              </div>
-
-              {/* Attendance Summary Display */}
-              {formData.calculate_from_attendance && attendanceSummary && formData.employee_id && formData.month && formData.year && (
-                <div className="salary-form-section" style={{ backgroundColor: '#f0fdf4', padding: '12px', borderRadius: '8px', marginBottom: '16px' }}>
-                  <h4 className="salary-section-title" style={{ fontSize: '14px', marginBottom: '8px' }}>Attendance Summary</h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', fontSize: '12px' }}>
-                    <div><strong>Present:</strong> {attendanceSummary.present_days} days</div>
-                    <div><strong>Half Days:</strong> {attendanceSummary.half_days} days</div>
-                    <div><strong>Delayed:</strong> {attendanceSummary.delayed_days} days</div>
-                    <div><strong>Absent:</strong> {attendanceSummary.absent_days} days</div>
-                    <div><strong>Payable Days:</strong> {attendanceSummary.payable_days?.toFixed(1)}</div>
-                    <div><strong>Daily Rate:</strong> {formatCurrency(attendanceSummary.daily_rate)}</div>
-                    <div><strong>Late Penalty:</strong> {formatCurrency(attendanceSummary.late_penalty)}</div>
-                    <div><strong>Calculated Salary:</strong> {formatCurrency(attendanceSummary.final_salary)}</div>
-                  </div>
-                  {calculatingSalary && <div style={{ marginTop: '8px' }}>Calculating...</div>}
-                </div>
-              )}
+  <div className="salary-form-group">
+    <label className="salary-checkbox-label">
+        <input
+            type="checkbox"
+            name="calculate_from_attendance"
+            checked={formData.calculate_from_attendance}
+            onChange={handleInputChange}
+            disabled={formData.payment_frequency !== 'Monthly'}
+        />
+        Calculate salary based on monthly attendance
+    </label>
+    <small>
+        {formData.payment_frequency === 'Monthly' 
+            ? "When checked, net salary will be calculated based on present days, half days, and late penalties for the month"
+            : "Attendance-based calculation is only available for Monthly payment frequency"}
+    </small>
+</div>
+{/* Attendance Summary Display */}
+{formData.calculate_from_attendance && 
+ formData.payment_frequency === 'Monthly' && 
+ attendanceSummary && (
+    <div className="salary-form-section" style={{ backgroundColor: '#f0fdf4', padding: '12px', borderRadius: '8px', marginBottom: '16px' }}>
+        <h4 className="salary-section-title">Monthly Attendance Summary</h4>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', fontSize: '12px' }}>
+            <div><strong>Present:</strong> {attendanceSummary.present_days} days</div>
+            <div><strong>Half Days:</strong> {attendanceSummary.half_days} days</div>
+            <div><strong>Delayed:</strong> {attendanceSummary.delayed_days} days</div>
+            <div><strong>Absent:</strong> {attendanceSummary.absent_days} days</div>
+            <div><strong>Payable Days:</strong> {attendanceSummary.payable_days?.toFixed(1)}</div>
+            <div><strong>Daily Rate:</strong> {formatCurrency(attendanceSummary.daily_rate)}</div>
+            <div><strong>Deduction Amount:</strong> {formatCurrency(attendanceSummary.deduction_amount)}</div>
+            <div><strong>Net Salary (after deductions):</strong> {formatCurrency(attendanceSummary.final_salary)}</div>
+        </div>
+    </div>
+)}
 
               <div className="salary-form-section">
                 <h3 className="salary-section-title">Allowances</h3>
@@ -1245,31 +1263,48 @@ const SalaryManagement = () => {
                 </div>
               </div>
 
-              <div className="salary-form-section">
-                <h3 className="salary-section-title">Salary Summary</h3>
-                <div className="salary-summary-line">
-                  <div className="salary-summary-item">
-                    <span>Basic:</span>
-                    <span>{formatCurrency(parseInt(formData.basic_salary) || 0)}</span>
-                  </div>
-                  <div className="salary-summary-item">
-                    <span>+ Allowances:</span>
-                    <span>{formatCurrency(getTotalAllowances(formData.allowances))}</span>
-                  </div>
-                  <div className="salary-summary-item">
-                    <span>- Deductions:</span>
-                    <span>{formatCurrency(getTotalDeductions(formData.deductions))}</span>
-                  </div>
-                  <div className="salary-summary-item salary-total-item">
-                    <span>= Net:</span>
-                    <span>{formatCurrency(
-                      formData.calculate_from_attendance && attendanceSummary 
-                        ? attendanceSummary.final_salary 
-                        : calculateNetSalary(formData.basic_salary, formData.allowances, formData.deductions)
-                    )}</span>
-                  </div>
+     {/* Salary Summary - Updated */}
+<div className="salary-form-section">
+    <h3 className="salary-section-title">Salary Summary</h3>
+    <div className="salary-summary-line">
+        <div className="salary-summary-item">
+            <span>Basic Salary:</span>
+            <span>{formatCurrency(parseInt(formData.basic_salary) || 0)}</span>
+        </div>
+        <div className="salary-summary-item">
+            <span>+ Allowances:</span>
+            <span>{formatCurrency(getTotalAllowances(formData.allowances))}</span>
+        </div>
+        {formData.calculate_from_attendance && attendanceSummary && (
+            <>
+                <div className="salary-summary-item">
+                    <span>Attendance Salary:</span>
+                    <span>{formatCurrency(attendanceSummary.final_salary || 0)}</span>
                 </div>
-              </div>
+                {attendanceSummary.salary_deductions > 0 && (
+                    <div className="salary-summary-item" style={{ color: '#dc2626' }}>
+                        <span>- Late Penalty:</span>
+                        <span>{formatCurrency(attendanceSummary.salary_deductions)}</span>
+                    </div>
+                )}
+            </>
+        )}
+        <div className="salary-summary-item">
+            <span>- Manual Deductions:</span>
+            <span>{formatCurrency(getTotalDeductions(formData.deductions))}</span>
+        </div>
+        <div className="salary-summary-item salary-total-item">
+            <span>= Final Net Salary:</span>
+            <span>{formatCurrency(
+                (formData.calculate_from_attendance && attendanceSummary ? 
+                    attendanceSummary.final_salary : 
+                    (parseInt(formData.basic_salary) || 0)) + 
+                getTotalAllowances(formData.allowances) - 
+                getTotalDeductions(formData.deductions)
+            )}</span>
+        </div>
+    </div>
+</div>
 
               <div className="salary-form-actions">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="salary-cancel-btn">Cancel</button>
@@ -1314,14 +1349,35 @@ const SalaryManagement = () => {
                     <div className="salary-breakdown-line"><span>Special</span><span>{formatCurrency(selectedRecord.allowances.special)}</span></div>
                     <div className="salary-breakdown-line salary-total-line"><span>Total Allowances</span><span>{formatCurrency(getTotalAllowances(selectedRecord.allowances))}</span></div>
                   </div>
-                  <div className="salary-breakdown-column">
-                    <h4>Deductions</h4>
-                    <div className="salary-breakdown-line"><span>Income Tax</span><span>{formatCurrency(selectedRecord.deductions.tax)}</span></div>
-                    <div className="salary-breakdown-line"><span>Provident Fund</span><span>{formatCurrency(selectedRecord.deductions.provident_fund)}</span></div>
-                    <div className="salary-breakdown-line"><span>Insurance</span><span>{formatCurrency(selectedRecord.deductions.insurance)}</span></div>
-                    <div className="salary-breakdown-line"><span>Loan Recovery</span><span>{formatCurrency(selectedRecord.deductions.loan)}</span></div>
-                    <div className="salary-breakdown-line salary-total-line"><span>Total Deductions</span><span>{formatCurrency(getTotalDeductions(selectedRecord.deductions))}</span></div>
-                  </div>
+                 <div className="salary-breakdown-column">
+    <h4>Deductions</h4>
+    <div className="salary-breakdown-line">
+        <span>Income Tax</span>
+        <span>{formatCurrency(selectedRecord.deductions?.tax || 0)}</span>
+    </div>
+    <div className="salary-breakdown-line">
+        <span>Provident Fund</span>
+        <span>{formatCurrency(selectedRecord.deductions?.provident_fund || 0)}</span>
+    </div>
+    <div className="salary-breakdown-line">
+        <span>Insurance</span>
+        <span>{formatCurrency(selectedRecord.deductions?.insurance || 0)}</span>
+    </div>
+    <div className="salary-breakdown-line">
+        <span>Loan Recovery</span>
+        <span>{formatCurrency(selectedRecord.deductions?.loan || 0)}</span>
+    </div>
+    {selectedRecord.deductions?.attendance_deduction > 0 && (
+    <div className="salary-breakdown-line" style={{ color: '#dc2626' }}>
+        <span>Attendance Deduction (Late/Absent)</span>
+        <span>{formatCurrency(selectedRecord.deductions.attendance_deduction)}</span>
+    </div>
+)}
+    <div className="salary-breakdown-line salary-total-line">
+        <span>Total Deductions</span>
+        <span>{formatCurrency(getTotalDeductionsWithAttendance(selectedRecord.deductions))}</span>
+    </div>
+</div>
                 </div>
                 <div className="salary-simple-summary">
                   <div className="salary-summary-line-simple"><span>Gross Salary:</span><span>{formatCurrency(selectedRecord.basic_salary + getTotalAllowances(selectedRecord.allowances))}</span></div>

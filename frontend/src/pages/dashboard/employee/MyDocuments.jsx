@@ -30,6 +30,7 @@ const MyDocuments = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('offer'); 
   const [slipFilters, setSlipFilters] = useState({ month: '', year: '' });
+  const [error, setError] = useState(null);
   
   // Resignation Modal
   const [showResignModal, setShowResignModal] = useState(false);
@@ -39,41 +40,94 @@ const MyDocuments = () => {
 const fetchDocs = async () => {
   try {
     setLoading(true);
+    setError(null);
+ 
     
-    const [letterRes, slipRes, resigRes, expRes, incRes] = await Promise.all([
+    // Get current user from localStorage
+    const userStr = localStorage.getItem('user');
+    let currentUser = {};
+    
+    try {
+      currentUser = JSON.parse(userStr || '{}');
+    
+    } catch (e) {
+      console.error("Error parsing user data:", e);
+    }
+    
+    // Fetch all data in parallel
+    const [letterRes, salaryRes, resigRes, expRes, incRes] = await Promise.all([
       offerLetterAPI.getMyOfferLetters(),
-      salaryAPI.getMySalaryRecords(slipFilters),
+      salaryAPI.getMySalaryRecords(slipFilters),  // ✅ Use the correct endpoint
       resignationAPI.getMyRequests(),
       experienceLetterAPI.getMyLetters(),
       incrementLetterAPI.getMyLetters()
     ]);
     
-    // console.log("Offer Letters Response:", letterRes.data);
-    // console.log("Experience Letters Response:", expRes.data);
-    // console.log("Increment Letters Response:", incRes.data);
+
     
-    setLetters(letterRes.data?.letters || letterRes.data?.data || []);
-    setSlips(slipRes.data?.salaryRecords || slipRes.data?.data || []);
-    setResignations(resigRes.data?.data || resigRes.data?.resignations || []);
+    // Handle Offer Letters
+    let offerLettersData = [];
+    if (letterRes.data?.letters) offerLettersData = letterRes.data.letters;
+    else if (letterRes.data?.data) offerLettersData = letterRes.data.data;
+    else if (Array.isArray(letterRes.data)) offerLettersData = letterRes.data;
+    else if (letterRes.data) offerLettersData = [letterRes.data];
+    setLetters(offerLettersData);
     
-    // Fix: Handle different response structures for experience letters
-    const expData = expRes.data?.data || expRes.data?.letters || expRes.data || [];
-    setExperiences(Array.isArray(expData) ? expData : []);
+    // Handle Salary Slips - Extract from salaryRecords array
+    let salaryData = [];
+    if (salaryRes.data) {
+      if (salaryRes.data.salaryRecords && Array.isArray(salaryRes.data.salaryRecords)) {
+      
+        salaryData = salaryRes.data.salaryRecords;
+      } 
+      else if (Array.isArray(salaryRes.data)) {
+        salaryData = salaryRes.data;
+      }
+      else if (salaryRes.data.results && Array.isArray(salaryRes.data.results)) {
+        salaryData = salaryRes.data.results;
+      }
+      else if (salaryRes.data.data && Array.isArray(salaryRes.data.data)) {
+        salaryData = salaryRes.data.data;
+      }
+    }
     
-    // Fix: Handle different response structures for increment letters
-    const incData = incRes.data?.data || incRes.data?.letters || incRes.data || [];
-    setIncrements(Array.isArray(incData) ? incData : []);
+ 
+    setSlips(salaryData);
+    
+    // Handle Resignations
+    let resignationsData = [];
+    if (resigRes.data) {
+      if (Array.isArray(resigRes.data)) resignationsData = resigRes.data;
+      else if (resigRes.data.data && Array.isArray(resigRes.data.data)) resignationsData = resigRes.data.data;
+      else if (resigRes.data.resignations && Array.isArray(resigRes.data.resignations)) resignationsData = resigRes.data.resignations;
+    }
+    setResignations(resignationsData);
+    
+    // Handle Experience Letters
+    let experienceData = [];
+    if (expRes.data) {
+      if (Array.isArray(expRes.data)) experienceData = expRes.data;
+      else if (expRes.data.data && Array.isArray(expRes.data.data)) experienceData = expRes.data.data;
+      else if (expRes.data.letters && Array.isArray(expRes.data.letters)) experienceData = expRes.data.letters;
+    }
+    setExperiences(experienceData);
+    
+    // Handle Increment Letters
+    let incrementData = [];
+    if (incRes.data) {
+      if (Array.isArray(incRes.data)) incrementData = incRes.data;
+      else if (incRes.data.data && Array.isArray(incRes.data.data)) incrementData = incRes.data.data;
+      else if (incRes.data.letters && Array.isArray(incRes.data.letters)) incrementData = incRes.data.letters;
+    }
+    setIncrements(incrementData);
     
   } catch (err) {
     console.error("Error fetching documents:", err);
-    // Don't show error to user, just set empty arrays
-    setExperiences([]);
-    setIncrements([]);
+    setError(err.response?.data?.message || err.message || "Failed to load documents");
   } finally {
     setLoading(false);
   }
 };
-
   useEffect(() => {
     fetchDocs();
   }, [slipFilters]);
@@ -99,6 +153,8 @@ const fetchDocs = async () => {
 
 const handleDocAction = async (type, action, doc) => {
   try {
+
+    
     if (type === 'offer') {
       if (action === 'view') await offerLetterPDFService.viewOfferLetter(doc.form_data);
       else await offerLetterPDFService.downloadOfferLetter(doc.form_data);
@@ -107,25 +163,21 @@ const handleDocAction = async (type, action, doc) => {
       if (action === 'view') await salarySlipPDFService.viewSalarySlip(formData);
       else await salarySlipPDFService.downloadSalarySlip(formData);
     } else if (type === 'backend-pdf') {
-      // Fix: Properly construct the PDF URL
-      let pdfUrl = doc.letter_url;
+      let pdfUrl = doc.letter_url || doc.pdf_url || doc.url;
       
-      // If the URL starts with /uploads, use it directly with API_BASE_URL
-      if (pdfUrl && pdfUrl.startsWith('/uploads')) {
-        pdfUrl = API_BASE_URL + pdfUrl;
-      } 
-      // If it's a relative path without leading slash
-      else if (pdfUrl && !pdfUrl.startsWith('http')) {
-        pdfUrl = API_BASE_URL + '/' + pdfUrl;
+      if (!pdfUrl) {
+        alert("PDF URL not available for this document");
+        return;
       }
       
-      // console.log("Opening PDF URL:", pdfUrl);
+      let backendBaseUrl = API_BASE_URL?.replace('/api', '') || 'http://localhost:8000';
+      let finalUrl = pdfUrl.startsWith('http') ? pdfUrl : backendBaseUrl + (pdfUrl.startsWith('/') ? pdfUrl : '/' + pdfUrl);
       
-      // Open in new tab
-      window.open(pdfUrl, "_blank");
+  
+      window.open(finalUrl, "_blank");
     }
   } catch (err) {
-    console.error("Error in handleDocAction:", err);
+    console.error("Error:", err);
     alert("Failed to process document. Please try again.");
   }
 };
@@ -138,6 +190,7 @@ const handleDocAction = async (type, action, doc) => {
       setShowResignModal(false);
       setResignData({ requested_last_day: '', reason: '' });
       fetchDocs();
+      alert("Resignation request submitted successfully!");
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to submit resignation request');
     } finally {
@@ -146,14 +199,21 @@ const handleDocAction = async (type, action, doc) => {
   };
 
   const StatusBadge = ({ status }) => {
-    switch(status) {
-      case 'accepted': return <span style={{ color: "#15803d", background: "#dcfce7", padding: "4px 8px", borderRadius: "4px", fontSize: "0.8rem", fontWeight: "bold" }}>Accepted</span>;
-      case 'rejected': return <span style={{ color: "#b91c1c", background: "#fee2e2", padding: "4px 8px", borderRadius: "4px", fontSize: "0.8rem", fontWeight: "bold" }}>Rejected</span>;
-      default: return <span style={{ color: "#b45309", background: "#fef3c7", padding: "4px 8px", borderRadius: "4px", fontSize: "0.8rem", fontWeight: "bold" }}>Pending</span>;
+    const statusLower = status?.toLowerCase();
+    switch(statusLower) {
+      case 'accepted': 
+      case 'approved': 
+        return <span style={{ color: "#15803d", background: "#dcfce7", padding: "4px 8px", borderRadius: "4px", fontSize: "0.8rem", fontWeight: "bold" }}>Accepted</span>;
+      case 'rejected': 
+        return <span style={{ color: "#b91c1c", background: "#fee2e2", padding: "4px 8px", borderRadius: "4px", fontSize: "0.8rem", fontWeight: "bold" }}>Rejected</span>;
+      case 'pending': 
+        return <span style={{ color: "#b45309", background: "#fef3c7", padding: "4px 8px", borderRadius: "4px", fontSize: "0.8rem", fontWeight: "bold" }}>Pending</span>;
+      default: 
+        return <span style={{ color: "#64748b", background: "#f1f5f9", padding: "4px 8px", borderRadius: "4px", fontSize: "0.8rem", fontWeight: "bold" }}>{status || 'Unknown'}</span>;
     }
   };
 
-  if (loading && letters.length === 0 && slips.length === 0) {
+  if (loading && letters.length === 0 && slips.length === 0 && experiences.length === 0 && increments.length === 0) {
     return (
       <div className="docs-loading">
         <div className="spinner"></div>
@@ -169,28 +229,37 @@ const handleDocAction = async (type, action, doc) => {
           <h1>My Documents</h1>
           <p>View and download your official company documents.</p>
         </div>
-        {activeTab === 'resignation' && !resignations.some(r => r.status === 'pending') && (
+        {activeTab === 'resignation' && !resignations.some(r => r.status?.toLowerCase() === 'pending') && (
           <button onClick={() => setShowResignModal(true)} style={{ background: "#ef4444", color: "white", padding: "10px 16px", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
             <HiOutlinePlus size={20} /> Apply Resignation
           </button>
         )}
       </div>
 
+      {error && (
+        <div style={{ background: "#fee2e2", color: "#b91c1c", padding: "12px", borderRadius: "8px", marginBottom: "20px" }}>
+          <strong>Error:</strong> {error}
+          <button onClick={fetchDocs} style={{ marginLeft: "10px", padding: "4px 8px", background: "#b91c1c", color: "white", border: "none", borderRadius: "4px", cursor: "pointer" }}>
+            Retry
+          </button>
+        </div>
+      )}
+
       <div className="docs-tabs" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
         <button className={`tab-btn ${activeTab === 'offer' ? 'active' : ''}`} onClick={() => setActiveTab('offer')}>
-          <HiOutlineDocumentText /> Offer Letters
+          <HiOutlineDocumentText /> Offer Letters ({letters.length})
         </button>
         <button className={`tab-btn ${activeTab === 'salary' ? 'active' : ''}`} onClick={() => setActiveTab('salary')}>
-          <HiOutlineCurrencyDollar /> Salary Slips
+          <HiOutlineCurrencyDollar /> Salary Slips ({slips.length})
         </button>
         <button className={`tab-btn ${activeTab === 'experience' ? 'active' : ''}`} onClick={() => setActiveTab('experience')}>
-          <HiOutlineBriefcase /> Experience Letters
+          <HiOutlineBriefcase /> Experience Letters ({experiences.length})
         </button>
         <button className={`tab-btn ${activeTab === 'increment' ? 'active' : ''}`} onClick={() => setActiveTab('increment')}>
-          <HiOutlineArrowTrendingUp /> Increment Letters
+          <HiOutlineArrowTrendingUp /> Increment Letters ({increments.length})
         </button>
         <button className={`tab-btn ${activeTab === 'resignation' ? 'active' : ''}`} onClick={() => setActiveTab('resignation')}>
-          <HiOutlineClipboardDocumentList /> Resignation
+          <HiOutlineClipboardDocumentList /> Resignation ({resignations.length})
         </button>
       </div>
 
@@ -229,13 +298,14 @@ const handleDocAction = async (type, action, doc) => {
                 <div className="doc-info">
                   <h3>Salary Slip</h3>
                   <p>Period: {slip.month} {slip.year}</p>
+                  <p style={{ fontSize: "0.75rem", color: "#64748b" }}>Basic: ₹{slip.basic_salary?.toLocaleString()}</p>
                 </div>
                 <div className="doc-actions">
                   <button className="doc-view-btn" onClick={() => handleDocAction('salary', 'view', slip)}><HiOutlineEye size={20} /> <span>View</span></button>
                   <button className="doc-download-btn" onClick={() => handleDocAction('salary', 'download', slip)}><HiOutlineArrowDownTray size={20} /> <span>Download</span></button>
                 </div>
               </div>
-            )) : <div className="no-docs"><HiOutlineCurrencyDollar size={48} /><h3>No salary slips found</h3></div>}
+            )) : <div className="no-docs"><HiOutlineCurrencyDollar size={48} /><h3>No salary slips found</h3><p>Salary slips will appear here once generated.</p></div>}
           </>
         )}
 
@@ -245,10 +315,13 @@ const handleDocAction = async (type, action, doc) => {
               <div className="doc-icon-container" style={{ background: '#fef3c7', color: '#d97706' }}><HiOutlineBriefcase className="doc-icon" /></div>
               <div className="doc-info">
                 <h3>Experience Letter</h3>
-                <p>Issued on: {new Date(doc.date_of_issue).toLocaleDateString('en-GB')}  |  Ref: {doc.ref_number}</p>
+                <p>Issued on: {doc.date_of_issue ? new Date(doc.date_of_issue).toLocaleDateString('en-GB') : 'N/A'}</p>
+                {doc.ref_number && <p style={{ fontSize: "0.75rem", color: "#64748b" }}>Ref: {doc.ref_number}</p>}
               </div>
               <div className="doc-actions">
-                <button className="doc-view-btn" onClick={() => handleDocAction('backend-pdf', 'view', doc)}><HiOutlineEye size={20} /> <span>View</span></button>
+                {doc.letter_url && (
+                  <button className="doc-view-btn" onClick={() => handleDocAction('backend-pdf', 'view', doc)}><HiOutlineEye size={20} /> <span>View</span></button>
+                )}
               </div>
             </div>
           )) : <div className="no-docs"><HiOutlineBriefcase size={48} /><h3>No experience letters found</h3></div>
@@ -260,10 +333,13 @@ const handleDocAction = async (type, action, doc) => {
               <div className="doc-icon-container" style={{ background: '#dcfce7', color: '#15803d' }}><HiOutlineArrowTrendingUp className="doc-icon" /></div>
               <div className="doc-info">
                 <h3>Increment Letter</h3>
-                <p>Effective: {new Date(doc.effective_date).toLocaleDateString('en-GB')}  |  {doc.increment_percentage}% Inc.</p>
+                <p>Effective: {doc.effective_date ? new Date(doc.effective_date).toLocaleDateString('en-GB') : 'N/A'}</p>
+                {doc.increment_percentage && <p>{doc.increment_percentage}% Increase</p>}
               </div>
               <div className="doc-actions">
-                <button className="doc-view-btn" onClick={() => handleDocAction('backend-pdf', 'view', doc)}><HiOutlineEye size={20} /> <span>View</span></button>
+                {doc.letter_url && (
+                  <button className="doc-view-btn" onClick={() => handleDocAction('backend-pdf', 'view', doc)}><HiOutlineEye size={20} /> <span>View</span></button>
+                )}
               </div>
             </div>
           )) : <div className="no-docs"><HiOutlineArrowTrendingUp size={48} /><h3>No increment letters found</h3></div>
@@ -275,37 +351,41 @@ const handleDocAction = async (type, action, doc) => {
               <div className="doc-icon-container" style={{ background: '#fee2e2', color: '#b91c1c' }}><HiOutlineClipboardDocumentList className="doc-icon" /></div>
               <div className="doc-info">
                 <h3>Resignation Request</h3>
-                <p>Applied: {new Date(doc.created_at).toLocaleDateString('en-GB')}  |  Last Day: {new Date(doc.requested_last_day).toLocaleDateString('en-GB')}</p>
-                <div style={{ marginTop: '8px' }}><StatusBadge status={doc.status} /> {doc.status === 'rejected' && <span style={{ fontSize: '0.8rem', color: '#64748b', marginLeft: '5px' }}>{doc.rejection_reason}</span>}</div>
+                <p>Applied: {doc.created_at ? new Date(doc.created_at).toLocaleDateString('en-GB') : 'N/A'}</p>
+                <p>Last Day: {doc.requested_last_day ? new Date(doc.requested_last_day).toLocaleDateString('en-GB') : 'N/A'}</p>
+                {doc.reason && <p style={{ fontSize: "0.75rem", color: "#64748b" }}>Reason: {doc.reason.substring(0, 100)}</p>}
+                <div style={{ marginTop: '8px' }}><StatusBadge status={doc.status} /></div>
               </div>
               <div className="doc-actions">
-                {doc.status === 'accepted' && doc.letter_url && (
-                  <button className="doc-view-btn" onClick={() => handleDocAction('backend-pdf', 'view', doc)}><HiOutlineEye size={20} /> <span>View Letter</span></button>
+                {(doc.status?.toLowerCase() === 'accepted' || doc.status?.toLowerCase() === 'approved') && doc.letter_url && (
+                  <button className="doc-view-btn" onClick={() => handleDocAction('backend-pdf', 'view', doc)}>
+                    <HiOutlineEye size={20} /> <span>View Letter</span>
+                  </button>
                 )}
               </div>
             </div>
-          )) : <div className="no-docs"><HiOutlineClipboardDocumentList size={48} /><h3>No resignation records.</h3></div>
+          )) : <div className="no-docs"><HiOutlineClipboardDocumentList size={48} /><h3>No resignation records found</h3><button onClick={() => setShowResignModal(true)} style={{ marginTop: "10px", padding: "8px 16px", background: "#ef4444", color: "white", border: "none", borderRadius: "6px", cursor: "pointer" }}>Apply for Resignation</button></div>
         )}
       </div>
 
       {showResignModal && (
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999 }}>
           <div style={{ background: "white", padding: "24px", borderRadius: "12px", width: "400px", maxWidth: "90%" }}>
-            <h3 style={{ margin: "0 0 16px 0", color: "#1e293b" }}>Apply for Resignation</h3>
+            <h3>Apply for Resignation</h3>
             <form onSubmit={handleResignationSubmit}>
               <div style={{ marginBottom: "16px" }}>
-                <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", fontSize: "14px" }}>Requested Last Working Day *</label>
+                <label>Requested Last Working Day *</label>
                 <input type="date" required style={{ width: "100%", padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1" }} 
                        value={resignData.requested_last_day} onChange={e => setResignData({...resignData, requested_last_day: e.target.value})} />
               </div>
               <div style={{ marginBottom: "24px" }}>
-                <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", fontSize: "14px" }}>Reason *</label>
+                <label>Reason *</label>
                 <textarea required rows="4" style={{ width: "100%", padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1" }}
                           value={resignData.reason} onChange={e => setResignData({...resignData, reason: e.target.value})}></textarea>
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
-                <button type="button" onClick={() => setShowResignModal(false)} style={{ padding: "8px 16px", background: "#f1f5f9", color: "#475569", border: "none", borderRadius: "6px", cursor: "pointer" }}>Cancel</button>
-                <button type="submit" disabled={isSubmitting} style={{ padding: "8px 16px", background: "#ef4444", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", opacity: isSubmitting ? 0.7 : 1 }}>
+                <button type="button" onClick={() => setShowResignModal(false)} style={{ padding: "8px 16px", background: "#f1f5f9", border: "none", borderRadius: "6px", cursor: "pointer" }}>Cancel</button>
+                <button type="submit" disabled={isSubmitting} style={{ padding: "8px 16px", background: "#ef4444", color: "white", border: "none", borderRadius: "6px", cursor: "pointer" }}>
                   {isSubmitting ? 'Submitting...' : 'Submit Request'}
                 </button>
               </div>

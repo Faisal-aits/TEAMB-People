@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const Salary = require('../models/salaryModel');
 const Attendance = require('../models/attendanceModel');
+const pool = require('../config/database'); // ✅ ADD THIS LINE
 
 const salaryController = {
     // Get all salary records
@@ -48,67 +49,66 @@ const salaryController = {
         }
     },
 
-   // backend/controllers/salaryController.js
-createSalaryRecord: async (req, res) => {
-    try {
-        const {
-            employee_id,
-            department_id,
-            basic_salary,
-            allowances,
-            deductions,
-            net_salary,
-            payment_date,
-            month,
-            year,
-            payment_frequency,
-            status
-        } = req.body;
+    createSalaryRecord: async (req, res) => {
+        try {
+            const {
+                employee_id,
+                department_id,
+                basic_salary,
+                allowances,
+                deductions,
+                net_salary,
+                payment_date,
+                month,
+                year,
+                payment_frequency,
+                status
+            } = req.body;
 
-        console.log('Received salary data:', req.body);
+            console.log('Received salary data:', req.body);
 
-        // Validation
-        if (!employee_id || !basic_salary || !month || !year) {
-            return res.status(400).json({ 
-                message: 'Employee, basic salary, month, and year are required',
-                received: { employee_id, basic_salary, month, year }
+            // Validation
+            if (!employee_id || !basic_salary || !month || !year) {
+                return res.status(400).json({ 
+                    message: 'Employee, basic salary, month, and year are required',
+                    received: { employee_id, basic_salary, month, year }
+                });
+            }
+
+            // Check if salary record already exists
+            const recordExists = await Salary.checkRecordExists(req.tenantId, employee_id, month, year);
+            if (recordExists) {
+                return res.status(400).json({ 
+                    message: 'Salary record already exists for this employee and period' 
+                });
+            }
+
+            const salaryId = await Salary.create(req.tenantId, {
+                employee_id,
+                department_id,
+                basic_salary: parseFloat(basic_salary),
+                allowances,
+                deductions,
+                net_salary: parseFloat(net_salary),
+                payment_date,
+                month,
+                year,
+                payment_frequency: payment_frequency || 'Monthly',
+                status: status || 'pending'
+            });
+
+            res.status(201).json({ 
+                message: 'Salary record created successfully', 
+                salary_id: salaryId,
+                net_salary: net_salary
+            });
+        } catch (error) {
+            console.error('Create salary record error:', error);
+            res.status(500).json({ 
+                message: 'Server error: ' + error.message 
             });
         }
-
-        // Check if salary record already exists
-        const recordExists = await Salary.checkRecordExists(req.tenantId, employee_id, month, year);
-        if (recordExists) {
-            return res.status(400).json({ 
-                message: 'Salary record already exists for this employee and period' 
-            });
-        }
-
-        const salaryId = await Salary.create(req.tenantId, {
-            employee_id,
-            department_id,
-            basic_salary: parseFloat(basic_salary),
-            allowances,
-            deductions,
-            net_salary: parseFloat(net_salary),
-            payment_date,
-            month,
-            year,
-            payment_frequency: payment_frequency || 'Monthly',
-            status: status || 'pending'
-        });
-
-        res.status(201).json({ 
-            message: 'Salary record created successfully', 
-            salary_id: salaryId,
-            net_salary: net_salary
-        });
-    } catch (error) {
-        console.error('Create salary record error:', error);
-        res.status(500).json({ 
-            message: 'Server error: ' + error.message 
-        });
-    }
-},
+    },
 
     // Update salary record
     updateSalaryRecord: async (req, res) => {
@@ -198,28 +198,25 @@ createSalaryRecord: async (req, res) => {
         }
     },
 
-   getEmployees: async (req, res) => {
+getEmployees: async (req, res) => {
     try {
         const employees = await Salary.getEmployees(req.tenantId);
-        res.json({ employees });  // This sends { employees: [...] }
-        // NOT res.json(employees) directly
+        res.json({ employees });
     } catch (error) {
         console.error('Get employees error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 },
-
-    // Get departments for dropdown
-    getDepartments: async (req, res) => {
-        try {
-            const departments = await Salary.getDepartments(req.tenantId);
-            res.json({ departments });
-        } catch (error) {
-            console.error('Get departments error:', error);
-            res.status(500).json({ message: 'Server error' });
-        }
-    },
-
+ getDepartments: async (req, res) => {
+    try {
+        const departments = await Salary.getDepartments(req.tenantId);
+        console.log('Sending departments to frontend:', departments.length);
+        res.json({ departments: departments });
+    } catch (error) {
+        console.error('Get departments error:', error);
+        res.status(500).json({ message: 'Server error', departments: [] });
+    }
+},
     // Get salary statistics
     getSalaryStats: async (req, res) => {
         try {
@@ -463,46 +460,76 @@ createSalaryRecord: async (req, res) => {
             res.status(500).json({ message: 'Error sending email' });
         }
     },
+// backend/controllers/salaryController.js
 
-    // Calculate Salary from Attendance
-    calculateSalaryFromAttendance: async (req, res) => {
-        try {
-            const { employee_id, month, year, basic_salary } = req.body;
-            
-            if (!employee_id || !month || !year) {
-                return res.status(400).json({ message: 'Missing required parameters' });
-            }
-
-            const monthNumber = typeof month === 'string' ? getMonthNumber(month) : month;
-            
-            // Allow basic_salary to come from the request (for preview), else fetch from DB
-            let employeeSalary = parseFloat(basic_salary) || 0;
-            
-            if (!employeeSalary) {
-                const Employee = require('../models/employeeModel');
-                const employee = await Employee.getById(req.tenantId, employee_id);
-                employeeSalary = parseFloat(employee?.salary) || 0;
-            }
-
-            const Salary = require('../models/salaryModel');
-            const calculation = await Salary.calculateSalaryFromAttendance(
-                req.tenantId,
-                employee_id,
-                monthNumber,
-                year,
-                employeeSalary
-            );
-
-            if (!calculation) {
-                return res.status(404).json({ message: 'No attendance data found for this period' });
-            }
-
-            res.json({ success: true, data: calculation });
-        } catch (error) {
-            console.error('Error calculating salary from attendance:', error);
-            res.status(500).json({ message: 'Server error: ' + error.message });
+calculateSalaryFromAttendance: async (req, res) => {
+    try {
+        const { employee_id, month, year, basic_salary } = req.body;
+        
+        console.log('🔍 BACKEND DEBUG - Received request:', { employee_id, month, year, basic_salary });
+        
+        if (!employee_id) {
+            return res.status(400).json({
+                success: false,
+                message: 'Employee ID is required'
+            });
         }
+        
+        if (!month || !year) {
+            return res.status(400).json({
+                success: false,
+                message: 'Month and year are required'
+            });
+        }
+        
+        // Get employee details
+        const [employee] = await pool.execute(
+            'SELECT * FROM employee_details WHERE id = ? AND tenant_id = ?',
+            [employee_id, req.tenantId]
+        );
+        
+        if (employee.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Employee not found'
+            });
+        }
+        
+        let salary = basic_salary;
+        if (!salary) {
+            salary = employee[0].salary;
+        }
+        
+        console.log('🔍 BACKEND DEBUG - Employee salary:', salary);
+        
+        const salaryCalculation = await Salary.calculateSalaryFromAttendance(
+            req.tenantId,
+            employee_id,
+            month,
+            year,
+            parseFloat(salary)
+        );
+        
+        console.log('🔍 BACKEND DEBUG - Calculation result:', {
+            final_salary: salaryCalculation.final_salary,
+            payable_days: salaryCalculation.payable_days,
+            salary_deductions: salaryCalculation.salary_deductions,
+            attendance_summary: salaryCalculation.attendance_summary
+        });
+        
+        res.json({
+            success: true,
+            data: salaryCalculation
+        });
+        
+    } catch (error) {
+        console.error('Error calculating salary from attendance:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error calculating salary: ' + error.message
+        });
     }
+},
 };
 
 // Helper function to get month number
@@ -582,7 +609,7 @@ function generatePayslipContent(doc, salaryRecord, attendanceSummary = null) {
         doc.text(`Half Days: ${attendanceSummary.half_days || 0}`, 310, attendanceY);
         doc.text(`Absent Days: ${attendanceSummary.absent_days || 0}`, 440, attendanceY);
         
-        doc.text(`Total Working Hours: ${(attendanceSummary.total_worked_hours || 0).toFixed(1)} hrs`, 50, attendanceY + 18);
+       doc.text(`Total Working Hours: ${(parseFloat(attendanceSummary.total_worked_hours) || 0).toFixed(1)} hrs`, 50, attendanceY + 18);
         doc.text(`Payable Days: ${(attendanceSummary.present_days || 0) + ((attendanceSummary.half_days || 0) * 0.5)}`, 310, attendanceY + 18);
         
         doc.y = attendanceY + 45;
@@ -615,10 +642,10 @@ function generatePayslipContent(doc, salaryRecord, attendanceSummary = null) {
 
     const earnings = [
         { description: 'Basic Salary', amount: basic_salary },
-        { description: 'House Rent Allowance (HRA)', amount: allowances.hra || 0 },
-        { description: 'Transport Allowance', amount: allowances.transport || 0 },
-        { description: 'Medical Allowance', amount: allowances.medical || 0 },
-        { description: 'Special Allowance', amount: allowances.special || 0 }
+        { description: 'House Rent Allowance (HRA)', amount: allowances?.hra || 0 },
+        { description: 'Transport Allowance', amount: allowances?.transport || 0 },
+        { description: 'Medical Allowance', amount: allowances?.medical || 0 },
+        { description: 'Special Allowance', amount: allowances?.special || 0 }
     ];
 
     earnings.forEach((earning, index) => {
@@ -636,8 +663,8 @@ function generatePayslipContent(doc, salaryRecord, attendanceSummary = null) {
     });
 
     const totalEarningsY = doc.y + (earnings.length * 18);
-    const totalEarnings = basic_salary + (allowances.hra || 0) + (allowances.transport || 0) + 
-                         (allowances.medical || 0) + (allowances.special || 0);
+    const totalEarnings = basic_salary + (allowances?.hra || 0) + (allowances?.transport || 0) + 
+                         (allowances?.medical || 0) + (allowances?.special || 0);
     
     doc.fillColor('#d5dbdb')
        .rect(50, totalEarningsY, 250, 20)
@@ -665,10 +692,10 @@ function generatePayslipContent(doc, salaryRecord, attendanceSummary = null) {
     doc.y = deductionsStartY + 25;
 
     const deductionItems = [
-        { description: 'Income Tax', amount: deductions.tax || 0 },
-        { description: 'Provident Fund (PF)', amount: deductions.provident_fund || 0 },
-        { description: 'Insurance', amount: deductions.insurance || 0 },
-        { description: 'Loan Recovery', amount: deductions.loan || 0 }
+        { description: 'Income Tax', amount: deductions?.tax || 0 },
+        { description: 'Provident Fund (PF)', amount: deductions?.provident_fund || 0 },
+        { description: 'Insurance', amount: deductions?.insurance || 0 },
+        { description: 'Loan Recovery', amount: deductions?.loan || 0 }
     ];
 
     deductionItems.forEach((deduction, index) => {
@@ -686,8 +713,8 @@ function generatePayslipContent(doc, salaryRecord, attendanceSummary = null) {
     });
 
     const totalDeductionsY = doc.y + (deductionItems.length * 18);
-    const totalDeductions = (deductions.tax || 0) + (deductions.provident_fund || 0) + 
-                           (deductions.insurance || 0) + (deductions.loan || 0);
+    const totalDeductions = (deductions?.tax || 0) + (deductions?.provident_fund || 0) + 
+                           (deductions?.insurance || 0) + (deductions?.loan || 0);
     
     doc.fillColor('#d5dbdb')
        .rect(320, totalDeductionsY, 230, 20)

@@ -1,22 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+/* Projects.css - Complete Styles for ProjectManagement Component */
 
-/* Projects.css - Complete CSS for Project Management System */
-
-
-/* ==================== MAIN CONTAINER ==================== */
-/* Add to Projects.css */
-/* Multi-Select Styles */
-.multi-select-container {
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.selected-members {
-  padding: 8px;
-  background-color: #f8f9fa;
-  border-bottom: 1px solid #ddd;
-  min-height: 50px;
+/* Main Container */
+.proj-management-section {
+  background: #f8f9fa;
+  padding: 1rem;
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
 }
 
 /* Header Section */
@@ -41,6 +30,7 @@
 }
 
 .proj-hr-badge {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   padding: 0.25rem 0.75rem;
   border-radius: 20px;
@@ -142,6 +132,24 @@
   background: #218838;
 }
 
+.proj-refresh-btn {
+  padding: 0.5rem 1rem;
+  background: #17a2b8;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+}
+
+.proj-refresh-btn:hover {
+  background: #138496;
+}
+
 /* Dashboard Stats */
 .proj-dashboard-stats {
   display: grid;
@@ -219,12 +227,48 @@
   min-width: 200px;
 }
 
+.proj-filter-input:focus {
+  outline: none;
+  border-color: #8a87c9;
+  box-shadow: 0 0 0 2px rgba(138, 135, 201, 0.1);
+}
+
 .proj-filter-select {
   padding: 0.5rem;
   border: 1px solid #e5e7eb;
   border-radius: 6px;
   font-size: 0.875rem;
   min-width: 120px;
+  background: white;
+  cursor: pointer;
+}
+
+.proj-filter-select:focus {
+  outline: none;
+  border-color: #8a87c9;
+}
+
+.proj-export-btn {
+  padding: 0.5rem 1rem;
+  background: #28a745;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.proj-export-btn:hover:not(:disabled) {
+  background: #218838;
+}
+
+.proj-export-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Table Styles */
@@ -235,6 +279,7 @@
 .proj-main-table {
   width: 100%;
   border-collapse: collapse;
+  min-width: 800px;
 }
 
 .proj-main-table th {
@@ -244,12 +289,15 @@
   font-weight: 600;
   color: #374151;
   border-bottom: 1px solid #e5e7eb;
+  font-size: 0.875rem;
 }
 
 .proj-main-table td {
   padding: 0.75rem 1rem;
   border-bottom: 1px solid #f3f4f6;
   color: #1f2937;
+  font-size: 0.875rem;
+  vertical-align: top;
 }
 
 .proj-main-table tr:hover {
@@ -285,16 +333,20 @@
   color: #6b7280;
   transition: all 0.3s ease;
   margin: 0 0.25rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 .proj-action-btn:hover {
   background: #f3f4f6;
   color: #8a87c9;
+  transform: translateY(-1px);
 }
 
 /* Team Members List */
 .team-members-list {
-  max-width: 200px;
+  max-width: 250px;
 }
 
 .member-item {
@@ -302,6 +354,10 @@
   flex-direction: column;
   padding: 0.25rem 0;
   border-bottom: 1px solid #f0f0f0;
+}
+
+.member-item:last-child {
+  border-bottom: none;
 }
 
 .member-name {
@@ -321,6 +377,7 @@
   border-radius: 12px;
   font-size: 0.7rem;
   font-weight: 600;
+  display: inline-block;
 }
 
 .status-active {
@@ -339,6 +396,7 @@
   border-radius: 12px;
   font-size: 0.7rem;
   font-weight: 600;
+  display: inline-block;
 }
 
 .priority-high {
@@ -385,6 +443,14 @@
   color: #6c757d;
 }
 
+/* Task Status Text */
+.task-status-text {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
 /* Progress Wrapper */
 .progress-wrapper {
   display: flex;
@@ -397,6 +463,11 @@
   height: 4px;
   border-radius: 2px;
   background: #e5e7eb;
+  cursor: pointer;
+}
+
+.task-progress-slider:focus {
+  outline: none;
 }
 
 .progress-value {
@@ -422,6 +493,12 @@
   font-weight: 500;
 }
 
+.text-muted {
+  color: #6c757d;
+  font-style: italic;
+  font-size: 0.75rem;
+}
+
 /* Accept Button */
 .proj-accept-btn {
   padding: 0.25rem 0.5rem;
@@ -435,6 +512,47 @@
   align-items: center;
   gap: 0.25rem;
   margin-right: 0.25rem;
+  transition: all 0.3s ease;
+}
+
+.proj-accept-btn:hover {
+  background: #218838;
+}
+
+/* Task Status Select */
+.task-status-select,
+.review-status-select {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  background: white;
+  cursor: pointer;
+}
+
+.task-status-select:focus,
+.review-status-select:focus {
+  outline: none;
+  border-color: #8a87c9;
+}
+
+/* Loading Members */
+.loading-members {
+  text-align: center;
+  padding: 1rem;
+  color: #6c757d;
+  font-size: 0.875rem;
+}
+
+/* Project Badge */
+.project-badge {
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  display: inline-block;
 }
 
 /* Modal Styles */
@@ -449,6 +567,7 @@
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  animation: fadeIn 0.3s ease;
 }
 
 .proj-modal-content {
@@ -471,6 +590,10 @@
   align-items: center;
   padding: 1rem 1.5rem;
   border-bottom: 1px solid #e5e7eb;
+  background: #f8f9fa;
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 .proj-modal-header h2 {
@@ -485,6 +608,7 @@
   font-size: 1.5rem;
   cursor: pointer;
   color: #6b7280;
+  transition: color 0.3s ease;
 }
 
 .proj-close-btn:hover {
@@ -506,9 +630,10 @@
   color: #1f2937;
   margin-bottom: 1rem;
   display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
   align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e5e7eb;
 }
 
 .proj-form-row {
@@ -544,7 +669,8 @@
   border: 1px solid #e5e7eb;
   border-radius: 6px;
   font-size: 0.875rem;
-  transition: border-color 0.3s ease;
+  transition: all 0.3s ease;
+  font-family: inherit;
 }
 
 .proj-form-group input:focus,
@@ -553,6 +679,25 @@
   outline: none;
   border-color: #8a87c9;
   box-shadow: 0 0 0 2px rgba(138, 135, 201, 0.1);
+}
+
+.proj-form-group input:disabled,
+.proj-form-group select:disabled,
+.proj-form-group textarea:disabled {
+  background: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.proj-form-group textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.helper-text {
+  font-size: 0.7rem;
+  color: #6c757d;
+  margin-top: 0.25rem;
+  display: block;
 }
 
 .proj-form-actions {
@@ -572,11 +717,17 @@
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.875rem;
-  transition: background 0.3s ease;
+  transition: all 0.3s ease;
 }
 
-.proj-submit-btn:hover {
+.proj-submit-btn:hover:not(:disabled) {
   background: #6b68b0;
+  transform: translateY(-1px);
+}
+
+.proj-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .proj-cancel-btn {
@@ -587,7 +738,7 @@
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.875rem;
-  transition: background 0.3s ease;
+  transition: all 0.3s ease;
 }
 
 .proj-cancel-btn:hover {
@@ -602,10 +753,76 @@
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.875rem;
+  transition: all 0.3s ease;
 }
 
 .proj-delete-btn:hover {
   background: #c82333;
+}
+
+/* Delete Confirmation */
+.proj-delete-confirm {
+  text-align: center;
+  padding: 2rem;
+}
+
+.emp-delete-icon {
+  font-size: 3rem;
+  color: #dc3545;
+  margin-bottom: 1rem;
+}
+
+.proj-delete-confirm h3 {
+  margin: 0 0 1rem 0;
+  color: #1f2937;
+}
+
+.proj-delete-confirm p {
+  margin: 0 0 1.5rem 0;
+  color: #6b7280;
+}
+
+.proj-delete-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+/* Details Grid */
+.proj-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  padding: 1.5rem;
+}
+
+.proj-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.proj-detail-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.proj-detail-item label {
+  font-weight: 600;
+  color: #6b7280;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.proj-detail-item span {
+  color: #1f2937;
+  font-size: 0.875rem;
+  word-break: break-word;
+}
+
+/* Details Content */
+.proj-details-content {
+  padding: 1.5rem;
 }
 
 /* Empty State */
@@ -635,13 +852,7 @@
   font-size: 1.1rem;
   background: rgba(220, 53, 69, 0.1);
   border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+  margin: 1rem;
 }
 
 .proj-retry-btn {
@@ -653,6 +864,73 @@
   border: none;
   border-radius: 6px;
   cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.proj-retry-btn:hover {
+  background: #6b68b0;
+}
+
+/* Filter Button */
+.proj-filter-btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+}
+
+.proj-filter-btn.active {
+  background: #4caf50;
+  color: white;
+}
+
+/* Remarks Textarea */
+.remarks-textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.remarks-textarea:focus {
+  outline: none;
+  border-color: #8a87c9;
+}
+
+/* Task Hours Input */
+.task-hours-input {
+  width: 100px;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+/* Excel Import */
+.proj-excel-import {
+  padding: 1.5rem;
+}
+
+.proj-excel-import h4 {
+  margin: 0 0 0.5rem 0;
+  color: #1f2937;
+}
+
+.proj-excel-import ol {
+  margin: 0.5rem 0 1rem 1.5rem;
+  color: #6b7280;
+}
+
+.file-input {
+  padding: 0.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  width: 100%;
 }
 
 /* Responsive Design */
@@ -681,7 +959,12 @@
 
   .proj-filter-input,
   .proj-filter-select {
-    width: 100%;
+    flex: 1;
+    min-width: auto;
+  }
+
+  .proj-details-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -697,7 +980,8 @@
 
   .proj-tab-btn,
   .proj-add-btn,
-  .proj-excel-btn {
+  .proj-excel-btn,
+  .proj-refresh-btn {
     width: 100%;
     justify-content: center;
   }
@@ -709,56 +993,134 @@
     opacity: 0;
     transform: translateY(10px);
   }
-
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
 
-.proj-header-actions {
-  width: 100%;
-  justify-content: center;
-}
-
-.proj-excel-btn,
-.proj-import-btn {
-  padding: 8px 15px;
-  font-size: 12px;
-}
-
-.employee-list {
-  max-height: 150px;
-}
-
-.member-badge {
-  font-size: 10px;
-}
-
-/* Add to Projects.css */
-
-/* Review Status Badges */
-.review-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: 15px;
-  font-size: 11px;
-  font-weight: 500;
-}
-
-.review-approved {
-  background: #d4edda;
-  color: #155724;
-}
-
-.review-rejected {
-  background: #f8d7da;
-  color: #721c24;
-}
-
 .proj-stat-card,
 .proj-table-container {
   animation: fadeIn 0.5s ease-out;
+}
+
+/* Scrollbar Styling */
+.proj-table-wrapper::-webkit-scrollbar,
+.proj-modal-content::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.proj-table-wrapper::-webkit-scrollbar-track,
+.proj-modal-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.proj-table-wrapper::-webkit-scrollbar-thumb,
+.proj-modal-content::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 10px;
+}
+
+.proj-table-wrapper::-webkit-scrollbar-thumb:hover,
+.proj-modal-content::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Print Styles */
+@media print {
+  .proj-header-actions,
+  .proj-table-actions,
+  .proj-action-btn {
+    display: none;
+  }
+  
+  .proj-management-section {
+    background: white;
+    padding: 0;
+  }
+  
+  .proj-table-container {
+    box-shadow: none;
+    border: 1px solid #ddd;
+  }
+}
+/* Assigned Employees List */
+.assigned-employees-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.assigned-employee-badge {
+  display: inline-block;
+  background: #e9ecef;
+  color: #495057;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  width: fit-content;
+  margin: 2px 0;
+}
+
+.assigned-employee-badge:hover {
+  background: #667eea;
+  color: white;
+}
+
+.proj-export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+/* Description column styling for grouped tasks */
+.proj-table-main td:nth-child(4) {
+  max-width: 300px;
+  word-wrap: break-word;
+  white-space: normal;
+}
+
+.description-multiple {
+  max-height: 80px;
+  overflow-y: auto;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.description-multiple::-webkit-scrollbar {
+  width: 4px;
+}
+
+.description-multiple::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 2px;
+}
+
+.description-multiple::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 2px;
+}
+/* Ensure modal appears on top */
+.proj-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.proj-modal-content {
+  background: white;
+  border-radius: 8px;
+  max-width: 90%;
+  max-height: 90%;
+  overflow-y: auto;
+  z-index: 10000;
 }

@@ -151,8 +151,7 @@ const StudentsManagement = () => {
 
       // Export to Excel
       XLSX.writeFile(workbook, fileName);
-      
-      // console.log('✅ Export successful:', fileName);
+    
       alert(`Exported ${filteredStudents.length} students successfully!`);
     } catch (error) {
       console.error('❌ Error exporting data:', error);
@@ -266,11 +265,11 @@ const handleUpdateStudent = async (e) => {
   }
 
   try {
-    // Send empty string instead of null for empty dates
+  
     const formattedData = {
       ...editFormData,
-      date_of_birth: editFormData.date_of_birth || '',  // Changed from null to ''
-      enrollment_date: editFormData.enrollment_date || ''  // Changed from null to ''
+      date_of_birth: editFormData.date_of_birth || '',
+      enrollment_date: editFormData.enrollment_date || '' 
     };
     
     await studentAPI.update(selectedStudent.id, formattedData);
@@ -324,22 +323,21 @@ const handleUpdateStudent = async (e) => {
     }
     
     try {
-      // If it's already in YYYY-MM-DD format from input
+   
       if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
         const [year, month, day] = dateString.split('-');
         const date = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day)));
         return date.toLocaleDateString('en-IN', { timeZone: 'UTC' });
       }
       
-      // If it's a date string with timezone (e.g., from backend)
+    
       const date = new Date(dateString);
       
       // Check if date is valid
       if (isNaN(date.getTime())) {
         return 'Invalid date';
       }
-      
-      // Use UTC to avoid timezone shifting
+
       return date.toLocaleDateString('en-IN', { timeZone: 'UTC' });
     } catch (error) {
       console.error('Error formatting date:', error, 'dateString:', dateString);

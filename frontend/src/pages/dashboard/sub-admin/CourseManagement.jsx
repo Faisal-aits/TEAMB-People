@@ -179,7 +179,7 @@ const CoursesManagement = () => {
     // Export to Excel
     XLSX.writeFile(workbook, fileName);
     
-    // console.log('✅ Export successful:', fileName);
+ 
     alert(`Exported ${filteredCourses.length} courses successfully!`);
     } catch (error) {
       console.error('❌ Error exporting data:', error);

@@ -247,7 +247,7 @@ const DepartmentManagement = () => {
       // Export to Excel
       XLSX.writeFile(workbook, fileName);
       
-      // console.log('✅ Export successful:', fileName);
+     
       alert(`Exported ${departments.length} departments successfully!`);
     } catch (error) {
       console.error('❌ Error exporting data:', error);

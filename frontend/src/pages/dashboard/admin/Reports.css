@@ -1,5 +1,6 @@
+
 .reports-section {
-  margin-top: 2rem;
+ margin-top: 2rem;
 }
 
 .reports-header {
@@ -11,7 +12,7 @@
 }
 
 .reports-title {
-  color: #1a202c;
+   color: #1a202c;
   margin: 0;
   font-size: 1.5rem;
   font-weight: 600;
@@ -38,7 +39,6 @@
   transition: all 0.3s ease;
   box-shadow: 0 4px 12px rgba(138, 135, 201, 0.3);
 }
-
 .reports-export-btn:hover {
   background: linear-gradient(135deg, #7a77b9 0%, #c493c2 33%, #d883b0 66%, #e8c1d8 100%);
   transform: translateY(-2px);
@@ -49,7 +49,7 @@
   background: white;
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .reports-table-header {
@@ -65,7 +65,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-
+  
 }
 
 .date-filter-input {
@@ -104,8 +104,7 @@
   font-size: 0.8rem;
   line-height: 1.2;
 }
-
-.reports-description-cell {
+.reports-description-cell{
   width: 510px;
 }
 
@@ -133,7 +132,7 @@
 
 .filter-controls-header {
   display: flex;
-  width: 650px;
+  width:650px;
   align-items: center;
   gap: 15px;
 }
@@ -149,13 +148,13 @@
 
 .date-filter-input {
   padding: 8px 15px;
-  border: 2px solid rgb(215, 215, 215);
+   border: 2px solid rgb(215, 215, 215);
   border-radius: 10px;
   font-size: 13px;
   background: white;
   color: #1f2937;
   transition: all 0.3s ease;
-  width: 160px;
+  width: 240px;
 }
 
 
@@ -169,25 +168,16 @@
   font-weight: 500;
 }
 
-.no-reports {
-  display: flex;
-  /* Enable flex layout */
-  flex-direction: column;
-  /* Stack children vertically */
-  align-items: center;
-  /* Center horizontally */
-  justify-content: center;
-  /* Center vertically */
-  text-align: center;
-  /* Center text */
-  padding: 20px;
-  /* Optional padding */
-  box-sizing: border-box;
-  /* Include padding in width/height */
-  color: #555;
-  /* Text color */
-  font-family: Arial, sans-serif;
-  /* Font */
+.no-reports{
+    display: flex;               /* Enable flex layout */
+  flex-direction: column;      /* Stack children vertically */
+  align-items: center;         /* Center horizontally */
+  justify-content: center;     /* Center vertically */
+  text-align: center;          /* Center text */
+  padding: 20px;               /* Optional padding */
+  box-sizing: border-box;      /* Include padding in width/height */
+  color: #555;                 /* Text color */
+  font-family: Arial, sans-serif; /* Font */
 }
 
 /* Employee filter badge styles */
@@ -198,7 +188,7 @@
   background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
   padding: 6px 12px;
   border-radius: 20px;
-  margin-left: -200px
+margin-left:-200px
 }
 
 .filter-label {

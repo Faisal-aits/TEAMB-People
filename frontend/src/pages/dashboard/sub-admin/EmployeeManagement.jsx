@@ -1,7 +1,6 @@
 // src/pages/dashboard/admin/EmployeeManagement.jsx
 import React, { useState, useEffect } from 'react';
 import { employeeAPI } from '../../../services/employeeAPI';
-import { useAuth } from '../../../contexts/AuthContext';
 import './Employee.css';
 import * as XLSX from 'xlsx';
 
@@ -13,12 +12,10 @@ const EmployeeManagement = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
-  const { user } = useAuth();
   const [filters, setFilters] = useState({
     department_id: '',
-    is_active: '',       // ✅ DEFAULT = ALL
+    is_active: '',
     role_id: ''
   });
   const [formData, setFormData] = useState({
@@ -26,7 +23,7 @@ const EmployeeManagement = () => {
     last_name: '',
     email: '',
     phone: '',
-    department_id: '',
+    department_ids: [], // Changed to array for multiple departments
     position: '',
     joining_date: '',
     date_of_birth: '',
@@ -36,8 +33,8 @@ const EmployeeManagement = () => {
     ifsc_code: '',
     pan_number: '',
     aadhar_number: '',
-    employee_id: '', // Manual employee ID
-    role_id: '3' // Default role: employee (3=employee, 2=hr, 1=admin)
+    employee_id: '',
+    role_id: ''
   });
 
   const [editFormData, setEditFormData] = useState({
@@ -45,7 +42,7 @@ const EmployeeManagement = () => {
     last_name: '',
     email: '',
     phone: '',
-    department_id: '',
+    department_ids: [], // Changed to array for multiple departments
     position: '',
     joining_date: '',
     date_of_birth: '',
@@ -55,82 +52,92 @@ const EmployeeManagement = () => {
     ifsc_code: '',
     pan_number: '',
     aadhar_number: '',
+    employee_id: '',
     role_id: ''
   });
 
   const [showCustomPosition, setShowCustomPosition] = useState(false);
   const [customPosition, setCustomPosition] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [resetPasswordValue, setResetPasswordValue] = useState('');
-  const [resetPasswordConfirmValue, setResetPasswordConfirmValue] = useState('');
-  const [showResetPassword, setShowResetPassword] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortConfig, setSortConfig] = useState({ key: 'first_name', direction: 'asc' });
+  const [roleOptions, setRoleOptions] = useState([]);
 
-
-  // Role options - including all roles
-  const roleOptions = [
-    { id: '1', name: 'Admin' },
-    { id: '2', name: 'HR' },
-    { id: '3', name: 'Employee' }
-    
-  ];
-
-// Load initial data only once
-useEffect(() => {
-  const loadInitialData = async () => {
-    await Promise.all([
-      loadDepartments(),
-      loadSuggestedPositions()
-    ]);
-    await loadEmployees();
+  // Helper: check if selected role is a non-student role
+  const isNonStudentRole = (roleId) => {
+    if (!roleId || roleOptions.length === 0) return true;
+    const role = roleOptions.find(r => r.id === String(roleId));
+    return !role || role.name.toLowerCase() !== 'student';
   };
-  
-  loadInitialData();
-}, []); // Empty dependency array
 
-// Load employees when filters change
-useEffect(() => {
-  // Only load if not the initial load (departments have been loaded)
-  if (departments.length > 0) {
-    loadEmployees();
-  }
-}, [filters.department_id, filters.role_id, filters.is_active]);
-const loadEmployees = async () => {
-  try {
-    setLoading(true);
-
-    const apiFilters = {};
-
-    if (filters.department_id) {
-      apiFilters.department_id = filters.department_id;
-    }
-    if (filters.role_id) {
-      apiFilters.role_id = filters.role_id;
-    }
-    // Important: Don't filter by is_active if it's empty string
-    if (filters.is_active && filters.is_active !== '') {
-      // Send as string, not boolean - check your backend expects
-      apiFilters.is_active = filters.is_active === 'true';
-    }
-
-    // console.log('Loading employees with filters:', apiFilters);
-
-    const response = await employeeAPI.getAll(apiFilters);
-    // console.log('API Response:', response.data);
+  // Load initial data only once
+  useEffect(() => {
+    const loadInitialData = async () => {
+      await Promise.all([
+        loadDepartments(),
+        loadSuggestedPositions(),
+        loadRoles()
+      ]);
+      await loadEmployees();
+    };
     
-    // Ensure we're setting the employees array correctly
-    const employeesData = response.data.employees || [];
-    // console.log('Number of employees received:', employeesData.length);
-    setEmployees(employeesData);
-    
-  } catch (error) {
-    // console.error('Error loading employees:', error);
-    setEmployees([]); // Set empty array on error
-  } finally {
-    setLoading(false);
-  }
-};
+    loadInitialData();
+  }, []);
+
+  // Load employees when filters change
+  useEffect(() => {
+    if (departments.length > 0) {
+      loadEmployees();
+    }
+  }, [filters.department_id, filters.role_id, filters.is_active]);
+
+  const loadEmployees = async () => {
+    try {
+      setLoading(true);
+      const apiFilters = {};
+
+      if (filters.department_id) {
+        apiFilters.department_id = filters.department_id;
+      }
+      if (filters.role_id) {
+        apiFilters.role_id = filters.role_id;
+      }
+      if (filters.is_active && filters.is_active !== '') {
+        apiFilters.is_active = filters.is_active === 'true';
+      }
+
+      const response = await employeeAPI.getAll(apiFilters);
+      const employeesData = response.data.employees || [];
+      
+      // Ensure department_ids is always an array for each employee
+      const processedEmployees = employeesData.map(emp => ({
+        ...emp,
+        department_ids: emp.department_ids || (emp.department_id ? [emp.department_id] : [])
+      }));
+      
+      setEmployees(processedEmployees);
+    } catch (error) {
+      console.error('Error loading employees:', error);
+      setEmployees([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadRoles = async () => {
+    try {
+      const response = await employeeAPI.getRoles();
+      const roles = response.data.roles || [];
+      setRoleOptions(roles.filter(r => r.name !== 'student').map(r => ({
+        id: String(r.id),
+        name: r.name.charAt(0).toUpperCase() + r.name.slice(1)
+      })));
+      const employeeRole = roles.find(r => r.name === 'employee');
+      if (employeeRole) {
+        setFormData(prev => ({ ...prev, role_id: String(employeeRole.id) }));
+      }
+    } catch (error) {
+      console.error('Error loading roles:', error);
+    }
+  };
 
   const loadDepartments = async () => {
     try {
@@ -158,6 +165,16 @@ const loadEmployees = async () => {
     }));
   };
 
+  // Handle multiple department selection for create form
+  const handleDepartmentChange = (e) => {
+    const selectedOptions = Array.from(e.target.selectedOptions);
+    const selectedIds = selectedOptions.map(option => option.value);
+    setFormData(prev => ({
+      ...prev,
+      department_ids: selectedIds
+    }));
+  };
+
   const handleEditInputChange = (e) => {
     const { name, value } = e.target;
     setEditFormData(prev => ({
@@ -166,62 +183,22 @@ const loadEmployees = async () => {
     }));
   };
 
- const handleFilterChange = (key, value) => {
-  // console.log(`Filter changed: ${key} = ${value}`); // Debug log
-  setFilters(prev => ({
-    ...prev,
-    [key]: value
-  }));
-};
+  // Handle multiple department selection for edit form
+  const handleEditDepartmentChange = (e) => {
+    const selectedOptions = Array.from(e.target.selectedOptions);
+    const selectedIds = selectedOptions.map(option => option.value);
+    setEditFormData(prev => ({
+      ...prev,
+      department_ids: selectedIds
+    }));
+  };
 
-const handleSort = (key) => {
-  let direction = 'asc';
-  if (sortConfig.key === key && sortConfig.direction === 'asc') {
-    direction = 'desc';
-  }
-  setSortConfig({ key, direction });
-};
-
-const handleSearchChange = (e) => {
-  setSearchTerm(e.target.value);
-};
-
-const getFilteredAndSortedEmployees = () => {
-  let result = [...employees];
-
-  // Client-side text search
-  if (searchTerm) {
-    const lowerSearch = searchTerm.toLowerCase();
-    result = result.filter(emp => 
-      emp.first_name?.toLowerCase().includes(lowerSearch) ||
-      emp.last_name?.toLowerCase().includes(lowerSearch) ||
-      emp.email?.toLowerCase().includes(lowerSearch) ||
-      emp.employee_id?.toLowerCase().includes(lowerSearch) ||
-      emp.position?.toLowerCase().includes(lowerSearch)
-    );
-  }
-
-  // Client-side sorting
-  result.sort((a, b) => {
-    let aValue = a[sortConfig.key];
-    let bValue = b[sortConfig.key];
-
-    if (aValue === null) return 1;
-    if (bValue === null) return -1;
-
-    if (typeof aValue === 'string') {
-      aValue = aValue.toLowerCase();
-      bValue = (bValue || '').toLowerCase();
-    }
-
-    if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-    if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-    return 0;
-  });
-
-  return result;
-};
-
+  const handleFilterChange = (key, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
 
   const handlePositionChange = (e) => {
     const value = e.target.value;
@@ -243,80 +220,76 @@ const getFilteredAndSortedEmployees = () => {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  if (!formData.first_name || !formData.last_name || !formData.email) {
-    alert('Please fill in all required fields');
-    return;
-  }
+    e.preventDefault();
+    
+    if (!formData.first_name || !formData.last_name || !formData.email) {
+      alert('Please fill in all required fields');
+      return;
+    }
 
-  setIsSubmitting(true);
+    setIsSubmitting(true);
 
-  try {
-    const employeeData = {
-      first_name: formData.first_name,
-      last_name: formData.last_name,
-      email: formData.email,
-      phone: formData.phone || null,
-      department_id: formData.department_id || null,
-      position: formData.position || null,
-      joining_date: formData.joining_date || null,
-      date_of_birth: formData.date_of_birth || null,
-      address: formData.address || null,
-      emergency_contact: formData.emergency_contact || null,
-      bank_account_number: formData.bank_account_number || null,
-      ifsc_code: formData.ifsc_code || null,
-      pan_number: formData.pan_number || null,
-      aadhar_number: formData.aadhar_number || null,
-      employee_id: formData.employee_id || null,
-      role_id: formData.role_id || '3'
-    };
+    try {
+      const employeeData = {
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        email: formData.email,
+        phone: formData.phone || null,
+        department_ids: formData.department_ids || [], // Send array of department IDs
+        position: formData.position || null,
+        joining_date: formData.joining_date || null,
+        date_of_birth: formData.date_of_birth || null,
+        address: formData.address || null,
+        emergency_contact: formData.emergency_contact || null,
+        bank_account_number: formData.bank_account_number || null,
+        ifsc_code: formData.ifsc_code || null,
+        pan_number: formData.pan_number || null,
+        aadhar_number: formData.aadhar_number || null,
+        employee_id: formData.employee_id || null,
+        role_id: formData.role_id || roleOptions.find(r => r.name === 'Employee')?.id || ''
+      };
 
-    const response = await employeeAPI.create(employeeData);
-    
-    // Reset form
-    setFormData({
-      first_name: '',
-      last_name: '',
-      email: '',
-      phone: '',
-      department_id: '',
-      position: '',
-      joining_date: '',
-      date_of_birth: '',
-      address: '',
-      emergency_contact: '',
-      bank_account_number: '',
-      ifsc_code: '',
-      pan_number: '',
-      aadhar_number: '',
-      employee_id: '',
-      role_id: '3'
-    });
-    
-    setShowCustomPosition(false);
-    setCustomPosition('');
-    setIsModalOpen(false);
-    
-    // Important: Reset filters to show all employees after adding
-    setFilters({
-      department_id: '',
-      is_active: '',
-      role_id: ''
-    });
-    
-    // Reload employees to show the new one
-    await loadEmployees();
-    
-    alert('User added successfully!');
-  } catch (error) {
-    console.error('Error creating user:', error);
-    const errorMessage = error.response?.data?.message || 'Error creating user. Please try again.';
-    alert(errorMessage);
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+      const response = await employeeAPI.create(employeeData);
+      
+      setFormData({
+        first_name: '',
+        last_name: '',
+        email: '',
+        phone: '',
+        department_ids: [],
+        position: '',
+        joining_date: '',
+        date_of_birth: '',
+        address: '',
+        emergency_contact: '',
+        bank_account_number: '',
+        ifsc_code: '',
+        pan_number: '',
+        aadhar_number: '',
+        employee_id: '',
+        role_id: roleOptions.find(r => r.name === 'Employee')?.id || ''
+      });
+      
+      setShowCustomPosition(false);
+      setCustomPosition('');
+      setIsModalOpen(false);
+      
+      setFilters({
+        department_id: '',
+        is_active: '',
+        role_id: ''
+      });
+      
+      await loadEmployees();
+      alert('Employee added successfully!');
+    } catch (error) {
+      console.error('Error creating employee:', error);
+      const errorMessage = error.response?.data?.message || 'Error creating employee. Please try again.';
+      alert(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleViewEmployee = (employee) => {
     setSelectedEmployee(employee);
@@ -326,22 +299,16 @@ const getFilteredAndSortedEmployees = () => {
   const handleEditEmployee = (employee) => {
     setSelectedEmployee(employee);
     
-    // Simple date formatting - just use the string as is
     const formatDateForInput = (dateString) => {
       if (!dateString) return '';
-      
-      // If it's already in YYYY-MM-DD format, return as is
       if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
         return dateString;
       }
-      
-      // If it's a Date object or other format, convert it
       try {
         const date = new Date(dateString);
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
-        
         return `${year}-${month}-${day}`;
       } catch (error) {
         console.error('Error formatting date:', error);
@@ -354,7 +321,7 @@ const getFilteredAndSortedEmployees = () => {
       last_name: employee.last_name,
       email: employee.email,
       phone: employee.phone || '',
-      department_id: employee.department_id || '',
+      department_ids: employee.department_ids || (employee.department_id ? [employee.department_id] : []),
       position: employee.position || '',
       joining_date: formatDateForInput(employee.joining_date),
       date_of_birth: formatDateForInput(employee.date_of_birth),
@@ -364,25 +331,20 @@ const getFilteredAndSortedEmployees = () => {
       ifsc_code: employee.ifsc_code || '',
       pan_number: employee.pan_number || '',
       aadhar_number: employee.aadhar_number || '',
-      role_id: getRoleIdFromRoleName(employee.role_name) || '3'
+      employee_id: employee.employee_id || '', // Include employee_id in edit form
+      role_id: String(employee.role_id) || getRoleIdFromRoleName(employee.role_name) || ''
     });
     
     setIsViewModalOpen(false);
     setIsEditModalOpen(true);
   };
 
-  // Helper function to get role ID from role name
   const getRoleIdFromRoleName = (roleName) => {
-    switch(roleName?.toLowerCase()) {
-      case 'admin': return '1';
-      case 'hr': return '2';
-      case 'employee': return '3';
-      case 'student': return '4';
-      default: return '3';
-    }
+    const role = roleOptions.find(r => r.name.toLowerCase() === roleName?.toLowerCase() ||
+      (roleName?.toLowerCase() === 'hr' && r.name.toLowerCase() === 'sub admin'));
+    return role?.id || roleOptions.find(r => r.name === 'Employee')?.id || '';
   };
 
-  // Helper function to get role name from role ID
   const getRoleNameFromId = (roleId) => {
     const role = roleOptions.find(r => r.id === roleId);
     return role ? role.name : 'Employee';
@@ -404,7 +366,7 @@ const getFilteredAndSortedEmployees = () => {
         last_name: editFormData.last_name,
         email: editFormData.email,
         phone: editFormData.phone || null,
-        department_id: editFormData.department_id || null,
+        department_ids: editFormData.department_ids || [], // Send array of department IDs
         position: editFormData.position || null,
         joining_date: editFormData.joining_date || null,
         date_of_birth: editFormData.date_of_birth || null,
@@ -414,21 +376,19 @@ const getFilteredAndSortedEmployees = () => {
         ifsc_code: editFormData.ifsc_code || null,
         pan_number: editFormData.pan_number || null,
         aadhar_number: editFormData.aadhar_number || null,
-        role_id: editFormData.role_id || '3'
+        employee_id: editFormData.employee_id || null, // Include employee_id in update
+        role_id: editFormData.role_id || roleOptions.find(r => r.name === 'Employee')?.id || ''
       };
 
       await employeeAPI.update(selectedEmployee.employee_id, employeeData);
 
       setIsEditModalOpen(false);
       setSelectedEmployee(null);
-      
-      // Reload employees to show updated data
       await loadEmployees();
-      
-      alert('User updated successfully!');
+      alert('Employee updated successfully!');
     } catch (error) {
-      console.error('Error updating user:', error);
-      const errorMessage = error.response?.data?.message || 'Error updating user. Please try again.';
+      console.error('Error updating employee:', error);
+      const errorMessage = error.response?.data?.message || 'Error updating employee. Please try again.';
       alert(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -436,83 +396,32 @@ const getFilteredAndSortedEmployees = () => {
   };
 
   const handleDeleteEmployee = async (employee) => {
-      // Prevent deleting admin users
-      if (employee.email === 'admin@arhamitsolutions.com') {
-          alert('Cannot delete the system administrator.');
-          return;
-      }
-
-      if (window.confirm(`Are you sure you want to PERMANENTLY DELETE ${employee.first_name} ${employee.last_name}? This action cannot be undone and all user data will be lost.`)) {
-          try {
-              setIsSubmitting(true);
-              
-              // Use the delete endpoint to permanently remove from database
-              await employeeAPI.delete(employee.employee_id);
-              
-              // Remove from local state
-              setEmployees(prev => prev.filter(emp => emp.employee_id !== employee.employee_id));
-              setIsViewModalOpen(false);
-              alert('User permanently deleted from database!');
-          } catch (error) {
-              console.error('Error deleting user:', error);
-              
-              if (error.response?.status === 404) {
-                  alert('User not found in database.');
-              } else if (error.response?.status === 400) {
-                  alert(error.response.data.message);
-              } else {
-                  const errorMessage = error.response?.data?.message || 'Error deleting user. Please try again.';
-                  alert(errorMessage);
-              }
-          } finally {
-              setIsSubmitting(false);
-          }
-      }
-  };
-
-  const openResetPasswordModal = (employee) => {
-    setSelectedEmployee(employee);
-    setResetPasswordValue('');
-    setResetPasswordConfirmValue('');
-    setShowResetPassword(false);
-    setIsResetPasswordModalOpen(true);
-  };
-
-  const closeResetPasswordModal = () => {
-    if (isSubmitting) return;
-    setIsResetPasswordModalOpen(false);
-    setResetPasswordValue('');
-    setResetPasswordConfirmValue('');
-    setShowResetPassword(false);
-  };
-
-  const submitResetPassword = async (e) => {
-    e.preventDefault();
-    if (!selectedEmployee) return;
-
-    const newPassword = resetPasswordValue;
-    if (!newPassword || newPassword.length < 6) {
-      alert('Password must be at least 6 characters.');
-      return;
-    }
-    if (newPassword !== resetPasswordConfirmValue) {
-      alert('Passwords do not match.');
+    if (employee.email === 'admin@arhamitsolutions.com') {
+      alert('Cannot delete the system administrator.');
       return;
     }
 
-    try {
-      setIsSubmitting(true);
-      await employeeAPI.resetPassword(
-        selectedEmployee.employee_id || selectedEmployee.id || selectedEmployee.user_id,
-        { new_password: newPassword }
-      );
-      alert('Password reset successfully!');
-      closeResetPasswordModal();
-    } catch (error) {
-      console.error('Error resetting password:', error);
-      alert(error.response?.data?.message || 'Failed to reset password');
-    } finally {
-      setIsSubmitting(false);
+    if (window.confirm(`Are you sure you want to PERMANENTLY DELETE ${employee.first_name} ${employee.last_name}? This action cannot be undone and all user data will be lost.`)) {
+      try {
+        setIsSubmitting(true);
+        await employeeAPI.delete(employee.employee_id);
+        setEmployees(prev => prev.filter(emp => emp.employee_id !== employee.employee_id));
+        setIsViewModalOpen(false);
+        alert('Employee permanently deleted from database!');
+      } catch (error) {
+        console.error('Error deleting employee:', error);
+        
+        if (error.response?.status === 404) {
+          alert('Employee not found in database.');
+        } else if (error.response?.status === 400) {
+          alert(error.response.data.message);
+        } else {
+          const errorMessage = error.response?.data?.message || 'Error deleting employee. Please try again.';
+          alert(errorMessage);
+        }
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -526,21 +435,18 @@ const getFilteredAndSortedEmployees = () => {
 
   const handleExport = () => {
     try {
-      // If no data to export
-         if (employees.length === 0) {
+      if (employees.length === 0) {
         alert('No data to export!');
         return;
       }
 
-      // Prepare data for export
-     const exportData = employees.map(employee => ({
-
+      const exportData = employees.map(employee => ({
         'User ID': employee.employee_id || `UID-${employee.user_id}`,
         'First Name': employee.first_name,
         'Last Name': employee.last_name,
         'Email': employee.email,
         'Phone': employee.phone || '-',
-        'Department': employee.department_name || '-',
+        'Departments': employee.department_names?.join(', ') || employee.department_name || '-',
         'Position': employee.position || '-',
         'Role': employee.role_name || 'Employee',
         'Status': employee.is_active ? 'ACTIVE' : 'INACTIVE',
@@ -554,45 +460,24 @@ const getFilteredAndSortedEmployees = () => {
         'Aadhar Number': employee.aadhar_number || '-'
       }));
 
-      // Create worksheet
       const worksheet = XLSX.utils.json_to_sheet(exportData);
       
-      // Set column widths
       const wscols = [
-        { wch: 12 },  // User ID
-        { wch: 15 },  // First Name
-        { wch: 15 },  // Last Name
-        { wch: 25 },  // Email
-        { wch: 15 },  // Phone
-        { wch: 20 },  // Department
-        { wch: 20 },  // Position
-        { wch: 12 },  // Role
-        { wch: 10 },  // Status
-        { wch: 12 },  // Join Date
-        { wch: 12 },  // Date of Birth
-        { wch: 30 },  // Address
-        { wch: 20 },  // Emergency Contact
-        { wch: 20 },  // Bank Account
-        { wch: 15 },  // IFSC Code
-        { wch: 15 },  // PAN Number
-        { wch: 15 }   // Aadhar Number
+        { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 25 },
+        { wch: 15 }, { wch: 30 }, { wch: 20 }, { wch: 12 },
+        { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 30 },
+        { wch: 20 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 15 }
       ];
       worksheet['!cols'] = wscols;
 
-      // Create workbook
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Users Data');
-
-      // Generate file name with current date
-      const fileName = `Users_Export_${new Date().toISOString().split('T')[0]}.xlsx`;
-
-      // Export to Excel
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Employees Data');
+      const fileName = `Employees_Export_${new Date().toISOString().split('T')[0]}.xlsx`;
       XLSX.writeFile(workbook, fileName);
       
-      // console.log('✅ Export successful:', fileName);
-      alert(`Exported ${employees.length} users successfully!`);
+      alert(`Exported ${employees.length} employees successfully!`);
     } catch (error) {
-      // console.error('❌ Error exporting data:', error);
+      console.error('Error exporting data:', error);
       alert('Error exporting data. Please try again.');
     }
   };
@@ -628,6 +513,17 @@ const getFilteredAndSortedEmployees = () => {
     return new Date(dateString).toLocaleDateString('en-IN');
   };
 
+  // Get department names for display
+  const getDepartmentNames = (employee) => {
+    if (employee.department_names && employee.department_names.length > 0) {
+      return employee.department_names.join(', ');
+    }
+    if (employee.department_name) {
+      return employee.department_name;
+    }
+    return '-';
+  };
+
   // Group positions by category
   const groupedPositions = suggestedPositions.reduce((groups, position) => {
     const category = position.category || 'Other';
@@ -638,13 +534,11 @@ const getFilteredAndSortedEmployees = () => {
     return groups;
   }, {});
 
-
-
   if (loading) {
     return (
       <div className="employee-section">
         <div className="loading-container">
-          <div>Loading users...</div>
+          <div>Loading employees...</div>
         </div>
       </div>
     );
@@ -695,25 +589,15 @@ const getFilteredAndSortedEmployees = () => {
               ))}
             </select>
             
-           <select 
-  className="filter-btn"
-  value={filters.is_active}
-  onChange={(e) => handleFilterChange('is_active', e.target.value)}
->
-  <option value="">All Status</option>
-  <option value="true">Active</option>
-  <option value="false">Inactive</option>
-</select>
-            
-            <div className="employee-search-container">
-              <input
-                type="text"
-                placeholder="Search name, email, ID..."
-                value={searchTerm}
-                onChange={handleSearchChange}
-                className="employee-search-input"
-              />
-            </div>
+            <select 
+              className="filter-btn"
+              value={filters.is_active}
+              onChange={(e) => handleFilterChange('is_active', e.target.value)}
+            >
+              <option value="">All Status</option>
+              <option value="true">Active</option>
+              <option value="false">Inactive</option>
+            </select>
             
             <button className="export-btn" onClick={handleExport} disabled={employees.length === 0}>Export</button>
           </div>
@@ -723,30 +607,19 @@ const getFilteredAndSortedEmployees = () => {
           <table className="employee-table">
             <thead>
               <tr>
-                <th className="sortable-header" onClick={() => handleSort('employee_id')}>
-                  User ID {sortConfig.key === 'employee_id' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                </th>
-                <th className="sortable-header" onClick={() => handleSort('first_name')}>
-                  User {sortConfig.key === 'first_name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                </th>
+                <th>Employee ID</th>
+                <th>Employee</th>
                 <th>Contact</th>
-                <th className="sortable-header" onClick={() => handleSort('department_name')}>
-                  Department {sortConfig.key === 'department_name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                </th>
-                <th className="sortable-header" onClick={() => handleSort('position')}>
-                  Position {sortConfig.key === 'position' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                </th>
+                <th>Departments</th>
+                <th>Position</th>
                 <th>Role</th>
                 <th>Status</th>
-                <th className="sortable-header" onClick={() => handleSort('joining_date')}>
-                  Join Date {sortConfig.key === 'joining_date' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                </th>
+                <th>Join Date</th>
               </tr>
             </thead>
             <tbody>
-               {getFilteredAndSortedEmployees().map(employee => (
+              {employees.map(employee => (
                 <tr key={employee.employee_id}>
-
                   <td>
                     <div className="employee-id-cell">
                       {employee.employee_id || `UID-${employee.user_id}`}
@@ -772,7 +645,7 @@ const getFilteredAndSortedEmployees = () => {
                   </td>
                   <td>
                     <div className="department-cell">
-                      {employee.department_name || '-'}
+                      {getDepartmentNames(employee)}
                     </div>
                   </td>
                   <td>
@@ -800,7 +673,7 @@ const getFilteredAndSortedEmployees = () => {
         {employees.length === 0 && (
           <div className="no-employees">
             <div className="no-data-icon">👥</div>
-            <p>No users found</p>
+            <p>No employees found</p>
             <p className="no-data-subtext">
               {filters.department_id || filters.role_id || filters.is_active !== 'true' 
                 ? 'Try changing your filters to see more results.'
@@ -811,7 +684,7 @@ const getFilteredAndSortedEmployees = () => {
                 onClick={() => setIsModalOpen(true)}
                 className="add-first-btn"
               >
-                Add First User
+                Add First Employee
               </button>
             )}
           </div>
@@ -823,7 +696,7 @@ const getFilteredAndSortedEmployees = () => {
         <div className="modal-overlay">
           <div className="modal-content1 large-modal">
             <div className="modal-header">
-              <h2>Add New User</h2>
+              <h2>Add New Employee</h2>
               <button 
                 className="close-btn"
                 onClick={() => setIsModalOpen(false)}
@@ -835,7 +708,7 @@ const getFilteredAndSortedEmployees = () => {
             <form onSubmit={handleSubmit} className="employee-form">
               {/* User ID Field */}
               <div className="form-section">
-                <h3 className="section-title">User Identification</h3>
+                <h3 className="section-title">Employee Identification</h3>
                 <div className="form-row-four">
                   <div className="form-group">
                     <label>Employee ID (Optional)</label>
@@ -917,24 +790,27 @@ const getFilteredAndSortedEmployees = () => {
               </div>
 
               {/* Employment Details - Only show for employees/admins */}
-              {(formData.role_id === '1' || formData.role_id === '2' || formData.role_id === '3') && (
+              {isNonStudentRole(formData.role_id) && (
                 <div className="form-section">
                   <h3 className="section-title">Employment Details</h3>
                   <div className="form-row-four">
                     <div className="form-group">
-                      <label>Department</label>
+                      <label>Departments (Multiple selection allowed)</label>
                       <select
-                        name="department_id"
-                        value={formData.department_id}
-                        onChange={handleInputChange}
+                        name="department_ids"
+                        multiple
+                        value={formData.department_ids}
+                        onChange={handleDepartmentChange}
+                        className="multi-select"
+                        size="4"
                       >
-                        <option value="">Select Department</option>
                         {departments.map(dept => (
                           <option key={dept.id} value={dept.id}>
                             {dept.name}
                           </option>
                         ))}
                       </select>
+                      <small className="form-help">Hold Ctrl (Windows) or Cmd (Mac) to select multiple departments</small>
                     </div>
                     <div className="form-group">
                       <label>Position</label>
@@ -1017,7 +893,7 @@ const getFilteredAndSortedEmployees = () => {
               </div>
 
               {/* Bank Details - Only show for employees/admins */}
-              {(formData.role_id === '1' || formData.role_id === '2' || formData.role_id === '3') && (
+              {isNonStudentRole(formData.role_id) && (
                 <div className="form-section">
                   <h3 className="section-title">Bank Details</h3>
                   <div className="form-row-four">
@@ -1079,7 +955,7 @@ const getFilteredAndSortedEmployees = () => {
                   className="submit-btn"
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? 'Creating...' : 'Create User'}
+                  {isSubmitting ? 'Creating...' : 'Create Employee'}
                 </button>
               </div>
             </form>
@@ -1092,7 +968,7 @@ const getFilteredAndSortedEmployees = () => {
         <div className="modal-overlay">
           <div className="modal-content1 large-modal">
             <div className="modal-header">
-              <h2>User Details</h2>
+              <h2>Employee Details</h2>
               <button 
                 className="close-btn"
                 onClick={() => setIsViewModalOpen(false)}
@@ -1107,7 +983,7 @@ const getFilteredAndSortedEmployees = () => {
                 <h3 className="section-title">Basic Information</h3>
                 <div className="details-grid">
                   <div className="detail-item">
-                    <label>User ID</label>
+                    <label>Employee ID</label>
                     <span>{selectedEmployee.employee_id || `UID-${selectedEmployee.user_id}`}</span>
                   </div>
                   <div className="detail-item">
@@ -1139,19 +1015,6 @@ const getFilteredAndSortedEmployees = () => {
                     <span>{selectedEmployee.emergency_contact || '-'}</span>
                   </div>
                 </div>
-
-                {/* Reset Password Action */}
-                <div className="reset-pass-section">
-                  <label className="admin-action-label">Administrative Actions</label>
-                  <button
-                    type="button"
-                    onClick={() => openResetPasswordModal(selectedEmployee)}
-                    className="minimal-reset-btn"
-                    disabled={isSubmitting}
-                  >
-                    <span role="img" aria-label="reset">🔄</span> Reset Employee Password
-                  </button>
-                </div>
               </div>
 
               {/* Employment Details - Only show for employees/admins */}
@@ -1160,8 +1023,8 @@ const getFilteredAndSortedEmployees = () => {
                   <h3 className="section-title">Employment Details</h3>
                   <div className="details-grid">
                     <div className="detail-item">
-                      <label>Department</label>
-                      <span>{selectedEmployee.department_name || '-'}</span>
+                      <label>Departments</label>
+                      <span>{getDepartmentNames(selectedEmployee)}</span>
                     </div>
                     <div className="detail-item">
                       <label>Position</label>
@@ -1210,7 +1073,7 @@ const getFilteredAndSortedEmployees = () => {
                   onClick={() => handleEditEmployee(selectedEmployee)}
                   className="edit-btn"
                 >
-                  Edit User
+                  Edit Employee
                 </button>
                 {selectedEmployee.email !== 'admin@arhamitsolutions.com' && (
                   <button
@@ -1235,101 +1098,12 @@ const getFilteredAndSortedEmployees = () => {
         </div>
       )}
 
-      {/* Reset Password Modal */}
-      {isResetPasswordModalOpen && selectedEmployee && (
-        <div className="modal-overlay">
-          <div className="modal-content1 password-modal">
-            <div className="modal-header">
-              <h2>Reset Account Password</h2>
-              <button
-                className="close-btn"
-                onClick={closeResetPasswordModal}
-                disabled={isSubmitting}
-              >
-                ×
-              </button>
-            </div>
-
-            <form onSubmit={submitResetPassword} className="employee-form password-modal-content">
-              <div className="reset-summary-card">
-                <div className="reset-summary-item">
-                  <span className="reset-summary-label">Employee</span>
-                  <span className="reset-summary-value">{selectedEmployee.first_name} {selectedEmployee.last_name}</span>
-                </div>
-                <div className="reset-summary-item">
-                  <span className="reset-summary-label">ID</span>
-                  <span className="reset-summary-value">{selectedEmployee.employee_id || `UID-${selectedEmployee.user_id}`}</span>
-                </div>
-              </div>
-
-              <div className="form-section">
-                <div className="form-group">
-                  <label>New Secure Password *</label>
-                  <div className="password-input-group">
-                    <input
-                      type={showResetPassword ? 'text' : 'password'}
-                      value={resetPasswordValue}
-                      onChange={(e) => setResetPasswordValue(e.target.value)}
-                      placeholder="Minimum 6 characters"
-                      required
-                      autoComplete="new-password"
-                    />
-                    <button
-                      type="button"
-                      className="password-toggle-icon"
-                      onClick={() => setShowResetPassword(v => !v)}
-                    >
-                      {showResetPassword ? 'Hide' : 'Show'}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label>Confirm New Password *</label>
-                  <input
-                    type={showResetPassword ? 'text' : 'password'}
-                    value={resetPasswordConfirmValue}
-                    onChange={(e) => setResetPasswordConfirmValue(e.target.value)}
-                    placeholder="Re-enter for confirmation"
-                    required
-                    autoComplete="new-password"
-                  />
-                </div>
-                
-                <span className="reset-help-text">
-                  <strong>Warning:</strong> This will immediately replace the employee’s current password. They will be required to use the new credentials for their next login.
-                </span>
-              </div>
-
-              <div className="form-actions">
-                <button
-                  type="button"
-                  onClick={closeResetPasswordModal}
-                  className="cancel-btn"
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="submit-btn"
-                  disabled={isSubmitting}
-                  style={{ backgroundColor: '#d97706', color: 'white' }}
-                >
-                  {isSubmitting ? 'Processing...' : 'Confirm Reset'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* Edit User Modal */}
       {isEditModalOpen && selectedEmployee && (
         <div className="modal-overlay">
           <div className="modal-content1 large-modal">
             <div className="modal-header">
-              <h2>Edit User</h2>
+              <h2>Edit Employee</h2>
               <button 
                 className="close-btn"
                 onClick={() => setIsEditModalOpen(false)}
@@ -1343,6 +1117,16 @@ const getFilteredAndSortedEmployees = () => {
               <div className="form-section">
                 <h3 className="section-title">Basic Information</h3>
                 <div className="form-row-four">
+                  <div className="form-group">
+                    <label>Employee ID</label>
+                    <input
+                      type="text"
+                      name="employee_id"
+                      value={editFormData.employee_id}
+                      onChange={handleEditInputChange}
+                      placeholder="Employee ID"
+                    />
+                  </div>
                   <div className="form-group">
                     <label>First Name *</label>
                     <input
@@ -1390,24 +1174,27 @@ const getFilteredAndSortedEmployees = () => {
               </div>
 
               {/* Employment Details - Only show for employees/admins */}
-              {(editFormData.role_id === '1' || editFormData.role_id === '2' || editFormData.role_id === '3') && (
+              {isNonStudentRole(editFormData.role_id) && (
                 <div className="form-section">
                   <h3 className="section-title">Employment Details</h3>
                   <div className="form-row-four">
                     <div className="form-group">
-                      <label>Department</label>
+                      <label>Departments (Multiple selection allowed)</label>
                       <select
-                        name="department_id"
-                        value={editFormData.department_id}
-                        onChange={handleEditInputChange}
+                        name="department_ids"
+                        multiple
+                        value={editFormData.department_ids}
+                        onChange={handleEditDepartmentChange}
+                        className="multi-select"
+                        size="4"
                       >
-                        <option value="">Select Department</option>
                         {departments.map(dept => (
                           <option key={dept.id} value={dept.id}>
                             {dept.name}
                           </option>
                         ))}
                       </select>
+                      <small className="form-help">Hold Ctrl (Windows) or Cmd (Mac) to select multiple departments</small>
                     </div>
                     <div className="form-group">
                       <label>Position</label>
@@ -1484,7 +1271,7 @@ const getFilteredAndSortedEmployees = () => {
               </div>
 
               {/* Bank Details - Only show for employees/admins */}
-              {(editFormData.role_id === '1' || editFormData.role_id === '2' || editFormData.role_id === '3') && (
+              {isNonStudentRole(editFormData.role_id) && (
                 <div className="form-section">
                   <h3 className="section-title">Bank Details</h3>
                   <div className="form-row-four">
@@ -1546,7 +1333,7 @@ const getFilteredAndSortedEmployees = () => {
                   className="submit-btn"
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? 'Updating...' : 'Update User'}
+                  {isSubmitting ? 'Updating...' : 'Update Employee'}
                 </button>
               </div>
             </form>

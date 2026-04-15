@@ -67,14 +67,14 @@ const QuotationManagement = () => {
   const loadServiceSettings = async () => {
     try {
       setSettingsLoading(true);
-      // console.log('🔍 Loading service settings...');
+     
       const response = await serviceSettingAPI.getQuotationSettings();
-      // console.log('📊 Service settings response:', response.data);
+     
       
       if (response.data.success && response.data.settings) {
-        // console.log('✅ Service settings loaded:', response.data.settings);
+      
         
-        // Extract the actual data from backend response
+     
         const bankData = response.data.settings.bankDetails || response.data.settings.bank;
         const gstData = response.data.settings.gstDetails || response.data.settings.gst;
         
@@ -82,8 +82,7 @@ const QuotationManagement = () => {
         const hasValidBankData = bankData && bankData.account_holder && bankData.account_number;
         const hasValidGstData = gstData && gstData.gstin && gstData.pan_number;
         
-        // console.log('Bank data valid:', hasValidBankData, bankData);
-        // console.log('GST data valid:', hasValidGstData, gstData);
+     
         
         // Set the state with the correct structure
         setServiceSettings({
@@ -92,7 +91,7 @@ const QuotationManagement = () => {
         });
         
       } else {
-        // console.log('❌ No settings found or success false');
+   
         setServiceSettings({
           bank: null,
           gst: null

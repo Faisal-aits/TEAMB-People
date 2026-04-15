@@ -22,17 +22,14 @@ const LeaveManagement = () => {
     try {
       const userData = localStorage.getItem('user');
       if (!userData) {
-        // console.log('No user data found in localStorage');
+      
         return;
       }
 
       const user = JSON.parse(userData);
-      // console.log('User from localStorage:', user);
-
-      // The backend will handle the user_id → employee_id conversion
-      // So we don't need to pre-fetch employee_id on frontend
+    
       if (user.id) {
-        // console.log('User has ID:', user.id);
+   
         setCurrentUser({
           ...user,
           display_name: `${user.first_name} ${user.last_name}`
@@ -47,7 +44,7 @@ const LeaveManagement = () => {
     try {
       setLoading(true);
       const response = await leaveAPI.getMyLeaves();
-      // console.log('My leaves response:', response.data);
+    
       setLeaves(response.data.leaves || []);
       
       // Add this to get employee_id:
@@ -58,7 +55,7 @@ const LeaveManagement = () => {
         }));
       }
     } catch (error) {
-      // console.error('Error loading my leaves:', error);
+      console.error('Error loading my leaves:', error);
       alert('Error loading your leave data. Please try again.');
     } finally {
       setLoading(false);
@@ -110,10 +107,9 @@ const LeaveManagement = () => {
 
       // Export to Excel
       XLSX.writeFile(workbook, fileName);
-      
-      // console.log('✅ Export successful:', fileName);
+   
     } catch (error) {
-      // console.error('❌ Error exporting data:', error);
+      console.error('❌ Error exporting data:', error);
       alert('Error exporting data. Please try again.');
     }
   };
@@ -158,11 +154,10 @@ const LeaveManagement = () => {
         end_date: formData.end_date
       };
 
-      // console.log('🔄 Submitting leave request for user:', currentUser.id);
-      // console.log('Leave data:', leaveData);
+    
       
       const response = await leaveAPI.create(leaveData);
-      // console.log('✅ Leave submission response:', response.data);
+     
       
       // Reset form
       setFormData({

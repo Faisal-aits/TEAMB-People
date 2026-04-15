@@ -428,8 +428,7 @@ const ProjectManagement = () => {
 
       // Export to Excel
       XLSX.writeFile(workbook, fileName);
-      
-      // console.log('✅ Export successful:', fileName);
+     
       alert(`Exported ${filteredProjects.length} projects successfully!`);
     } catch (error) {
       console.error('❌ Error exporting data:', error);

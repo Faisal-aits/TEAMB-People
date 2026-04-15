@@ -61,7 +61,9 @@ router.post('/my/mark', attendanceController.markMyAttendance);
 // ==================== NEW FACE RECOGNITION ROUTE ====================
 
 // POST /api/attendance/identify-and-mark - Face detection and automatic attendance
+router.post('/verify-my-face', upload.single('faceImage'), attendanceController.verifyMyFaceAndMarkAttendance);
 router.post('/identify-and-mark', upload.single('faceImage'), attendanceController.identifyAndMarkAttendance);
+
 
 // In your attendanceRoutes.js file, add this route
 router.get('/percentage/:employeeId', attendanceController.getEmployeeAttendancePercentage);

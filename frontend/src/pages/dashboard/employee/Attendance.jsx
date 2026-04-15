@@ -18,35 +18,40 @@ const AttendanceTable = () => {
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [cameraStream, setCameraStream] = useState(null);
   const [faceRecognitionLoading, setFaceRecognitionLoading] = useState(false);
-  const [faceVerificationStep, setFaceVerificationStep] = useState('ready'); // 'ready', 'camera', 'pin-required'
+  const [faceVerificationStep, setFaceVerificationStep] = useState('ready');
   const [pin, setPin] = useState('');
   const [verificationResult, setVerificationResult] = useState(null);
   
+  // Upload states
+  const [uploadedImage, setUploadedImage] = useState(null);
+  const [uploadImagePreview, setUploadImagePreview] = useState(null);
+  const [isUploadMode, setIsUploadMode] = useState(false);
+  
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   // Fetch attendance history from backend
   const fetchAttendanceHistory = async () => {
     try {
       setLoading(true);
-      // console.log('🔄 Fetching attendance history from backend...');
+    
       
       const response = await attendanceAPI.getMyHistory();
-      // console.log('📊 Backend Response:', response.data);
+  
       
       if (response.data.success) {
-        // Transform backend data to match frontend structure
         const transformedData = response.data.history.map(record => ({
           id: record.history_id,
           date: record.date,
           checkIn: record.check_in_time || '--',
           checkOut: record.check_out_time || '--',
-          status: record.status,
+          status: record.status === 'Half Day' ? 'Delayed' : record.status, // Convert Half Day to Delayed
           employee: record.employee_name || 'Current User',
           remarks: record.remarks || ''
         }));
         
-        // console.log('🔄 Transformed Data:', transformedData);
+    
         setAttendance(transformedData);
       } else {
         setError(response.data.message || 'Failed to fetch attendance data');
@@ -63,7 +68,7 @@ const AttendanceTable = () => {
   const fetchTodayAttendance = async () => {
     try {
       const response = await attendanceAPI.getMyTodayAttendance();
-      // console.log('📅 Today Attendance:', response.data);
+   
     } catch (err) {
       console.error('Error fetching today attendance:', err);
     }
@@ -74,11 +79,123 @@ const AttendanceTable = () => {
     fetchTodayAttendance();
   }, []);
 
+  // Handle image selection for upload
+  const handleImageSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file (JPEG, PNG, etc.)');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size too large. Please select an image less than 5MB.');
+      return;
+    }
+
+    setUploadedImage(file);
+    
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setUploadImagePreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Upload and verify face from image
+  const handleUploadAndVerify = async () => {
+    if (!uploadedImage) {
+      alert('Please select an image first');
+      return;
+    }
+
+    setFaceRecognitionLoading(true);
+    setVerificationResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('faceImage', uploadedImage, 'uploaded-face.jpg');
+
+      const response = await attendanceAPI.verifyMyFaceAndMarkAttendance(formData);
+      
+      if (response.data.success) {
+        setVerificationResult({
+          success: true,
+          message: `✅ Attendance marked successfully!`,
+          details: {
+            status: response.data.attendance.status,
+            checkIn: response.data.attendance.check_in_time,
+            shift: response.data.attendance.shift_name || response.data.attendance.shift,
+            confidence: response.data.confidence
+          }
+        });
+        
+        await fetchAttendanceHistory();
+        
+        setTimeout(() => {
+          stopCamera();
+          alert('Attendance marked successfully!');
+        }, 3000);
+        
+      } else if (response.data.requiresPIN) {
+        setFaceVerificationStep('pin-required');
+        setVerificationResult({
+          success: false,
+          message: '🔒 Additional verification required',
+          confidence: response.data.confidence
+        });
+      } else {
+        setVerificationResult({
+          success: false,
+          message: response.data.message || 'Face verification failed'
+        });
+        
+        setTimeout(() => {
+          setVerificationResult(null);
+        }, 3000);
+      }
+    } catch (err) {
+      console.error('Upload verification error:', err);
+      setVerificationResult({
+        success: false,
+        message: err.response?.data?.message || 'Error during face verification'
+      });
+    } finally {
+      setFaceRecognitionLoading(false);
+    }
+  };
+
+  // Clear uploaded image
+  const clearUploadedImage = () => {
+    setUploadedImage(null);
+    setUploadImagePreview(null);
+    setIsUploadMode(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    if (!cameraStream && isCameraOpen) {
+      startCamera();
+    }
+  };
+
+  // Switch to upload mode
+  const switchToUploadMode = () => {
+    setIsUploadMode(true);
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+  };
+
   // Camera functions
   const startCamera = async () => {
     try {
       setIsCameraOpen(true);
       setFaceVerificationStep('camera');
+      setIsUploadMode(false);
+      clearUploadedImage();
+      
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
           width: 640, 
@@ -108,6 +225,9 @@ const AttendanceTable = () => {
     setFaceVerificationStep('ready');
     setPin('');
     setVerificationResult(null);
+    setUploadedImage(null);
+    setUploadImagePreview(null);
+    setIsUploadMode(false);
   };
 
   const captureAndVerify = async () => {
@@ -120,14 +240,10 @@ const AttendanceTable = () => {
       const canvas = canvasRef.current;
       const context = canvas.getContext('2d');
       
-      // Set canvas dimensions to match video
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-      
-      // Draw current video frame to canvas
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
       
-      // Convert to blob
       const blob = await new Promise((resolve) => {
         canvas.toBlob(resolve, 'image/jpeg', 0.8);
       });
@@ -136,59 +252,49 @@ const AttendanceTable = () => {
         throw new Error('Failed to capture image');
       }
 
-      // console.log('📤 Sending face image for verification...');
-
       const formData = new FormData();
       formData.append('faceImage', blob, 'face-capture.jpg');
 
-      // ✅ UPDATED: Use optimized endpoint that only checks logged-in user
       const response = await attendanceAPI.verifyMyFaceAndMarkAttendance(formData);
       
       if (response.data.success) {
-        // Success - show confirmation
-      setVerificationResult({
-  success: true,
-  message: `✅ Attendance marked successfully!`,
-  details: {
-    status: response.data.attendance.status,
-    checkIn: response.data.attendance.check_in_time,
-    shift: response.data.attendance.shift_name || response.data.attendance.shift,
-    confidence: response.data.confidence
-  }
-});
+        setVerificationResult({
+          success: true,
+          message: `✅ Attendance marked successfully!`,
+          details: {
+            status: response.data.attendance.status,
+            checkIn: response.data.attendance.check_in_time,
+            shift: response.data.attendance.shift_name || response.data.attendance.shift,
+            confidence: response.data.confidence
+          }
+        });
         
-        // Refresh attendance data
         await fetchAttendanceHistory();
         
-        // Auto-close after 3 seconds
         setTimeout(() => {
           stopCamera();
           alert('Attendance marked successfully!');
         }, 3000);
         
       } else if (response.data.requiresPIN) {
-        // PIN verification required
         setFaceVerificationStep('pin-required');
         setVerificationResult({
           success: false,
           message: '🔒 Additional verification required',
           confidence: response.data.confidence
         });
-        
       } else {
-        // Failed verification
         setVerificationResult({
           success: false,
           message: response.data.message || 'Face verification failed'
         });
         
-        // Auto-clear error after 3 seconds
         setTimeout(() => {
           setVerificationResult(null);
         }, 3000);
       }
     } catch (err) {
-      console.error('❌ Face verification error:', err);
+      console.error('Face verification error:', err);
       setVerificationResult({
         success: false,
         message: err.response?.data?.message || 'Error during face verification'
@@ -207,11 +313,6 @@ const AttendanceTable = () => {
     try {
       setFaceRecognitionLoading(true);
       
-      // In a real implementation, you'd send PIN to backend
-      // For now, we'll simulate success
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mark attendance with PIN verification
       const attendanceData = {
         type: 'check_in',
         date: new Date().toISOString().split('T')[0],
@@ -250,15 +351,8 @@ const AttendanceTable = () => {
   };
 
   const handleFaceRecognitionAttendance = async () => {
-    // First check if user has face enrolled
-    try {
-      // You could add a pre-check here
-      // console.log('👤 Starting face verification for logged-in user...');
-      startCamera();
-    } catch (error) {
-      // console.error('Face recognition setup error:', error);
-      alert('Unable to start face recognition. Please try manual check-in.');
-    }
+ 
+    startCamera();
   };
 
   const handleInputChange = (e) => {
@@ -269,7 +363,7 @@ const AttendanceTable = () => {
     }));
   };
 
-const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!formData.date) {
@@ -278,7 +372,6 @@ const handleSubmit = async (e) => {
     }
 
     try {
-      // Determine if this is check-in or check-out
       let type = 'check_in';
       if (formData.checkOut) {
         type = 'check_out';
@@ -291,14 +384,12 @@ const handleSubmit = async (e) => {
         checkOutTime: formData.checkOut
       };
 
-      // console.log('🎯 Marking attendance:', attendanceData);
+  
       
       const response = await attendanceAPI.markMyAttendance(attendanceData);
       
-      // close modal regardless of response structure
       setIsModalOpen(false);
       
-      // Reset form data
       setFormData({
         date: new Date().toISOString().split('T')[0],
         checkIn: '',
@@ -306,7 +397,6 @@ const handleSubmit = async (e) => {
       });
       
       if (response.data && response.data.success) {
-        // Refresh the attendance data
         await fetchAttendanceHistory();
         alert(`${type === 'check_in' ? 'Check-in' : 'Check-out'} successful!`);
       } else {
@@ -314,7 +404,6 @@ const handleSubmit = async (e) => {
       }
     } catch (err) {
       console.error('❌ Error marking attendance:', err);
-      // Still close modal on error
       setIsModalOpen(false);
       setFormData({
         date: new Date().toISOString().split('T')[0],
@@ -324,40 +413,46 @@ const handleSubmit = async (e) => {
       alert(err.response?.data?.message || 'Error marking attendance');
     }
   };
+
+  // Updated status badge - removed Half Day
   const getStatusBadge = (status) => {
+    // Convert any "Half Day" to "Delayed"
+    let displayStatus = status === 'Half Day' ? 'Delayed' : status;
+    
     const statusClasses = {
       'Present': 'status-approved',
       'Delayed': 'status-pending',
       'Late': 'status-pending',
       'Absent': 'status-rejected',
       'On Leave': 'status-rejected',
-      'Half Day': 'status-pending',
       'Pending': 'status-pending',
       'Not Checked In': 'status-pending'
     };
     
     return (
-      <span className={`status-badge ${statusClasses[status] || 'status-pending'}`}>
-        {status}
+      <span className={`status-badge ${statusClasses[displayStatus] || 'status-pending'}`}>
+        {displayStatus}
       </span>
     );
   };
 
   const filteredAttendance = filterStatus === 'All' 
     ? attendance 
-    : attendance.filter(record => record.status === filterStatus);
+    : attendance.filter(record => {
+        let recordStatus = record.status === 'Half Day' ? 'Delayed' : record.status;
+        return recordStatus === filterStatus;
+      });
 
-// to get unique records (keep ones with check-in)
-const uniqueAttendance = Array.from(
-  filteredAttendance.reduce((map, record) => {
-    const dateKey = new Date(record.date).toDateString();
-    // Keep record if it has check-in time and existing doesn't
-    if (!map.has(dateKey) || (record.checkIn && record.checkIn !== '--')) {
-      map.set(dateKey, record);
-    }
-    return map;
-  }, new Map())
-).map(([_, record]) => record);
+  // Get unique records (keep ones with check-in)
+  const uniqueAttendance = Array.from(
+    filteredAttendance.reduce((map, record) => {
+      const dateKey = new Date(record.date).toDateString();
+      if (!map.has(dateKey) || (record.checkIn && record.checkIn !== '--')) {
+        map.set(dateKey, record);
+      }
+      return map;
+    }, new Map())
+  ).map(([_, record]) => record);
 
   // Manual check-in/check-out
   const handleQuickCheckIn = async (type) => {
@@ -367,7 +462,7 @@ const uniqueAttendance = Array.from(
         date: new Date().toISOString().split('T')[0]
       };
 
-      // console.log(`🎯 Quick ${type}:`, attendanceData);
+   
       
       const response = await attendanceAPI.markMyAttendance(attendanceData);
       
@@ -421,70 +516,51 @@ const uniqueAttendance = Array.from(
             Face Verification
           </button>
          
-            <button 
-              className="check-in-btn"
-              onClick={() => handleQuickCheckIn('check_in')}
-            >
-              📍 Quick Check In
-            </button>
-            <button 
-              className="check-out-btn"
-              onClick={() => handleQuickCheckIn('check_out')}
-            >
-              🏠 Quick Check Out
-            </button>
-      
           <button 
-            className="add-attendance-btn"
-            onClick={() => setIsModalOpen(true)}
+            className="check-in-btn"
+            onClick={() => handleQuickCheckIn('check_in')}
           >
-            <span className="btn-icon">+</span>
-            Manual Entry
+            📍 Quick Check In
+          </button>
+          <button 
+            className="check-out-btn"
+            onClick={() => handleQuickCheckIn('check_out')}
+          >
+            🏠 Quick Check Out
           </button>
         </div>
       </div>
 
-     {/* Attendance Statistics - FIXED for unique daily records */}
-<div className="attendance-stats">
-  <div className="stat-card">
-    <h3>Total Records</h3>
-    <p className="stat-number">{uniqueAttendance.length}</p>
-   
-  </div>
-  <div className="stat-card">
-    <h3>Present Days</h3>
-    <p className="stat-number present">
-      {uniqueAttendance.filter(record => 
-        record.status === 'Present' || 
-        record.status === 'Delayed' || 
-        record.status === 'Late'
-      ).length}
-    </p>
-   
-  </div>
-  <div className="stat-card">
-    <h3>Absent Days</h3>
-    <p className="stat-number absent">
-      {uniqueAttendance.filter(record => 
-        record.status === 'Absent' || 
-        record.status === 'On Leave'
-      ).length}
-    </p>
-
-  </div>
-  <div className="stat-card">
-    <h3>Face Verified Today</h3>
-    <p className="stat-number">
-      {uniqueAttendance.filter(record => {
-        const today = new Date().toISOString().split('T')[0];
-        const recordDate = new Date(record.date).toISOString().split('T')[0];
-        return recordDate === today && 
-          record.remarks && record.remarks.includes('Face');
-      }).length}
-    </p>
-
-  </div>
-</div>
+      {/* Attendance Statistics */}
+      <div className="attendance-stats">
+        <div className="stat-card">
+          <h3>Total Records</h3>
+          <p className="stat-number">{attendance.length}</p>
+        </div>
+        <div className="stat-card">
+          <h3>Present</h3>
+          <p className="stat-number present">
+            {attendance.filter(record => record.status === 'Present').length}
+          </p>
+        </div>
+        <div className="stat-card">
+          <h3>Absent</h3>
+          <p className="stat-number absent">
+            {attendance.filter(record => record.status === 'Absent').length}
+          </p>
+        </div>
+        <div className="stat-card">
+          <h3>Face Verified Today</h3>
+          <p className="stat-number">
+            {attendance.filter(record => {
+              const today = new Date().toISOString().split('T')[0];
+              const recordDate = new Date(record.date).toISOString().split('T')[0];
+              return recordDate === today && 
+                record.remarks && record.remarks.includes('Face');
+            }).length}
+          </p>
+        </div>
+      </div>
 
       {/* Face Verification Modal */}
       {isCameraOpen && (
@@ -512,61 +588,135 @@ const uniqueAttendance = Array.from(
                 </div>
                 <div className="result-message">
                   <p>{verificationResult.message}</p>
-                {verificationResult.details && (
-                <div className="result-details">
-                  <p><strong>Status:</strong> {verificationResult.details.status}</p>
-                  <p><strong>Check-in Time:</strong> {verificationResult.details.checkIn}</p>
-                  {verificationResult.details.shift && (
-                    <p><strong>Shift:</strong> {verificationResult.details.shift}</p>
+                  {verificationResult.details && (
+                    <div className="result-details">
+                      <p><strong>Status:</strong> {verificationResult.details.status}</p>
+                      <p><strong>Check-in Time:</strong> {verificationResult.details.checkIn}</p>
+                      {verificationResult.details.shift && (
+                        <p><strong>Shift:</strong> {verificationResult.details.shift}</p>
+                      )}
+                      <p><strong>Confidence:</strong> {verificationResult.details.confidence}</p>
+                    </div>
                   )}
-                  <p><strong>Confidence:</strong> {verificationResult.details.confidence}</p>
-                </div>
-              )}
                 </div>
               </div>
             )}
 
             {faceVerificationStep === 'camera' ? (
               <div className="camera-container">
-                <div className="camera-preview">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="camera-video"
-                  />
-                  <canvas ref={canvasRef} style={{ display: 'none' }} />
-                  <div className="face-guide-frame">
-                    <div className="guide-text">Position your face in the frame</div>
-                  </div>
-                </div>
-                <div className="camera-controls">
-                  <button 
-                    onClick={captureAndVerify}
-                    disabled={faceRecognitionLoading || verificationResult?.success}
-                    className="capture-btn"
-                  >
-                    {faceRecognitionLoading ? (
-                      <>
-                        <div className="button-spinner"></div>
-                        Verifying Face...
-                      </>
+                {!isUploadMode ? (
+                  // Camera Mode
+                  <>
+                    <div className="camera-preview">
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="camera-video"
+                      />
+                      <canvas ref={canvasRef} style={{ display: 'none' }} />
+                      <div className="face-guide-frame">
+                        <div className="guide-text">Position your face in the frame</div>
+                      </div>
+                    </div>
+                    <div className="camera-controls">
+                      <button 
+                        onClick={captureAndVerify}
+                        disabled={faceRecognitionLoading || verificationResult?.success}
+                        className="capture-btn"
+                      >
+                        {faceRecognitionLoading ? (
+                          <>
+                            <div className="button-spinner"></div>
+                            Verifying Face...
+                          </>
+                        ) : (
+                          'Capture & Verify Face'
+                        )}
+                      </button>
+                      
+                      
+                      
+                      <button 
+                        onClick={stopCamera}
+                        className="cancel-btn"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  // Upload Mode
+                  <div className="upload-mode-container">
+                    <div className="upload-mode-header">
+                      <button 
+                        onClick={() => {
+                          setIsUploadMode(false);
+                          startCamera();
+                        }}
+                        className="back-to-camera-btn"
+                      >
+                        ← Back to Camera
+                      </button>
+                    </div>
+                    
+                    {!uploadImagePreview ? (
+                      <div className="upload-area">
+                        <div className="upload-icon">📸</div>
+                        <h3>Upload a clear photo of your face</h3>
+                        <p>Select an image from your device</p>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageSelect}
+                          style={{ display: 'none' }}
+                          id="face-upload-input"
+                        />
+                        <button 
+                          onClick={() => fileInputRef.current?.click()}
+                          className="select-file-btn"
+                        >
+                          Choose Photo
+                        </button>
+                      </div>
                     ) : (
-                      'Capture & Verify Face'
+                      <div className="image-preview-area">
+                        <div className="image-preview-header">
+                          <h4>Photo Preview</h4>
+                          <button 
+                            onClick={clearUploadedImage}
+                            className="change-photo-btn"
+                          >
+                            Change Photo
+                          </button>
+                        </div>
+                        <div className="image-preview">
+                          <img src={uploadImagePreview} alt="Face preview" />
+                        </div>
+                        <div className="upload-instructions">
+                          <p>✅ Make sure your face is clearly visible</p>
+                          <p>✅ Good lighting helps with verification</p>
+                        </div>
+                        <button 
+                          onClick={handleUploadAndVerify}
+                          disabled={faceRecognitionLoading}
+                          className="verify-upload-btn"
+                        >
+                          {faceRecognitionLoading ? 'Verifying...' : 'Verify & Mark Attendance'}
+                        </button>
+                      </div>
                     )}
-                  </button>
-                  <button 
-                    onClick={stopCamera}
-                    className="cancel-btn"
-                  >
-                    Cancel
-                  </button>
-                </div>
+                  </div>
+                )}
+                
                 <div className="camera-instructions">
-                  <p>📸 Ensure good lighting and face the camera directly</p>
-                  <p>✅ Remove sunglasses or hats for better recognition</p>
-                  <p>⚡ This only checks against your enrolled face (fast & secure)</p>
+                  {!isUploadMode ? (
+                    <p>📸 Ensure good lighting and face the camera directly</p>
+                  ) : (
+                    <p>📁 Upload a clear photo of your face for verification</p>
+                  )}
                 </div>
               </div>
             ) : faceVerificationStep === 'pin-required' ? (
@@ -636,14 +786,12 @@ const uniqueAttendance = Array.from(
               <option value="Late">Late</option>
               <option value="Absent">Absent</option>
               <option value="On Leave">On Leave</option>
-              <option value="Half Day">Half Day</option>
               <option value="Face Verified">Face Verified</option>
             </select>
-          
           </div>
         </div>
         
-        {filteredAttendance.length === 0 ? (
+        {uniqueAttendance.length === 0 ? (
           <div className="no-data">
             <p>No attendance records found</p>
             <button onClick={fetchAttendanceHistory} className="retry-btn">
@@ -659,7 +807,6 @@ const uniqueAttendance = Array.from(
                 <th>Check Out</th>
                 <th>Status</th>
                 <th>Method</th>
-
               </tr>
             </thead>
             <tbody>
@@ -705,77 +852,6 @@ const uniqueAttendance = Array.from(
           </table>
         )}
       </div>
-
-      {/* Manual Entry Modal */}
-      {isModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h2>Add Attendance Record</h2>
-              <button 
-                className="close-btn"
-                onClick={() => setIsModalOpen(false)}
-              >
-                ×
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="attendance-form">
-              <div className="form-group">
-                <label>Date *</label>
-                <input
-                  type="date"
-                  name="date"
-                  value={formData.date}
-                  onChange={handleInputChange}
-                  required
-                  max={new Date().toISOString().split('T')[0]}
-                />
-              </div>
-
-              <div className="time-inputs">
-                <div className="form-group">
-                  <label>Check In Time</label>
-                  <input
-                    type="time"
-                    name="checkIn"
-                    value={formData.checkIn}
-                    onChange={handleInputChange}
-                  />
-                  <small className="helper-text">Leave empty if absent</small>
-                </div>
-
-                <div className="form-group">
-                  <label>Check Out Time</label>
-                  <input
-                    type="time"
-                    name="checkOut"
-                    value={formData.checkOut}
-                    onChange={handleInputChange}
-                  />
-                  <small className="helper-text">Leave empty if absent</small>
-                </div>
-              </div>
-
-              <div className="form-actions">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="cancel-btn"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="submit-btn"
-                >
-                  Add Record
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

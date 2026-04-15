@@ -1,7 +1,6 @@
 // src/pages/dashboard/admin/EmployeeManagement.jsx
 import React, { useState, useEffect } from 'react';
 import { employeeAPI } from '../../../services/employeeAPI';
-import { useAuth } from '../../../contexts/AuthContext';
 import './Employee.css';
 import * as XLSX from 'xlsx';
 
@@ -13,9 +12,7 @@ const EmployeeManagement = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
-  const { user } = useAuth();
   const [filters, setFilters] = useState({
     department_id: '',
     is_active: '',
@@ -26,7 +23,7 @@ const EmployeeManagement = () => {
     last_name: '',
     email: '',
     phone: '',
-    department_ids: [],
+    department_ids: [], // Changed to array for multiple departments
     position: '',
     joining_date: '',
     date_of_birth: '',
@@ -63,12 +60,6 @@ const EmployeeManagement = () => {
   const [customPosition, setCustomPosition] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [roleOptions, setRoleOptions] = useState([]);
-  const [resetPasswordValue, setResetPasswordValue] = useState('');
-  const [resetPasswordConfirmValue, setResetPasswordConfirmValue] = useState('');
-  const [showResetPassword, setShowResetPassword] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortConfig, setSortConfig] = useState({ key: 'first_name', direction: 'asc' });
-
 
   // Helper: check if selected role is a non-student role
   const isNonStudentRole = (roleId) => {
@@ -87,7 +78,7 @@ const EmployeeManagement = () => {
       ]);
       await loadEmployees();
     };
-
+    
     loadInitialData();
   }, []);
 
@@ -115,13 +106,13 @@ const EmployeeManagement = () => {
 
       const response = await employeeAPI.getAll(apiFilters);
       const employeesData = response.data.employees || [];
-
+      
       // Ensure department_ids is always an array for each employee
       const processedEmployees = employeesData.map(emp => ({
         ...emp,
         department_ids: emp.department_ids || (emp.department_id ? [emp.department_id] : [])
       }));
-
+      
       setEmployees(processedEmployees);
     } catch (error) {
       console.error('Error loading employees:', error);
@@ -209,64 +200,9 @@ const EmployeeManagement = () => {
     }));
   };
 
-  const handleSort = (key) => {
-    let direction = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    }
-    setSortConfig({ key, direction });
-  };
-
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
-  };
-
-  const getFilteredAndSortedEmployees = () => {
-    let result = [...employees];
-
-    // Client-side text search (Case-insensitive)
-    if (searchTerm) {
-      const lowerSearch = searchTerm.toLowerCase();
-      result = result.filter(emp =>
-        emp.first_name?.toLowerCase().includes(lowerSearch) ||
-        emp.last_name?.toLowerCase().includes(lowerSearch) ||
-        emp.email?.toLowerCase().includes(lowerSearch) ||
-        emp.employee_id?.toLowerCase().includes(lowerSearch) ||
-        emp.position?.toLowerCase().includes(lowerSearch)
-      );
-    }
-
-    // Client-side sorting
-    result.sort((a, b) => {
-      let aValue = a[sortConfig.key];
-      let bValue = b[sortConfig.key];
-
-      // Handle nulls
-      if (aValue === null) return 1;
-      if (bValue === null) return -1;
-
-      // Type-specific comparison
-      if (typeof aValue === 'string') {
-        aValue = aValue.toLowerCase();
-        bValue = (bValue || '').toLowerCase();
-      }
-
-      if (aValue < bValue) {
-        return sortConfig.direction === 'asc' ? -1 : 1;
-      }
-      if (aValue > bValue) {
-        return sortConfig.direction === 'asc' ? 1 : -1;
-      }
-      return 0;
-    });
-
-    return result;
-  };
-
-
   const handlePositionChange = (e) => {
     const value = e.target.value;
-
+    
     if (value === 'custom') {
       setShowCustomPosition(true);
       setFormData(prev => ({ ...prev, position: '' }));
@@ -285,7 +221,7 @@ const EmployeeManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+    
     if (!formData.first_name || !formData.last_name || !formData.email) {
       alert('Please fill in all required fields');
       return;
@@ -309,13 +245,12 @@ const EmployeeManagement = () => {
         ifsc_code: formData.ifsc_code || null,
         pan_number: formData.pan_number || null,
         aadhar_number: formData.aadhar_number || null,
-        salary: formData.salary || null,
         employee_id: formData.employee_id || null,
         role_id: formData.role_id || roleOptions.find(r => r.name === 'Employee')?.id || ''
       };
 
       const response = await employeeAPI.create(employeeData);
-
+      
       setFormData({
         first_name: '',
         last_name: '',
@@ -331,21 +266,20 @@ const EmployeeManagement = () => {
         ifsc_code: '',
         pan_number: '',
         aadhar_number: '',
-        salary: '',
         employee_id: '',
         role_id: roleOptions.find(r => r.name === 'Employee')?.id || ''
       });
-
+      
       setShowCustomPosition(false);
       setCustomPosition('');
       setIsModalOpen(false);
-
+      
       setFilters({
         department_id: '',
         is_active: '',
         role_id: ''
       });
-
+      
       await loadEmployees();
       alert('Employee added successfully!');
     } catch (error) {
@@ -364,7 +298,7 @@ const EmployeeManagement = () => {
 
   const handleEditEmployee = (employee) => {
     setSelectedEmployee(employee);
-
+    
     const formatDateForInput = (dateString) => {
       if (!dateString) return '';
       if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
@@ -397,11 +331,10 @@ const EmployeeManagement = () => {
       ifsc_code: employee.ifsc_code || '',
       pan_number: employee.pan_number || '',
       aadhar_number: employee.aadhar_number || '',
-      salary: employee.salary || '',
       employee_id: employee.employee_id || '', // Include employee_id in edit form
       role_id: String(employee.role_id) || getRoleIdFromRoleName(employee.role_name) || ''
     });
-
+    
     setIsViewModalOpen(false);
     setIsEditModalOpen(true);
   };
@@ -419,7 +352,7 @@ const EmployeeManagement = () => {
 
   const handleUpdateEmployee = async (e) => {
     e.preventDefault();
-
+    
     if (!editFormData.first_name || !editFormData.last_name || !editFormData.email) {
       alert('Please fill in all required fields');
       return;
@@ -443,7 +376,6 @@ const EmployeeManagement = () => {
         ifsc_code: editFormData.ifsc_code || null,
         pan_number: editFormData.pan_number || null,
         aadhar_number: editFormData.aadhar_number || null,
-        salary: editFormData.salary || null,
         employee_id: editFormData.employee_id || null, // Include employee_id in update
         role_id: editFormData.role_id || roleOptions.find(r => r.name === 'Employee')?.id || ''
       };
@@ -478,7 +410,7 @@ const EmployeeManagement = () => {
         alert('Employee permanently deleted from database!');
       } catch (error) {
         console.error('Error deleting employee:', error);
-
+        
         if (error.response?.status === 404) {
           alert('Employee not found in database.');
         } else if (error.response?.status === 400) {
@@ -499,52 +431,6 @@ const EmployeeManagement = () => {
         {isActive ? 'ACTIVE' : 'INACTIVE'}
       </span>
     );
-  };
-
-  const openResetPasswordModal = (employee) => {
-    setSelectedEmployee(employee);
-    setResetPasswordValue('');
-    setResetPasswordConfirmValue('');
-    setShowResetPassword(false);
-    setIsResetPasswordModalOpen(true);
-  };
-
-  const closeResetPasswordModal = () => {
-    if (isSubmitting) return;
-    setIsResetPasswordModalOpen(false);
-    setResetPasswordValue('');
-    setResetPasswordConfirmValue('');
-    setShowResetPassword(false);
-  };
-
-  const submitResetPassword = async (e) => {
-    e.preventDefault();
-    if (!selectedEmployee) return;
-
-    const newPassword = resetPasswordValue;
-    if (!newPassword || newPassword.length < 6) {
-      alert('Password must be at least 6 characters.');
-      return;
-    }
-    if (newPassword !== resetPasswordConfirmValue) {
-      alert('Passwords do not match.');
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-      await employeeAPI.resetPassword(
-        selectedEmployee.employee_id || selectedEmployee.id || selectedEmployee.user_id,
-        { new_password: newPassword }
-      );
-      alert('Password reset successfully!');
-      closeResetPasswordModal();
-    } catch (error) {
-      console.error('Error resetting password:', error);
-      alert(error.response?.data?.message || 'Failed to reset password');
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   const handleExport = () => {
@@ -571,12 +457,11 @@ const EmployeeManagement = () => {
         'Bank Account': employee.bank_account_number || '-',
         'IFSC Code': employee.ifsc_code || '-',
         'PAN Number': employee.pan_number || '-',
-        'Aadhar Number': employee.aadhar_number || '-',
-        'Salary (CTC)': employee.salary || '-'
+        'Aadhar Number': employee.aadhar_number || '-'
       }));
 
       const worksheet = XLSX.utils.json_to_sheet(exportData);
-
+      
       const wscols = [
         { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 25 },
         { wch: 15 }, { wch: 30 }, { wch: 20 }, { wch: 12 },
@@ -589,7 +474,7 @@ const EmployeeManagement = () => {
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Employees Data');
       const fileName = `Employees_Export_${new Date().toISOString().split('T')[0]}.xlsx`;
       XLSX.writeFile(workbook, fileName);
-
+      
       alert(`Exported ${employees.length} employees successfully!`);
     } catch (error) {
       console.error('Error exporting data:', error);
@@ -599,7 +484,7 @@ const EmployeeManagement = () => {
 
   const getRoleBadge = (roleName) => {
     let badgeClass = 'role-badge ';
-    switch (roleName?.toLowerCase()) {
+    switch(roleName?.toLowerCase()) {
       case 'admin':
         badgeClass += 'role-admin';
         break;
@@ -615,7 +500,7 @@ const EmployeeManagement = () => {
       default:
         badgeClass += 'role-employee';
     }
-
+    
     return (
       <span className={badgeClass}>
         {roleName?.toUpperCase() || 'EMPLOYEE'}
@@ -664,7 +549,7 @@ const EmployeeManagement = () => {
       {/* Header */}
       <div className="employee-header">
         <h2>Employee Management</h2>
-        <button
+        <button 
           className="add-employee-btn"
           onClick={() => setIsModalOpen(true)}
         >
@@ -678,7 +563,7 @@ const EmployeeManagement = () => {
         <div className="table-header">
           <h3>Employee Directory</h3>
           <div className="table-actions">
-            <select
+            <select 
               className="filter-btn"
               value={filters.department_id}
               onChange={(e) => handleFilterChange('department_id', e.target.value)}
@@ -691,7 +576,7 @@ const EmployeeManagement = () => {
               ))}
             </select>
 
-            <select
+            <select 
               className="filter-btn"
               value={filters.role_id}
               onChange={(e) => handleFilterChange('role_id', e.target.value)}
@@ -703,8 +588,8 @@ const EmployeeManagement = () => {
                 </option>
               ))}
             </select>
-
-            <select
+            
+            <select 
               className="filter-btn"
               value={filters.is_active}
               onChange={(e) => handleFilterChange('is_active', e.target.value)}
@@ -713,47 +598,28 @@ const EmployeeManagement = () => {
               <option value="true">Active</option>
               <option value="false">Inactive</option>
             </select>
-
-            <div className="employee-search-container">
-              <input
-                type="text"
-                placeholder="Search name, email, ID..."
-                value={searchTerm}
-                onChange={handleSearchChange}
-                className="employee-search-input"
-              />
-            </div>
-
+            
             <button className="export-btn" onClick={handleExport} disabled={employees.length === 0}>Export</button>
           </div>
         </div>
-
+        
         <div className="table-wrapper">
           <table className="employee-table">
             <thead>
               <tr>
-                <th className="sortable-header" onClick={() => handleSort('employee_id')}>
-                  Employee ID {sortConfig.key === 'employee_id' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                </th>
-                <th className="sortable-header" onClick={() => handleSort('first_name')}>
-                  Employee {sortConfig.key === 'first_name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                </th>
+                <th>Employee ID</th>
+                <th>Employee</th>
                 <th>Contact</th>
                 <th>Departments</th>
-                <th className="sortable-header" onClick={() => handleSort('position')}>
-                  Position {sortConfig.key === 'position' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                </th>
+                <th>Position</th>
                 <th>Role</th>
                 <th>Status</th>
-                <th className="sortable-header" onClick={() => handleSort('joining_date')}>
-                  Join Date {sortConfig.key === 'joining_date' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                </th>
+                <th>Join Date</th>
               </tr>
             </thead>
             <tbody>
-              {getFilteredAndSortedEmployees().map(employee => (
+              {employees.map(employee => (
                 <tr key={employee.employee_id}>
-
                   <td>
                     <div className="employee-id-cell">
                       {employee.employee_id || `UID-${employee.user_id}`}
@@ -761,7 +627,7 @@ const EmployeeManagement = () => {
                   </td>
                   <td>
                     <div className="employee-cell">
-                      <div
+                      <div 
                         className="employee-name clickable"
                         onClick={() => handleViewEmployee(employee)}
                       >
@@ -809,7 +675,7 @@ const EmployeeManagement = () => {
             <div className="no-data-icon">👥</div>
             <p>No employees found</p>
             <p className="no-data-subtext">
-              {filters.department_id || filters.role_id || filters.is_active !== 'true'
+              {filters.department_id || filters.role_id || filters.is_active !== 'true' 
                 ? 'Try changing your filters to see more results.'
                 : 'Get started by adding your first user.'}
             </p>
@@ -831,7 +697,7 @@ const EmployeeManagement = () => {
           <div className="modal-content1 large-modal">
             <div className="modal-header">
               <h2>Add New Employee</h2>
-              <button
+              <button 
                 className="close-btn"
                 onClick={() => setIsModalOpen(false)}
               >
@@ -978,18 +844,6 @@ const EmployeeManagement = () => {
                       )}
                     </div>
                     <div className="form-group">
-                      <label>Monthly Salary (CTC)</label>
-                      <input
-                        type="number"
-                        name="salary"
-                        min="0"
-                        step="0.01"
-                        value={formData.salary || ''}
-                        onChange={handleInputChange}
-                        placeholder="Enter monthly salary"
-                      />
-                    </div>
-                    <div className="form-group">
                       <label>Joining Date</label>
                       <input
                         type="date"
@@ -1115,7 +969,7 @@ const EmployeeManagement = () => {
           <div className="modal-content1 large-modal">
             <div className="modal-header">
               <h2>Employee Details</h2>
-              <button
+              <button 
                 className="close-btn"
                 onClick={() => setIsViewModalOpen(false)}
               >
@@ -1161,19 +1015,6 @@ const EmployeeManagement = () => {
                     <span>{selectedEmployee.emergency_contact || '-'}</span>
                   </div>
                 </div>
-
-                {/* Reset Password Action */}
-                <div className="reset-pass-section">
-                  <label className="admin-action-label">Administrative Actions</label>
-                  <button
-                    type="button"
-                    onClick={() => openResetPasswordModal(selectedEmployee)}
-                    className="minimal-reset-btn"
-                    disabled={isSubmitting}
-                  >
-                    <span role="img" aria-label="reset">🔄</span> Reset Employee Password
-                  </button>
-                </div>
               </div>
 
               {/* Employment Details - Only show for employees/admins */}
@@ -1192,10 +1033,6 @@ const EmployeeManagement = () => {
                     <div className="detail-item">
                       <label>Joining Date</label>
                       <span>{formatDate(selectedEmployee.joining_date)}</span>
-                    </div>
-                    <div className="detail-item">
-                      <label>Monthly Salary (CTC)</label>
-                      <span>{selectedEmployee.salary ? `₹${Number(selectedEmployee.salary).toLocaleString('en-IN')}` : '-'}</span>
                     </div>
                     <div className="detail-item">
                       <label>Status</label>
@@ -1261,102 +1098,13 @@ const EmployeeManagement = () => {
         </div>
       )}
 
-      {/* Reset Password Modal */}
-      {isResetPasswordModalOpen && selectedEmployee && (
-        <div className="modal-overlay">
-          <div className="modal-content1 password-modal">
-            <div className="modal-header">
-              <h2>Reset Account Password</h2>
-              <button
-                className="close-btn"
-                onClick={closeResetPasswordModal}
-                disabled={isSubmitting}
-              >
-                ×
-              </button>
-            </div>
-
-            <form onSubmit={submitResetPassword} className="employee-form password-modal-content">
-              <div className="reset-summary-card">
-                <div className="reset-summary-item">
-                  <span className="reset-summary-label">Employee</span>
-                  <span className="reset-summary-value">{selectedEmployee.first_name} {selectedEmployee.last_name}</span>
-                </div>
-                <div className="reset-summary-item">
-                  <span className="reset-summary-label">ID</span>
-                  <span className="reset-summary-value">{selectedEmployee.employee_id || `UID-${selectedEmployee.user_id}`}</span>
-                </div>
-              </div>
-
-              <div className="form-section">
-                <div className="form-group">
-                  <label>New Secure Password *</label>
-                  <div className="password-input-group">
-                    <input
-                      type={showResetPassword ? 'text' : 'password'}
-                      value={resetPasswordValue}
-                      onChange={(e) => setResetPasswordValue(e.target.value)}
-                      placeholder="Minimum 6 characters"
-                      required
-                      autoComplete="new-password"
-                    />
-                    <button
-                      type="button"
-                      className="password-toggle-icon"
-                      onClick={() => setShowResetPassword(v => !v)}
-                    >
-                      {showResetPassword ? 'Hide' : 'Show'}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label>Confirm New Password *</label>
-                  <input
-                    type={showResetPassword ? 'text' : 'password'}
-                    value={resetPasswordConfirmValue}
-                    onChange={(e) => setResetPasswordConfirmValue(e.target.value)}
-                    placeholder="Re-enter for confirmation"
-                    required
-                    autoComplete="new-password"
-                  />
-                </div>
-
-                <span className="reset-help-text">
-                  <strong>Warning:</strong> This will immediately replace the employee’s current password. They will be required to use the new credentials for their next login.
-                </span>
-              </div>
-
-              <div className="form-actions">
-                <button
-                  type="button"
-                  onClick={closeResetPasswordModal}
-                  className="cancel-btn"
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="submit-btn"
-                  disabled={isSubmitting}
-                  style={{ backgroundColor: '#d97706', color: 'white' }}
-                >
-                  {isSubmitting ? 'Processing...' : 'Confirm Reset'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* Edit User Modal */}
       {isEditModalOpen && selectedEmployee && (
         <div className="modal-overlay">
           <div className="modal-content1 large-modal">
             <div className="modal-header">
               <h2>Edit Employee</h2>
-              <button
+              <button 
                 className="close-btn"
                 onClick={() => setIsEditModalOpen(false)}
               >
@@ -1472,18 +1220,6 @@ const EmployeeManagement = () => {
                           </option>
                         ))}
                       </select>
-                    </div>
-                    <div className="form-group">
-                      <label>Monthly Salary (CTC)</label>
-                      <input
-                        type="number"
-                        name="salary"
-                        min="0"
-                        step="0.01"
-                        value={editFormData.salary || ''}
-                        onChange={handleEditInputChange}
-                        placeholder="Enter monthly salary"
-                      />
                     </div>
                     <div className="form-group">
                       <label>Joining Date</label>

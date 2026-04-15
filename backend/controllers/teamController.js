@@ -1,53 +1,48 @@
 const db = require('../config/database');
 
 const teamController = {
-  getAllTeams: async (req, res) => {
-    try {
-        const tenant_id = req.user?.tenant_id || req.tenantId || 1;
-        
-        const [teams] = await db.execute(`
-            SELECT 
-                t.id,
-                t.tenant_id,
-                t.name,
-                t.project_id,
-                p.name as project_name,
-                t.team_lead_id,
-                CONCAT(u.first_name, ' ', u.last_name) as team_lead_name,
-                t.description,
-                t.status,
-                t.created_at,
-                t.updated_at
-            FROM teams t
-            LEFT JOIN projects p ON t.project_id = p.id AND p.tenant_id = ?
-            LEFT JOIN users u ON t.team_lead_id = u.id
-            WHERE t.tenant_id = ? AND t.status = 'Active'  // Add this filter
-            ORDER BY t.created_at DESC
-        `, [tenant_id, tenant_id]);
+    getAllTeams: async (req, res) => {
+        try {
+            const tenant_id = req.user?.tenant_id || req.tenantId || 1;
             
-            // Get members for each team
+            // Only get ACTIVE teams
+            const [teams] = await db.execute(`
+                SELECT 
+                    t.id,
+                    t.name,
+                    t.project_id,
+                    p.name as project_name,
+                    t.team_lead_id,
+                    CONCAT(u.first_name, ' ', u.last_name) as team_lead_name,
+                    t.description,
+                    t.status,
+                    t.created_at
+                FROM teams t
+                LEFT JOIN projects p ON t.project_id = p.id AND p.tenant_id = ?
+                LEFT JOIN users u ON t.team_lead_id = u.id
+                WHERE t.tenant_id = ? AND t.status = 'Active'
+                ORDER BY t.created_at DESC
+            `, [tenant_id, tenant_id]);
+            
+            console.log('Active teams found:', teams.length);
+            
+            // Get members for active teams only
             for (let team of teams) {
                 const [members] = await db.execute(`
                     SELECT 
                         tm.id,
-                        tm.employee_id as user_id,
-                        tm.role_in_team,
-                        tm.joined_at,
+                        tm.employee_id,
                         CONCAT(u.first_name, ' ', u.last_name) as name,
                         u.email,
-                        ed.id as employee_detail_id,
-                        ed.position
+                        tm.role_in_team
                     FROM team_members tm
                     INNER JOIN users u ON tm.employee_id = u.id
-                    LEFT JOIN employee_details ed ON u.id = ed.user_id AND ed.tenant_id = ?
-                    WHERE tm.team_id = ? 
-                        AND tm.is_active = 1
-                        AND tm.tenant_id = ?
+                    WHERE tm.team_id = ? AND tm.is_active = 1
                     ORDER BY u.first_name ASC
-                `, [tenant_id, team.id, tenant_id]);
+                `, [team.id]);
                 
-                team.members = members;
-                team.member_count = members.length;
+                team.members = members || [];
+                team.member_count = (members || []).length;
             }
             
             res.json({ 
@@ -63,6 +58,9 @@ const teamController = {
             });
         }
     },
+
+   
+
 
     // Create team with members - FIXED FOR STRING IDs
     createTeam: async (req, res) => {
@@ -104,18 +102,18 @@ const teamController = {
             }
             
             // Insert team
-            const [teamResult] = await connection.execute(`
-                INSERT INTO teams (
-                    tenant_id, 
-                    name, 
-                    project_id, 
-                    team_lead_id, 
-                    description, 
-                    status,
-                    created_at,
-                    updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
-            `, [tenant_id, name, project_id, team_lead_id || null, description || null, status || 'Active']);
+           const [teamResult] = await connection.execute(`
+    INSERT INTO teams (
+        tenant_id, 
+        name, 
+        project_id, 
+        team_lead_id, 
+        description, 
+        status,
+        created_at,
+        updated_at
+    ) VALUES (?, ?, ?, ?, ?, COALESCE(?, 'Active'), NOW(), NOW())
+`, [tenant_id, name, project_id, team_lead_id || null, description || null, status || 'Active']);
             
             const teamId = teamResult.insertId;
             console.log('Team created with ID:', teamId);
@@ -360,7 +358,7 @@ const teamController = {
         }
     },
 
- getTeamMembers: async (req, res) => {
+getTeamMembers: async (req, res) => {
     try {
         const tenant_id = req.user?.tenant_id || req.tenantId || 1;
         const { teamId } = req.params;
@@ -370,31 +368,36 @@ const teamController = {
         const [members] = await db.execute(`
             SELECT 
                 tm.id as team_member_id,
-                tm.employee_id as employee_detail_id,
-                ed.user_id,
+                u.id as user_id,
                 CONCAT(u.first_name, ' ', u.last_name) as name,
                 u.email,
-                ed.position,
-                u.id as user_id
+                COALESCE(ed.position, 'Team Member') as position,
+                ed.id as employee_detail_id
             FROM team_members tm
-            INNER JOIN employee_details ed ON tm.employee_id = ed.id
-            INNER JOIN users u ON ed.user_id = u.id
+            INNER JOIN users u ON tm.employee_id = u.id
+            LEFT JOIN employee_details ed ON u.id = ed.user_id AND ed.tenant_id = ?
             WHERE tm.team_id = ? 
                 AND tm.is_active = 1
                 AND tm.tenant_id = ?
             ORDER BY u.first_name ASC
-        `, [teamId, tenant_id]);
+        `, [tenant_id, teamId, tenant_id]);
         
-        console.log(`Found ${members.length} members:`, members.map(m => ({
-            name: m.name,
-            employee_detail_id: m.employee_detail_id,
-            user_id: m.user_id
-        })));
+        console.log(`Found ${members.length} members:`, members);
+        
+        // Return both IDs so frontend can use user_id
+        const formattedMembers = members.map(member => ({
+            id: member.user_id,
+            user_id: member.user_id,  // This is the INT user_id
+            employee_detail_id: member.employee_detail_id,  // This is the VARCHAR ID
+            name: member.name,
+            position: member.position || 'Team Member',
+            email: member.email || ''
+        }));
         
         res.json({ 
             success: true, 
-            data: members,
-            count: members.length
+            data: formattedMembers,
+            count: formattedMembers.length
         });
     } catch (error) {
         console.error('Get team members error:', error);
@@ -690,15 +693,18 @@ const teamController = {
             res.status(500).json({ success: false, message: 'Failed to update team: ' + error.message });
         }
     },
-
-    // Delete team (soft delete)
+ // Delete team (soft delete)
     deleteTeam: async (req, res) => {
         try {
             const tenant_id = req.user?.tenant_id || req.tenantId || 1;
             const { id } = req.params;
             
+            console.log(`Soft deleting team ${id} for tenant ${tenant_id}`);
+            
             const [result] = await db.execute(`
-                UPDATE teams SET status = 'Inactive', updated_at = NOW()
+                UPDATE teams 
+                SET status = 'Inactive', 
+                    updated_at = NOW()
                 WHERE id = ? AND tenant_id = ?
             `, [id, tenant_id]);
             
@@ -712,6 +718,7 @@ const teamController = {
             res.status(500).json({ success: false, message: 'Failed to delete team: ' + error.message });
         }
     }
+
 };
 
 module.exports = teamController;

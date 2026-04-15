@@ -26,7 +26,6 @@ const Reports = () => {
     const date = new Date(dateString);
     
     if (isNaN(date.getTime())) {
-      console.warn('Invalid date:', dateString);
       return null;
     }
     
