@@ -154,11 +154,11 @@ const handleReportSubmit = async (e) => {
 
   try {
     // Create datetime by combining selected date with current time
-    const selectedDate = new Date(reportFormData.date);
     const now = new Date();
     
-    // Use the selected date but current time
-    selectedDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
+    // Parse date string with time to avoid UTC midnight interpretation
+    const [year, month, day] = reportFormData.date.split('-');
+    const selectedDate = new Date(year, month - 1, day, now.getHours(), now.getMinutes(), now.getSeconds());
     
     // Format as YYYY-MM-DD HH:MM:SS for MySQL
     const dateTimeString = getLocalDateTimeString(selectedDate);
