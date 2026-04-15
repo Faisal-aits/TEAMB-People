@@ -241,10 +241,11 @@ const clientController = {
     },
 
     // Get industries list - FIXED VERSION
-getIndustries: async (req, res) => {
+    getIndustries: async (req, res) => {
         try {
             const [rows] = await pool.execute(
-                'SELECT DISTINCT industry FROM clients WHERE industry IS NOT NULL AND industry != "" ORDER BY industry'
+                'SELECT DISTINCT industry FROM clients WHERE industry IS NOT NULL AND industry != "" AND tenant_id = ? ORDER BY industry',
+                [req.tenantId]
             );
             const industries = rows.map(row => row.industry);
             

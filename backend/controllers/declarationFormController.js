@@ -4,7 +4,8 @@ const declarationFormController = {
     // Save or update Declaration Form
    saveDeclarationForm: async (req, res) => {
     try {
-        let { employee_id, company_id, form_data, issue_date } = req.body;
+        let { employee_id, form_data, issue_date } = req.body;
+        const company_id = req.tenantId; // Secure by tenant ID
         
         // Convert employee_id to number if it's a string
         employee_id = Number(employee_id);
@@ -69,6 +70,14 @@ const declarationFormController = {
         try {
             const { company_id } = req.params;
             
+            // SECURITY HOTFIX: ensure company_id matches the authenticated tenant
+            if (String(company_id) !== String(req.tenantId)) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Unauthorized access to this company data'
+                });
+            }
+            
             // Check if table exists
             const [tables] = await pool.execute(
                 "SHOW TABLES LIKE 'declaration_form'"
@@ -115,10 +124,11 @@ const declarationFormController = {
     getDeclarationFormById: async (req, res) => {
         try {
             const { id } = req.params;
+            const company_id = req.tenantId; // Secure by tenant ID
             
             const [rows] = await pool.execute(
-                'SELECT * FROM declaration_form WHERE id = ?',
-                [id]
+                'SELECT * FROM declaration_form WHERE id = ? AND company_id = ?',
+                [id, company_id]
             );
 
             if (rows.length === 0) {
@@ -147,8 +157,9 @@ const declarationFormController = {
     deleteDeclarationForm: async (req, res) => {
         try {
             const { id } = req.params;
+            const company_id = req.tenantId; // Secure by tenant ID
             
-            const [result] = await pool.execute('DELETE FROM declaration_form WHERE id = ?', [id]);
+            const [result] = await pool.execute('DELETE FROM declaration_form WHERE id = ? AND company_id = ?', [id, company_id]);
             
             if (result.affectedRows === 0) {
                 return res.status(404).json({ 

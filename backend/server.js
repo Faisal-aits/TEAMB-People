@@ -1,7 +1,10 @@
 const express = require('express');
 const multer = require('multer');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
+const apiProtection = require('./middleware/apiProtection');
 
 const authRoutes = require('./routes/authRoutes');
 const expenseRoutes = require('./routes/expenseRoutes');
@@ -56,8 +59,36 @@ const upload = multer({
   }
 });
 
-// Middleware - IN THIS ORDER:
-// 1. CORS first - allow production domains and localhost
+// =======================================================
+// SECURITY MIDDLEWARE - IN THIS ORDER:
+// =======================================================
+
+// 0. Helmet - Set security-related HTTP headers
+app.use(helmet({
+    contentSecurityPolicy: false, // CSP handled separately if needed
+    crossOriginEmbedderPolicy: false,
+}));
+
+// 1. Rate limiting - Prevent brute force and scraping
+const generalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 200,                   // max 200 requests per 15 min per IP
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, message: 'Too many requests. Please try again later.' }
+});
+
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 15,                    // max 15 login attempts per 15 min
+    message: { success: false, message: 'Too many login attempts. Please try again after 15 minutes.' }
+});
+
+app.use('/api/', generalLimiter);
+app.use('/api/auth/login', authLimiter);
+app.use('/api/super-admin/login', authLimiter);
+
+// 2. CORS - STRICT: Do NOT allow requests with no origin
 const allowedOrigins = [
   'https://work-desk.tech',
   'https://www.work-desk.tech',
@@ -67,8 +98,13 @@ const allowedOrigins = [
 ];
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, curl, Postman)
-    if (!origin) return callback(null, true);
+    // In production, REJECT requests with no origin (Postman, curl, scripts)
+    if (!origin) {
+      if (process.env.NODE_ENV === 'development') {
+        return callback(null, true); // Allow in dev only
+      }
+      return callback(new Error('Direct API access is not allowed'));
+    }
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
@@ -79,8 +115,9 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant-Id'],
 }));
 
-app.use(express.json({ limit: '10mb' })); // 2. JSON parsing with limit
-app.use(express.urlencoded({ extended: true, limit: '10mb' })); // 3. URL encoded
+// 3. Body parsers
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Serve uploaded files statically
 const path = require('path');
@@ -106,7 +143,11 @@ app.use('/api/super-admin', superAdminRoutes);
 
 // ============================================================
 // TENANT ROUTES (all tenant-scoped)
+// Server-side origin validation: blocks Postman/curl/scripts
+// even if they send a valid JWT (stolen from browser)
 // ============================================================
+app.use('/api/', apiProtection.validateOrigin);
+
 app.use('/api/auth', authRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/employees', employeeRoutes);

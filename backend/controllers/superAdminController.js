@@ -33,7 +33,7 @@ const superAdminController = {
                     last_name: admin.last_name,
                     is_super_admin: true
                 },
-                process.env.JWT_SECRET || 'arham_simple_secret_2023',
+                process.env.JWT_SECRET,
                 { expiresIn: '12h' }
             );
 

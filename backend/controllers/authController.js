@@ -72,7 +72,7 @@ const authController = {
                         last_name: user.last_name,
                         tenant_id: tenant.id
                     },
-                    process.env.JWT_SECRET || 'arham_simple_secret_2023',
+                    process.env.JWT_SECRET,
                     { expiresIn: '24h' }
                 );
 
@@ -110,7 +110,7 @@ const authController = {
                     last_name: user.last_name,
                     tenant_id: tenant.id
                 },
-                process.env.JWT_SECRET || 'arham_simple_secret_2023',
+                process.env.JWT_SECRET,
                 { expiresIn: '24h' }
             );
             

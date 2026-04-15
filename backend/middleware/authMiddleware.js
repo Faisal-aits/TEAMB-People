@@ -1,18 +1,24 @@
 // middleware/authMiddleware.js
 const jwt = require('jsonwebtoken');
 
+// SECURITY: JWT secret must come from env. No hardcoded fallbacks.
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET || JWT_SECRET === 'your_jwt_secret') {
+    console.error('⚠️  WARNING: JWT_SECRET is not set or is using a default value! Set a strong secret in .env');
+}
+
 const authMiddleware = {
     // Verify JWT token for tenant users
     verifyToken: (req, res, next) => {
         const token = req.header('Authorization')?.replace('Bearer ', '');
-        
+
         if (!token) {
             return res.status(401).json({ message: 'Access denied. No token provided.' });
         }
 
         try {
-            const decoded = jwt.verify(token, process.env.JWT_SECRET || 'arham_simple_secret_2023');
-            
+            const decoded = jwt.verify(token, JWT_SECRET);
+
             // Reject super admin tokens on tenant routes
             if (decoded.is_super_admin) {
                 return res.status(403).json({ message: 'Super admin tokens cannot access tenant routes.' });
@@ -36,8 +42,8 @@ const authMiddleware = {
         }
 
         try {
-            const decoded = jwt.verify(token, process.env.JWT_SECRET || 'arham_simple_secret_2023');
-            
+            const decoded = jwt.verify(token, JWT_SECRET);
+
             if (!decoded.is_super_admin) {
                 return res.status(403).json({ message: 'Access denied. Super admin privileges required.' });
             }
@@ -54,8 +60,8 @@ const authMiddleware = {
     requireRole: (roles) => {
         return (req, res, next) => {
             if (!req.user || !roles.includes(req.user.role_name)) {
-                return res.status(403).json({ 
-                    message: 'Access denied. Insufficient permissions.' 
+                return res.status(403).json({
+                    message: 'Access denied. Insufficient permissions.'
                 });
             }
             next();
