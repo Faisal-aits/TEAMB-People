@@ -78,7 +78,7 @@ const EmployeeManagement = () => {
       ]);
       await loadEmployees();
     };
-    
+
     loadInitialData();
   }, []);
 
@@ -106,13 +106,13 @@ const EmployeeManagement = () => {
 
       const response = await employeeAPI.getAll(apiFilters);
       const employeesData = response.data.employees || [];
-      
+
       // Ensure department_ids is always an array for each employee
       const processedEmployees = employeesData.map(emp => ({
         ...emp,
         department_ids: emp.department_ids || (emp.department_id ? [emp.department_id] : [])
       }));
-      
+
       setEmployees(processedEmployees);
     } catch (error) {
       console.error('Error loading employees:', error);
@@ -202,7 +202,7 @@ const EmployeeManagement = () => {
 
   const handlePositionChange = (e) => {
     const value = e.target.value;
-    
+
     if (value === 'custom') {
       setShowCustomPosition(true);
       setFormData(prev => ({ ...prev, position: '' }));
@@ -221,7 +221,7 @@ const EmployeeManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.first_name || !formData.last_name || !formData.email) {
       alert('Please fill in all required fields');
       return;
@@ -250,7 +250,7 @@ const EmployeeManagement = () => {
       };
 
       const response = await employeeAPI.create(employeeData);
-      
+
       setFormData({
         first_name: '',
         last_name: '',
@@ -269,17 +269,17 @@ const EmployeeManagement = () => {
         employee_id: '',
         role_id: roleOptions.find(r => r.name === 'Employee')?.id || ''
       });
-      
+
       setShowCustomPosition(false);
       setCustomPosition('');
       setIsModalOpen(false);
-      
+
       setFilters({
         department_id: '',
         is_active: '',
         role_id: ''
       });
-      
+
       await loadEmployees();
       alert('Employee added successfully!');
     } catch (error) {
@@ -298,7 +298,7 @@ const EmployeeManagement = () => {
 
   const handleEditEmployee = (employee) => {
     setSelectedEmployee(employee);
-    
+
     const formatDateForInput = (dateString) => {
       if (!dateString) return '';
       if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
@@ -334,7 +334,7 @@ const EmployeeManagement = () => {
       employee_id: employee.employee_id || '', // Include employee_id in edit form
       role_id: String(employee.role_id) || getRoleIdFromRoleName(employee.role_name) || ''
     });
-    
+
     setIsViewModalOpen(false);
     setIsEditModalOpen(true);
   };
@@ -352,7 +352,7 @@ const EmployeeManagement = () => {
 
   const handleUpdateEmployee = async (e) => {
     e.preventDefault();
-    
+
     if (!editFormData.first_name || !editFormData.last_name || !editFormData.email) {
       alert('Please fill in all required fields');
       return;
@@ -427,7 +427,7 @@ const EmployeeManagement = () => {
         alert('Employee permanently deleted from database!');
       } catch (error) {
         console.error('Error deleting employee:', error);
-        
+
         if (error.response?.status === 404) {
           alert('Employee not found in database.');
         } else if (error.response?.status === 400) {
@@ -478,7 +478,7 @@ const EmployeeManagement = () => {
       }));
 
       const worksheet = XLSX.utils.json_to_sheet(exportData);
-      
+
       const wscols = [
         { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 25 },
         { wch: 15 }, { wch: 30 }, { wch: 20 }, { wch: 12 },
@@ -491,7 +491,7 @@ const EmployeeManagement = () => {
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Employees Data');
       const fileName = `Employees_Export_${new Date().toISOString().split('T')[0]}.xlsx`;
       XLSX.writeFile(workbook, fileName);
-      
+
       alert(`Exported ${employees.length} employees successfully!`);
     } catch (error) {
       console.error('Error exporting data:', error);
@@ -501,7 +501,7 @@ const EmployeeManagement = () => {
 
   const getRoleBadge = (roleName) => {
     let badgeClass = 'role-badge ';
-    switch(roleName?.toLowerCase()) {
+    switch (roleName?.toLowerCase()) {
       case 'admin':
         badgeClass += 'role-admin';
         break;
@@ -517,7 +517,7 @@ const EmployeeManagement = () => {
       default:
         badgeClass += 'role-employee';
     }
-    
+
     return (
       <span className={badgeClass}>
         {roleName?.toUpperCase() || 'EMPLOYEE'}
@@ -566,7 +566,7 @@ const EmployeeManagement = () => {
       {/* Header */}
       <div className="employee-header">
         <h2>Employee Management</h2>
-        <button 
+        <button
           className="add-employee-btn"
           onClick={() => setIsModalOpen(true)}
         >
@@ -580,7 +580,7 @@ const EmployeeManagement = () => {
         <div className="table-header">
           <h3>Employee Directory</h3>
           <div className="table-actions">
-            <select 
+            <select
               className="filter-btn"
               value={filters.department_id}
               onChange={(e) => handleFilterChange('department_id', e.target.value)}
@@ -593,7 +593,7 @@ const EmployeeManagement = () => {
               ))}
             </select>
 
-            <select 
+            <select
               className="filter-btn"
               value={filters.role_id}
               onChange={(e) => handleFilterChange('role_id', e.target.value)}
@@ -605,8 +605,8 @@ const EmployeeManagement = () => {
                 </option>
               ))}
             </select>
-            
-            <select 
+
+            <select
               className="filter-btn"
               value={filters.is_active}
               onChange={(e) => handleFilterChange('is_active', e.target.value)}
@@ -615,11 +615,11 @@ const EmployeeManagement = () => {
               <option value="true">Active</option>
               <option value="false">Inactive</option>
             </select>
-            
+
             <button className="export-btn" onClick={handleExport} disabled={employees.length === 0}>Export</button>
           </div>
         </div>
-        
+
         <div className="table-wrapper">
           <table className="employee-table">
             <thead>
@@ -644,7 +644,7 @@ const EmployeeManagement = () => {
                   </td>
                   <td>
                     <div className="employee-cell">
-                      <div 
+                      <div
                         className="employee-name clickable"
                         onClick={() => handleViewEmployee(employee)}
                       >
@@ -692,7 +692,7 @@ const EmployeeManagement = () => {
             <div className="no-data-icon">👥</div>
             <p>No employees found</p>
             <p className="no-data-subtext">
-              {filters.department_id || filters.role_id || filters.is_active !== 'true' 
+              {filters.department_id || filters.role_id || filters.is_active !== 'true'
                 ? 'Try changing your filters to see more results.'
                 : 'Get started by adding your first user.'}
             </p>
@@ -714,7 +714,7 @@ const EmployeeManagement = () => {
           <div className="modal-content1 large-modal">
             <div className="modal-header">
               <h2>Add New Employee</h2>
-              <button 
+              <button
                 className="close-btn"
                 onClick={() => setIsModalOpen(false)}
               >
@@ -986,7 +986,7 @@ const EmployeeManagement = () => {
           <div className="modal-content1 large-modal">
             <div className="modal-header">
               <h2>Employee Details</h2>
-              <button 
+              <button
                 className="close-btn"
                 onClick={() => setIsViewModalOpen(false)}
               >
@@ -1130,7 +1130,7 @@ const EmployeeManagement = () => {
           <div className="modal-content1 large-modal">
             <div className="modal-header">
               <h2>Edit Employee</h2>
-              <button 
+              <button
                 className="close-btn"
                 onClick={() => setIsEditModalOpen(false)}
               >

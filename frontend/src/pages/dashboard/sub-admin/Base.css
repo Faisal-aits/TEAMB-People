@@ -682,7 +682,7 @@ body {
   }
 
   .sidebar-toggle-btn.closed {
-    left: calc(70px - 14px);
+    left: calc(20px - 14px);
   }
 
   /* Mobile adjustments for dropdown */
