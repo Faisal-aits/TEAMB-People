@@ -33,11 +33,6 @@ const apiProtection = {
      *   - Postman/curl won't have valid Origin/Referer → BLOCKED.
      */
     validateOrigin: (req, res, next) => {
-        // Skip origin check in development mode for easier local testing
-        if (process.env.NODE_ENV === 'development') {
-            return next();
-        }
-
         // Allow preflight OPTIONS requests
         if (req.method === 'OPTIONS') {
             return next();
@@ -51,10 +46,11 @@ const apiProtection = {
 
         const origin = req.headers.origin;
         const referer = req.headers.referer;
+        let validOrigin = false;
 
         // Check if origin header is present and valid
         if (origin && allowedOrigins.includes(origin)) {
-            return next();
+            validOrigin = true;
         }
 
         // Fallback: check referer header (browsers always send one of these)
