@@ -421,21 +421,22 @@ delete: async (tenantId, id) => {
     return rows.length > 0;
   },
 
-  // Get project team members
+  // Get project team members (via teams table which links projects to team_members)
   getTeamMembers: async (tenantId, projectId) => {
     try {
       const [rows] = await pool.execute(
         `SELECT 
-          ptm.employee_id,
+          tm.employee_id,
           CONCAT(u.first_name, ' ', u.last_name) as name,
           d.name as department,
           ed.position
-        FROM team_members ptm
-        JOIN employee_details ed ON ptm.employee_id = ed.id
+        FROM teams t
+        JOIN team_members tm ON t.id = tm.team_id AND tm.tenant_id = ?
+        JOIN employee_details ed ON tm.employee_id = ed.id
         JOIN users u ON ed.user_id = u.id
         LEFT JOIN departments d ON ed.department_id = d.id
-        WHERE ptm.project_id = ? AND ptm.tenant_id = ?`,
-        [projectId, tenantId]
+        WHERE t.project_id = ? AND t.tenant_id = ? AND tm.is_active = 1`,
+        [tenantId, projectId, tenantId]
       );
       return rows;
     } catch (error) {
@@ -466,17 +467,40 @@ delete: async (tenantId, id) => {
         ]
       );
 
-      // Remove existing team members
-      await connection.execute(
-        'DELETE FROM team_members WHERE project_id = ? AND tenant_id = ?',
+      // Find or create a team linked to this project
+      let [existingTeams] = await connection.execute(
+        'SELECT id FROM teams WHERE project_id = ? AND tenant_id = ?',
         [projectId, tenantId]
       );
 
+      let teamId;
+      if (existingTeams.length > 0) {
+        teamId = existingTeams[0].id;
+        // Remove existing team members
+        await connection.execute(
+          'DELETE FROM team_members WHERE team_id = ? AND tenant_id = ?',
+          [teamId, tenantId]
+        );
+      } else {
+        // Create a team for this project
+        const [projectRows] = await connection.execute(
+          'SELECT name FROM projects WHERE id = ? AND tenant_id = ?',
+          [projectId, tenantId]
+        );
+        const projectName = projectRows.length > 0 ? projectRows[0].name : 'Project';
+        const [teamResult] = await connection.execute(
+          `INSERT INTO teams (tenant_id, project_id, name, status, created_at) 
+           VALUES (?, ?, ?, 'Active', NOW())`,
+          [tenantId, projectId, `${projectName} Team`]
+        );
+        teamId = teamResult.insertId;
+      }
+
       // Add new team members
       if (teamData.team && teamData.team.length > 0) {
-        const teamValues = teamData.team.map(employeeId => [tenantId, projectId, employeeId]);
+        const teamValues = teamData.team.map(employeeId => [tenantId, teamId, employeeId]);
         await connection.query(
-          'INSERT INTO team_members (tenant_id, project_id, employee_id) VALUES ?',
+          'INSERT INTO team_members (tenant_id, team_id, employee_id) VALUES ?',
           [teamValues]
         );
       }

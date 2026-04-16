@@ -2362,6 +2362,247 @@ const getGroupedTasks = (tasksList) => {
         </div>
       )}
 
+      {/* Create Project Modal */}
+      {isModalOpen && (
+        <div className="proj-modal-overlay">
+          <div className="proj-modal-content">
+            <div className="proj-modal-header">
+              <h2>Create New Project</h2>
+              <button className="proj-close-btn" onClick={() => setIsModalOpen(false)}>×</button>
+            </div>
+            <form onSubmit={handleSubmitProject} className="proj-form">
+              <div className="proj-form-section">
+                <h3 className="proj-section-title">Project Information</h3>
+                <div className="proj-form-row">
+                  <div className="proj-form-group">
+                    <label>Project Name *</label>
+                    <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} required placeholder="Enter project name" />
+                  </div>
+                  <div className="proj-form-group">
+                    <label>Department *</label>
+                    <select value={formData.department} onChange={(e) => setFormData({...formData, department: e.target.value})} required>
+                      <option value="">Select Department</option>
+                      {departments.map(dept => <option key={dept} value={dept}>{dept}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="proj-form-row">
+                  <div className="proj-form-group">
+                    <label>Project Lead *</label>
+                    <select value={formData.project_lead} onChange={(e) => setFormData({...formData, project_lead: e.target.value})} required>
+                      <option value="">Select Project Lead</option>
+                      {projectLeads.map(lead => <option key={lead.id} value={lead.id}>{lead.name} - {lead.position || 'Employee'}</option>)}
+                    </select>
+                  </div>
+                  <div className="proj-form-group">
+                    <label>Status</label>
+                    <select value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})}>
+                      {projectStatuses.map(status => <option key={status} value={status}>{status}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="proj-form-row">
+                  <div className="proj-form-group">
+                    <label>Start Date</label>
+                    <input type="date" value={formData.start_date} onChange={(e) => setFormData({...formData, start_date: e.target.value})} />
+                  </div>
+                  <div className="proj-form-group">
+                    <label>End Date</label>
+                    <input type="date" value={formData.end_date} onChange={(e) => setFormData({...formData, end_date: e.target.value})} />
+                  </div>
+                </div>
+                <div className="proj-form-group">
+                  <label>Current Phase</label>
+                  <select value={formData.current_phase} onChange={(e) => setFormData({...formData, current_phase: e.target.value})}>
+                    <option value="">Select Phase</option>
+                    {phases.map(phase => <option key={phase} value={phase}>{phase}</option>)}
+                  </select>
+                </div>
+                <div className="proj-form-group">
+                  <label>Description</label>
+                  <textarea value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} rows="3" placeholder="Enter project description..." />
+                </div>
+              </div>
+              <div className="proj-form-actions">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="proj-cancel-btn">Cancel</button>
+                <button type="submit" className="proj-submit-btn">Create Project</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create Team Modal */}
+      {isTeamModalOpen && (
+        <div className="proj-modal-overlay">
+          <div className="proj-modal-content proj-large-modal">
+            <div className="proj-modal-header">
+              <h2>Create New Team</h2>
+              <button className="proj-close-btn" onClick={() => { setIsTeamModalOpen(false); setSelectedEmployees([]); }}>×</button>
+            </div>
+            <form onSubmit={handleCreateTeam} className="proj-form">
+              <div className="proj-form-section">
+                <h3 className="proj-section-title"><FaUsers /> Team Information</h3>
+                <div className="proj-form-row">
+                  <div className="proj-form-group">
+                    <label>Team Name *</label>
+                    <input type="text" value={teamFormData.name} onChange={(e) => setTeamFormData({...teamFormData, name: e.target.value})} required placeholder="Enter team name" />
+                  </div>
+                  <div className="proj-form-group">
+                    <label>Project *</label>
+                    <select value={teamFormData.project_id} onChange={(e) => setTeamFormData({...teamFormData, project_id: e.target.value})} required>
+                      <option value="">Select Project</option>
+                      {userProjects.filter(p => currentUser.managedProjects.includes(p.id)).map(project => (
+                        <option key={project.id} value={project.id}>{project.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="proj-form-row">
+                  <div className="proj-form-group">
+                    <label>Team Lead</label>
+                    <select value={teamFormData.team_lead_id} onChange={(e) => setTeamFormData({...teamFormData, team_lead_id: e.target.value})}>
+                      <option value="">Select Team Lead (Optional)</option>
+                      {employees.filter(emp => emp.role_name?.toLowerCase() !== 'hr').map(emp => (
+                        <option key={emp.id} value={emp.id}>{emp.name} - {emp.position || 'Employee'}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="proj-form-group">
+                  <label>Description</label>
+                  <textarea value={teamFormData.description} onChange={(e) => setTeamFormData({...teamFormData, description: e.target.value})} rows="2" placeholder="Enter team description..." />
+                </div>
+              </div>
+              <div className="proj-form-section">
+                <h3 className="proj-section-title"><FaUserPlus /> Select Team Members *</h3>
+                <div className="proj-team-selection" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                  {employees.filter(emp => emp.role_name?.toLowerCase() !== 'hr').map(employee => (
+                    <div key={employee.id} className="proj-team-member-checkbox" style={{ marginBottom: '8px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedEmployees.includes(String(employee.id))}
+                          onChange={() => handleEmployeeSelection(employee.id)}
+                        />
+                        <span>{employee.name} ({employee.department || 'No Dept'}) - {employee.position || 'Employee'}</span>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+                {selectedEmployees.length > 0 && (
+                  <div style={{ marginTop: '10px', fontSize: '13px', color: '#4caf50' }}>
+                    ✅ {selectedEmployees.length} member(s) selected
+                  </div>
+                )}
+              </div>
+              <div className="proj-form-actions">
+                <button type="button" onClick={() => { setIsTeamModalOpen(false); setSelectedEmployees([]); }} className="proj-cancel-btn">Cancel</button>
+                <button type="submit" className="proj-submit-btn">Create Team</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create Task Modal */}
+      {isTaskModalOpen && (
+        <div className="proj-modal-overlay">
+          <div className="proj-modal-content proj-large-modal">
+            <div className="proj-modal-header">
+              <h2>Create New Task</h2>
+              <button className="proj-close-btn" onClick={() => { setIsTaskModalOpen(false); setSelectedTaskEmployees([]); }}>×</button>
+            </div>
+            <form onSubmit={handleCreateTask} className="proj-form">
+              <div className="proj-form-section">
+                <h3 className="proj-section-title"><FaTasks /> Task Information</h3>
+                <div className="proj-form-row">
+                  <div className="proj-form-group">
+                    <label>Task Title *</label>
+                    <input type="text" value={taskFormData.title} onChange={(e) => setTaskFormData({...taskFormData, title: e.target.value})} required placeholder="Enter task title" />
+                  </div>
+                  <div className="proj-form-group">
+                    <label>Project *</label>
+                    <select value={taskFormData.project_id} onChange={(e) => setTaskFormData({...taskFormData, project_id: e.target.value})} required>
+                      <option value="">Select Project</option>
+                      {userProjects.filter(p => currentUser.managedProjects.includes(p.id)).map(project => (
+                        <option key={project.id} value={project.id}>{project.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="proj-form-row">
+                  <div className="proj-form-group">
+                    <label>Team</label>
+                    <select value={taskFormData.team_id} onChange={(e) => setTaskFormData({...taskFormData, team_id: e.target.value})}>
+                      <option value="">Select Team (Optional)</option>
+                      {selectedProjectTeams.map(team => (
+                        <option key={team.id} value={team.id}>{team.name} ({team.member_count || 0} members)</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="proj-form-group">
+                    <label>Priority</label>
+                    <select value={taskFormData.priority} onChange={(e) => setTaskFormData({...taskFormData, priority: e.target.value})}>
+                      {taskPriorities.map(priority => <option key={priority} value={priority}>{priority}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="proj-form-row">
+                  <div className="proj-form-group">
+                    <label>Due Date</label>
+                    <input type="date" value={taskFormData.due_date} onChange={(e) => setTaskFormData({...taskFormData, due_date: e.target.value})} />
+                  </div>
+                  <div className="proj-form-group">
+                    <label>Estimated Hours</label>
+                    <input type="number" value={taskFormData.estimated_hours} onChange={(e) => setTaskFormData({...taskFormData, estimated_hours: e.target.value})} min="0" placeholder="0" />
+                  </div>
+                </div>
+                <div className="proj-form-group">
+                  <label>Description</label>
+                  <textarea value={taskFormData.description} onChange={(e) => setTaskFormData({...taskFormData, description: e.target.value})} rows="3" placeholder="Enter task description..." />
+                </div>
+              </div>
+              <div className="proj-form-section">
+                <h3 className="proj-section-title"><FaUserPlus /> Assign To Employees *</h3>
+                {loadingTeamMembers ? (
+                  <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>Loading team members...</div>
+                ) : (
+                  <div className="proj-team-selection" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                    {(taskFormData.team_id ? availableTeamMembers : employees.filter(emp => emp.role_name?.toLowerCase() !== 'hr')).map(employee => (
+                      <div key={employee.id || employee.user_id} className="proj-team-member-checkbox" style={{ marginBottom: '8px' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedTaskEmployees.includes(String(employee.user_id || employee.id))}
+                            onChange={() => {
+                              const id = String(employee.user_id || employee.id);
+                              setSelectedTaskEmployees(prev =>
+                                prev.includes(id) ? prev.filter(eid => eid !== id) : [...prev, id]
+                              );
+                            }}
+                          />
+                          <span>{employee.name} - {employee.position || 'Employee'}</span>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {selectedTaskEmployees.length > 0 && (
+                  <div style={{ marginTop: '10px', fontSize: '13px', color: '#4caf50' }}>
+                    ✅ {selectedTaskEmployees.length} employee(s) selected — a separate task will be created for each
+                  </div>
+                )}
+              </div>
+              <div className="proj-form-actions">
+                <button type="button" onClick={() => { setIsTaskModalOpen(false); setSelectedTaskEmployees([]); }} className="proj-cancel-btn">Cancel</button>
+                <button type="submit" className="proj-submit-btn">Create Task</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Edit Task Modal - REMOVED - Now editing directly in Task Details */}
       {/* Delete Task Confirmation Modal */}
       {isDeleteTaskModalOpen && selectedTask && (
@@ -2542,56 +2783,6 @@ const getGroupedTasks = (tasksList) => {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Task Confirmation Modal */}
-      {isDeleteTaskModalOpen && selectedTask && (
-        <div className="proj-modal-overlay">
-          <div className="proj-modal-content">
-            <div className="proj-modal-header">
-              <h2>Delete Task</h2>
-              <button className="proj-close-btn" onClick={() => setIsDeleteTaskModalOpen(false)}>×</button>
-            </div>
-            <div className="proj-delete-confirm">
-              <div className="emp-delete-icon"><FaExclamationTriangle /></div>
-              <h3>Delete "{selectedTask.title}"?</h3>
-              <p>Are you sure you want to delete this task? This will mark it as cancelled and cannot be undone.</p>
-              <div className="proj-delete-actions">
-                <button onClick={() => setIsDeleteTaskModalOpen(false)} className="proj-cancel-btn">
-                  Cancel
-                </button>
-                <button onClick={handleDeleteTask} className="proj-delete-btn">
-                  Delete Task
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Team Confirmation Modal */}
-      {isDeleteTeamModalOpen && selectedTeam && (
-        <div className="proj-modal-overlay">
-          <div className="proj-modal-content">
-            <div className="proj-modal-header">
-              <h2>Delete Team</h2>
-              <button className="proj-close-btn" onClick={() => setIsDeleteTeamModalOpen(false)}>×</button>
-            </div>
-            <div className="proj-delete-confirm">
-              <div className="emp-delete-icon"><FaExclamationTriangle /></div>
-              <h3>Delete "{selectedTeam.name}"?</h3>
-              <p>Are you sure you want to delete this team? This action cannot be undone.</p>
-              <div className="proj-delete-actions">
-                <button onClick={() => setIsDeleteTeamModalOpen(false)} className="proj-cancel-btn">
-                  Cancel
-                </button>
-                <button onClick={handleDeleteTeam} className="proj-delete-btn">
-                  Delete Team
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       )}

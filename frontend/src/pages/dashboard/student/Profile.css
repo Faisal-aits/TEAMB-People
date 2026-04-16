@@ -1,7 +1,7 @@
 /* Employee Details Section */
 
 .dashboard-header {
-    padding-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
 }
 
 .employee-details-section {
@@ -50,7 +50,7 @@
 .employee-name {
   margin: 0 0 0.3rem 0;
   color: #1a202c;
-  font-size: 1.4rem;
+  font-size: 1rem;
   font-weight: 700;
 }
 
@@ -119,16 +119,16 @@
     text-align: center;
     gap: 0.8rem;
   }
-  
+
   .employee-details-grid {
     grid-template-columns: 1fr;
     gap: 0.8rem;
   }
-  
+
   .employee-name {
-    font-size: 1.2rem;
+    font-size: 0.8rem;
   }
-  
+
   .employee-position {
     font-size: 0.9rem;
   }

@@ -395,6 +395,23 @@ const EmployeeManagement = () => {
     }
   };
 
+  const handleResetPassword = async (employee) => {
+    const newPassword = window.prompt(`Enter new password for ${employee.first_name} ${employee.last_name}:`);
+    if (!newPassword) return; // User cancelled or entered empty pass
+
+    try {
+      setIsSubmitting(true);
+      await employeeAPI.resetPassword(employee.employee_id, { new_password: newPassword });
+      alert('Password reset successfully!');
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      const errorMessage = error.response?.data?.message || 'Error resetting password. Please try again.';
+      alert(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleDeleteEmployee = async (employee) => {
     if (employee.email === 'admin@arhamitsolutions.com') {
       alert('Cannot delete the system administrator.');
@@ -1074,6 +1091,15 @@ const EmployeeManagement = () => {
                   className="edit-btn"
                 >
                   Edit Employee
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleResetPassword(selectedEmployee)}
+                  className="edit-btn"
+                  style={{ background: '#ff9800', borderColor: '#e68a00' }}
+                  disabled={isSubmitting}
+                >
+                  Reset Password
                 </button>
                 {selectedEmployee.email !== 'admin@arhamitsolutions.com' && (
                   <button
