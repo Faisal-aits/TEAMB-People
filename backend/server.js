@@ -63,33 +63,7 @@ const upload = multer({
 // SECURITY MIDDLEWARE - IN THIS ORDER:
 // =======================================================
 
-// 0. Helmet - Set security-related HTTP headers
-app.use(helmet({
-  contentSecurityPolicy: false, // CSP handled separately if needed
-  crossOriginEmbedderPolicy: false,
-  crossOriginResourcePolicy: { policy: "cross-origin" },
-}));
-
-// 1. Rate limiting - Prevent brute force and scraping
-const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200,                   // max 200 requests per 15 min per IP
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, message: 'Too many requests. Please try again later.' }
-});
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 15,                    // max 15 login attempts per 15 min
-  message: { success: false, message: 'Too many login attempts. Please try again after 15 minutes.' }
-});
-
-app.use('/api/', generalLimiter);
-app.use('/api/auth/login', authLimiter);
-app.use('/api/super-admin/login', authLimiter);
-
-// 1.5 Serve uploaded files BEFORE CORS (img/static requests have no Origin header)
+// 1. Serve uploaded files BEFORE CORS (img/static requests have no Origin header)
 const path = require('path');
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
   setHeaders: (res) => {
@@ -129,6 +103,32 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant-Id'],
 }));
+
+// 3. Helmet - Set security-related HTTP headers
+app.use(helmet({
+  contentSecurityPolicy: false, // CSP handled separately if needed
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+}));
+
+// 4. Rate limiting - Prevent brute force and scraping
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === 'development' ? 2000 : 200, // higher limit for dev HMR
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many requests. Please try again later.' }
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === 'development' ? 100 : 15,
+  message: { success: false, message: 'Too many login attempts. Please try again after 15 minutes.' }
+});
+
+app.use('/api/', generalLimiter);
+app.use('/api/auth/login', authLimiter);
+app.use('/api/super-admin/login', authLimiter);
 
 // 3. Body parsers
 app.use(express.json({ limit: '10mb' }));
