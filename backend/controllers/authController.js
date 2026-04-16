@@ -17,8 +17,6 @@ const authController = {
                 req.body.organizationId
             )?.trim();
 
-            console.log(email, password, tenant_slug);
-
             // Basic validation
             if (!email || !password) {
                 return res.status(400).json({
