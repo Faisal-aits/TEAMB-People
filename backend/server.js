@@ -83,12 +83,16 @@ const allowedOrigins = [
 ];
 app.use(cors({
   origin: function (origin, callback) {
-    // In development mode, allow anything to make local testing easier
+    // PRODUCTION: Always enforce strict CORS validation
+    // DEVELOPMENT: Allow localhost for testing, but still validate
     if (process.env.NODE_ENV === 'development') {
-      return callback(null, true);
+      // In development, allow localhost origins for easier testing
+      if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+        return callback(null, true);
+      }
     }
 
-    // In production, REJECT requests with no origin (Postman, curl, scripts)
+    // REJECT requests with no origin (Postman, curl, scripts, direct API calls)
     if (!origin) {
       return callback(new Error('Direct API access is not allowed'));
     }
