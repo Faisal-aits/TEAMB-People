@@ -158,6 +158,22 @@ updatePaymentStatus: async (tenantId, id, payment_status) => {
             [id, tenantId]
         );
         return rows[0];
+    },
+
+    // Create new expense category
+    createCategory: async (tenantId, categoryData) => {
+        const { name, limit_amount = 0, description = '' } = categoryData;
+        const [result] = await pool.execute(
+            'INSERT INTO expense_categories (tenant_id, name, limit_amount, description) VALUES (?, ?, ?, ?)',
+            [tenantId, name, limit_amount, description]
+        );
+        return {
+            id: result.insertId,
+            name,
+            limit_amount,
+            description,
+            tenant_id: tenantId
+        };
     }
 };
 

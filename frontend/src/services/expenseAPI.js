@@ -14,6 +14,10 @@ export const expenseAPI = {
     return api.get('/expenses/categories');
   },
 
+  createCategory: (categoryData) => {
+    return api.post('/expenses/categories', categoryData);
+  },
+
   getMyExpenses: () => api.get('/expenses/my'),
 
   getById: (id) => api.get(`/expenses/${id}`),

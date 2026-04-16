@@ -15,20 +15,10 @@ const upload = multer({
 // All routes require authentication
 router.use(authMiddleware.verifyToken);
 
-// ==================== EMPLOYEE SELF-SERVICE ROUTES ====================
-// These can be accessed by any authenticated employee/admin
+// ==================== NAMED ROUTES (MUST BE BEFORE :id PARAM) ====================
 
-// GET /api/employees/my-profile - Get current employee profile
+// GET /api/employees/my-profile - Get current employee profile (EMPLOYEE)
 router.get('/my-profile', employeeController.getMyProfile);
-
-// GET /api/employees/:id - Get employee by ID (self or admin only)
-router.get('/:id', authMiddleware.requireSelfOrAdmin, employeeController.getEmployee);
-
-// ==================== ADMIN-ONLY ROUTES ====================
-// These require admin role
-
-// GET /api/employees - Get all employees (ADMIN ONLY)
-router.get('/', authMiddleware.requireAdmin, employeeController.getAllEmployees);
 
 // GET /api/employees/roles - Get roles for this tenant (ADMIN ONLY)
 router.get('/roles', authMiddleware.requireAdmin, employeeController.getRoles);
@@ -36,8 +26,24 @@ router.get('/roles', authMiddleware.requireAdmin, employeeController.getRoles);
 // GET /api/employees/departments - Get departments (ADMIN ONLY)
 router.get('/departments', authMiddleware.requireAdmin, employeeController.getDepartments);
 
+// GET /api/employees/positions/suggested - Get suggested positions (ADMIN ONLY)
+router.get('/positions/suggested', authMiddleware.requireAdmin, employeeController.getSuggestedPositions);
+
+// ==================== COLLECTION ROUTES ====================
+
+// GET /api/employees - Get all employees (ADMIN ONLY)
+router.get('/', authMiddleware.requireAdmin, employeeController.getAllEmployees);
+
 // POST /api/employees - Create new employee (ADMIN ONLY)
 router.post('/', authMiddleware.requireAdmin, employeeController.createEmployee);
+
+// POST /api/employees/positions/suggested - Add new suggested position (ADMIN ONLY)
+router.post('/positions/suggested', authMiddleware.requireAdmin, employeeController.addSuggestedPosition);
+
+// ==================== PARAMETERIZED ROUTES (MUST BE LAST) ====================
+
+// GET /api/employees/:id - Get employee by ID (self or admin only)
+router.get('/:id', authMiddleware.requireSelfOrAdmin, employeeController.getEmployee);
 
 // PUT /api/employees/:id - Update employee (ADMIN ONLY)
 router.put('/:id', authMiddleware.requireAdmin, employeeController.updateEmployee);
@@ -47,12 +53,6 @@ router.post('/:id/reset-password', authMiddleware.requireRole(['admin', 'hr']), 
 
 // DELETE /api/employees/:id - Delete employee (ADMIN ONLY)
 router.delete('/:id', authMiddleware.requireAdmin, employeeController.deleteEmployee);
-
-// GET /api/employees/positions/suggested - Get suggested positions (ADMIN ONLY)
-router.get('/positions/suggested', authMiddleware.requireAdmin, employeeController.getSuggestedPositions);
-
-// POST /api/employees/positions/suggested - Add new suggested position (ADMIN ONLY)
-router.post('/positions/suggested', authMiddleware.requireAdmin, employeeController.addSuggestedPosition);
 
 // GET /api/employees/:id/face-status - Get face enrollment status
 router.get('/:id/face-status', employeeController.getFaceStatus);

@@ -36,6 +36,37 @@ const expenseController = {
         }
     },
 
+    // Create new expense category (ADMIN ONLY)
+    createCategory: async (req, res) => {
+        try {
+            const { name, limit_amount, description } = req.body;
+
+            // Validate input
+            if (!name || name.trim() === '') {
+                return res.status(400).json({ message: 'Category name is required' });
+            }
+
+            // Create category
+            const category = await Expense.createCategory(req.tenantId, {
+                name: name.trim(),
+                limit_amount: limit_amount || 0,
+                description: description || ''
+            });
+
+            res.status(201).json({
+                success: true,
+                message: 'Category created successfully',
+                category
+            });
+        } catch (error) {
+            console.error('Create category error:', error);
+            if (error.code === 'ER_DUP_ENTRY') {
+                return res.status(400).json({ message: 'Category with this name already exists' });
+            }
+            res.status(500).json({ message: 'Server error' });
+        }
+    },
+
     // Get expense by ID
     getExpense: async (req, res) => {
         try {

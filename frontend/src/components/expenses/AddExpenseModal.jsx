@@ -4,6 +4,13 @@ import { expenseAPI } from '../../services/expenseAPI';
 const AddExpenseModal = ({ isOpen, onClose, onExpenseAdded }) => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [addingCategory, setAddingCategory] = useState(false);
+  const [newCategoryData, setNewCategoryData] = useState({
+    name: '',
+    limit_amount: '',
+    description: ''
+  });
   const [formData, setFormData] = useState({
     category_id: '',
     amount: '',
@@ -24,6 +31,49 @@ const AddExpenseModal = ({ isOpen, onClose, onExpenseAdded }) => {
     } catch (error) {
       console.error('Error loading categories:', error);
     }
+  };
+
+  const handleAddCategory = async () => {
+    if (!newCategoryData.name.trim()) {
+      alert('Please enter a category name');
+      return;
+    }
+
+    setAddingCategory(true);
+    try {
+      const response = await expenseAPI.createCategory({
+        name: newCategoryData.name.trim(),
+        limit_amount: newCategoryData.limit_amount ? parseFloat(newCategoryData.limit_amount) : 0,
+        description: newCategoryData.description.trim()
+      });
+
+      if (response.data.category) {
+        // Add new category to list and set it as selected
+        setCategories([...categories, response.data.category]);
+        setFormData(prev => ({
+          ...prev,
+          category_id: response.data.category.id
+        }));
+
+        // Reset and close form
+        setNewCategoryData({ name: '', limit_amount: '', description: '' });
+        setShowAddCategory(false);
+        alert('Category created successfully!');
+      }
+    } catch (error) {
+      console.error('Error creating category:', error);
+      alert(error.response?.data?.message || 'Failed to create category');
+    } finally {
+      setAddingCategory(false);
+    }
+  };
+
+  const handleNewCategoryChange = (e) => {
+    const { name, value } = e.target;
+    setNewCategoryData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const handleChange = (e) => {
@@ -122,38 +172,169 @@ const AddExpenseModal = ({ isOpen, onClose, onExpenseAdded }) => {
         <form onSubmit={handleSubmit}>
           {/* Category Selection */}
           <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '0.5rem',
-              fontWeight: '500',
-              color: '#4a5568'
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '0.5rem'
             }}>
-              Expense Category *
-            </label>
-            <select
-              name="category_id"
-              value={formData.category_id}
-              onChange={handleChange}
-              required
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #e2e8f0',
+              <label style={{
+                fontWeight: '500',
+                color: '#4a5568'
+              }}>
+                Expense Category *
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowAddCategory(!showAddCategory)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#6d6ab8',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  textDecoration: 'underline',
+                  fontWeight: '500',
+                  padding: 0
+                }}
+              >
+                {showAddCategory ? '✕ Cancel' : '+ Add Category'}
+              </button>
+            </div>
+
+            {!showAddCategory ? (
+              <select
+                name="category_id"
+                value={formData.category_id}
+                onChange={handleChange}
+                required
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '6px',
+                  fontSize: '1rem',
+                  backgroundColor: 'white'
+                }}
+              >
+                <option value="">Select a category</option>
+                {categories.map(category => (
+                  <option key={category.id} value={category.id}>
+                    {category.name} {category.limit_amount > 0 && `(Limit: ₹${category.limit_amount})`}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div style={{
+                border: '1px solid #cbd5e0',
                 borderRadius: '6px',
-                fontSize: '1rem',
-                backgroundColor: 'white'
-              }}
-            >
-              <option value="">Select a category</option>
-              {categories.map(category => (
-                <option key={category.id} value={category.id}>
-                  {category.name} {category.limit_amount > 0 && `(Limit: ₹${category.limit_amount})`}
-                </option>
-              ))}
-            </select>
+                padding: '1rem',
+                backgroundColor: '#f7fafc'
+              }}>
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '0.4rem',
+                    fontWeight: '500',
+                    fontSize: '0.9rem',
+                    color: '#4a5568'
+                  }}>
+                    Category Name *
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={newCategoryData.name}
+                    onChange={handleNewCategoryChange}
+                    placeholder="e.g., Travel, Food, Office Supplies"
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '4px',
+                      fontSize: '0.9rem'
+                    }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '0.4rem',
+                    fontWeight: '500',
+                    fontSize: '0.9rem',
+                    color: '#4a5568'
+                  }}>
+                    Limit Amount (₹) (Optional)
+                  </label>
+                  <input
+                    type="number"
+                    name="limit_amount"
+                    value={newCategoryData.limit_amount}
+                    onChange={handleNewCategoryChange}
+                    placeholder="0.00"
+                    min="0"
+                    step="0.01"
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '4px',
+                      fontSize: '0.9rem'
+                    }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '0.4rem',
+                    fontWeight: '500',
+                    fontSize: '0.9rem',
+                    color: '#4a5568'
+                  }}>
+                    Description (Optional)
+                  </label>
+                  <textarea
+                    name="description"
+                    value={newCategoryData.description}
+                    onChange={handleNewCategoryChange}
+                    placeholder="Category description..."
+                    rows="2"
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '4px',
+                      fontSize: '0.9rem',
+                      fontFamily: 'inherit',
+                      resize: 'vertical'
+                    }}
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleAddCategory}
+                  disabled={addingCategory}
+                  style={{
+                    width: '100%',
+                    padding: '0.6rem',
+                    background: addingCategory ? '#cbd5e0' : '#48bb78',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: addingCategory ? 'not-allowed' : 'pointer',
+                    fontSize: '0.9rem',
+                    fontWeight: '500'
+                  }}
+                >
+                  {addingCategory ? 'Creating...' : '✓ Create Category'}
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Amount */}
           <div style={{ marginBottom: '1.5rem' }}>
             <label style={{
               display: 'block',

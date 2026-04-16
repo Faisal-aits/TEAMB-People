@@ -30,6 +30,9 @@ router.get('/', authMiddleware.requireAdmin, expenseController.getAllExpenses);
 // GET /api/expenses/categories - Get expense categories (ALL USERS)
 router.get('/categories', expenseController.getCategories);
 
+// POST /api/expenses/categories - Create new expense category (ADMIN ONLY)
+router.post('/categories', authMiddleware.requireAdmin, expenseController.createCategory);
+
 // GET /api/expenses/my - Get current user's expenses (EMPLOYEE)
 router.get('/my', expenseController.getMyExpenses);
 
