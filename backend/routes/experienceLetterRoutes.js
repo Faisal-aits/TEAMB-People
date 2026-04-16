@@ -8,11 +8,21 @@ const tenantMiddleware = require('../middleware/tenantMiddleware');
 router.use(authMiddleware.verifyToken);
 router.use(tenantMiddleware.extractTenantId);
 
+// ==================== MIXED ACCESS ROUTES ====================
+
+// GET /api/experience-letters/my - Employee views own letters (EMPLOYEE)
 router.get('/my', experienceLetterController.getMyLetters);
 
-router.post('/', authMiddleware.requireRole(['admin', 'hr_manager']), experienceLetterController.uploadPDFMiddleware, experienceLetterController.generateLetter);
-router.get('/', authMiddleware.requireRole(['admin', 'hr_manager']), experienceLetterController.getAllLetters);
-router.get('/:id', experienceLetterController.getLetterById);
-router.delete('/:id', authMiddleware.requireRole(['admin', 'hr_manager']), experienceLetterController.deleteLetter);
+// POST /api/experience-letters - HR generates letter (ADMIN/HR ONLY)
+router.post('/', authMiddleware.requireRole(['admin', 'hr']), experienceLetterController.uploadPDFMiddleware, experienceLetterController.generateLetter);
+
+// GET /api/experience-letters - HR views all letters (ADMIN/HR ONLY)
+router.get('/', authMiddleware.requireRole(['admin', 'hr']), experienceLetterController.getAllLetters);
+
+// GET /api/experience-letters/:id - View specific letter (ADMIN/HR)
+router.get('/:id', authMiddleware.requireRole(['admin', 'hr']), experienceLetterController.getLetterById);
+
+// DELETE /api/experience-letters/:id - Delete letter (ADMIN/HR ONLY)
+router.delete('/:id', authMiddleware.requireRole(['admin', 'hr']), experienceLetterController.deleteLetter);
 
 module.exports = router;

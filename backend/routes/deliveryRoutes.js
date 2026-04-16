@@ -8,25 +8,28 @@ const router = express.Router();
 // All routes are protected
 router.use(authMiddleware.verifyToken);
 
-// GET /api/delivery/challans - Get all delivery challans
-router.get('/challans', deliveryController.getAllChallans);
+// ==================== ADMIN-ONLY ROUTES ====================
+// All delivery management requires admin role
 
-// GET /api/delivery/challans/:id - Get specific delivery challan
-router.get('/challans/:id', deliveryController.getChallan);
+// GET /api/delivery/challans - Get all delivery challans (ADMIN ONLY)
+router.get('/challans', authMiddleware.requireAdmin, deliveryController.getAllChallans);
 
-// POST /api/delivery/challans - Create new delivery challan
-router.post('/challans', deliveryController.createChallan);
+// GET /api/delivery/challans/:id - Get specific delivery challan (ADMIN ONLY)
+router.get('/challans/:id', authMiddleware.requireAdmin, deliveryController.getChallan);
 
-// PUT /api/delivery/challans/:id - Update delivery challan
-router.put('/challans/:id', deliveryController.updateChallan);
+// POST /api/delivery/challans - Create new delivery challan (ADMIN ONLY)
+router.post('/challans', authMiddleware.requireAdmin, deliveryController.createChallan);
 
-// DELETE /api/delivery/challans/:id - Delete delivery challan
-router.delete('/challans/:id', deliveryController.deleteChallan);
+// PUT /api/delivery/challans/:id - Update delivery challan (ADMIN ONLY)
+router.put('/challans/:id', authMiddleware.requireAdmin, deliveryController.updateChallan);
 
-// POST /api/delivery/challans/:id/follow-up - Add follow-up note
-router.post('/challans/:id/follow-up', deliveryController.addFollowUp);
+// DELETE /api/delivery/challans/:id - Delete delivery challan (ADMIN ONLY)
+router.delete('/challans/:id', authMiddleware.requireAdmin, deliveryController.deleteChallan);
 
-// GET /api/delivery/challans/:id/download - Download delivery challan as PDF
-router.get('/challans/:id/download', deliveryController.downloadChallanPDF);
+// POST /api/delivery/challans/:id/follow-up - Add follow-up note (ADMIN ONLY)
+router.post('/challans/:id/follow-up', authMiddleware.requireAdmin, deliveryController.addFollowUp);
+
+// GET /api/delivery/challans/:id/download - Download delivery challan as PDF (ADMIN ONLY)
+router.get('/challans/:id/download', authMiddleware.requireAdmin, deliveryController.downloadChallanPDF);
 
 module.exports = router;

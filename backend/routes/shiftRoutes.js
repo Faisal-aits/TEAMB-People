@@ -8,14 +8,17 @@ const router = express.Router();
 // All routes require authentication
 router.use(authMiddleware.verifyToken);
 
-// GET /api/shifts - Get all shifts
-router.get('/', shiftController.getAllShifts);
+// ==================== ADMIN-ONLY ROUTES ====================
+// All shift management requires admin role
 
-// GET /api/shifts/default - Get default shift
-router.get('/default', shiftController.getDefaultShift);
+// GET /api/shifts - Get all shifts (ADMIN ONLY)
+router.get('/', authMiddleware.requireAdmin, shiftController.getAllShifts);
 
-// GET /api/shifts/employees - Get available employees
-router.get('/employees', async (req, res) => {
+// GET /api/shifts/default - Get default shift (ADMIN ONLY)
+router.get('/default', authMiddleware.requireAdmin, shiftController.getDefaultShift);
+
+// GET /api/shifts/employees - Get available employees (ADMIN ONLY)
+router.get('/employees', authMiddleware.requireAdmin, async (req, res) => {
     try {
         const Shift = require('../models/shiftModel');
         const employees = await Shift.getAvailableEmployees(req.tenantId);
@@ -32,22 +35,22 @@ router.get('/employees', async (req, res) => {
     }
 });
 
-// GET /api/shifts/:shiftId - Get shift by ID
-router.get('/:shiftId', shiftController.getShiftById);
+// GET /api/shifts/:shiftId - Get shift by ID (ADMIN ONLY)
+router.get('/:shiftId', authMiddleware.requireAdmin, shiftController.getShiftById);
 
-// GET /api/shifts/:shiftId/employees - Get employees in shift
-router.get('/:shiftId/employees', shiftController.getShiftEmployees);
+// GET /api/shifts/:shiftId/employees - Get employees in shift (ADMIN ONLY)
+router.get('/:shiftId/employees', authMiddleware.requireAdmin, shiftController.getShiftEmployees);
 
-// POST /api/shifts - Create new shift
-router.post('/', shiftController.createShift);
+// POST /api/shifts - Create new shift (ADMIN ONLY)
+router.post('/', authMiddleware.requireAdmin, shiftController.createShift);
 
-// PUT /api/shifts/:shiftId - Update shift
-router.put('/:shiftId', shiftController.updateShift);
+// PUT /api/shifts/:shiftId - Update shift (ADMIN ONLY)
+router.put('/:shiftId', authMiddleware.requireAdmin, shiftController.updateShift);
 
-// POST /api/shifts/:shiftId/set-default - Set shift as default
-router.post('/:shiftId/set-default', shiftController.setShiftAsDefault);
+// POST /api/shifts/:shiftId/set-default - Set shift as default (ADMIN ONLY)
+router.post('/:shiftId/set-default', authMiddleware.requireAdmin, shiftController.setShiftAsDefault);
 
-// DELETE /api/shifts/:shiftId - Delete shift
-router.delete('/:shiftId', shiftController.deleteShift);
+// DELETE /api/shifts/:shiftId - Delete shift (ADMIN ONLY)
+router.delete('/:shiftId', authMiddleware.requireAdmin, shiftController.deleteShift);
 
 module.exports = router;

@@ -22,25 +22,27 @@ const upload = multer({
 // All routes are protected
 router.use(authMiddleware.verifyToken);
 
-// GET /api/expenses - Get all expenses (role-based)
-router.get('/', expenseController.getAllExpenses);
+// ==================== MIXED ACCESS ROUTES ====================
 
-// GET /api/expenses/categories - Get expense categories
+// GET /api/expenses - Get all expenses (ADMIN ONLY)
+router.get('/', authMiddleware.requireAdmin, expenseController.getAllExpenses);
+
+// GET /api/expenses/categories - Get expense categories (ALL USERS)
 router.get('/categories', expenseController.getCategories);
 
-// GET /api/expenses/my - Get current user's expenses
+// GET /api/expenses/my - Get current user's expenses (EMPLOYEE)
 router.get('/my', expenseController.getMyExpenses);
 
-// GET /api/expenses/:id - Get specific expense
+// GET /api/expenses/:id - Get specific expense (ADMIN OR OWNER)
 router.get('/:id', expenseController.getExpense);
 
-// POST /api/expenses - Submit new expense (with image upload)
+// POST /api/expenses - Submit new expense (EMPLOYEE)
 router.post('/', upload.single('image'), expenseController.submitExpense);
 
-// PUT /api/expenses/:id/status - Approve/Reject expense
-router.put('/:id/status', expenseController.updateExpenseStatus);
+// PUT /api/expenses/:id/status - Approve/Reject expense (ADMIN ONLY)
+router.put('/:id/status', authMiddleware.requireAdmin, expenseController.updateExpenseStatus);
 
-// PUT /api/expenses/:id/payment-status - Update payment status
-router.put('/:id/payment-status', expenseController.updatePaymentStatus);
+// PUT /api/expenses/:id/payment-status - Update payment status (ADMIN ONLY)
+router.put('/:id/payment-status', authMiddleware.requireAdmin, expenseController.updatePaymentStatus);
 
 module.exports = router;

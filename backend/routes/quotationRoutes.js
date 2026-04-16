@@ -8,25 +8,28 @@ const router = express.Router();
 // All routes are protected
 router.use(authMiddleware.verifyToken);
 
-// GET /api/quotations - Get all quotations
-router.get('/', quotationController.getAllQuotations);
+// ==================== ADMIN-ONLY ROUTES ====================
+// All quotation management requires admin role
 
-// GET /api/quotations/:id - Get specific quotation
-router.get('/:id', quotationController.getQuotation);
+// GET /api/quotations - Get all quotations (ADMIN ONLY)
+router.get('/', authMiddleware.requireAdmin, quotationController.getAllQuotations);
 
-// POST /api/quotations - Create new quotation
-router.post('/', quotationController.createQuotation);
+// GET /api/quotations/:id - Get specific quotation (ADMIN ONLY)
+router.get('/:id', authMiddleware.requireAdmin, quotationController.getQuotation);
 
-// PUT /api/quotations/:id - Update quotation
-router.put('/:id', quotationController.updateQuotation);
+// POST /api/quotations - Create new quotation (ADMIN ONLY)
+router.post('/', authMiddleware.requireAdmin, quotationController.createQuotation);
 
-// DELETE /api/quotations/:id - Delete quotation
-router.delete('/:id', quotationController.deleteQuotation);
+// PUT /api/quotations/:id - Update quotation (ADMIN ONLY)
+router.put('/:id', authMiddleware.requireAdmin, quotationController.updateQuotation);
 
-// PUT /api/quotations/:id/status - Update quotation status
-router.put('/:id/status', quotationController.updateQuotationStatus);
+// DELETE /api/quotations/:id - Delete quotation (ADMIN ONLY)
+router.delete('/:id', authMiddleware.requireAdmin, quotationController.deleteQuotation);
 
-// POST /api/quotations/:id/follow-up - Add follow-up note
-router.post('/:id/follow-up', quotationController.addFollowUp);
+// PUT /api/quotations/:id/status - Update quotation status (ADMIN ONLY)
+router.put('/:id/status', authMiddleware.requireAdmin, quotationController.updateQuotationStatus);
+
+// POST /api/quotations/:id/follow-up - Add follow-up note (ADMIN ONLY)
+router.post('/:id/follow-up', authMiddleware.requireAdmin, quotationController.addFollowUp);
 
 module.exports = router;

@@ -24,52 +24,51 @@ const upload = multer({
 // All routes require authentication
 router.use(authMiddleware.verifyToken);
 
-// ==================== EXISTING ROUTES ====================
+// ==================== MIXED ACCESS ROUTES ====================
 
-// GET /api/attendance - Get all attendance records
-router.get('/', attendanceController.getAllAttendance);
+// GET /api/attendance - Get all attendance records (ADMIN ONLY)
+router.get('/', authMiddleware.requireAdmin, attendanceController.getAllAttendance);
 
-// GET /api/attendance/shifts - Get all shifts
-router.get('/shifts', attendanceController.getShifts);
+// GET /api/attendance/shifts - Get all shifts (ADMIN ONLY)
+router.get('/shifts', authMiddleware.requireAdmin, attendanceController.getShifts);
 
-// GET /api/attendance/stats - Get attendance statistics
-router.get('/stats', attendanceController.getAttendanceStats);
+// GET /api/attendance/stats - Get attendance statistics (ADMIN ONLY)
+router.get('/stats', authMiddleware.requireAdmin, attendanceController.getAttendanceStats);
 
-// GET /api/attendance/history/:employeeId - Get employee attendance history
-router.get('/history/:employeeId', attendanceController.getEmployeeHistory);
+// GET /api/attendance/history/:employeeId - Get employee attendance history (ADMIN ONLY)
+router.get('/history/:employeeId', authMiddleware.requireAdmin, attendanceController.getEmployeeHistory);
 
-// POST /api/attendance/:attendanceId/approve - Approve attendance
-router.post('/:attendanceId/approve', attendanceController.approveAttendance);
+// POST /api/attendance/:attendanceId/approve - Approve attendance (ADMIN ONLY)
+router.post('/:attendanceId/approve', authMiddleware.requireAdmin, attendanceController.approveAttendance);
 
-// POST /api/attendance/:attendanceId/reject - Reject attendance (mark as leave)
-router.post('/:attendanceId/reject', attendanceController.rejectAttendance);
+// POST /api/attendance/:attendanceId/reject - Reject attendance (ADMIN ONLY)
+router.post('/:attendanceId/reject', authMiddleware.requireAdmin, attendanceController.rejectAttendance);
 
-// POST /api/attendance/mark - Manual attendance marking
-router.post('/mark', attendanceController.markAttendance);
+// POST /api/attendance/mark - Manual attendance marking (ADMIN ONLY)
+router.post('/mark', authMiddleware.requireAdmin, attendanceController.markAttendance);
 
 // ==================== EMPLOYEE-SPECIFIC ROUTES ====================
 
-// GET /api/attendance/my/today - Get current user's today attendance
+// GET /api/attendance/my/today - Get current user's today attendance (EMPLOYEE)
 router.get('/my/today', attendanceController.getMyTodayAttendance);
 
-// GET /api/attendance/my/history - Get current user's attendance history
+// GET /api/attendance/my/history - Get current user's attendance history (EMPLOYEE)
 router.get('/my/history', attendanceController.getMyHistory);
 
-// POST /api/attendance/my/mark - Mark attendance for current user
+// POST /api/attendance/my/mark - Mark attendance for current user (EMPLOYEE)
 router.post('/my/mark', attendanceController.markMyAttendance);
 
-// ==================== NEW FACE RECOGNITION ROUTE ====================
+// ==================== FACE RECOGNITION ROUTES ====================
 
 // POST /api/attendance/identify-and-mark - Face detection and automatic attendance
 router.post('/verify-my-face', upload.single('faceImage'), attendanceController.verifyMyFaceAndMarkAttendance);
 router.post('/identify-and-mark', upload.single('faceImage'), attendanceController.identifyAndMarkAttendance);
 
+// GET /api/attendance/percentage/:employeeId - Get attendance percentage (ADMIN ONLY)
+router.get('/percentage/:employeeId', authMiddleware.requireAdmin, attendanceController.getEmployeeAttendancePercentage);
 
-// In your attendanceRoutes.js file, add this route
-router.get('/percentage/:employeeId', attendanceController.getEmployeeAttendancePercentage);
-
-// POST /api/attendance/mark-absent - Manually trigger absent marking (for testing/admin)
-router.post('/mark-absent', async (req, res) => {
+// POST /api/attendance/mark-absent - Manually trigger absent marking (ADMIN ONLY)
+router.post('/mark-absent', authMiddleware.requireAdmin, async (req, res) => {
     try {
         const result = await AutoAbsentService.markAbsentForToday();
         res.json({
@@ -85,9 +84,10 @@ router.post('/mark-absent', async (req, res) => {
         });
     }
 });
-// Get monthly attendance summary for salary calculation
+
+// Get monthly attendance summary for salary calculation (ADMIN ONLY)
 router.get('/summary/:employeeId', 
-    authMiddleware.verifyToken, 
+    authMiddleware.requireAdmin,
     attendanceController.getMonthlyAttendanceSummary
 );
 module.exports = router;

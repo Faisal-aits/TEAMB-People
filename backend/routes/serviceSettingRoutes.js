@@ -8,29 +8,31 @@ const router = express.Router();
 // All routes require authentication
 router.use(authMiddleware.verifyToken);
 
-// ==================== BANK DETAILS ROUTES ====================
-// GET /api/service-settings/bank - Get bank details
-router.get('/bank', serviceSettingController.getBankDetails);
+// ==================== ADMIN-ONLY CONFIGURATION ROUTES ====================
 
-// PUT /api/service-settings/bank - Update bank details
-router.put('/bank', serviceSettingController.updateBankDetails);
+// ===== BANK DETAILS ROUTES =====
+// GET /api/service-settings/bank - Get bank details (ADMIN ONLY)
+router.get('/bank', authMiddleware.requireAdmin, serviceSettingController.getBankDetails);
 
-// ==================== GST DETAILS ROUTES ====================
-// GET /api/service-settings/gst - Get GST details
-router.get('/gst', serviceSettingController.getGstDetails);
+// PUT /api/service-settings/bank - Update bank details (ADMIN ONLY)
+router.put('/bank', authMiddleware.requireAdmin, serviceSettingController.updateBankDetails);
 
-// PUT /api/service-settings/gst - Update GST details
-router.put('/gst', serviceSettingController.updateGstDetails);
+// ===== GST DETAILS ROUTES =====
+// GET /api/service-settings/gst - Get GST details (ADMIN ONLY)
+router.get('/gst', authMiddleware.requireAdmin, serviceSettingController.getGstDetails);
 
-// ==================== Newly added 6/2/26 ====================
-// GET /api/service-settings/quotation - Get settings for quotation
-router.get('/quotation', serviceSettingController.getQuotationSettings);
+// PUT /api/service-settings/gst - Update GST details (ADMIN ONLY)
+router.put('/gst', authMiddleware.requireAdmin, serviceSettingController.updateGstDetails);
 
-// ==================== SMTP SETTINGS ROUTES ====================
-// GET /api/service-settings/smtp - Get SMTP details
-router.get('/smtp', serviceSettingController.getSmtpDetails);
+// ===== QUOTATION SETTINGS ROUTES =====
+// GET /api/service-settings/quotation - Get settings for quotation (ADMIN ONLY)
+router.get('/quotation', authMiddleware.requireAdmin, serviceSettingController.getQuotationSettings);
 
-// PUT /api/service-settings/smtp - Update SMTP details
-router.put('/smtp', serviceSettingController.updateSmtpDetails);
+// ===== SMTP SETTINGS ROUTES =====
+// GET /api/service-settings/smtp - Get SMTP details (ADMIN ONLY)
+router.get('/smtp', authMiddleware.requireAdmin, serviceSettingController.getSmtpDetails);
+
+// PUT /api/service-settings/smtp - Update SMTP details (ADMIN ONLY)
+router.put('/smtp', authMiddleware.requireAdmin, serviceSettingController.updateSmtpDetails);
 
 module.exports = router;

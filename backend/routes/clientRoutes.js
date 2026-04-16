@@ -8,31 +8,34 @@ const router = express.Router();
 // All routes are protected
 router.use(authMiddleware.verifyToken);
 
-// GET /api/clients - Get all clients
-router.get('/', clientController.getAllClients);
+// ==================== ADMIN-ONLY ROUTES ====================
+// All client management requires admin role
 
-// GET /api/clients/managers - Get managers list
-router.get('/managers', clientController.getManagers);
+// GET /api/clients - Get all clients (ADMIN ONLY)
+router.get('/', authMiddleware.requireAdmin, clientController.getAllClients);
 
-// GET /api/clients/industries - Get industries list
-router.get('/industries', clientController.getIndustries);
+// GET /api/clients/managers - Get managers list (ADMIN ONLY)
+router.get('/managers', authMiddleware.requireAdmin, clientController.getManagers);
 
-// POST /api/clients/industries - Add new industry
-router.post('/industries', clientController.addIndustry);
+// GET /api/clients/industries - Get industries list (ADMIN ONLY)
+router.get('/industries', authMiddleware.requireAdmin, clientController.getIndustries);
 
-// GET /api/clients/:id - Get specific client
-router.get('/:id', clientController.getClient);
+// POST /api/clients/industries - Add new industry (ADMIN ONLY)
+router.post('/industries', authMiddleware.requireAdmin, clientController.addIndustry);
 
-// POST /api/clients - Create new client
-router.post('/', clientController.createClient);
+// GET /api/clients/:id - Get specific client (ADMIN ONLY)
+router.get('/:id', authMiddleware.requireAdmin, clientController.getClient);
 
-// PUT /api/clients/:id - Update client
-router.put('/:id', clientController.updateClient);
+// POST /api/clients - Create new client (ADMIN ONLY)
+router.post('/', authMiddleware.requireAdmin, clientController.createClient);
 
-// DELETE /api/clients/:id - Delete client
-router.delete('/:id', clientController.deleteClient);
+// PUT /api/clients/:id - Update client (ADMIN ONLY)
+router.put('/:id', authMiddleware.requireAdmin, clientController.updateClient);
 
-// POST /api/clients/:id/interactions - Add interaction
-router.post('/:id/interactions', clientController.addInteraction);
+// DELETE /api/clients/:id - Delete client (ADMIN ONLY)
+router.delete('/:id', authMiddleware.requireAdmin, clientController.deleteClient);
+
+// POST /api/clients/:id/interactions - Add interaction (ADMIN ONLY)
+router.post('/:id/interactions', authMiddleware.requireAdmin, clientController.addInteraction);
 
 module.exports = router;

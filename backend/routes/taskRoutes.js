@@ -4,36 +4,68 @@ const router = express.Router();
 const taskController = require('../controllers/taskController');
 const authMiddleware = require('../middleware/authMiddleware');
 
-
-
 // All routes are protected
 router.use(authMiddleware.verifyToken);
 
-// ========== GET Routes ==========
-router.get('/', taskController.getAllTasks);                           // Get all tasks
-router.get('/my-tasks', taskController.getMyTasks);                     // Get my tasks
-router.get('/overdue', taskController.getOverdueTasks);                 // Get overdue tasks
-router.get('/blocked', taskController.getBlockedTasks);                 // Get blocked tasks
-router.get('/project/:projectId', taskController.getTasksByProject);    // Get tasks by project
-router.get('/:id', taskController.getTaskById);                         // Get single task
-router.get('/:id/comments', taskController.getTaskComments);            // Get task comments
-router.get('/:id/time-logs', taskController.getTimeLogs);               // Get task time logs
+// ==================== EMPLOYEE SELF-SERVICE ROUTES ====================
 
-// ========== POST Routes ==========
-router.post('/', taskController.createTask);                            // Create task
-router.post('/:id/comments', taskController.addTaskComment);            // Add comment
-router.post('/:id/time-logs', taskController.addTimeLog);               // Add time log
-router.post('/:id/accept', taskController.acceptTask);                  // Accept task
-router.post('/bulk/update-status', taskController.bulkUpdateStatus);    // Bulk update status
-router.post('/bulk/assign-tasks', taskController.bulkAssignTasks);      // Bulk assign tasks
+// GET /api/tasks/my-tasks - Get my tasks (EMPLOYEE)
+router.get('/my-tasks', taskController.getMyTasks);
 
-// ========== PUT Routes ==========
-router.put('/:id', taskController.updateTask);                          // Update task
-router.put('/:id/assign-team-lead', taskController.assignToTeamLead);   // Assign to team lead
-router.put('/:id/assign-member', taskController.assignToMember);        // Assign to member
-router.put('/:id/bulk-assign-members', taskController.bulkAssignMembers); // Bulk assign members
+// POST /api/tasks/:id/comments - Add comment to task (EMPLOYEE)
+router.post('/:id/comments', taskController.addTaskComment);
 
-// ========== DELETE Routes ==========
-router.delete('/:id', taskController.deleteTask);                       // Delete task
+// POST /api/tasks/:id/time-logs - Add time log to task (EMPLOYEE)
+router.post('/:id/time-logs', taskController.addTimeLog);
+
+// GET /api/tasks/:id/comments - Get task comments (EMPLOYEE)
+router.get('/:id/comments', taskController.getTaskComments);
+
+// GET /api/tasks/:id/time-logs - Get task time logs (EMPLOYEE)
+router.get('/:id/time-logs', taskController.getTimeLogs);
+
+// POST /api/tasks/:id/accept - Accept task (EMPLOYEE)
+router.post('/:id/accept', taskController.acceptTask);
+
+// GET /api/tasks/:id - Get single task (EMPLOYEE)
+router.get('/:id', taskController.getTaskById);
+
+// ==================== ADMIN-ONLY ROUTES ====================
+
+// GET /api/tasks - Get all tasks (ADMIN ONLY)
+router.get('/', authMiddleware.requireAdmin, taskController.getAllTasks);
+
+// GET /api/tasks/overdue - Get overdue tasks (ADMIN ONLY)
+router.get('/overdue', authMiddleware.requireAdmin, taskController.getOverdueTasks);
+
+// GET /api/tasks/blocked - Get blocked tasks (ADMIN ONLY)
+router.get('/blocked', authMiddleware.requireAdmin, taskController.getBlockedTasks);
+
+// GET /api/tasks/project/:projectId - Get tasks by project (ADMIN ONLY)
+router.get('/project/:projectId', authMiddleware.requireAdmin, taskController.getTasksByProject);
+
+// POST /api/tasks - Create task (ADMIN ONLY)
+router.post('/', authMiddleware.requireAdmin, taskController.createTask);
+
+// PUT /api/tasks/:id - Update task (ADMIN ONLY)
+router.put('/:id', authMiddleware.requireAdmin, taskController.updateTask);
+
+// PUT /api/tasks/:id/assign-team-lead - Assign to team lead (ADMIN ONLY)
+router.put('/:id/assign-team-lead', authMiddleware.requireAdmin, taskController.assignToTeamLead);
+
+// PUT /api/tasks/:id/assign-member - Assign to member (ADMIN ONLY)
+router.put('/:id/assign-member', authMiddleware.requireAdmin, taskController.assignToMember);
+
+// PUT /api/tasks/:id/bulk-assign-members - Bulk assign members (ADMIN ONLY)
+router.put('/:id/bulk-assign-members', authMiddleware.requireAdmin, taskController.bulkAssignMembers);
+
+// POST /api/tasks/bulk/update-status - Bulk update status (ADMIN ONLY)
+router.post('/bulk/update-status', authMiddleware.requireAdmin, taskController.bulkUpdateStatus);
+
+// POST /api/tasks/bulk/assign-tasks - Bulk assign tasks (ADMIN ONLY)
+router.post('/bulk/assign-tasks', authMiddleware.requireAdmin, taskController.bulkAssignTasks);
+
+// DELETE /api/tasks/:id - Delete task (ADMIN ONLY)
+router.delete('/:id', authMiddleware.requireAdmin, taskController.deleteTask);
 
 module.exports = router;

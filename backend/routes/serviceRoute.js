@@ -8,31 +8,34 @@ const router = express.Router();
 // All routes require authentication
 router.use(authMiddleware.verifyToken);
 
-// GET /api/services - Get all services
-router.get('/', serviceController.getAllServices);
+// ==================== ADMIN-ONLY ROUTES ====================
+// All service management requires admin role
 
-// GET /api/services/types - Get service types
-router.get('/types', serviceController.getServiceTypes);
+// GET /api/services - Get all services (ADMIN ONLY)
+router.get('/', authMiddleware.requireAdmin, serviceController.getAllServices);
 
-// GET /api/services/status - Get status types
-router.get('/status', serviceController.getStatusTypes);
+// GET /api/services/types - Get service types (ADMIN ONLY)
+router.get('/types', authMiddleware.requireAdmin, serviceController.getServiceTypes);
 
-// GET /api/services/employees - Get employees for dropdown
-router.get('/employees', serviceController.getEmployees);
+// GET /api/services/status - Get status types (ADMIN ONLY)
+router.get('/status', authMiddleware.requireAdmin, serviceController.getStatusTypes);
 
-// GET /api/services/:id - Get service by ID
-router.get('/:id', serviceController.getServiceById);
+// GET /api/services/employees - Get employees for dropdown (ADMIN ONLY)
+router.get('/employees', authMiddleware.requireAdmin, serviceController.getEmployees);
 
-// POST /api/services - Create new service
-router.post('/', serviceController.createService);
+// GET /api/services/:id - Get service by ID (ADMIN ONLY)
+router.get('/:id', authMiddleware.requireAdmin, serviceController.getServiceById);
 
-// PUT /api/services/:id - Update service
-router.put('/:id', serviceController.updateService);
+// POST /api/services - Create new service (ADMIN ONLY)
+router.post('/', authMiddleware.requireAdmin, serviceController.createService);
 
-// DELETE /api/services/:id - Delete service
-router.delete('/:id', serviceController.deleteService);
+// PUT /api/services/:id - Update service (ADMIN ONLY)
+router.put('/:id', authMiddleware.requireAdmin, serviceController.updateService);
 
-// POST /api/services/:id/assign - Assign team to service
-router.post('/:id/assign', serviceController.assignTeam);
+// DELETE /api/services/:id - Delete service (ADMIN ONLY)
+router.delete('/:id', authMiddleware.requireAdmin, serviceController.deleteService);
+
+// POST /api/services/:id/assign - Assign team to service (ADMIN ONLY)
+router.post('/:id/assign', authMiddleware.requireAdmin, serviceController.assignTeam);
 
 module.exports = router;

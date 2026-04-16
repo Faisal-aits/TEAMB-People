@@ -9,14 +9,24 @@ const tenantMiddleware = require('../middleware/tenantMiddleware');
 router.use(authMiddleware.verifyToken);
 router.use(tenantMiddleware.extractTenantId);
 
-// Employee routes
+// ==================== MIXED ACCESS ROUTES ====================
+
+// POST /api/resignation-requests - Employee submits resignation request (EMPLOYEE)
 router.post('/', resignationController.submitRequest);
+
+// GET /api/resignation-requests/my - Employee views own requests (EMPLOYEE)
 router.get('/my', resignationController.getMyRequests);
 
-// HR/Admin routes
-router.get('/', authMiddleware.requireRole(['admin', 'hr_manager']), resignationController.getAllRequests);
-router.get('/:id', resignationController.getRequestById); // Need both employee and HR to view, filtering is handled by logic or can trust since they can only see what they ask for
-router.put('/:id/accept', authMiddleware.requireRole(['admin', 'hr_manager']), resignationController.uploadPDFMiddleware, resignationController.acceptRequest);
-router.put('/:id/reject', authMiddleware.requireRole(['admin', 'hr_manager']), resignationController.rejectRequest);
+// GET /api/resignation-requests - HR/Admin views all requests (ADMIN/HR ONLY)
+router.get('/', authMiddleware.requireRole(['admin', 'hr']), resignationController.getAllRequests);
+
+// GET /api/resignation-requests/:id - View specific request (ADMIN/HR)
+router.get('/:id', resignationController.getRequestById);
+
+// PUT /api/resignation-requests/:id/accept - HR/Admin accepts resignation (ADMIN/HR ONLY)
+router.put('/:id/accept', authMiddleware.requireRole(['admin', 'hr']), resignationController.uploadPDFMiddleware, resignationController.acceptRequest);
+
+// PUT /api/resignation-requests/:id/reject - HR/Admin rejects resignation (ADMIN/HR ONLY)
+router.put('/:id/reject', authMiddleware.requireRole(['admin', 'hr']), resignationController.rejectRequest);
 
 module.exports = router;

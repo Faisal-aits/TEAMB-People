@@ -7,22 +7,25 @@ const router = express.Router();
 // All routes require authentication
 router.use(authMiddleware.verifyToken);
 
-// GET /api/courses - Get all courses
-router.get('/', courseController.getAllCourses);
+// ==================== ADMIN-ONLY ROUTES ====================
+// All course management requires admin role
 
-// GET /api/courses/:id - Get course by ID
-router.get('/:id', courseController.getCourse);
+// GET /api/courses - Get all courses (ADMIN ONLY)
+router.get('/', authMiddleware.requireAdmin, courseController.getAllCourses);
 
-// POST /api/courses - Create new course
-router.post('/', courseController.createCourse);
+// GET /api/courses/:id - Get course by ID (ADMIN ONLY)
+router.get('/:id', authMiddleware.requireAdmin, courseController.getCourse);
 
-// PUT /api/courses/:id - Update course
-router.put('/:id', courseController.updateCourse);
+// POST /api/courses - Create new course (ADMIN ONLY)
+router.post('/', authMiddleware.requireAdmin, courseController.createCourse);
 
-// DELETE /api/courses/:id - Delete course
-router.delete('/:id', courseController.deleteCourse);
+// PUT /api/courses/:id - Update course (ADMIN ONLY)
+router.put('/:id', authMiddleware.requireAdmin, courseController.updateCourse);
 
-// GET /api/courses/:id/students - Get enrolled students
-router.get('/:id/students', courseController.getEnrolledStudents);
+// DELETE /api/courses/:id - Delete course (ADMIN ONLY)
+router.delete('/:id', authMiddleware.requireAdmin, courseController.deleteCourse);
+
+// GET /api/courses/:id/students - Get enrolled students (ADMIN ONLY)
+router.get('/:id/students', authMiddleware.requireAdmin, courseController.getEnrolledStudents);
 
 module.exports = router;

@@ -8,19 +8,33 @@ const router = express.Router();
 // All routes are protected
 router.use(authMiddleware.verifyToken);
 
-// Report listing routes
-router.get('/', dailyReportController.getAllReports);
+// ==================== MIXED ACCESS ROUTES ====================
+
+// GET /api/daily-reports - Get all reports (ADMIN ONLY)
+router.get('/', authMiddleware.requireAdmin, dailyReportController.getAllReports);
+
+// GET /api/daily-reports/my-reports - Get my reports (EMPLOYEE)
 router.get('/my-reports', dailyReportController.getMyReports);
-router.get('/date-range/:start_date/:end_date', dailyReportController.getReportsByDateRange);
 
-// Report CRUD routes
+// GET /api/daily-reports/date-range/:start_date/:end_date - Get reports in date range (ADMIN ONLY)
+router.get('/date-range/:start_date/:end_date', authMiddleware.requireAdmin, dailyReportController.getReportsByDateRange);
+
+// POST /api/daily-reports - Create report (EMPLOYEE)
 router.post('/', dailyReportController.createReport);
-router.get('/:id', dailyReportController.getReportById);
-router.put('/:id', dailyReportController.updateReport);
-router.delete('/:id', dailyReportController.deleteReport);
 
-// Report workflow routes
+// GET /api/daily-reports/:id - Get single report (ADMIN OR OWNER)
+router.get('/:id', dailyReportController.getReportById);
+
+// PUT /api/daily-reports/:id - Update report (EMPLOYEE OWNER OR ADMIN)
+router.put('/:id', dailyReportController.updateReport);
+
+// DELETE /api/daily-reports/:id - Delete report (ADMIN ONLY)
+router.delete('/:id', authMiddleware.requireAdmin, dailyReportController.deleteReport);
+
+// POST /api/daily-reports/:id/submit - Submit report (EMPLOYEE OWNER)
 router.post('/:id/submit', dailyReportController.submitReport);
-router.put('/:id/review', dailyReportController.reviewReport);
+
+// PUT /api/daily-reports/:id/review - Review report (ADMIN ONLY)
+router.put('/:id/review', authMiddleware.requireAdmin, dailyReportController.reviewReport);
 
 module.exports = router;

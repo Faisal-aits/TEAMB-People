@@ -7,16 +7,18 @@ const { verifyToken, requireRole } = require('../middleware/authMiddleware');
 // All routes require authentication
 router.use(verifyToken);
 
-// GET — any authenticated user can read branding (needed for document rendering)
+// ==================== MIXED ACCESS ROUTES ====================
+
+// GET /api/branding - Any authenticated user can read branding (needed for document rendering)
 router.get('/', brandingController.getBranding);
 
-// PUT — admin/hr only — update text fields
-router.put('/', requireRole(['admin', 'hr_manager']), brandingController.updateBranding);
+// PUT /api/branding - admin/hr only — update text fields
+router.put('/', requireRole(['admin', 'hr']), brandingController.updateBranding);
 
-// POST — admin/hr only — upload image
-router.post('/upload', requireRole(['admin', 'hr_manager']), brandingController.uploadMiddleware, brandingController.uploadImage);
+// POST /api/branding/upload - admin/hr only — upload image
+router.post('/upload', requireRole(['admin', 'hr']), brandingController.uploadMiddleware, brandingController.uploadImage);
 
-// DELETE — admin/hr only — remove image
-router.delete('/upload', requireRole(['admin', 'hr_manager']), brandingController.deleteImage);
+// DELETE /api/branding/upload - admin/hr only — remove image
+router.delete('/upload', requireRole(['admin', 'hr']), brandingController.deleteImage);
 
 module.exports = router;

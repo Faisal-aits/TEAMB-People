@@ -8,20 +8,23 @@ const router = express.Router();
 // All routes are protected
 router.use(authMiddleware.verifyToken);
 
-// Team management routes
-router.get('/', teamController.getAllTeams);
-router.post('/', teamController.createTeam);
-router.get('/:id', teamController.getTeamById);
-router.put('/:id', teamController.updateTeam);
-router.delete('/:id', teamController.deleteTeam);
+// ==================== ADMIN-ONLY ROUTES ====================
+// Team management (CRUD) - ADMIN ONLY
 
-// Team member routes
-router.get('/:teamId/members', teamController.getTeamMembers);
-router.post('/members', teamController.addTeamMember);
-router.delete('/:teamId/members/:employeeId', teamController.removeTeamMember);
-router.post('/:id/members/bulk', teamController.bulkAddMembers);
+router.get('/', authMiddleware.requireAdmin, teamController.getAllTeams);
+router.post('/', authMiddleware.requireAdmin, teamController.createTeam);
+router.get('/:id', authMiddleware.requireAdmin, teamController.getTeamById);
+router.put('/:id', authMiddleware.requireAdmin, teamController.updateTeam);
+router.delete('/:id', authMiddleware.requireAdmin, teamController.deleteTeam);
 
-// Employee team routes
+// Team member routes (ADMIN ONLY)
+router.get('/:teamId/members', authMiddleware.requireAdmin, teamController.getTeamMembers);
+router.post('/members', authMiddleware.requireAdmin, teamController.addTeamMember);
+router.delete('/:teamId/members/:employeeId', authMiddleware.requireAdmin, teamController.removeTeamMember);
+router.post('/:id/members/bulk', authMiddleware.requireAdmin, teamController.bulkAddMembers);
+
+// ==================== EMPLOYEE ROUTES ====================
+// Employees can see their own teams
 router.get('/employee/:employeeId', teamController.getTeamsByEmployee);
 
 module.exports = router;

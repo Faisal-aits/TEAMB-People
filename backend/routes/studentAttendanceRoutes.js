@@ -17,35 +17,35 @@ router.get('/test', (req, res) => {
 // All other routes are protected
 router.use(authMiddleware.verifyToken);
 
-// ========== ADMIN/TEACHER ROUTES ==========
+// ==================== ADMIN/TEACHER ROUTES (ADMIN ONLY) ====================
 
-// GET /api/student-attendance - Get all student attendance records
-router.get('/', studentAttendanceController.getAllStudentAttendance);
+// GET /api/student-attendance - Get all student attendance records (ADMIN ONLY)
+router.get('/', authMiddleware.requireAdmin, studentAttendanceController.getAllStudentAttendance);
 
-// GET /api/student-attendance/courses - Get courses list
-router.get('/courses', studentAttendanceController.getCourses);
+// GET /api/student-attendance/courses - Get courses list (ADMIN ONLY)
+router.get('/courses', authMiddleware.requireAdmin, studentAttendanceController.getCourses);
 
-// GET /api/student-attendance/students - Get students by course
-router.get('/students', studentAttendanceController.getStudentsByCourse);
+// GET /api/student-attendance/students - Get students by course (ADMIN ONLY)
+router.get('/students', authMiddleware.requireAdmin, studentAttendanceController.getStudentsByCourse);
 
-// POST /api/student-attendance/bulk - Bulk mark student attendance
-router.post('/bulk', studentAttendanceController.bulkMarkStudentAttendance);
+// POST /api/student-attendance/bulk - Bulk mark student attendance (ADMIN ONLY)
+router.post('/bulk', authMiddleware.requireAdmin, studentAttendanceController.bulkMarkStudentAttendance);
 
-// PUT /api/student-attendance/:id/status - Update attendance status
-router.put('/:id/status', studentAttendanceController.updateAttendanceStatus);
+// PUT /api/student-attendance/:id/status - Update attendance status (ADMIN ONLY)
+router.put('/:id/status', authMiddleware.requireAdmin, studentAttendanceController.updateAttendanceStatus);
 
-// DELETE /api/student-attendance/:id - Delete student attendance
-router.delete('/:id', studentAttendanceController.deleteStudentAttendance);
+// DELETE /api/student-attendance/:id - Delete student attendance (ADMIN ONLY)
+router.delete('/:id', authMiddleware.requireAdmin, studentAttendanceController.deleteStudentAttendance);
 
-// ========== STUDENT ROUTES ==========
+// ==================== STUDENT SELF-SERVICE ROUTES ====================
 
-// GET /api/student-attendance/student/my-attendance - Get student's own attendance
+// GET /api/student-attendance/student/my-attendance - Get student's own attendance (STUDENT)
 router.get('/student/my-attendance', studentAttendanceController.getStudentSelfAttendance);
 
-// GET /api/student-attendance/student/today - Get student's today's attendance
+// GET /api/student-attendance/student/today - Get student's today's attendance (STUDENT)
 router.get('/student/today', studentAttendanceController.getStudentTodaysAttendance);
 
-// POST /api/student-attendance/student/mark - Student marks own attendance
+// POST /api/student-attendance/student/mark - Student marks own attendance (STUDENT)
 router.post('/student/mark', studentAttendanceController.markStudentSelfAttendance);
 
 // PUT /api/student-attendance/student/checkout/:student_attendance_id - Student marks check-out

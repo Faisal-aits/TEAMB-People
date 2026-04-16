@@ -1,15 +1,21 @@
+// routes/offerLetterRoutes.js
 const express = require('express');
 const router = express.Router();
 const offerLetterController = require('../controllers/offerLetterController');
-const { verifyToken } = require('../middleware/authMiddleware');
+const authMiddleware = require('../middleware/authMiddleware');
 
-// HR: save or update letter
-router.post('/', verifyToken, offerLetterController.saveOfferLetter);
+// All routes require authentication
+router.use(authMiddleware.verifyToken);
 
-// Employee: get my letter
-router.get('/my', verifyToken, offerLetterController.getMyOfferLetters);
+// ==================== MIXED ACCESS ROUTES ====================
 
-// HR: get all letters for tracking
-router.get('/all', verifyToken, offerLetterController.getAllOfferLetters);
+// POST /api/offer-letters - HR generates offer letter (ADMIN/HR ONLY)
+router.post('/', authMiddleware.requireRole(['admin', 'hr']), offerLetterController.saveOfferLetter);
+
+// GET /api/offer-letters/my - Employee views own letters (EMPLOYEE)
+router.get('/my', offerLetterController.getMyOfferLetters);
+
+// GET /api/offer-letters/all - HR views all letters for tracking (ADMIN/HR ONLY)
+router.get('/all', authMiddleware.requireRole(['admin', 'hr']), offerLetterController.getAllOfferLetters);
 
 module.exports = router;

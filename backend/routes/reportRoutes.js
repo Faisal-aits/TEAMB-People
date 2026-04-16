@@ -8,22 +8,24 @@ const router = express.Router();
 // All routes are protected
 router.use(authMiddleware.verifyToken);
 
-// GET /api/reports - Get all reports
-router.get('/', reportController.getAllReports);
+// ==================== MIXED ACCESS ROUTES ====================
 
-// GET /api/reports/recent - Get recent reports (MUST BE BEFORE /:id)
+// GET /api/reports - Get all reports (ADMIN ONLY)
+router.get('/', authMiddleware.requireAdmin, reportController.getAllReports);
+
+// GET /api/reports/recent - Get recent reports (MUST BE BEFORE /:id) - (EMPLOYEE)
 router.get('/recent', reportController.getRecentReports);
 
-// GET /api/reports/:id - Get specific report
+// GET /api/reports/:id - Get specific report (ADMIN OR OWNER)
 router.get('/:id', reportController.getReport);
 
-// POST /api/reports - Create new report
+// POST /api/reports - Create new report (EMPLOYEE)
 router.post('/', reportController.createReport);
 
-// PUT /api/reports/:id - Update report
+// PUT /api/reports/:id - Update report (ADMIN OR OWNER)
 router.put('/:id', reportController.updateReport);
 
-// DELETE /api/reports/:id - Delete report
-router.delete('/:id', reportController.deleteReport);
+// DELETE /api/reports/:id - Delete report (ADMIN ONLY)
+router.delete('/:id', authMiddleware.requireAdmin, reportController.deleteReport);
 
 module.exports = router;

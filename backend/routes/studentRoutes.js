@@ -7,22 +7,25 @@ const router = express.Router();
 // All routes require authentication
 router.use(authMiddleware.verifyToken);
 
-// GET /api/students - Get all students
-router.get('/', studentController.getAllStudents);
+// ==================== ADMIN-ONLY ROUTES ====================
+// All student management requires admin role
 
-// GET /api/students/:id - Get student by ID
-router.get('/:id', studentController.getStudent);
+// GET /api/students - Get all students (ADMIN ONLY)
+router.get('/', authMiddleware.requireAdmin, studentController.getAllStudents);
 
-// POST /api/students - Create new student
-router.post('/', studentController.createStudent);
+// GET /api/students/:id - Get student by ID (ADMIN ONLY)
+router.get('/:id', authMiddleware.requireAdmin, studentController.getStudent);
 
-// PUT /api/students/:id - Update student
-router.put('/:id', studentController.updateStudent);
+// POST /api/students - Create new student (ADMIN ONLY)
+router.post('/', authMiddleware.requireAdmin, studentController.createStudent);
 
-// DELETE /api/students/:id - Delete student
-router.delete('/:id', studentController.deleteStudent);
+// PUT /api/students/:id - Update student (ADMIN ONLY)
+router.put('/:id', authMiddleware.requireAdmin, studentController.updateStudent);
 
-// GET /api/students/:id/courses - Get student courses
-router.get('/:id/courses', studentController.getStudentCourses);
+// DELETE /api/students/:id - Delete student (ADMIN ONLY)
+router.delete('/:id', authMiddleware.requireAdmin, studentController.deleteStudent);
+
+// GET /api/students/:id/courses - Get student courses (ADMIN ONLY)
+router.get('/:id/courses', authMiddleware.requireAdmin, studentController.getStudentCourses);
 
 module.exports = router;
