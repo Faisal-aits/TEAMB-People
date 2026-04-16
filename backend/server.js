@@ -89,6 +89,15 @@ app.use('/api/', generalLimiter);
 app.use('/api/auth/login', authLimiter);
 app.use('/api/super-admin/login', authLimiter);
 
+// 1.5 Serve uploaded files BEFORE CORS (img/static requests have no Origin header)
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+  setHeaders: (res) => {
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.set('Access-Control-Allow-Origin', '*');
+  }
+}));
+
 // 2. CORS - STRICT: Do NOT allow requests with no origin
 const allowedOrigins = [
   'https://work-desk.tech',
@@ -125,8 +134,7 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Serve uploaded files statically
-const path = require('path');
+// Error logging
 const fs = require('fs');
 const errorLog = fs.createWriteStream(path.join(__dirname, 'error.log'), { flags: 'a' });
 const originalConsoleError = console.error;
@@ -134,7 +142,6 @@ console.error = (...args) => {
   errorLog.write(new Date().toISOString() + ' - ' + args.join(' ') + '\n');
   originalConsoleError.apply(console, args);
 };
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Log all requests
 app.use((req, res, next) => {
@@ -185,8 +192,7 @@ app.use('/api/increment-letters', incrementLetterRoutes);
 app.use('/api/teams', teamRoutes);           // Add this
 app.use('/api/tasks', taskRoutes);           // Add this
 app.use('/api/daily-reports', dailyReportRoutes);
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use('/uploads', express.static('uploads'));
+
 app.use('/api/declaration-form', declarationFormRoutes);
 
 // Basic route

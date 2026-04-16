@@ -548,7 +548,7 @@
 .detail-item span {
   color: #2d3748;
   font-size: 0.95rem;
-  padding: 0.5rem 0;
+  padding: 0.5rem 0.5rem;
 }
 
 /* Delete Confirmation Modal Styles */

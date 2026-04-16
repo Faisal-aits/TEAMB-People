@@ -228,7 +228,6 @@
 
 .attendance-status-active {
   background: rgba(72, 187, 120, 0.2);
-  color: #2f855a;
 }
 
 .attendance-status-delayed {
@@ -265,7 +264,6 @@
 
 .attendance-approve-btn {
   background: rgba(72, 187, 120, 0.2);
-  color: #2f855a;
 }
 
 .attendance-approve-btn:hover {
