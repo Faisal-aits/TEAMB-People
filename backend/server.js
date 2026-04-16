@@ -88,9 +88,10 @@ app.use(cors({
       return callback(null, true);
     }
 
-    // In production, REJECT requests with no origin (Postman, curl, scripts)
+    // In production, we allow no-origin through CORS, BUT they will be caught and blocked
+    // by apiProtection.js right after! We do this because browsers don't send Origin for same-site requests.
     if (!origin) {
-      return callback(new Error('Direct API access is not allowed'));
+      return callback(null, true);
     }
 
     if (allowedOrigins.includes(origin)) {
@@ -110,6 +111,7 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
   crossOriginResourcePolicy: { policy: "cross-origin" },
 }));
+debugger
 
 // 4. Rate limiting - Prevent brute force and scraping
 const generalLimiter = rateLimit({
@@ -219,6 +221,8 @@ app.use((err, req, res, next) => {
     error: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
 });
+
+debugger
 
 // Start server
 app.listen(PORT, '0.0.0.0', () => {

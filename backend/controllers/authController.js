@@ -17,16 +17,18 @@ const authController = {
                 req.body.organizationId
             )?.trim();
 
+            console.log(email, password, tenant_slug);
+
             // Basic validation
             if (!email || !password) {
-                return res.status(400).json({ 
-                    message: 'Email and password are required' 
+                return res.status(400).json({
+                    message: 'Email and password are required'
                 });
             }
 
             if (!tenant_slug) {
-                return res.status(400).json({ 
-                    message: 'Organization identifier is required' 
+                return res.status(400).json({
+                    message: 'Organization identifier is required'
                 });
             }
 
@@ -42,14 +44,14 @@ const authController = {
 
             const tenant = tenantRows[0];
             if (!tenant.is_active) {
-                return res.status(403).json({ 
-                    message: 'Your organization account has been deactivated. Please contact support.' 
+                return res.status(403).json({
+                    message: 'Your organization account has been deactivated. Please contact support.'
                 });
             }
 
             // Find user within this tenant
             const user = await User.findByEmail(email, tenant.id);
-            
+
             if (!user) {
                 return res.status(400).json({ message: 'Invalid credentials' });
             }
@@ -59,14 +61,14 @@ const authController = {
                 // Hash and set the password
                 const saltRounds = 10;
                 const password_hash = await bcrypt.hash(password, saltRounds);
-                
+
                 await User.updatePassword(user.id, password_hash);
-                
+
                 // Generate JWT token with tenant_id
                 const token = jwt.sign(
-                    { 
-                        id: user.id, 
-                        email: user.email, 
+                    {
+                        id: user.id,
+                        email: user.email,
                         role_name: user.role_name,
                         first_name: user.first_name,
                         last_name: user.last_name,
@@ -95,16 +97,16 @@ const authController = {
 
             // REGULAR LOGIN - Verify existing password
             const isPasswordValid = await bcrypt.compare(password, user.password_hash);
-            
+
             if (!isPasswordValid) {
                 return res.status(400).json({ message: 'Invalid credentials' });
             }
 
             // Generate JWT token with tenant_id
             const token = jwt.sign(
-                { 
-                    id: user.id, 
-                    email: user.email, 
+                {
+                    id: user.id,
+                    email: user.email,
                     role_name: user.role_name,
                     first_name: user.first_name,
                     last_name: user.last_name,
@@ -113,7 +115,7 @@ const authController = {
                 process.env.JWT_SECRET,
                 { expiresIn: '24h' }
             );
-            
+
             res.json({
                 message: 'Login successful',
                 token,
@@ -224,7 +226,7 @@ const authController = {
             }
 
             const isPasswordValid = await bcrypt.compare(currentPassword, user.password_hash);
-            
+
             if (!isPasswordValid) {
                 return res.status(401).json({ message: 'Current password is incorrect' });
             }
@@ -250,7 +252,7 @@ const authController = {
                 'SELECT id, name, slug, logo_url FROM tenants WHERE slug = ? AND is_active = true',
                 [slug]
             );
-            
+
             if (rows.length === 0) {
                 return res.status(404).json({ message: 'Organization not found' });
             }
@@ -291,7 +293,7 @@ const authController = {
 
             const crypto = require('crypto');
             const token = crypto.randomBytes(20).toString('hex');
-            
+
             // Expiry 1 hour from now
             const expiryDate = new Date();
             expiryDate.setHours(expiryDate.getHours() + 1);
