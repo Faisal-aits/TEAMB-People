@@ -59,13 +59,58 @@ const authMiddleware = {
     // Check if user has specific role (within their tenant)
     requireRole: (roles) => {
         return (req, res, next) => {
-            if (!req.user || !roles.includes(req.user.role_name)) {
+            if (!req.user) {
+                return res.status(401).json({
+                    message: 'Access denied. No user authenticated.'
+                });
+            }
+
+            if (!roles.includes(req.user.role_name)) {
+                console.warn(`🚫 AUTHORIZATION DENIED: User ${req.user.user_id} (${req.user.role_name}) attempted to access admin endpoint. Path: ${req.path}`);
                 return res.status(403).json({
-                    message: 'Access denied. Insufficient permissions.'
+                    success: false,
+                    message: 'Access denied. Insufficient permissions.',
+                    required_role: roles
                 });
             }
             next();
         };
+    },
+
+    // Admin-only endpoints
+    requireAdmin: (req, res, next) => {
+        if (!req.user) {
+            return res.status(401).json({ message: 'Access denied. No user authenticated.' });
+        }
+
+        if (req.user.role_name !== 'admin') {
+            console.warn(`🚫 ADMIN ACCESS DENIED: User ${req.user.user_id} (${req.user.role_name}) attempted admin endpoint. Path: ${req.path}`);
+            return res.status(403).json({
+                success: false,
+                message: 'Admin privileges required.',
+            });
+        }
+        next();
+    },
+
+    // Employee can only view/edit their own profile
+    requireSelfOrAdmin: (req, res, next) => {
+        if (!req.user) {
+            return res.status(401).json({ message: 'Access denied. No user authenticated.' });
+        }
+
+        const requestedUserId = parseInt(req.params.id);
+        const currentUserId = req.user.user_id;
+        const isAdmin = req.user.role_name === 'admin';
+
+        if (!isAdmin && currentUserId !== requestedUserId) {
+            console.warn(`🚫 PERMISSION DENIED: User ${currentUserId} tried to access user ${requestedUserId}. Path: ${req.path}`);
+            return res.status(403).json({
+                success: false,
+                message: 'You can only access your own profile.',
+            });
+        }
+        next();
     }
 };
 

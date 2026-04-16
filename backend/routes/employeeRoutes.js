@@ -15,39 +15,44 @@ const upload = multer({
 // All routes require authentication
 router.use(authMiddleware.verifyToken);
 
-// ==================== STANDARD EMPLOYEE ROUTES ====================
-// GET /api/employees - Get all employees
-router.get('/', employeeController.getAllEmployees);
-
-// GET /api/employees/roles - Get roles for this tenant
-router.get('/roles', employeeController.getRoles);
-
-// GET /api/employees/departments - Get departments
-router.get('/departments', employeeController.getDepartments);
+// ==================== EMPLOYEE SELF-SERVICE ROUTES ====================
+// These can be accessed by any authenticated employee/admin
 
 // GET /api/employees/my-profile - Get current employee profile
 router.get('/my-profile', employeeController.getMyProfile);
 
-// GET /api/employees/:id - Get employee by ID
-router.get('/:id', employeeController.getEmployee);
+// GET /api/employees/:id - Get employee by ID (self or admin only)
+router.get('/:id', authMiddleware.requireSelfOrAdmin, employeeController.getEmployee);
 
-// POST /api/employees - Create new employee
-router.post('/', employeeController.createEmployee);
+// ==================== ADMIN-ONLY ROUTES ====================
+// These require admin role
 
-// PUT /api/employees/:id - Update employee
-router.put('/:id', employeeController.updateEmployee);
+// GET /api/employees - Get all employees (ADMIN ONLY)
+router.get('/', authMiddleware.requireAdmin, employeeController.getAllEmployees);
 
-// POST /api/employees/:id/reset-password - Reset employee password (admin/hr restricted handled externally or via token check)
+// GET /api/employees/roles - Get roles for this tenant (ADMIN ONLY)
+router.get('/roles', authMiddleware.requireAdmin, employeeController.getRoles);
+
+// GET /api/employees/departments - Get departments (ADMIN ONLY)
+router.get('/departments', authMiddleware.requireAdmin, employeeController.getDepartments);
+
+// POST /api/employees - Create new employee (ADMIN ONLY)
+router.post('/', authMiddleware.requireAdmin, employeeController.createEmployee);
+
+// PUT /api/employees/:id - Update employee (ADMIN ONLY)
+router.put('/:id', authMiddleware.requireAdmin, employeeController.updateEmployee);
+
+// POST /api/employees/:id/reset-password - Reset employee password (ADMIN/HR ONLY)
 router.post('/:id/reset-password', authMiddleware.requireRole(['admin', 'hr']), employeeController.resetPassword);
 
-// DELETE /api/employees/:id - Delete employee
-router.delete('/:id', employeeController.deleteEmployee);
+// DELETE /api/employees/:id - Delete employee (ADMIN ONLY)
+router.delete('/:id', authMiddleware.requireAdmin, employeeController.deleteEmployee);
 
-// GET /api/employees/positions/suggested - Get suggested positions
-router.get('/positions/suggested', employeeController.getSuggestedPositions);
+// GET /api/employees/positions/suggested - Get suggested positions (ADMIN ONLY)
+router.get('/positions/suggested', authMiddleware.requireAdmin, employeeController.getSuggestedPositions);
 
-// POST /api/employees/positions/suggested - Add new suggested position
-router.post('/positions/suggested', employeeController.addSuggestedPosition);
+// POST /api/employees/positions/suggested - Add new suggested position (ADMIN ONLY)
+router.post('/positions/suggested', authMiddleware.requireAdmin, employeeController.addSuggestedPosition);
 
 // GET /api/employees/:id/face-status - Get face enrollment status
 router.get('/:id/face-status', employeeController.getFaceStatus);
