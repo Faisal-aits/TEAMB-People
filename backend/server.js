@@ -94,6 +94,7 @@ const allowedOrigins = [
   'https://work-desk.tech',
   'https://www.work-desk.tech',
   'https://admin.work-desk.tech',
+  'https://api.work-desk.tech',
   'http://localhost:5173',
   'http://localhost:5174',
 ];
