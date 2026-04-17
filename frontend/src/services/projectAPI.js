@@ -154,6 +154,9 @@ export const projectAPI = {
   // Get all teams
   getAllTeams: () => api.get('/teams'), // Fixed: was /projects
 
+  // Get current user's teams
+  getMyTeams: () => api.get('/teams/my-teams'),
+
   // Get team by ID
   getTeamById: (id) => api.get(`/teams/${id}`), // Fixed: was /projects/${id}
 

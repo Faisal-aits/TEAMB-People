@@ -55,6 +55,9 @@ router.get('/my/today', attendanceController.getMyTodayAttendance);
 // GET /api/attendance/my/history - Get current user's attendance history (EMPLOYEE)
 router.get('/my/history', attendanceController.getMyHistory);
 
+// GET /api/attendance/my/percentage - Get current user's attendance percentage (EMPLOYEE)
+router.get('/my/percentage', attendanceController.getMyAttendancePercentage);
+
 // POST /api/attendance/my/mark - Mark attendance for current user (EMPLOYEE)
 router.post('/my/mark', attendanceController.markMyAttendance);
 

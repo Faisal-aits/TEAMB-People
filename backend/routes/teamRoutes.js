@@ -13,6 +13,7 @@ router.use(authMiddleware.verifyToken);
 
 router.get('/', authMiddleware.requireAdmin, teamController.getAllTeams);
 router.post('/', authMiddleware.requireAdmin, teamController.createTeam);
+router.get('/my-teams', teamController.getMyTeams);
 router.get('/:id', authMiddleware.requireAdmin, teamController.getTeamById);
 router.put('/:id', authMiddleware.requireAdmin, teamController.updateTeam);
 router.delete('/:id', authMiddleware.requireAdmin, teamController.deleteTeam);

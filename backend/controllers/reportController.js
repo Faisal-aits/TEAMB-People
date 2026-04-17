@@ -17,6 +17,20 @@ const reportController = {
         }
     },
 
+    // Get current user's own reports
+    getMyReports: async (req, res) => {
+        try {
+            const userId = req.user.id;
+            const userRole = req.user.role_name;
+            const reports = await Report.getAll(req.tenantId, userId, userRole);
+
+            res.json({ reports });
+        } catch (error) {
+            console.error('Get my reports error:', error);
+            res.status(500).json({ message: 'Server error while fetching your reports' });
+        }
+    },
+
     // Get report by ID - with access control
     getReport: async (req, res) => {
         try {

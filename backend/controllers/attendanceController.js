@@ -259,6 +259,32 @@ getAllAttendance: async (req, res) => {
         }
     },
 
+    // Get current user's attendance percentage
+    getMyAttendancePercentage: async (req, res) => {
+        try {
+            const userId = req.user.id;
+            const { month, year } = req.query;
+            const [employees] = await pool.execute(
+                'SELECT id FROM employee_details WHERE user_id = ? AND tenant_id = ?',
+                [userId, req.tenantId]
+            );
+
+            if (employees.length === 0) {
+                return res.status(404).json({ success: false, message: 'Employee record not found' });
+            }
+
+            const employeeId = employees[0].id;
+            const targetMonth = month || new Date().getMonth() + 1;
+            const targetYear = year || new Date().getFullYear();
+            const percentage = await Attendance.getMonthlyPercentage(req.tenantId, employeeId, targetMonth, targetYear);
+
+            res.json({ success: true, attendance_percentage: percentage });
+        } catch (error) {
+            console.error('Get my attendance percentage error:', error);
+            res.status(500).json({ success: false, message: error.message });
+        }
+    },
+
     // Mark my attendance
     markMyAttendance: async (req, res) => {
         try {

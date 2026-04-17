@@ -16,6 +16,9 @@ router.get('/', authMiddleware.requireRole(['admin', 'hr']), reportController.ge
 // GET /api/reports/recent - Get recent reports (MUST BE BEFORE /:id) - (EMPLOYEE)
 router.get('/recent', reportController.getRecentReports);
 
+// GET /api/reports/my - Get current user's reports (EMPLOYEE)
+router.get('/my', reportController.getMyReports);
+
 // GET /api/reports/:id - Get specific report (ADMIN OR OWNER)
 router.get('/:id', reportController.getReport);
 

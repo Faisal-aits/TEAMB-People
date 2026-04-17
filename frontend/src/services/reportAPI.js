@@ -28,6 +28,9 @@ export const reportAPI = {
   // Get all reports
   getAll: () => api.get('/reports'),
 
+  // Get current user's reports
+  getMyReports: () => api.get('/reports/my'),
+
   // Get recent reports for dashboard
   getRecent: (limit = 3) => api.get(`/reports/recent?limit=${limit}`),
 

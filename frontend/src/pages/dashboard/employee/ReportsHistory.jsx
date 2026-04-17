@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './Reports.css';
 import { reportAPI } from '../../../services/reportAPI';
-import { employeeAPI } from '../../../services/employeeAPI';
 import * as XLSX from 'xlsx';
 import { useLocation } from 'react-router-dom';
 
@@ -20,7 +19,7 @@ const Reports = () => {
 
   // Get current user and employee data from localStorage and API
   useEffect(() => {
-    const getUserAndEmployeeData = async () => {
+    const getUserAndEmployeeData = () => {
       try {
         const userData = localStorage.getItem('user');
         if (!userData) {
@@ -29,13 +28,7 @@ const Reports = () => {
 
         const user = JSON.parse(userData);
         setCurrentUser(user);
-
-        if (user.id) {
-          const employee = await getEmployeeByUserId(user.id);
-          if (employee) {
-            setCurrentEmployee(employee);
-          }
-        }
+        setCurrentEmployee(null);
       } catch (err) {
         console.error('Error getting user data:', err);
       }
@@ -43,22 +36,6 @@ const Reports = () => {
     
     getUserAndEmployeeData();
   }, []);
-
-  // Get employee data by user ID
-  const getEmployeeByUserId = async (userId) => {
-    try {
-      const response = await employeeAPI.getAll();
-      
-      if (response.data && response.data.employees) {
-        const employee = response.data.employees.find(emp => emp.user_id === userId);
-        return employee;
-      }
-      return null;
-    } catch (err) {
-      console.error('Error fetching employees list:', err);
-      return null;
-    }
-  };
 
   // Check if we have reports from dashboard navigation
   useEffect(() => {
@@ -137,7 +114,7 @@ const Reports = () => {
   const fetchAllReports = async () => {
     try {
       setLoading(true);
-      const response = await reportAPI.getRecent(100);
+      const response = await reportAPI.getMyReports();
       
       let reportsData = [];
       
@@ -148,9 +125,8 @@ const Reports = () => {
       } else if (response.data && response.data.data) {
         reportsData = response.data.data;
       }
-      
-      const enhancedReports = await enhanceReportsWithUserInfo(reportsData);
-      const userReports = filterReportsForCurrentUser(enhancedReports);
+
+      const userReports = filterReportsForCurrentUser(reportsData);
       
       setReports(userReports);
       setFilteredReports(userReports);
@@ -162,40 +138,6 @@ const Reports = () => {
       setFilteredReports([]);
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Enhance reports with user information from employeeAPI
-  const enhanceReportsWithUserInfo = async (reportsData) => {
-    try {
-      const employeesResponse = await employeeAPI.getAll();
-      const employees = employeesResponse.data?.employees || [];
-      
-      const userMap = {};
-      employees.forEach(emp => {
-        if (emp.user_id) {
-          userMap[emp.user_id] = {
-            name: `${emp.first_name} ${emp.last_name}`,
-            employee_id: emp.employee_id || emp.id
-          };
-        }
-      });
-      
-      return reportsData.map(report => {
-        const userId = report.user_id || report.generated_by_id;
-        const userInfo = userMap[userId];
-        
-        return {
-          ...report,
-          generated_by_name: userInfo?.name || report.generated_by_name || 'Unknown',
-          generated_by_id: userId,
-          employee_id: userInfo?.employee_id || report.employee_id
-        };
-      });
-      
-    } catch (err) {
-      console.error('Error enhancing reports with user info:', err);
-      return reportsData;
     }
   };
 

@@ -110,7 +110,19 @@ const taskController = {
 getMyTasks: async (req, res) => {
     try {
         const tenant_id = req.user?.tenant_id || req.tenantId;
-        const employee_id = req.user?.employee_id || req.employeeId;
+        const [employees] = await db.execute(
+            'SELECT id FROM employee_details WHERE user_id = ? AND tenant_id = ?',
+            [req.user.id, tenant_id]
+        );
+
+        if (employees.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Employee record not found'
+            });
+        }
+
+        const employee_id = employees[0].id;
         
         const [tasks] = await db.execute(`
             SELECT 

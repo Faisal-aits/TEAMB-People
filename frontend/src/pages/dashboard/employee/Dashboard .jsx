@@ -32,14 +32,6 @@ const Dashboard = () => {
     projects: [] // Store actual project data
   });
 
-  // Helper function for progress bar colors
-  const getProgressColor = (progress) => {
-    if (progress >= 80) return 'progress-high';
-    if (progress >= 50) return 'progress-medium';
-    if (progress >= 25) return 'progress-low';
-    return 'progress-critical';
-  };
-
   // Fetch employee data from localStorage and API
   useEffect(() => {
     const fetchEmployeeData = async () => {
@@ -85,11 +77,13 @@ const Dashboard = () => {
         const employee = await fetchEmployeeData();
         
         if (employee) {
+          const assignedProjects = await fetchAssignedProjects();
+
           await Promise.all([
-            fetchNotifications(employee),
-            fetchQuickStats(employee),
-            fetchRecentActivity(employee),
-            fetchProjectStats(employee)
+            fetchNotifications(employee, assignedProjects),
+            fetchQuickStats(employee, assignedProjects),
+            fetchRecentActivity(employee, assignedProjects),
+            fetchProjectStats(assignedProjects)
           ]);
         }
       } catch (err) {
@@ -102,24 +96,6 @@ const Dashboard = () => {
 
     fetchAllData();
   }, []);
-
-
-
-  // Check if employee is assigned to project
-  const isEmployeeAssignedToProject = (project, employee) => {
-    if (!employee) return false;
-
-    const employeeName = `${employee.first_name} ${employee.last_name}`;
-    const employeeId = employee.employee_id || employee.id;
-
-    const isManager = project.manager && project.manager.toLowerCase().includes(employeeName.toLowerCase());
-    const isTeamMember = project.team && project.team.some(
-      member => member.employee_id === employeeId
-    );
-    
-    return isManager || isTeamMember;
-  };
-
   // Calculate project status based on phases (from Projects.jsx)
   const calculateProjectStatus = (phases, endDate) => {
     if (!phases || phases.length === 0) return 'Planning';
@@ -147,16 +123,14 @@ const Dashboard = () => {
     return 'Planning';
   };
 
-  // Fetch project statistics with projects array
-  const fetchProjectStats = async (employee) => {
-    try {
-      const projectsResponse = await projectAPI.getAll();
-      const projects = projectsResponse.data.success ? projectsResponse.data.data : [];
-      
-      const assignedProjects = projects.filter(project => 
-        isEmployeeAssignedToProject(project, employee)
-      );
+  const fetchAssignedProjects = async () => {
+    const projectsResponse = await projectAPI.getMyProjects();
+    return projectsResponse.data?.success ? (projectsResponse.data.data || []) : [];
+  };
 
+  // Fetch project statistics with projects array
+  const fetchProjectStats = async (assignedProjects) => {
+    try {
       let stats = {
         total: assignedProjects.length,
         onTrack: 0,
@@ -207,12 +181,7 @@ const Dashboard = () => {
   };
 
   // Fetch notifications
-  const fetchNotifications = async (employee) => {
-    const projectsResponse = await projectAPI.getAll();
-    const projects = projectsResponse.data.success ? projectsResponse.data.data : [];
-
-    const assignedProjects = projects.filter(project => isEmployeeAssignedToProject(project, employee));
-
+  const fetchNotifications = async (employee, assignedProjects) => {
     let dynamicNotifications = [
       ...assignedProjects.map(project => ({
         id: `project-${project.id}`,
@@ -234,15 +203,8 @@ const Dashboard = () => {
   };
 
   // Fetch quick stats
-  const fetchQuickStats = async (employee) => {
+  const fetchQuickStats = async (employee, assignedProjects) => {
     try {
-      const projectsResponse = await projectAPI.getAll();
-      const projects = projectsResponse.data.success ? projectsResponse.data.data : [];
-      
-      const assignedProjects = projects.filter(project => 
-        isEmployeeAssignedToProject(project, employee)
-      );
-
       const projectsAssigned = assignedProjects.length;
 
       const upcomingDeadlines = assignedProjects
@@ -277,13 +239,7 @@ const Dashboard = () => {
   // Calculate attendance
   const calculateAttendance = async (employee) => {
     try {
-      const employeeId = employee.employee_id || employee.id;
-      
-      if (!employeeId) {
-        return 95;
-      }
-      
-      const response = await attendanceAPI.getAttendancePercentage(employeeId);
+      const response = await attendanceAPI.getMyAttendancePercentage();
       const percentage = response.data?.attendance_percentage;
       
       if (percentage === undefined) {
@@ -318,7 +274,7 @@ const Dashboard = () => {
   };
 
   // Fetch recent activity
-  const fetchRecentActivity = async (employee) => {
+  const fetchRecentActivity = async (employee, assignedProjects) => {
     try {
       const activities = [];
 
@@ -331,13 +287,6 @@ const Dashboard = () => {
         timestamp: new Date().toISOString(),
         type: "attendance",
       });
-
-      const projectsResponse = await projectAPI.getAll();
-      const projects = projectsResponse.data.success ? projectsResponse.data.data : [];
-      
-      const assignedProjects = projects.filter(project => 
-        isEmployeeAssignedToProject(project, employee)
-      );
 
       assignedProjects.forEach((project, index) => {
         activities.push({

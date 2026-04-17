@@ -20,6 +20,27 @@ const projectController = {
     }
   },
 
+  // Get projects assigned to the current authenticated user
+  getMyProjects: async (req, res) => {
+    try {
+      const fullName = `${req.user.first_name || ''} ${req.user.last_name || ''}`.trim();
+      const projects = await Project.getByUser(req.tenantId, req.user.id, fullName);
+
+      res.json({
+        success: true,
+        data: projects,
+        message: 'Assigned projects retrieved successfully'
+      });
+    } catch (error) {
+      console.error('Get my projects error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Server error',
+        error: error.message
+      });
+    }
+  },
+
   // Get project by ID
   getProjectById: async (req, res) => {
     try {

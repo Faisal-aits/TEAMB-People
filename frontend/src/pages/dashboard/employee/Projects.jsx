@@ -179,10 +179,10 @@ const getProjectPhases = (project) => {
   };
 
   const canCreateProject = () => currentUser.role === 'hr';
-  const canCreateTeam = () => currentUser.isProjectLead;
-  const canCreateTask = (projectId) => currentUser.isProjectLead && currentUser.managedProjects.includes(projectId);
+  const canCreateTeam = () => currentUser.role === 'hr';
+  const canCreateTask = (projectId) => currentUser.role === 'hr' && currentUser.managedProjects.includes(projectId);
   const canEditProject = () => currentUser.role === 'hr';
-  const canViewTeamManagement = () => currentUser.isProjectLead;
+  const canViewTeamManagement = () => currentUser.role === 'hr';
 
   // Helper functions
   const filterTasksByMonth = (tasks, month, year) => {
@@ -612,14 +612,15 @@ const getGroupedTasks = (tasksList) => {
   const fetchAllData = async () => {
     try {
       setLoading(true);
+      const isHrUser = currentUser.role === 'hr';
 
       const [projectsRes, statsRes, employeesRes, departmentsRes, teamsRes, tasksRes] = await Promise.allSettled([
-        projectAPI.getAll(),
-        projectAPI.getStats(),
-        projectAPI.getEmployees(),
-        projectAPI.getDepartments(),
-        projectAPI.getAllTeams(),
-        projectAPI.getAllTasks()
+        isHrUser ? projectAPI.getAll() : projectAPI.getMyProjects(),
+        isHrUser ? projectAPI.getStats() : Promise.resolve({ data: { success: true, data: null } }),
+        isHrUser ? projectAPI.getEmployees() : Promise.resolve({ data: { success: true, data: [] } }),
+        isHrUser ? projectAPI.getDepartments() : Promise.resolve({ data: { success: true, data: [] } }),
+        isHrUser ? projectAPI.getAllTeams() : projectAPI.getMyTeams(),
+        isHrUser ? projectAPI.getAllTasks() : projectAPI.getMyTasks()
       ]);
 
       if (projectsRes.status === 'fulfilled' && projectsRes.value?.data?.success) {
@@ -629,7 +630,9 @@ const getGroupedTasks = (tasksList) => {
       }
 
       if (statsRes.status === 'fulfilled' && statsRes.value?.data?.success) {
-        setDashboardStats(statsRes.value.data.data || {});
+        if (statsRes.value.data.data) {
+          setDashboardStats(statsRes.value.data.data || {});
+        }
       }
 
       if (employeesRes.status === 'fulfilled' && employeesRes.value?.data?.success) {
@@ -670,6 +673,19 @@ const getGroupedTasks = (tasksList) => {
         setTasks(tasksRes.value.data.data || []);
       } else {
         setTasks([]);
+      }
+
+      if (!isHrUser) {
+        const projectList = projectsRes.status === 'fulfilled' && projectsRes.value?.data?.success
+          ? (projectsRes.value.data.data || [])
+          : [];
+
+        setDashboardStats({
+          totalProjects: projectList.length,
+          activeProjects: projectList.filter(project => project.status !== 'Completed').length,
+          delayedProjects: projectList.filter(project => project.status === 'Delayed').length,
+          completedProjects: projectList.filter(project => project.status === 'Completed').length
+        });
       }
 
       setError('');

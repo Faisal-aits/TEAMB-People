@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './Reports.css';
 import { reportAPI } from '../../../services/reportAPI';
-import { FaEdit, FaTrash } from 'react-icons/fa';
+import { FaEdit } from 'react-icons/fa';
 
 const Reports = () => {
   const [reports, setReports] = useState([]);
@@ -42,7 +42,7 @@ const Reports = () => {
   const fetchReports = async () => {
     try {
       setLoading(true);
-      const response = await reportAPI.getAll();
+      const response = await reportAPI.getMyReports();
       setReports(response.data.reports || []);
       setError(null);
     } catch (err) {
@@ -129,19 +129,6 @@ const handleEditClick = async (report) => {
     }
   }
 };
-
-  // Handle delete button click
-  const handleDeleteClick = async (report) => {
-    if (window.confirm('Are you sure you want to delete this report?')) {
-      try {
-        await reportAPI.delete(report.id);
-        await fetchReports();
-      } catch (err) {
-        console.error('Failed to delete report:', err);
-        alert('Failed to delete report. Please try again.');
-      }
-    }
-  };
 
 // Handle new report submission - FIXED to include time
 const handleReportSubmit = async (e) => {
@@ -281,7 +268,7 @@ const handleReportSubmit = async (e) => {
               <tr>
                 <th>Date & Time</th>
                 <th>Description</th>
-                <th>Actions</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -305,13 +292,6 @@ const handleReportSubmit = async (e) => {
                         title="Edit Report"
                       >
                         <FaEdit />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteClick(report)}
-                        className="action-btn delete-btn"
-                        title="Delete Report"
-                      >
-                        <FaTrash />
                       </button>
                     </div>
                   </td>

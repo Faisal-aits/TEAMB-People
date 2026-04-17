@@ -34,6 +34,50 @@ const Project = {
     return projects;
   },
 
+  // Get projects assigned to the current user through team membership or manager ownership
+  getByUser: async (tenantId, userId, fullName) => {
+    const [projects] = await pool.execute(
+      `SELECT DISTINCT
+        p.id, p.name, p.description, p.department, p.manager,
+        DATE_FORMAT(p.start_date, '%Y-%m-%d') as start_date,
+        DATE_FORMAT(p.end_date, '%Y-%m-%d') as end_date,
+        p.current_phase, p.status, p.progress, p.created_at, p.updated_at
+      FROM projects p
+      LEFT JOIN teams t
+        ON t.project_id = p.id AND t.tenant_id = p.tenant_id
+      LEFT JOIN team_members tm
+        ON tm.team_id = t.id AND tm.tenant_id = p.tenant_id AND tm.is_active = 1
+      LEFT JOIN employee_details ed
+        ON ed.id = tm.employee_id AND ed.tenant_id = p.tenant_id
+      WHERE p.id != 1
+        AND p.tenant_id = ?
+        AND (
+          LOWER(TRIM(COALESCE(p.manager, ''))) = LOWER(TRIM(?))
+          OR ed.user_id = ?
+        )
+      ORDER BY p.created_at DESC`,
+      [tenantId, fullName || '', userId]
+    );
+
+    for (const project of projects) {
+      const [phases] = await pool.execute(
+        `SELECT * FROM project_phases
+         WHERE project_id = ? AND tenant_id = ?
+         ORDER BY phase_order`,
+        [project.id, tenantId]
+      );
+
+      project.phases = phases.map((phase) => ({
+        ...phase,
+        documents: parseDocuments(phase.documents)
+      }));
+
+      project.team = await Project.getTeamMembers(tenantId, project.id);
+    }
+
+    return projects;
+  },
+
   // Get project by ID with phases
   getById: async (tenantId, id) => {
     const [projects] = await pool.execute(`

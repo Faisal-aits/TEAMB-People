@@ -25,6 +25,9 @@ router.get('/departments', authMiddleware.requireRole(['admin', 'hr']), projectC
 // GET /api/projects/employees - Get employees for dropdown (ADMIN/HR)
 router.get('/employees', authMiddleware.requireRole(['admin', 'hr']), projectController.getProjectEmployees);
 
+// GET /api/projects/my-projects - Get current user's assigned projects
+router.get('/my-projects', projectController.getMyProjects);
+
 // GET /api/projects/:id - Get specific project (ADMIN/HR)
 router.get('/:id', authMiddleware.requireRole(['admin', 'hr']), projectController.getProjectById);
 

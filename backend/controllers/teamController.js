@@ -643,6 +643,49 @@ getTeamMembers: async (req, res) => {
         }
     },
 
+    // Get current user's teams
+    getMyTeams: async (req, res) => {
+        try {
+            const tenant_id = req.user?.tenant_id || req.tenantId || 1;
+            const [employees] = await db.execute(
+                'SELECT id FROM employee_details WHERE user_id = ? AND tenant_id = ?',
+                [req.user.id, tenant_id]
+            );
+
+            if (employees.length === 0) {
+                return res.status(404).json({ success: false, message: 'Employee record not found' });
+            }
+
+            const employeeId = employees[0].id;
+
+            const [teams] = await db.execute(`
+                SELECT 
+                    t.id,
+                    t.name,
+                    t.project_id,
+                    p.name as project_name,
+                    tm.role_in_team,
+                    tm.joined_at,
+                    CONCAT(u.first_name, ' ', u.last_name) as team_lead_name
+                FROM teams t
+                INNER JOIN team_members tm ON t.id = tm.team_id AND tm.is_active = 1
+                LEFT JOIN projects p ON t.project_id = p.id AND p.tenant_id = ?
+                LEFT JOIN users u ON t.team_lead_id = u.id
+                WHERE tm.employee_id = ?
+                    AND tm.is_active = 1
+                    AND tm.tenant_id = ?
+                    AND t.tenant_id = ?
+                    AND t.status = 'Active'
+                ORDER BY t.name ASC
+            `, [tenant_id, employeeId, tenant_id, tenant_id]);
+
+            res.json({ success: true, data: teams });
+        } catch (error) {
+            console.error('Get my teams error:', error);
+            res.status(500).json({ success: false, message: error.message });
+        }
+    },
+
     // Update team
     updateTeam: async (req, res) => {
         try {
