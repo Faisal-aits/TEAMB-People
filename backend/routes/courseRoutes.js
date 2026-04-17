@@ -7,25 +7,25 @@ const router = express.Router();
 // All routes require authentication
 router.use(authMiddleware.verifyToken);
 
-// ==================== ADMIN-ONLY ROUTES ====================
-// All course management requires admin role
+// ==================== ADMIN/HR ROUTES ====================
+// Course management is available to admin and HR users
 
-// GET /api/courses - Get all courses (ADMIN ONLY)
-router.get('/', authMiddleware.requireAdmin, courseController.getAllCourses);
+// GET /api/courses - Get all courses (ADMIN/HR)
+router.get('/', authMiddleware.requireRole(['admin', 'hr']), courseController.getAllCourses);
 
-// GET /api/courses/:id - Get course by ID (ADMIN ONLY)
-router.get('/:id', authMiddleware.requireAdmin, courseController.getCourse);
+// GET /api/courses/:id - Get course by ID (ADMIN/HR)
+router.get('/:id', authMiddleware.requireRole(['admin', 'hr']), courseController.getCourse);
 
-// POST /api/courses - Create new course (ADMIN ONLY)
-router.post('/', authMiddleware.requireAdmin, courseController.createCourse);
+// POST /api/courses - Create new course (ADMIN/HR)
+router.post('/', authMiddleware.requireRole(['admin', 'hr']), courseController.createCourse);
 
-// PUT /api/courses/:id - Update course (ADMIN ONLY)
-router.put('/:id', authMiddleware.requireAdmin, courseController.updateCourse);
+// PUT /api/courses/:id - Update course (ADMIN/HR)
+router.put('/:id', authMiddleware.requireRole(['admin', 'hr']), courseController.updateCourse);
 
-// DELETE /api/courses/:id - Delete course (ADMIN ONLY)
-router.delete('/:id', authMiddleware.requireAdmin, courseController.deleteCourse);
+// DELETE /api/courses/:id - Delete course (ADMIN/HR)
+router.delete('/:id', authMiddleware.requireRole(['admin', 'hr']), courseController.deleteCourse);
 
-// GET /api/courses/:id/students - Get enrolled students (ADMIN ONLY)
-router.get('/:id/students', authMiddleware.requireAdmin, courseController.getEnrolledStudents);
+// GET /api/courses/:id/students - Get enrolled students (ADMIN/HR)
+router.get('/:id/students', authMiddleware.requireRole(['admin', 'hr']), courseController.getEnrolledStudents);
 
 module.exports = router;

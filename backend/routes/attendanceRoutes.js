@@ -64,8 +64,8 @@ router.post('/my/mark', attendanceController.markMyAttendance);
 router.post('/verify-my-face', upload.single('faceImage'), attendanceController.verifyMyFaceAndMarkAttendance);
 router.post('/identify-and-mark', upload.single('faceImage'), attendanceController.identifyAndMarkAttendance);
 
-// GET /api/attendance/percentage/:employeeId - Get attendance percentage (ADMIN ONLY)
-router.get('/percentage/:employeeId', authMiddleware.requireAdmin, attendanceController.getEmployeeAttendancePercentage);
+// GET /api/attendance/percentage/:employeeId - Get attendance percentage (ADMIN/HR)
+router.get('/percentage/:employeeId', authMiddleware.requireRole(['admin', 'hr']), attendanceController.getEmployeeAttendancePercentage);
 
 // POST /api/attendance/mark-absent - Manually trigger absent marking (ADMIN ONLY)
 router.post('/mark-absent', authMiddleware.requireAdmin, async (req, res) => {

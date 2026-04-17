@@ -10,8 +10,8 @@ router.use(authMiddleware.verifyToken);
 
 // ==================== MIXED ACCESS ROUTES ====================
 
-// GET /api/reports - Get all reports (ADMIN ONLY)
-router.get('/', authMiddleware.requireAdmin, reportController.getAllReports);
+// GET /api/reports - Get all reports (ADMIN/HR)
+router.get('/', authMiddleware.requireRole(['admin', 'hr']), reportController.getAllReports);
 
 // GET /api/reports/recent - Get recent reports (MUST BE BEFORE /:id) - (EMPLOYEE)
 router.get('/recent', reportController.getRecentReports);

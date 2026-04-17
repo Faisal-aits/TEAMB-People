@@ -7,40 +7,40 @@ const router = express.Router();
 // All routes are protected
 router.use(authMiddleware.verifyToken);
 
-// ==================== ADMIN-ONLY ROUTES ====================
-// All project management requires admin role
+// ==================== ADMIN/HR ROUTES ====================
+// Project management is available to admin and HR users
 
-// GET /api/projects - Get all projects (ADMIN ONLY)
-router.get('/', authMiddleware.requireAdmin, projectController.getAllProjects);
+// GET /api/projects - Get all projects (ADMIN/HR)
+router.get('/', authMiddleware.requireRole(['admin', 'hr']), projectController.getAllProjects);
 
-// GET /api/projects/stats - Get dashboard statistics (ADMIN ONLY)
-router.get('/stats', authMiddleware.requireAdmin, projectController.getDashboardStats);
+// GET /api/projects/stats - Get dashboard statistics (ADMIN/HR)
+router.get('/stats', authMiddleware.requireRole(['admin', 'hr']), projectController.getDashboardStats);
 
-// GET /api/projects/managers - Get managers list (ADMIN ONLY)
-router.get('/managers', authMiddleware.requireAdmin, projectController.getManagers);
+// GET /api/projects/managers - Get managers list (ADMIN/HR)
+router.get('/managers', authMiddleware.requireRole(['admin', 'hr']), projectController.getManagers);
 
-// GET /api/projects/departments - Get departments list (ADMIN ONLY)
-router.get('/departments', authMiddleware.requireAdmin, projectController.getDepartments);
+// GET /api/projects/departments - Get departments list (ADMIN/HR)
+router.get('/departments', authMiddleware.requireRole(['admin', 'hr']), projectController.getDepartments);
 
-// GET /api/projects/employees - Get employees for dropdown (ADMIN ONLY)
-router.get('/employees', authMiddleware.requireAdmin, projectController.getProjectEmployees);
+// GET /api/projects/employees - Get employees for dropdown (ADMIN/HR)
+router.get('/employees', authMiddleware.requireRole(['admin', 'hr']), projectController.getProjectEmployees);
 
-// GET /api/projects/:id - Get specific project (ADMIN ONLY)
-router.get('/:id', authMiddleware.requireAdmin, projectController.getProjectById);
+// GET /api/projects/:id - Get specific project (ADMIN/HR)
+router.get('/:id', authMiddleware.requireRole(['admin', 'hr']), projectController.getProjectById);
 
-// POST /api/projects - Create new project (ADMIN ONLY)
-router.post('/', authMiddleware.requireAdmin, projectController.createProject);
+// POST /api/projects - Create new project (ADMIN/HR)
+router.post('/', authMiddleware.requireRole(['admin', 'hr']), projectController.createProject);
 
-// PUT /api/projects/:id - Update project (ADMIN ONLY)
-router.put('/:id', authMiddleware.requireAdmin, projectController.updateProject);
+// PUT /api/projects/:id - Update project (ADMIN/HR)
+router.put('/:id', authMiddleware.requireRole(['admin', 'hr']), projectController.updateProject);
 
-// DELETE /api/projects/:id - Delete project (ADMIN ONLY)
-router.delete('/:id', authMiddleware.requireAdmin, projectController.deleteProject);
+// DELETE /api/projects/:id - Delete project (ADMIN/HR)
+router.delete('/:id', authMiddleware.requireRole(['admin', 'hr']), projectController.deleteProject);
 
-// PUT /api/projects/:projectId/phases/:phaseName - Update project phase (ADMIN ONLY)
-router.put('/:projectId/phases/:phaseName', authMiddleware.requireAdmin, projectController.updateProjectPhase);
+// PUT /api/projects/:projectId/phases/:phaseName - Update project phase (ADMIN/HR)
+router.put('/:projectId/phases/:phaseName', authMiddleware.requireRole(['admin', 'hr']), projectController.updateProjectPhase);
 
-// POST /api/projects/:id/assign - Assign team to project (ADMIN ONLY)
-router.post('/:id/assign', authMiddleware.requireAdmin, projectController.assignProjectTeam);
+// POST /api/projects/:id/assign - Assign team to project (ADMIN/HR)
+router.post('/:id/assign', authMiddleware.requireRole(['admin', 'hr']), projectController.assignProjectTeam);
 
 module.exports = router;

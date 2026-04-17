@@ -20,19 +20,19 @@ router.use(authMiddleware.verifyToken);
 // GET /api/employees/my-profile - Get current employee profile (EMPLOYEE)
 router.get('/my-profile', employeeController.getMyProfile);
 
-// GET /api/employees/roles - Get roles for this tenant (ADMIN ONLY)
-router.get('/roles', authMiddleware.requireAdmin, employeeController.getRoles);
+// GET /api/employees/roles - Get roles for this tenant (ADMIN/HR)
+router.get('/roles', authMiddleware.requireRole(['admin', 'hr']), employeeController.getRoles);
 
-// GET /api/employees/departments - Get departments (ADMIN ONLY)
-router.get('/departments', authMiddleware.requireAdmin, employeeController.getDepartments);
+// GET /api/employees/departments - Get departments (ADMIN/HR)
+router.get('/departments', authMiddleware.requireRole(['admin', 'hr']), employeeController.getDepartments);
 
-// GET /api/employees/positions/suggested - Get suggested positions (ADMIN ONLY)
-router.get('/positions/suggested', authMiddleware.requireAdmin, employeeController.getSuggestedPositions);
+// GET /api/employees/positions/suggested - Get suggested positions (ADMIN/HR)
+router.get('/positions/suggested', authMiddleware.requireRole(['admin', 'hr']), employeeController.getSuggestedPositions);
 
 // ==================== COLLECTION ROUTES ====================
 
-// GET /api/employees - Get all employees (ADMIN ONLY)
-router.get('/', authMiddleware.requireAdmin, employeeController.getAllEmployees);
+// GET /api/employees - Get all employees (ADMIN/HR)
+router.get('/', authMiddleware.requireRole(['admin', 'hr']), employeeController.getAllEmployees);
 
 // POST /api/employees - Create new employee (ADMIN ONLY)
 router.post('/', authMiddleware.requireAdmin, employeeController.createEmployee);

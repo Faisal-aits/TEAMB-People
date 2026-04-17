@@ -8,8 +8,6 @@ import Expense from './Expense.jsx';
 import Info from './Info.jsx';
 import Attendance from './Attendance.jsx';
 import Leave from './Leave.jsx';
-import StudentManagement from './StudentManagement.jsx'; // Add these imports
-import CourseManagement from './CourseManagement.jsx';
 import InternshipManagement from './InternshipManagement.jsx';
 import Projects from './Projects.jsx';
 import Reports from './Reports.jsx';
@@ -47,8 +45,15 @@ const [reportsOpen, setReportsOpen] = useState(false);
       fetchDashboardStats();
     }
   }, [user, activeTab]);
+
   useEffect(() => {
     localStorage.setItem('employeeActiveTab', activeTab);
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'student' || activeTab === 'courses') {
+      setActiveTab('internship');
+    }
   }, [activeTab]);
 
   const fetchDashboardStats = async () => {
@@ -161,8 +166,8 @@ const [reportsOpen, setReportsOpen] = useState(false);
         return <EmployeeManagement {...contentProps} />;
       case 'leave':
         return <Leave {...contentProps} />;
-      case 'student': // Add these cases
-        return <StudentManagement {...contentProps} />;
+      case 'internship':
+        return <InternshipManagement {...contentProps} />;
 
   case 'reports':
         return <Reports {...contentProps} />;
@@ -293,13 +298,13 @@ const [reportsOpen, setReportsOpen] = useState(false);
                 </button>
               </li>
 
-              {/* Courses Dropdown - ADDED BELOW LEAVE */}
+              {/* Internship Section */}
               <li className={`dropdown ${coursesOpen ? 'open' : ''}`}>
                 <button className="dropdown-toggle" onClick={toggleCourses}>
                   <span className="nav-icon"><CoursesIcon /></span>
                   {sidebarOpen && (
                     <>
-                      <span className="nav-text">Courses</span>
+                      <span className="nav-text">Internship</span>
                       <span className="dropdown-arrow">
                         {coursesOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
                       </span>
@@ -308,16 +313,6 @@ const [reportsOpen, setReportsOpen] = useState(false);
                 </button>
                 {sidebarOpen && coursesOpen && (
                   <ul className="dropdown-menu">
-                    <li>
-                      <button onClick={() => setActiveTab('student')}>
-                        <span className="dropdown-text">Student</span>
-                      </button>
-                    </li>
-                    <li>
-                      <button onClick={() => setActiveTab('courses')}>
-                        <span className="dropdown-text">Courses</span>
-                      </button>
-                    </li>
                     <li>
                       <button onClick={() => setActiveTab('internship')}>
                         <span className="dropdown-text">Internship</span>
