@@ -115,7 +115,6 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
   crossOriginResourcePolicy: { policy: "cross-origin" },
 }));
-debugger
 
 // 4. Rate limiting - Prevent brute force and scraping
 const generalLimiter = rateLimit({

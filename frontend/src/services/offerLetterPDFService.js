@@ -36,7 +36,8 @@ export const offerLetterPDFService = {
       const pages = [
         generatePage1HTML(pdfData),
         generatePage2HTML(pdfData),
-        generatePage3HTML(pdfData)
+        generatePage3HTML(pdfData),
+        generatePage4HTML(pdfData)
       ];
 
       const pdf = await generatePDF(pages);
@@ -79,7 +80,8 @@ export const offerLetterPDFService = {
       const pages = [
         generatePage1HTML(pdfData),
         generatePage2HTML(pdfData),
-        generatePage3HTML(pdfData)
+        generatePage3HTML(pdfData),
+        generatePage4HTML(pdfData)
       ];
 
       const pdf = await generatePDF(pages);
@@ -176,6 +178,60 @@ const commonHeader = (logo, website, email) => `
            <div style="display: table-cell; vertical-align: middle; font-weight: bold;">
              ${email}
            </div>
+        </div>
+      </div>
+    </div>
+  </div>
+`;
+
+const generatePage4HTML = ({ formData, company, hr, logo, stamp }) => `
+  <div style="font-family: Arial, sans-serif; color: #000; line-height: 1.6; min-height: 297mm; display: flex; flex-direction: column;">
+    ${commonHeader(logo, company.website, company.email)}
+    <div style="padding: 15mm 20mm 40mm 20mm; flex-grow: 1;">
+      <div style="font-weight: bold; font-size: 11pt; margin-bottom: 15px; text-align: center;">Terms and Conditions</div>
+      
+      <div style="text-align: justify; font-family: 'Times New Roman', Times, serif; font-size: 11pt; margin-top: 20px;">
+        <p>The following terms and conditions apply to this offer of employment:</p>
+        
+        <ol style="margin-left: 20px; padding-left: 0;">
+          ${(formData.termsAndConditions && formData.termsAndConditions.length > 0)
+            ? formData.termsAndConditions.map((term, index) => `
+              <li style="margin-bottom: 10px;">${term}</li>
+            `).join('')
+            : `
+              <li style="margin-bottom: 10px;">The employee shall abide by all company policies, rules, and regulations.</li>
+              <li style="margin-bottom: 10px;">This offer is contingent upon satisfactory background verification and reference checks.</li>
+              <li style="margin-bottom: 10px;">The first three months shall be a probationary period.</li>
+              <li style="margin-bottom: 10px;">The company reserves the right to modify terms with prior notice.</li>
+              <li style="margin-bottom: 10px;">Confidentiality of company information must be maintained during and after employment.</li>
+            `
+          }
+        </ol>
+        
+        <p style="margin-top: 30px;">By signing this offer letter, you acknowledge that you have read, understood, and agree to all the terms and conditions stated above.</p>
+      </div>
+
+      <div style="margin-top: 80px; font-family: 'Times New Roman', Times, serif; font-size: 11pt;">
+        <div style="margin-top: 30px;">
+          <span>Signature : ____________________</span>
+        </div>
+        <div style="margin-top: 20px;">
+          <span>Name :- ${formData.salutation || ''} ${formData.fullName || '________________'}</span>
+        </div>
+        <div style="margin-top: 20px;">
+          <span>Date : ____________________</span>
+        </div>
+        <div style="margin-top: 40px;">
+          <span>Witness (Company Representative) : ____________________</span>
+        </div>
+        <div style="margin-top: 20px;">
+          <span>Name :- ${hr.name || '________________'}</span>
+        </div>
+        <div style="margin-top: 20px;">
+          <span>Designation :- ${hr.designation || '________________'}</span>
+        </div>
+        <div style="margin-top: 20px;">
+          <span>Date : ____________________</span>
         </div>
       </div>
     </div>

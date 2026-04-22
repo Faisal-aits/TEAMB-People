@@ -57,7 +57,7 @@ body {
 }
 
 .sidebar-toggle-btn.closed {
-  left: calc(20px - 16px);
+  left: calc(20px - -35px);
   top: 5%;
 }
 
@@ -468,7 +468,7 @@ body {
 
 /* Adjust main content when sidebar is closed */
 .dashboard-sidebar.closed+.dashboard-main {
-  margin-left: 70px;
+  /* margin-left: 70px; */
   width: calc(100% - 70px);
 }
 
@@ -525,7 +525,7 @@ body {
   }
 
   .dashboard-sidebar.closed+.dashboard-main {
-    margin-left: 70px;
+    /* margin-left: 70px; */
     width: calc(100% - 70px);
   }
 

@@ -5,7 +5,7 @@ import companyLogo from "../../../assets/img/company.png";
 import stampPng from "../../../assets/img/stamp.png";
 import { TbWorld } from "react-icons/tb";
 import { TfiEmail } from "react-icons/tfi";
-import { HiOutlineDocumentText, HiOutlineUserGroup, HiOutlineBriefcase, HiOutlineArrowDownOnSquare, HiOutlineEye, HiOutlineArrowDownTray } from "react-icons/hi2";
+import { HiOutlineDocumentText, HiOutlineUserGroup, HiOutlineBriefcase, HiOutlineArrowDownOnSquare, HiOutlineEye, HiOutlineArrowDownTray, HiOutlineClipboardDocumentList } from "react-icons/hi2";
 import offerLetterAPI from "../../../services/offerLetterAPI";
 import brandingAPI from "../../../services/brandingAPI";
 
@@ -72,7 +72,14 @@ const OfferLetter = () => {
     joiningDate: "",
     ctc: "",
     ctcInWords: "",
-    salaryBreakup: emptySalaryBreakup
+    salaryBreakup: emptySalaryBreakup,
+    termsAndConditions: [
+      "The employee shall abide by all company policies, rules, and regulations.",
+      "This offer is contingent upon satisfactory background verification and reference checks.",
+      "The first three months shall be a probationary period.",
+      "The company reserves the right to modify terms with prior notice.",
+      "Confidentiality of company information must be maintained during and after employment."
+    ]
   });
 
   const [branding, setBranding] = useState({
@@ -499,6 +506,95 @@ const OfferLetter = () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </section>
+
+          {/* Terms and Conditions Section */}
+          <section style={{ marginBottom: "20px" }}>
+            <h3 style={sectionHeaderStyle}>
+              <HiOutlineClipboardDocumentList size={20} /> Terms & Conditions
+            </h3>
+            <div style={{ marginBottom: "15px" }}>
+              <label style={labelStyle}>Add Terms and Conditions (one per line)</label>
+              <textarea
+                placeholder="Enter each term on a new line"
+                value={formData.termsAndConditions?.join('\n') || ''}
+                onChange={(e) => {
+                  const lines = e.target.value.split('\n').filter(line => line.trim() !== '');
+                  setFormData({ ...formData, termsAndConditions: lines });
+                }}
+                style={{
+                  ...inputStyle,
+                  minHeight: "150px",
+                  resize: "vertical",
+                  fontFamily: "monospace",
+                  fontSize: "13px"
+                }}
+              />
+              <div style={{ fontSize: "12px", color: "#64748b", marginTop: "5px" }}>
+                Each line will be treated as a separate term. Current count: {formData.termsAndConditions?.length || 0} terms
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+              <button
+                onClick={() => {
+                  const newTerms = [...(formData.termsAndConditions || []), "New term..."];
+                  setFormData({ ...formData, termsAndConditions: newTerms });
+                }}
+                style={{
+                  padding: "8px 16px",
+                  background: "#4f46e5",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontSize: "13px"
+                }}
+              >
+                Add Term
+              </button>
+              <button
+                onClick={() => {
+                  const newTerms = formData.termsAndConditions?.slice(0, -1) || [];
+                  setFormData({ ...formData, termsAndConditions: newTerms });
+                }}
+                style={{
+                  padding: "8px 16px",
+                  background: "#ef4444",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontSize: "13px"
+                }}
+              >
+                Remove Last
+              </button>
+              <button
+                onClick={() => {
+                  setFormData({
+                    ...formData,
+                    termsAndConditions: [
+                      "The employee shall abide by all company policies, rules, and regulations.",
+                      "This offer is contingent upon satisfactory background verification and reference checks.",
+                      "The first three months shall be a probationary period.",
+                      "The company reserves the right to modify terms with prior notice.",
+                      "Confidentiality of company information must be maintained during and after employment."
+                    ]
+                  });
+                }}
+                style={{
+                  padding: "8px 16px",
+                  background: "#10b981",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontSize: "13px"
+                }}
+              >
+                Reset to Default
+              </button>
             </div>
           </section>
         </div>

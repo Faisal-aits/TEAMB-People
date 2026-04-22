@@ -5,7 +5,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import AddExpenseModal from '../../../components/expenses/AddExpenseModal';
 import './Employee.css';
 
-const API_URL = 'http://localhost:3000';
+import { API_BASE_URL as API_URL } from '../../../services/api';
 
 const ExpenseManagement = () => {
   const [expenses, setExpenses] = useState([]);
