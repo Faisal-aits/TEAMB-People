@@ -75,11 +75,17 @@ const brandingController = {
     updateBranding: async (req, res) => {
         try {
             const tenantId = req.tenantId;
-            const { company_name, hr_name, hr_designation, company_address, company_email, company_website } = req.body;
+            const { company_name, hr_name, hr_designation, company_address, company_email, company_phone, company_website, default_terms } = req.body;
 
             await brandingModel.upsert(tenantId, {
-                company_name, hr_name, hr_designation,
-                company_address, company_email, company_website
+                company_name: company_name || null,
+                hr_name: hr_name || null,
+                hr_designation: hr_designation || null,
+                company_address: company_address || null,
+                company_email: company_email || null,
+                company_phone: company_phone || null,
+                company_website: company_website || null,
+                default_terms: default_terms || null
             });
 
             res.json({ success: true, message: 'Branding settings saved successfully' });
