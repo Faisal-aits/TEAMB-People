@@ -8,13 +8,13 @@ export const offerLetterPDFService = {
   downloadOfferLetter: async (formData) => {
     try {
       console.log('📄 Generating PDF for Offer Letter:', formData.fullName);
-      
+
       let branding = {};
       try {
         const res = await brandingAPI.get();
         if (res.data?.success && res.data?.branding) branding = res.data.branding;
       } catch (err) { console.error("Failed to load branding", err); }
-      
+
       const pdfData = {
         formData,
         company: {
@@ -22,7 +22,7 @@ export const offerLetterPDFService = {
           address: branding.company_address,
           email: branding.company_email,
           website: branding.company_website,
-          phone: "9322195628"
+          phone: branding.company_phone || ''
         },
         hr: {
           name: branding.hr_name,
@@ -30,7 +30,10 @@ export const offerLetterPDFService = {
           signature: branding.signature_url ? brandingAPI.getImageUrl(branding.signature_url) : null
         },
         logo: branding.logo_url ? brandingAPI.getImageUrl(branding.logo_url) : fallbackLogo,
-        stamp: branding.stamp_url ? brandingAPI.getImageUrl(branding.stamp_url) : fallbackStamp
+        stamp: branding.stamp_url ? brandingAPI.getImageUrl(branding.stamp_url) : fallbackStamp,
+        termsAndConditions: (formData.termsAndConditions && formData.termsAndConditions.length > 0)
+          ? formData.termsAndConditions
+          : (branding.default_terms && branding.default_terms.trim() ? JSON.parse(branding.default_terms) : null)
       };
 
       const pages = [
@@ -52,7 +55,7 @@ export const offerLetterPDFService = {
   viewOfferLetter: async (formData) => {
     try {
       console.log('👁️ Previewing PDF for Offer Letter:', formData.fullName);
-      
+
       let branding = {};
       try {
         const res = await brandingAPI.get();
@@ -66,7 +69,7 @@ export const offerLetterPDFService = {
           address: branding.company_address,
           email: branding.company_email,
           website: branding.company_website,
-          phone: "9322195628"
+          phone: branding.company_phone || ''
         },
         hr: {
           name: branding.hr_name,
@@ -74,7 +77,10 @@ export const offerLetterPDFService = {
           signature: branding.signature_url ? brandingAPI.getImageUrl(branding.signature_url) : null
         },
         logo: branding.logo_url ? brandingAPI.getImageUrl(branding.logo_url) : fallbackLogo,
-        stamp: branding.stamp_url ? brandingAPI.getImageUrl(branding.stamp_url) : fallbackStamp
+        stamp: branding.stamp_url ? brandingAPI.getImageUrl(branding.stamp_url) : fallbackStamp,
+        termsAndConditions: (formData.termsAndConditions && formData.termsAndConditions.length > 0)
+          ? formData.termsAndConditions
+          : (branding.default_terms && branding.default_terms.trim() ? JSON.parse(branding.default_terms) : null)
       };
 
       const pages = [
@@ -115,7 +121,7 @@ const generatePDF = async (pagesHTML) => {
         tempDiv.style.fontFamily = "Arial, sans-serif";
         tempDiv.style.background = 'white';
         tempDiv.style.color = '#333';
-        
+
         tempDiv.innerHTML = pagesHTML[i];
         document.body.appendChild(tempDiv);
 
@@ -132,7 +138,7 @@ const generatePDF = async (pagesHTML) => {
 
         if (i > 0) pdf.addPage();
         pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-        
+
         document.body.removeChild(tempDiv);
       }
 
@@ -184,18 +190,18 @@ const commonHeader = (logo, website, email) => `
   </div>
 `;
 
-const generatePage4HTML = ({ formData, company, hr, logo, stamp }) => `
+const generatePage4HTML = ({ formData, company, hr, logo, stamp, termsAndConditions }) => `
   <div style="font-family: Arial, sans-serif; color: #000; line-height: 1.6; min-height: 297mm; display: flex; flex-direction: column;">
     ${commonHeader(logo, company.website, company.email)}
     <div style="padding: 15mm 20mm 40mm 20mm; flex-grow: 1;">
       <div style="font-weight: bold; font-size: 11pt; margin-bottom: 15px; text-align: center;">Terms and Conditions</div>
-      
+
       <div style="text-align: justify; font-family: 'Times New Roman', Times, serif; font-size: 11pt; margin-top: 20px;">
         <p>The following terms and conditions apply to this offer of employment:</p>
-        
+
         <ol style="margin-left: 20px; padding-left: 0;">
-          ${(formData.termsAndConditions && formData.termsAndConditions.length > 0)
-            ? formData.termsAndConditions.map((term, index) => `
+          ${(termsAndConditions && termsAndConditions.length > 0)
+            ? termsAndConditions.map((term, index) => `
               <li style="margin-bottom: 10px;">${term}</li>
             `).join('')
             : `
@@ -210,7 +216,7 @@ const generatePage4HTML = ({ formData, company, hr, logo, stamp }) => `
             `
           }
         </ol>
-        
+
         <p style="margin-top: 30px;">By signing this offer letter, you acknowledge that you have read, understood, and agree to all the terms and conditions stated above.</p>
       </div>
 
@@ -277,7 +283,7 @@ const generatePage1HTML = ({ formData, company, hr, logo, stamp }) => `
         <p>Your continued employment is contingent upon your satisfactorily meeting the Company's expectations.</p>
         <p>On your first day of work, you will be required to sign the <strong>Employment Agreement</strong>, which will contain detailed terms and conditions of your employment with the Company. You are expected to follow the policies, rules, and regulations laid out by the Company. On your first day of employment, you will be given additional information about the Company, its procedures, policies, benefit programs, and more.</p>
         <p>Any female employee who has conceived prior to joining the Company is expected to inform the Company of her pregnancy before signing the Offer Letter and the Employee Agreement.</p>
-        <p>This Letter of Offer is contingent upon the successful completion of all background and reference checks and required documentation. On your first day, please bring the documents as provided in <strong>Annexure 1</strong>.</p>
+        <p>This Letter of Offer is contingent upon the successful completion of all background and reference checks and required documentation. On your first day, please bring the documents as provided in <strong>Annexure 2</strong>.</p>
       </div>
     </div>
   </div>
@@ -289,7 +295,7 @@ const generatePage2HTML = ({ formData, company, hr, logo, stamp }) => `
     <div style="padding: 15mm 20mm 40mm 20mm; flex-grow: 1;">
       <div style="text-align: justify; font-size: 11pt; font-family: 'Times New Roman', Times, serif; margin-top: 20px;">
         <p>Note that this Letter of Offer is valid for <strong>two (2) working days</strong> from the date of receipt. Please confirm your acceptance of this Offer Letter by signing and returning a copy within two (2) working days of receiving it, failing which, this Offer letter shall stand withdrawn. Please note that if you do not report on the reporting date, this Offer shall stand withdrawn.</p>
-        
+
         <p style="margin-top: 30px;">We look forward to you joining <strong>${company.name}</strong> and to a mutually rewarding working relationship.</p>
       </div>
 
@@ -306,18 +312,7 @@ const generatePage2HTML = ({ formData, company, hr, logo, stamp }) => `
         </div>
       </div>
 
-      <div style="margin-top: 80px; font-family: 'Times New Roman', Times, serif; font-size: 11pt;">
-        <p>I agree and accept this Letter of Offer which has been read, understood and accepted by me.</p>
-        <div style="margin-top: 30px;">
-          <span>Signature : ____________________</span>
-        </div>
-        <div style="margin-top: 20px;">
-          <span>Name :- ${formData.salutation || ''} ${formData.fullName || '________________'}</span>
-        </div>
-        <div style="margin-top: 20px;">
-          <span>Date : </span>
-        </div>
-      </div>
+
     </div>
   </div>
 `;
@@ -326,8 +321,8 @@ const generatePage3HTML = ({ formData, company, hr, logo, stamp }) => `
   <div style="font-family: Arial, sans-serif; color: #000; line-height: 1.6; min-height: 297mm; display: flex; flex-direction: column;">
     ${commonHeader(logo, company.website, company.email)}
     <div style="padding: 10mm 20mm 40mm 20mm; flex-grow: 1;">
-      <div style="font-weight: bold; font-size: 11pt; margin-bottom: 15px;">Annexure 1 - Documents required at the time of joining</div>
-      
+      <div style="font-weight: bold; font-size: 11pt; margin-bottom: 15px;">Annexure 2 - Documents required at the time of joining</div>
+
       <table style="width: 100%; border-collapse: collapse; font-size: 10pt;">
         <thead>
           <tr style="background: #ccc; border: 1.5pt solid #000;">
@@ -364,7 +359,7 @@ const generatePage3HTML = ({ formData, company, hr, logo, stamp }) => `
           </tr>
           <tr>
             <td style="padding: 8px; border: 1.5pt solid #000; text-align: center;">5.</td>
-            <td style="padding: 8px; border: 1.5pt solid #000;">Last 3 (three) months’ payslip/Bank Statement</td>
+            <td style="padding: 8px; border: 1.5pt solid #000;">Last 3 (three) months' payslip/Bank Statement</td>
             <td style="padding: 8px; border: 1.5pt solid #000; text-align: center;">Original</td>
             <td style="padding: 8px; border: 1.5pt solid #000;">Letter with Stamp of the previous company/bank</td>
           </tr>

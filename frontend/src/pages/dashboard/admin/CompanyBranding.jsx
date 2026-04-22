@@ -112,7 +112,9 @@ const CompanyBranding = () => {
         hr_designation: '',
         company_address: '',
         company_email: '',
+        company_phone: '',
         company_website: '',
+        default_terms: '',
         logo_url: null,
         signature_url: null,
         stamp_url: null
@@ -127,7 +129,25 @@ const CompanyBranding = () => {
             setLoading(true);
             const res = await brandingAPI.get();
             if (res.data.success && res.data.branding) {
-                setBranding(res.data.branding);
+                const b = res.data.branding;
+                // Convert stored JSON terms back to plain text lines for textarea
+                let termsText = '';
+                if (b.default_terms) {
+                    try {
+                        const parsed = typeof b.default_terms === 'string' ? JSON.parse(b.default_terms) : b.default_terms;
+                        if (Array.isArray(parsed)) {
+                            termsText = parsed.join('\n');
+                        } else {
+                            termsText = b.default_terms;
+                        }
+                    } catch (e) {
+                        termsText = b.default_terms;
+                    }
+                }
+                setBranding({
+                    ...b,
+                    default_terms: termsText
+                });
             }
         } catch (err) {
             console.error('Error loading branding:', err);
@@ -150,8 +170,24 @@ const CompanyBranding = () => {
         e.preventDefault();
         setSaving(true);
         try {
-            const { company_name, hr_name, hr_designation, company_address, company_email, company_website } = branding;
-            const res = await brandingAPI.update({ company_name, hr_name, hr_designation, company_address, company_email, company_website });
+            const { company_name, hr_name, hr_designation, company_address, company_email, company_phone, company_website, default_terms } = branding;
+            // Convert newline-separated terms to JSON array
+            const termsArray = default_terms
+                .split('\n')
+                .map(t => t.trim())
+                .filter(t => t !== '');
+            const defaultTermsJson = JSON.stringify(termsArray);
+            
+            const res = await brandingAPI.update({
+                company_name,
+                hr_name,
+                hr_designation,
+                company_address,
+                company_email,
+                company_phone,
+                company_website,
+                default_terms: defaultTermsJson
+            });
             if (res.data.success) {
                 showToast('success', 'Branding settings saved successfully!');
             }
@@ -284,6 +320,18 @@ const CompanyBranding = () => {
                     </div>
 
                     <div className="branding-form-group">
+                        <label htmlFor="brand_company_phone">Company Phone</label>
+                        <input
+                            type="tel"
+                            id="brand_company_phone"
+                            name="company_phone"
+                            value={branding.company_phone || ''}
+                            onChange={handleInputChange}
+                            placeholder="e.g. +1-234-567-8900"
+                        />
+                    </div>
+
+                    <div className="branding-form-group">
                         <label htmlFor="brand_company_website">Company Website</label>
                         <input
                             type="url"
@@ -305,6 +353,19 @@ const CompanyBranding = () => {
                             placeholder="Full mailing address"
                             rows={3}
                         />
+                    </div>
+
+                    <div className="branding-form-group full-width">
+                        <label htmlFor="brand_default_terms">Default Terms & Conditions (Appears at the end of every offer letter)</label>
+                        <textarea
+                            id="brand_default_terms"
+                            name="default_terms"
+                            value={branding.default_terms || ''}
+                            onChange={handleInputChange}
+                            placeholder="Enter default terms and conditions that will appear in every offer letter. Leave empty to use system defaults."
+                            rows={6}
+                        />
+                        <small className="form-hint">These terms will be appended to all offer letters unless overwritten by specific terms in the offer letter form.</small>
                     </div>
 
                     <div className="branding-form-actions">

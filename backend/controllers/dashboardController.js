@@ -63,7 +63,7 @@ const dashboardController = {
             let offersSentTotal = 0;
             try {
                 const [offersResult] = await pool.execute(
-                    'SELECT COUNT(*) as total FROM offer_letters WHERE tenant_id = ?',
+                    'SELECT COUNT(*) as total FROM offer_letters ol JOIN users u ON ol.employee_id = u.id WHERE u.tenant_id = ?',
                     [tenantId]
                 );
                 offersSentTotal = offersResult[0]?.total || 0;

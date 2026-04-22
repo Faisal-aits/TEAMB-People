@@ -13,7 +13,7 @@ const brandingModel = {
 
     // Insert or update text fields
     upsert: async (tenantId, data) => {
-        const { company_name, hr_name, hr_designation, company_address, company_email, company_website } = data;
+        const { company_name, hr_name, hr_designation, company_address, company_email, company_phone, company_website, default_terms } = data;
 
         // Check if record exists
         const existing = await brandingModel.getByTenantId(tenantId);
@@ -22,17 +22,18 @@ const brandingModel = {
             const [result] = await pool.execute(
                 `UPDATE tenant_branding 
                  SET company_name = ?, hr_name = ?, hr_designation = ?, 
-                     company_address = ?, company_email = ?, company_website = ?
+                     company_address = ?, company_email = ?, company_phone = ?, 
+                     company_website = ?, default_terms = ?
                  WHERE tenant_id = ?`,
-                [company_name, hr_name, hr_designation, company_address, company_email, company_website, tenantId]
+                [company_name, hr_name, hr_designation, company_address, company_email, company_phone, company_website, default_terms, tenantId]
             );
             return result;
         } else {
             const [result] = await pool.execute(
                 `INSERT INTO tenant_branding 
-                 (tenant_id, company_name, hr_name, hr_designation, company_address, company_email, company_website)
-                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                [tenantId, company_name, hr_name, hr_designation, company_address, company_email, company_website]
+                 (tenant_id, company_name, hr_name, hr_designation, company_address, company_email, company_phone, company_website, default_terms)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [tenantId, company_name, hr_name, hr_designation, company_address, company_email, company_phone, company_website, default_terms]
             );
             return result;
         }

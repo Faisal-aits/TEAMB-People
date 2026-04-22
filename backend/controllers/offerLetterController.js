@@ -24,7 +24,7 @@ const offerLetterController = {
             if (userRows.length === 0) {
                 return res.status(404).json({ message: 'Employee not found' });
             }
-            if (userRows[0].tenant_id !== tenantId) {
+            if (Number(userRows[0].tenant_id) !== Number(tenantId)) {
                 return res.status(403).json({ message: 'Employee does not belong to your tenant' });
             }
 
@@ -54,12 +54,18 @@ const offerLetterController = {
     getMyOfferLetters: async (req, res) => {
         try {
             const user_id = req.user.id;
+            const tenantId = req.tenantId;
+            if (!tenantId) {
+                return res.status(403).json({ message: 'Tenant context missing' });
+            }
             
-            // First, get the employee record for this user to get their detail id
-            // Assuming req.user.id is the user_id (which it should be from authMiddleware)
+            // Ensure the offer letter belongs to the same tenant
             const [letters] = await pool.execute(
-                'SELECT id, form_data, issue_date, created_at, updated_at FROM offer_letters WHERE employee_id = ?',
-                [user_id]
+                `SELECT ol.id, ol.form_data, ol.issue_date, ol.created_at, ol.updated_at
+                 FROM offer_letters ol
+                 JOIN users u ON ol.employee_id = u.id
+                 WHERE ol.employee_id = ? AND u.tenant_id = ?`,
+                [user_id, tenantId]
             );
 
             if (letters.length === 0) {

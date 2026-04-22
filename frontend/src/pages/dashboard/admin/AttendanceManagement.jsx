@@ -324,17 +324,49 @@ const handleGenerateReport = async () => {
       
     }
     
-    // USE LOCAL ATTENDANCE DATA DIRECTLY (not API call)
-    // Create a map from local attendance data
-    const attendanceMap = new Map();
-    attendanceData.forEach(record => {
-      let recordDate = record.date;
-      if (recordDate && recordDate.includes('T')) {
-        recordDate = recordDate.split('T')[0];
+    // Fetch attendance data for the selected date range
+    const attendanceResponse = await attendanceAPI.getAll({
+      start_date: reportFilters.startDate,
+      end_date: reportFilters.endDate
+    });
+
+    let reportAttendanceData = [];
+    if (attendanceResponse.data) {
+      if (attendanceResponse.data.attendance) {
+        reportAttendanceData = attendanceResponse.data.attendance;
+      } else if (Array.isArray(attendanceResponse.data)) {
+        reportAttendanceData = attendanceResponse.data;
       }
-      const key = `${record.employee_id}_${recordDate}`;
-      attendanceMap.set(key, record);
-     
+    }
+
+    // Create a map from fetched attendance data
+    const attendanceMap = new Map();
+    reportAttendanceData.forEach(record => {
+      let recordDate = null;
+      let originalDate = record.date;
+      
+      if (originalDate) {
+        if (typeof originalDate === 'string' && originalDate.includes('T')) {
+          const dateObj = new Date(originalDate);
+          const year = dateObj.getFullYear();
+          const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+          const day = String(dateObj.getDate()).padStart(2, '0');
+          recordDate = `${year}-${month}-${day}`;
+        } else if (typeof originalDate === 'string' && originalDate.match(/^\d{4}-\d{2}-\d{2}/)) {
+          recordDate = originalDate.split('T')[0];
+        } else if (originalDate instanceof Date) {
+          const year = originalDate.getFullYear();
+          const month = String(originalDate.getMonth() + 1).padStart(2, '0');
+          const day = String(originalDate.getDate()).padStart(2, '0');
+          recordDate = `${year}-${month}-${day}`;
+        }
+      }
+      
+      if (recordDate) {
+        const empId = record.employee_id || record.employeeId || record.user_id || record.emp_id;
+        const key = `${empId}_${recordDate}`;
+        attendanceMap.set(key, record);
+      }
     });
     
     // Get all dates in the range

@@ -89,6 +89,7 @@ const OfferLetter = () => {
     company_name: "Arham IT Solution",
     company_address: "Above Being Healthy Gym, Near Surbhi Hospital, Nagar Sambhajjnagar Road, Ahliyanagar 414003",
     company_email: "info@arhamitsolution.in",
+    company_phone: "",
     company_website: "www.arhamitsolution.in",
     hr_name: "Sharjeel Iqbal",
     hr_designation: "HR and BDE Executive",
@@ -118,6 +119,7 @@ const OfferLetter = () => {
             company_name: b.company_name || "Arham IT Solution",
             company_address: b.company_address || "Above Being Healthy Gym, Near Surbhi Hospital, Nagar Sambhajjnagar Road, Ahliyanagar 414003",
             company_email: b.company_email || "info@arhamitsolution.in",
+            company_phone: b.company_phone || "",
             company_website: b.company_website || "www.arhamitsolution.in",
             hr_name: b.hr_name || "Sharjeel Iqbal",
             hr_designation: b.hr_designation || "HR and BDE Executive",
@@ -125,6 +127,18 @@ const OfferLetter = () => {
             stamp_url: b.stamp_url ? brandingAPI.getImageUrl(b.stamp_url) : stampPng,
             signature_url: b.signature_url ? brandingAPI.getImageUrl(b.signature_url) : null
           });
+
+          // Set default terms from branding if available
+          if (b.default_terms) {
+            try {
+              const parsedTerms = typeof b.default_terms === 'string' ? JSON.parse(b.default_terms) : b.default_terms;
+              if (Array.isArray(parsedTerms) && parsedTerms.length > 0) {
+                setFormData(prev => ({ ...prev, termsAndConditions: parsedTerms }));
+              }
+            } catch (e) {
+              console.error('Failed to parse default_terms from branding:', e);
+            }
+          }
         }
       } catch (err) {
         console.error("Error fetching branding:", err);
