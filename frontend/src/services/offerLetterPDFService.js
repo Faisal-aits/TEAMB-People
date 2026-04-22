@@ -18,15 +18,15 @@ export const offerLetterPDFService = {
       const pdfData = {
         formData,
         company: {
-          name: branding.company_name || "Arham IT Solution",
-          address: branding.company_address || "Above Being Healthy Gym, Near Surbhi Hospital, Nagar Sambhajjnagar Road, Ahliyanagar 414003",
-          email: branding.company_email || "info@arhamitsolution.in",
-          website: branding.company_website || "www.arhamitsolution.in",
+          name: branding.company_name,
+          address: branding.company_address,
+          email: branding.company_email,
+          website: branding.company_website,
           phone: "9322195628"
         },
         hr: {
-          name: branding.hr_name || "Sharjeel Iqbal",
-          designation: branding.hr_designation || "HR and BDE Executive",
+          name: branding.hr_name,
+          designation: branding.hr_designation,
           signature: branding.signature_url ? brandingAPI.getImageUrl(branding.signature_url) : null
         },
         logo: branding.logo_url ? brandingAPI.getImageUrl(branding.logo_url) : fallbackLogo,
@@ -62,15 +62,15 @@ export const offerLetterPDFService = {
       const pdfData = {
         formData,
         company: {
-          name: branding.company_name || "Arham IT Solution",
-          address: branding.company_address || "Above Being Healthy Gym, Near Surbhi Hospital, Nagar Sambhajjnagar Road, Ahliyanagar 414003",
-          email: branding.company_email || "info@arhamitsolution.in",
-          website: branding.company_website || "www.arhamitsolution.in",
+          name: branding.company_name,
+          address: branding.company_address,
+          email: branding.company_email,
+          website: branding.company_website,
           phone: "9322195628"
         },
         hr: {
-          name: branding.hr_name || "Sharjeel Iqbal",
-          designation: branding.hr_designation || "HR and BDE Executive",
+          name: branding.hr_name,
+          designation: branding.hr_designation,
           signature: branding.signature_url ? brandingAPI.getImageUrl(branding.signature_url) : null
         },
         logo: branding.logo_url ? brandingAPI.getImageUrl(branding.logo_url) : fallbackLogo,
@@ -201,9 +201,12 @@ const generatePage4HTML = ({ formData, company, hr, logo, stamp }) => `
             : `
               <li style="margin-bottom: 10px;">The employee shall abide by all company policies, rules, and regulations.</li>
               <li style="margin-bottom: 10px;">This offer is contingent upon satisfactory background verification and reference checks.</li>
-              <li style="margin-bottom: 10px;">The first three months shall be a probationary period.</li>
+              <li style="margin-bottom: 10px;">The first three months shall be a probationary period, during which either party may terminate employment with one week's notice.</li>
               <li style="margin-bottom: 10px;">The company reserves the right to modify terms with prior notice.</li>
               <li style="margin-bottom: 10px;">Confidentiality of company information must be maintained during and after employment.</li>
+              <li style="margin-bottom: 10px;">All intellectual property created during employment shall belong to the company.</li>
+              <li style="margin-bottom: 10px;">The employee agrees not to engage in any competing business during employment and for six months after termination.</li>
+              <li style="margin-bottom: 10px;">Employment may be terminated by either party with one month's notice or payment in lieu thereof.</li>
             `
           }
         </ol>

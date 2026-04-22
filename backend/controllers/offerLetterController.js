@@ -12,12 +12,28 @@ const offerLetterController = {
                 return res.status(400).json({ message: 'Missing required fields' });
             }
 
+            // Tenant validation: ensure employee belongs to the same tenant
+            const tenantId = req.tenantId;
+            if (!tenantId) {
+                return res.status(403).json({ message: 'Tenant context missing' });
+            }
+            const [userRows] = await pool.execute(
+                'SELECT tenant_id FROM users WHERE id = ?',
+                [employee_id]
+            );
+            if (userRows.length === 0) {
+                return res.status(404).json({ message: 'Employee not found' });
+            }
+            if (userRows[0].tenant_id !== tenantId) {
+                return res.status(403).json({ message: 'Employee does not belong to your tenant' });
+            }
+
             // Using INSERT ... ON DUPLICATE KEY UPDATE to ensure only one letter per employee
             const query = `
-                INSERT INTO offer_letters (employee_id, form_data, issue_date) 
+                INSERT INTO offer_letters (employee_id, form_data, issue_date)
                 VALUES (?, ?, ?)
-                ON DUPLICATE KEY UPDATE 
-                form_data = VALUES(form_data), 
+                ON DUPLICATE KEY UPDATE
+                form_data = VALUES(form_data),
                 issue_date = VALUES(issue_date),
                 updated_at = CURRENT_TIMESTAMP
             `;
@@ -25,7 +41,7 @@ const offerLetterController = {
             await pool.execute(query, [employee_id, JSON.stringify(form_data), issue_date]);
             console.log('✅ Offer letter saved successfully');
 
-            res.status(200).json({ 
+            res.status(200).json({
                 message: 'Offer letter saved/updated successfully'
             });
         } catch (error) {
@@ -66,25 +82,30 @@ const offerLetterController = {
     // HR: Get all saved offer letters for tracking
     getAllOfferLetters: async (req, res) => {
         try {
+            const tenantId = req.tenantId;
+            if (!tenantId) {
+                return res.status(403).json({ message: 'Tenant context missing' });
+            }
             const query = `
-                SELECT 
-                    ol.id, 
-                    ol.employee_id, 
-                    ol.form_data, 
-                    ol.issue_date, 
-                    ol.created_at, 
+                SELECT
+                    ol.id,
+                    ol.employee_id,
+                    ol.form_data,
+                    ol.issue_date,
+                    ol.created_at,
                     ol.updated_at,
-                    u.first_name, 
-                    u.last_name, 
+                    u.first_name,
+                    u.last_name,
                     u.email,
                     ed.id as employee_display_id
                 FROM offer_letters ol
                 JOIN users u ON ol.employee_id = u.id
                 LEFT JOIN employee_details ed ON u.id = ed.user_id
+                WHERE u.tenant_id = ?
                 ORDER BY ol.updated_at DESC
             `;
 
-            const [rows] = await pool.execute(query);
+            const [rows] = await pool.execute(query, [tenantId]);
 
             const processedRows = rows.map(row => ({
                 ...row,

@@ -76,9 +76,12 @@ const OfferLetter = () => {
     termsAndConditions: [
       "The employee shall abide by all company policies, rules, and regulations.",
       "This offer is contingent upon satisfactory background verification and reference checks.",
-      "The first three months shall be a probationary period.",
+      "The first three months shall be a probationary period, during which either party may terminate employment with one week's notice.",
       "The company reserves the right to modify terms with prior notice.",
-      "Confidentiality of company information must be maintained during and after employment."
+      "Confidentiality of company information must be maintained during and after employment.",
+      "All intellectual property created during employment shall belong to the company.",
+      "The employee agrees not to engage in any competing business during employment and for six months after termination.",
+      "Employment may be terminated by either party with one month's notice or payment in lieu thereof."
     ]
   });
 
@@ -577,9 +580,12 @@ const OfferLetter = () => {
                     termsAndConditions: [
                       "The employee shall abide by all company policies, rules, and regulations.",
                       "This offer is contingent upon satisfactory background verification and reference checks.",
-                      "The first three months shall be a probationary period.",
+                      "The first three months shall be a probationary period, during which either party may terminate employment with one week's notice.",
                       "The company reserves the right to modify terms with prior notice.",
-                      "Confidentiality of company information must be maintained during and after employment."
+                      "Confidentiality of company information must be maintained during and after employment.",
+                      "All intellectual property created during employment shall belong to the company.",
+                      "The employee agrees not to engage in any competing business during employment and for six months after termination.",
+                      "Employment may be terminated by either party with one month's notice or payment in lieu thereof."
                     ]
                   });
                 }}
