@@ -831,6 +831,46 @@ const OfferLetter = () => {
               </table>
             </div>
           </div>
+
+          {/* PAGE 5 PREVIEW (Terms & Conditions) */}
+          {formData.termsAndConditions && formData.termsAndConditions.length > 0 && (
+            <div style={{ border: "1px solid #eee", minHeight: "1000px", background: "white", color: "#000", fontSize: "11pt", lineHeight: "1.6", display: "flex", flexDirection: "column", boxShadow: "0 0 10px rgba(0,0,0,0.05)" }}>
+              <div style={{ padding: "5px 10px", background: "#f8fafc", borderBottom: "1px solid #eee", fontSize: "10pt", color: "#64748b", fontWeight: "bold" }}>Page 5 (Terms & Conditions)</div>
+              {/* Header Mirror */}
+              <div style={{
+                display: "flex", justifyContent: "flex-start", alignItems: "center", gap: "50px", borderBottom: "5px solid #000", padding: "20px 40px 10px 40px", marginBottom: "30px", boxSizing: "border-box", width: "100%"
+              }}>
+                <div style={{ flex: "0 0 auto" }}>
+                  {branding.logo_url && <img src={branding.logo_url} alt="Logo" style={{ height: "120px", width: "auto", maxWidth: "300px", objectFit: "contain", display: "block", padding: "0 2px" }} />}
+                </div>
+                <div style={{ textAlign: "left", display: "flex", flexDirection: "column", gap: "10px", justifyContent: "center", maxWidth: "60%", flex: "0 0 auto", wordBreak: "break-all" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: "10px" }}>
+                    <div style={{ background: "#000", color: "#fff", borderRadius: "50%", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <TbWorld size={18} />
+                    </div>
+                    <span style={{ fontWeight: "bold", fontSize: "11pt" }}>{branding.company_website}</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: "10px" }}>
+                    <div style={{ background: "#000", color: "#fff", borderRadius: "50%", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <TfiEmail size={16} />
+                    </div>
+                    <span style={{ fontWeight: "bold", fontSize: "11pt" }}>{branding.company_email}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ padding: "0 40px 40px 40px", flexGrow: 1 }}>
+                <div style={{ fontWeight: "bold", marginBottom: "20px", fontSize: "12pt" }}>Terms & Conditions</div>
+                <ol style={{ paddingLeft: "20px", fontFamily: "'Times New Roman', Times, serif", fontSize: "10pt", lineHeight: "1.8" }}>
+                  {formData.termsAndConditions.map((term, index) => (
+                    <li key={index} style={{ marginBottom: "10px", textAlign: "justify" }}>
+                      {term}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

@@ -8,7 +8,7 @@ const dbConfig = {
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     port: process.env.DB_PORT,
-    timezone: '+05:30', // India Standard Time (IST) offset
+    timezone: '+05:30', // For India
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
