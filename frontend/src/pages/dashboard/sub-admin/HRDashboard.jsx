@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './HRDashboard.css';
 import dashboardAPI from '../../../services/dashboardAPI';
 import brandingAPI from '../../../services/brandingAPI';
+import { useAuth } from '../../../contexts/AuthContext';
 import {
   HiOutlineDocumentText,
   HiOutlineCurrencyDollar,
@@ -12,6 +13,7 @@ import {
 } from "react-icons/hi2";
 
 const HRDashboard = ({ setActiveTab }) => {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [statsData, setStatsData] = useState({
     employees: "0",
@@ -21,6 +23,7 @@ const HRDashboard = ({ setActiveTab }) => {
   });
 
   const [companyName, setCompanyName] = useState('company');
+  const isKosquOrganization = (user?.tenant_slug || '').toLowerCase() === 'kosqu';
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -110,6 +113,8 @@ const HRDashboard = ({ setActiveTab }) => {
           </div>
         </div>
 
+        {!isKosquOrganization && (
+          <>
         {/* Salary Slip Card */}
         <div className="hr-tool-card" onClick={() => setActiveTab('salary-slip')}>
           <div className="tool-icon-wrapper cash">
@@ -180,6 +185,8 @@ const HRDashboard = ({ setActiveTab }) => {
             <HiOutlineArrowRight />
           </div>
         </div>
+          </>
+        )}
       </div>
     </div>
   );

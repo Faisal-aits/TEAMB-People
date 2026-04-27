@@ -94,6 +94,22 @@ const AdminLayout = () => {
 
   // Get user data from backend
   const { user, logout } = useAuth();
+  const isKosquOrganization = (user?.tenant_slug || '').toLowerCase() === 'kosqu';
+  const restrictedHrTabsForKosqu = new Set([
+    'salary-slip',
+    'salary-history',
+    'hr-employee-directory',
+    'resignation',
+    'experience-letter',
+    'increment-letter',
+    'declaration-form'
+  ]);
+
+  useEffect(() => {
+    if (isKosquOrganization && restrictedHrTabsForKosqu.has(activeTab)) {
+      setActiveTab('offer-letter');
+    }
+  }, [activeTab, isKosquOrganization]);
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
