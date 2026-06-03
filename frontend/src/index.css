@@ -1,33 +1,21 @@
 /* src/index.css */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: #f5f5f5;
-}
-
-#root {
-  min-height: 100vh;
-}
+@import './styles/variables.css';
+@import './styles/theme.css';
+@import './styles/global.css';
+@import './styles/components.css';
+@import './styles/utilities.css';
+@import './glassmorphism.css';
 
 /* Dashboard Styles */
 .dashboard {
   min-height: 100vh;
-  background-color: #f8f9fa;
+  background-color: var(--theme-bg-muted);
 }
 
 .dashboard-header {
-  background: white;
-  padding: 1rem 2rem;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  background: var(--theme-surface);
+  padding: var(--space-4) var(--space-8);
+  box-shadow: var(--shadow-sm);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -40,50 +28,50 @@ body {
 }
 
 .logout-btn {
-  padding: 0.5rem 1rem;
-  background: #e74c3c;
-  color: white;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-danger);
+  color: var(--color-text-inverse);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-lg);
   cursor: pointer;
 }
 
 .dashboard-content {
-  padding: 2rem;
+  padding: var(--space-8);
 }
 
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  margin-bottom: 2rem;
+  gap: var(--space-4);
+  margin-bottom: var(--space-8);
 }
 
 .stat-card {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  background: var(--theme-surface);
+  padding: var(--space-6);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
 }
 
 .quick-actions {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  background: var(--theme-surface);
+  padding: var(--space-6);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
 }
 
 .action-buttons {
   display: flex;
-  gap: 1rem;
-  margin-top: 1rem;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
 }
 
 .action-btn {
-  padding: 0.75rem 1.5rem;
-  background: #3498db;
-  color: white;
+  padding: var(--space-3) var(--space-6);
+  background: var(--color-info);
+  color: var(--color-text-inverse);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-lg);
   cursor: pointer;
 }

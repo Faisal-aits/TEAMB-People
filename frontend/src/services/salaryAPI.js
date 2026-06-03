@@ -1,73 +1,95 @@
-// src/services/salaryAPI.js
-import api from './api';
+import axios from 'axios';
+
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+
+const getAuthHeaders = () => {
+    const token = localStorage.getItem('token');
+    return {
+        Authorization: `Bearer ${token}`,
+        'x-tenant-id': '1'
+    };
+};
 
 export const salaryAPI = {
-  // Get all salary records
-  getAll: (filters = {}) => {
-    const params = new URLSearchParams();
-    if (filters.employee) params.append('employee', filters.employee);
-    if (filters.department) params.append('department', filters.department);
-    if (filters.month) params.append('month', filters.month);
-    if (filters.year) params.append('year', filters.year);
-    if (filters.status) params.append('status', filters.status);
-    return api.get(`/salary/records?${params.toString()}`);
-  },
+    // Get all salary records for a month
+    getSalaryRecords: (month, year) => {
+        return axios.get(`${API_URL}/api/salary/records`, {
+            params: { month, year },
+            headers: getAuthHeaders()
+        });
+    },
 
-  // Get salary record by ID
-  getById: (id) => api.get(`/salary/records/${id}`),
+    // Get employee salary history
+    getEmployeeSalaryHistory: (employeeId) => {
+        return axios.get(`${API_URL}/api/salary/history/${employeeId}`, {
+            headers: getAuthHeaders()
+        });
+    },
 
-  // Create salary record
-  create: (data) => api.post('/salary/records', data),
+    // Generate salaries for all employees
+    generateAllSalaries: (month, year) => {
+        return axios.post(`${API_URL}/api/salary/generate-all`, { month, year }, {
+            headers: getAuthHeaders()
+        });
+    },
 
-  // Update salary record
-  update: (id, data) => api.put(`/salary/records/${id}`, data),
+    // Generate salary for single employee
+    generateEmployeeSalary: (employeeId, month, year) => {
+        return axios.post(`${API_URL}/api/salary/generate/${employeeId}`, { month, year }, {
+            headers: getAuthHeaders()
+        });
+    },
 
-  // Delete salary record
-  delete: (id) => api.delete(`/salary/records/${id}`),
+    // Update salary record
+    updateSalaryRecord: (salaryRecordId, amount, reason) => {
+        return axios.put(`${API_URL}/api/salary/update/${salaryRecordId}`, { amount, reason }, {
+            headers: getAuthHeaders()
+        });
+    },
 
-  // Get employees for dropdown
-  getEmployees: () => api.get('/salary/employees'),
+    // Record salary payment
+    recordSalaryPayment: (salaryRecordId, data) => {
+        return axios.post(`${API_URL}/api/salary/payment/${salaryRecordId}`, data, {
+            headers: getAuthHeaders()
+        });
+    },
 
-  // Get departments for dropdown
-  getDepartments: () => api.get('/salary/departments'),
+    // Mark salary as paid
+    markSalaryPaid: (salaryRecordId) => {
+        return axios.post(`${API_URL}/api/salary/mark-paid/${salaryRecordId}`, {}, {
+            headers: getAuthHeaders()
+        });
+    },
 
-  // Get salary statistics
-  getStats: () => api.get('/salary/stats'),
+    // Mark salary as pending
+    markSalaryPending: (salaryRecordId) => {
+        return axios.post(`${API_URL}/api/salary/mark-pending/${salaryRecordId}`, {}, {
+            headers: getAuthHeaders()
+        });
+    },
 
-  // Get salary by department
-  getByDepartment: (month, year) => api.get(`/salary/by-department?month=${month}&year=${year}`),
+    // Get available months
+    getAvailableMonths: () => {
+        return axios.get(`${API_URL}/api/salary/months`, {
+            headers: getAuthHeaders()
+        });
+    },
 
-  // Generate payslip
-  generatePayslip: (id) => api.get(`/salary/payslip/${id}`, { responseType: 'blob' }),
+    // Get salary statistics
+    getSalaryStats: () => {
+        return axios.get(`${API_URL}/api/salary/stats`, {
+            headers: getAuthHeaders()
+        });
+    },
 
-  // Generate payslip preview
-  generatePayslipPreview: (id) => api.get(`/salary/payslip-preview/${id}`),
-
-  // Send payslip email
-  sendPayslipEmail: (id, data) => api.post(`/salary/send-payslip/${id}`, data),
-
-  // Bulk create salary records
-  bulkCreate: (data) => api.post('/salary/bulk-create', data),
-
-  calculateFromAttendance: (data) => {
-    console.log('API call - calculateFromAttendance with data:', data);
-    return api.post('/salary/calculate-from-attendance', {
-        employee_id: data.employee_id,
-        month: data.month,
-        year: data.year,
-        basic_salary: data.basic_salary
-    });
-  },
-
-  // 👇 ADD THIS NEW METHOD 👇
-  // Get current logged-in employee's salary records
-  getMySalaryRecords: (filters = {}) => {
-    const params = new URLSearchParams();
-    if (filters.month) params.append('month', filters.month);
-    if (filters.year) params.append('year', filters.year);
-    const queryString = params.toString();
-   return api.get(`/salary/my-records${queryString ? `?${queryString}` : ''}`);
-  },
+    // Get salary slip
+    getSalarySlip: (salaryRecordId) => {
+        return axios.get(`${API_URL}/api/salary/slip/${salaryRecordId}`, {
+            headers: getAuthHeaders(),
+            responseType: 'blob'
+        });
+    },
+    
 };
 
 export default salaryAPI;

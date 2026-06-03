@@ -8,7 +8,6 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-
 // Add token to requests automatically
 api.interceptors.request.use(
   (config) => {
@@ -16,6 +15,16 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+      if (typeof config.headers.delete === 'function') {
+        config.headers.delete('Content-Type');
+      } else {
+        delete config.headers['Content-Type'];
+        delete config.headers['content-type'];
+      }
+    }
+    
     return config;
   },
   (error) => {
@@ -23,10 +32,14 @@ api.interceptors.request.use(
   }
 );
 
-// Handle token expiration
+// Add response interceptor for logging
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+   
+    return response;
+  },
   (error) => {
+  
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
@@ -40,7 +53,10 @@ export const authAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
   getProfile: () => api.get('/auth/profile'),
   forgotPassword: (data) => api.post('/auth/forgot-password', data),
-  resetPassword: (token, data) => api.post(`/auth/reset-password/${token}`, data)
+  resetPassword: (token, data) => api.post(`/auth/reset-password/${token}`, data),
+  getTenantBySlug: (slug) => api.get(`/auth/tenant/${slug}`),
+  changePassword: (data) => api.put('/auth/change-password', data),
+  register: (data) => api.post('/auth/register', data)
 };
 
 export default api;

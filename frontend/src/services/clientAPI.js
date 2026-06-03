@@ -1,15 +1,14 @@
-// src/services/clientAPI.js
 import api from './api';
 
 export const clientAPI = {
-  // Get all clients
+  // Get all clients with filters
   getAll: (filters = {}) => {
     const params = new URLSearchParams();
-    Object.keys(filters).forEach(key => {
-      if (filters[key]) {
-        params.append(key, filters[key]);
-      }
-    });
+    if (filters.search) params.append('search', filters.search);
+    if (filters.industry) params.append('industry', filters.industry);
+    if (filters.status) params.append('status', filters.status);
+    if (filters.assigned_manager) params.append('assigned_manager', filters.assigned_manager);
+    if (filters.location) params.append('location', filters.location);
     return api.get(`/clients?${params.toString()}`);
   },
 
@@ -17,24 +16,24 @@ export const clientAPI = {
   getById: (id) => api.get(`/clients/${id}`),
 
   // Create new client
-  create: (clientData) => api.post('/clients', clientData),
+  create: (formData) => api.post('/clients', formData),
 
   // Update client
-  update: (id, clientData) => api.put(`/clients/${id}`, clientData),
+  update: (id, formData) => api.put(`/clients/${id}`, formData),
 
   // Delete client
   delete: (id) => api.delete(`/clients/${id}`),
 
-  // Add interaction
-  addInteraction: (clientId, interactionData) => 
-    api.post(`/clients/${clientId}/interactions`, interactionData),
-
-  // Get managers list
+  // Get list of account managers
   getManagers: () => api.get('/clients/managers'),
 
-  // Get industries list
+  // Get list of industries
   getIndustries: () => api.get('/clients/industries'),
 
   // Add new industry
-  addIndustry: (industryName) => api.post('/clients/industries', { industry: industryName }),
+  addIndustry: (name) => api.post('/clients/industries', { name }),
+
+  // Add interaction for a client
+  addInteraction: (clientId, interactionData) => 
+    api.post(`/clients/${clientId}/interactions`, interactionData),
 };

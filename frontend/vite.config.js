@@ -5,17 +5,17 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '0.0.0.0',
-    port: 5173,
+    port: 5175,
     strictPort: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:3000', // Your backend
+        target: 'http://localhost:3000', 
         changeOrigin: true,
         secure: false,
         configure: (proxy, options) => {
           proxy.on('proxyReq', (proxyReq, req, res) => {
             // Forward the origin header
-            proxyReq.setHeader('Origin', 'http://localhost:5173');
+            proxyReq.setHeader('Origin', 'http://localhost:5175');
           });
         }
       }

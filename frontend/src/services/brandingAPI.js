@@ -13,7 +13,6 @@ export const brandingAPI = {
         const formData = new FormData();
         formData.append('field', field);
         formData.append('image', file);
-        // console.log(formData);
         return api.post(`/branding/upload?field=${field}`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         });

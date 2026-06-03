@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import './Login.css';
@@ -6,7 +6,6 @@ import './Login.css';
 const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
-    tenant_slug: '',
     email: '',
     password: '',
     regEmail: '',
@@ -16,33 +15,19 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const { login, isAuthenticated, user } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (user) {
-      redirectToDashboard(user.role);
+  const getDashboardPath = (userData) => {
+   const position = (userData?.position || '').toLowerCase();
+    
+    
+    if (position === 'admin') {
+    
+      return '/admin';
     }
-  }, [isAuthenticated, user, navigate]);
-
-  const redirectToDashboard = (role) => {
-    switch (role) {
-      case 'admin':
-        navigate('/admin');
-        break;
-      case 'hr':
-        navigate('/hr');
-        break;
-      case 'employee':
-        navigate('/employee');
-        break;
-      case 'student':
-        navigate('/student');
-        break;
-      default:
-        navigate('/');
-    }
+  
+    return '/dashboard';
   };
 
   const handleInputChange = (e) => {
@@ -51,7 +36,7 @@ const Login = () => {
       ...prevState,
       [id]: value
     }));
-    setError(''); // Clear error when user starts typing
+    setError('');
   };
 
   const handleLoginSubmit = async (e) => {
@@ -59,26 +44,27 @@ const Login = () => {
     setLoading(true);
     setError('');
 
-    const { tenant_slug, email, password } = formData;
+    const { email, password } = formData;
 
-    if (!tenant_slug || !email || !password) {
-      setError('Please fill in all fields including Organization ID');
+    if (!email || !password) {
+      setError('Please enter your email and password');
       setLoading(false);
       return;
     }
 
     try {
-   
-      const result = await login({ email, password, tenant_slug });
+      const result = await login({ email, password });
 
       if (result.success) {
-     
+        const dashboardPath = getDashboardPath(result.user);
+        
+        navigate(dashboardPath);
       } else {
-        setError(result.message);
+        setError(result.message || 'Login failed');
       }
     } catch (error) {
       console.error('Login error:', error);
-      setError('Login failed. Please try again.');
+      setError(error.response?.data?.message || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -91,24 +77,19 @@ const Login = () => {
 
     const { regEmail, regPassword, confirmPassword } = formData;
 
-
     if (regPassword !== confirmPassword) {
       setError('Passwords do not match');
       setLoading(false);
       return;
     }
 
-    // For now, we'll show a message since we don't have registration in backend
-    // You can add registration API call later
     setError('Registration feature coming soon! Please contact administrator.');
     setLoading(false);
-
-    // alert('Registration successful! Please check your email for verification.');
   };
 
   const toggleForm = () => {
     setIsLogin(!isLogin);
-    setError(''); // Clear error when switching forms
+    setError('');
   };
 
   return (
@@ -117,7 +98,6 @@ const Login = () => {
       <div className="company-content">
         <div className="company-text">
           <h1 className="company-title">WORK DESK</h1>
-
           <div className="company-quote">
             <p className="quote-text">Multi-Tenant Workforce Management</p>
           </div>
@@ -143,28 +123,11 @@ const Login = () => {
         )}
 
         {/* Login Form */}
-        <div
-          className={`form-wrapper glass-form ${isLogin ? 'active' : 'hidden'}`}
-        >
+        <div className={`form-wrapper ${isLogin ? 'active' : 'hidden'}`}>
           <h2 className="form-title">Welcome Back</h2>
           <p className="form-subtitle">Sign in to your organization</p>
 
           <form className="form" onSubmit={handleLoginSubmit}>
-            <div className="form-group">
-              <label htmlFor="tenant_slug" className="form-label">
-                Organization ID
-              </label>
-              <input
-                type="text"
-                id="tenant_slug"
-                placeholder="e.g. arham-it"
-                className="form-input glass-input"
-                value={formData.tenant_slug}
-                onChange={handleInputChange}
-                disabled={loading}
-              />
-            </div>
-
             <div className="form-group">
               <label htmlFor="email" className="form-label">
                 Email
@@ -185,7 +148,10 @@ const Login = () => {
                 <label htmlFor="password" className="form-label">
                   Password
                 </label>
-                <a href="#" className="forgot-link" onClick={() => navigate('/forgot-password')}>
+                <a href="#" className="forgot-link" onClick={(e) => {
+                  e.preventDefault();
+                  navigate('/forgot-password');
+                }}>
                   Forgot password?
                 </a>
               </div>
@@ -208,25 +174,10 @@ const Login = () => {
               {loading ? 'SIGNING IN...' : 'SIGN IN'}
             </button>
           </form>
-
-          {/*<div className="form-footer">
-            <p className="footer-text">
-              Are you new?{' '}
-              <button 
-                onClick={toggleForm}
-                className="form-toggle-btn"
-                disabled={loading}
-              >
-                Create an Account
-              </button>
-            </p>
-          </div>*/}
         </div>
 
         {/* Registration Form */}
-        <div
-          className={`form-wrapper glass-form ${!isLogin ? 'active' : 'hidden'}`}
-        >
+        <div className={`form-wrapper ${!isLogin ? 'active' : 'hidden'}`}>
           <h2 className="form-title">Create Account</h2>
           <p className="form-subtitle">Join us to start your journey</p>
 

@@ -1,0 +1,195 @@
+.app-page {
+  min-height: 100vh;
+  padding: var(--page-padding);
+  background: var(--theme-bg);
+  color: var(--theme-text);
+}
+
+.app-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.app-page-title {
+  margin: 0;
+  color: var(--theme-text-strong);
+  font-size: var(--text-2xl);
+  font-weight: 700;
+}
+
+.app-page-subtitle {
+  margin: var(--space-2) 0 0;
+  color: var(--theme-text-muted);
+}
+
+.app-card {
+  background: var(--theme-surface);
+  border: 1px solid var(--theme-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.app-card-padded {
+  padding: var(--space-5);
+}
+
+.app-section-title {
+  margin: 0 0 var(--space-4);
+  color: var(--theme-text-strong);
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+
+.app-form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.app-form-group label {
+  display: block;
+  margin-bottom: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.app-input,
+.app-select,
+.app-textarea,
+.app-form-group input,
+.app-form-group select,
+.app-form-group textarea {
+  width: 100%;
+  min-height: var(--control-height);
+  border: 1px solid var(--theme-border);
+  border-radius: var(--radius-lg);
+  padding: 10px 12px;
+  background: var(--theme-surface);
+  color: var(--theme-text-strong);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.app-textarea,
+.app-form-group textarea {
+  resize: vertical;
+}
+
+.app-input:focus,
+.app-select:focus,
+.app-textarea:focus,
+.app-form-group input:focus,
+.app-form-group select:focus,
+.app-form-group textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(109, 106, 184, 0.12);
+}
+
+.app-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.app-button {
+  min-height: 36px;
+  border: 0;
+  border-radius: var(--radius-lg);
+  padding: 8px 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+}
+
+.app-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.app-button-primary {
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+}
+
+.app-button-primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.app-button-secondary {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-text);
+}
+
+.app-button-success {
+  background: var(--color-success);
+  color: var(--color-text-inverse);
+}
+
+.app-button-danger {
+  background: var(--color-danger-soft);
+  color: var(--color-danger-text);
+}
+
+.app-button-danger:hover:not(:disabled) {
+  background: var(--color-danger);
+  color: var(--color-text-inverse);
+}
+
+.app-message {
+  padding: 12px 14px;
+  border-radius: var(--radius-lg);
+  border: 1px solid transparent;
+  margin-bottom: var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.app-message-success {
+  background: var(--color-success-soft);
+  color: var(--color-success-text);
+  border-color: var(--color-success);
+}
+
+.app-message-error {
+  background: var(--color-danger-soft);
+  color: var(--color-danger-text);
+  border-color: #fca5a5;
+}
+
+.app-table-wrap {
+  overflow-x: auto;
+}
+
+.app-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.app-table th,
+.app-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--theme-border);
+  vertical-align: top;
+  font-size: var(--text-sm);
+}
+
+.app-table th {
+  background: var(--theme-bg-muted);
+  color: var(--theme-text-muted);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+}
+
+.app-empty-state {
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--theme-text-muted);
+}

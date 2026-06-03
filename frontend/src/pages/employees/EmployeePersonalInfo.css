@@ -1,0 +1,203 @@
+/* EmployeePersonalInfo.css - Profile Page Styles */
+
+.personal-info-section {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  min-height: 100vh;
+  font-family: 'Inter', sans-serif;
+}
+
+.pi-page-title {
+  color: #1a202c;
+  margin: 0 0 1.5rem 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+/* Profile Card */
+.pi-profile-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 2rem;
+  max-width: 900px;
+}
+
+/* Profile Header */
+.pi-profile-header {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.pi-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(138, 135, 201, 0.3);
+}
+
+.pi-avatar-text {
+  color: white;
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.pi-profile-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.pi-full-name {
+  margin: 0;
+  color: #1a202c;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.pi-designation {
+  margin: 0;
+  color: #8a87c9;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.pi-department {
+  margin: 0;
+  color: #718096;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+/* Info Cards Grid */
+.pi-info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.pi-info-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fafbfc;
+  transition: all 0.2s ease;
+}
+
+.pi-info-card:hover {
+  border-color: #d4a3d2;
+  box-shadow: 0 2px 8px rgba(138, 135, 201, 0.1);
+}
+
+.pi-info-label {
+  color: #8a87c9;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.pi-info-value {
+  color: #1a202c;
+  font-size: 0.95rem;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+/* Loading */
+.pi-loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem;
+  color: #718096;
+}
+
+.pi-loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e2e8f0;
+  border-top: 3px solid #8a87c9;
+  border-radius: 50%;
+  animation: pi-spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes pi-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Error */
+.pi-error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  text-align: center;
+}
+
+.pi-error-message {
+  color: #c53030;
+  margin-bottom: 1rem;
+  font-weight: 500;
+}
+
+.pi-retry-btn {
+  padding: 0.6rem 1.25rem;
+  background: linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.pi-retry-btn:hover {
+  background: linear-gradient(135deg, #7a77b9 0%, #c493c2 33%, #d883b0 66%, #e8c1d8 100%);
+  transform: translateY(-1px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .personal-info-section {
+    padding: 1rem;
+  }
+
+  .pi-profile-card {
+    padding: 1.25rem;
+  }
+
+  .pi-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pi-profile-header {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .pi-info-grid {
+    grid-template-columns: 1fr;
+  }
+}
