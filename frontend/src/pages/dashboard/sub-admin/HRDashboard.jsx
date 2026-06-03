@@ -115,76 +115,76 @@ const HRDashboard = ({ setActiveTab }) => {
 
         {!isKosquOrganization && (
           <>
-        {/* Salary Slip Card */}
-        <div className="hr-tool-card" onClick={() => setActiveTab('salary-slip')}>
-          <div className="tool-icon-wrapper cash">
-            <HiOutlineCurrencyDollar />
-          </div>
-          <div className="tool-info">
-            <h3>Salary Slip</h3>
-            <p>Manage and generate monthly employee salary slips for {companyName}.</p>
-          </div>
-          <div className="tool-action">
-            <HiOutlineArrowRight />
-          </div>
-        </div>
+            {/* Salary Slip Card */}
+            <div className="hr-tool-card" onClick={() => setActiveTab('salary-slip')}>
+              <div className="tool-icon-wrapper cash">
+                <HiOutlineCurrencyDollar />
+              </div>
+              <div className="tool-info">
+                <h3>Salary Slip</h3>
+                <p>Manage and generate monthly employee salary slips for {companyName}.</p>
+              </div>
+              <div className="tool-action">
+                <HiOutlineArrowRight />
+              </div>
+            </div>
 
 
-        {/* Resignation Card */}
-        <div className="hr-tool-card" onClick={() => setActiveTab('resignation')}>
-          <div className="tool-icon-wrapper resign">
-            <HiOutlineClipboardDocumentList />
-          </div>
-          <div className="tool-info">
-            <h3>Resignation</h3>
-            <p>Process employee resignations and exit formalities for {companyName}.</p>
-          </div>
-          <div className="tool-action">
-            <HiOutlineArrowRight />
-          </div>
-        </div>
+            {/* Resignation Card */}
+            <div className="hr-tool-card" onClick={() => setActiveTab('resignation')}>
+              <div className="tool-icon-wrapper resign">
+                <HiOutlineClipboardDocumentList />
+              </div>
+              <div className="tool-info">
+                <h3>Resignation</h3>
+                <p>Process employee resignations and exit formalities for {companyName}.</p>
+              </div>
+              <div className="tool-action">
+                <HiOutlineArrowRight />
+              </div>
+            </div>
 
-        {/* Experience Letter Card */}
-        <div className="hr-tool-card" onClick={() => setActiveTab('experience-letter')}>
-          <div className="tool-icon-wrapper doc">
-            <HiOutlineDocumentText />
-          </div>
-          <div className="tool-info">
-            <h3>Experience Letter</h3>
-            <p>Generate experience letters and relieve employees for {companyName}.</p>
-          </div>
-          <div className="tool-action">
-            <HiOutlineArrowRight />
-          </div>
-        </div>
+            {/* Experience Letter Card */}
+            <div className="hr-tool-card" onClick={() => setActiveTab('experience-letter')}>
+              <div className="tool-icon-wrapper doc">
+                <HiOutlineDocumentText />
+              </div>
+              <div className="tool-info">
+                <h3>Experience Letter</h3>
+                <p>Generate experience letters and relieve employees for {companyName}.</p>
+              </div>
+              <div className="tool-action">
+                <HiOutlineArrowRight />
+              </div>
+            </div>
 
-        {/* Increment Letter Card */}
-        <div className="hr-tool-card" onClick={() => setActiveTab('increment-letter')}>
-          <div className="tool-icon-wrapper cash">
-            <HiOutlineCurrencyDollar />
-          </div>
-          <div className="tool-info">
-            <h3>Increment Letter</h3>
-            <p>Generate automated salary increment letters for {companyName}.</p>
-          </div>
-          <div className="tool-action">
-            <HiOutlineArrowRight />
-          </div>
-        </div>
+            {/* Increment Letter Card */}
+            <div className="hr-tool-card" onClick={() => setActiveTab('increment-letter')}>
+              <div className="tool-icon-wrapper cash">
+                <HiOutlineCurrencyDollar />
+              </div>
+              <div className="tool-info">
+                <h3>Increment Letter</h3>
+                <p>Generate automated salary increment letters for {companyName}.</p>
+              </div>
+              <div className="tool-action">
+                <HiOutlineArrowRight />
+              </div>
+            </div>
 
-        {/* Employees Card */}
-        <div className="hr-tool-card" onClick={() => setActiveTab('hr-employee-directory')}>
-          <div className="tool-icon-wrapper emp">
-            <HiOutlineUsers />
-          </div>
-          <div className="tool-info">
-            <h3>Employee Directory</h3>
-            <p>Access and manage detailed employee information.</p>
-          </div>
-          <div className="tool-action">
-            <HiOutlineArrowRight />
-          </div>
-        </div>
+            {/* Employees Card */}
+            <div className="hr-tool-card" onClick={() => setActiveTab('hr-employee-directory')}>
+              <div className="tool-icon-wrapper emp">
+                <HiOutlineUsers />
+              </div>
+              <div className="tool-info">
+                <h3>Employee Directory</h3>
+                <p>Access and manage detailed employee information.</p>
+              </div>
+              <div className="tool-action">
+                <HiOutlineArrowRight />
+              </div>
+            </div>
           </>
         )}
       </div>
