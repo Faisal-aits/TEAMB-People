@@ -211,8 +211,9 @@
 .employee-cell,
 .contact-cell {
   display: flex;
-  flex-direction: row;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
 }
 
 .employee-name {
@@ -240,6 +241,7 @@
 .employee-email,
 .position-cell {
   color: var(--theme-text-muted);
+  overflow-wrap: anywhere;
 }
 
 .salary-cell {

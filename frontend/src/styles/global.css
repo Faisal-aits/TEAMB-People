@@ -5,6 +5,7 @@
 html {
   min-height: 100%;
   font-family: var(--font-sans);
+  overflow-x: hidden;
 }
 
 body {
@@ -15,6 +16,7 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 button,
@@ -22,10 +24,12 @@ input,
 select,
 textarea {
   font: inherit;
+  max-width: 100%;
 }
 
 button {
   cursor: pointer;
+  line-height: 1.2;
 }
 
 button:disabled,
@@ -46,6 +50,24 @@ a {
 
 table {
   border-collapse: collapse;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+td,
+th {
+  overflow-wrap: anywhere;
+}
+
+td button,
+td a,
+td .app-button {
+  overflow-wrap: normal;
 }
 
 ::selection {
