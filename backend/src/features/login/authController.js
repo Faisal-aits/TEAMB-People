@@ -52,25 +52,11 @@ const authController = {
 
         user = userRows[0] || null;
 
-        // Backward compatibility for older clients that still provide an organization id.
         if (!user) {
-          const saltRounds = 10;
-          const password_hash = await bcrypt.hash(password, saltRounds);
-
-          const result = await query(
-            `INSERT INTO users (tenant_id, first_name, last_name, email, password_hash, phone, position, is_active)
-             VALUES (?, ?, ?, ?, ?, ?, 'user', 1)`,
-            [tenant.id, email.split('@')[0], '', email, password_hash, '']
-          );
-
-          const newUser = await query(`
-            SELECT id, tenant_id, first_name, last_name, email, phone,
-                   position, password_hash, is_active, created_at, updated_at
-            FROM users
-            WHERE id = ?
-          `, [result.insertId]);
-
-          user = newUser[0];
+          return res.status(401).json({
+            success: false,
+            message: 'Invalid credentials'
+          });
         }
       } else {
         const userRows = await query(`

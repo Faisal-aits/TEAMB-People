@@ -68,9 +68,9 @@ const Tenant = {
     },
 
     // Create new tenant
-    create: async (tenantData) => {
+    create: async (tenantData, db = pool) => {
         try {
-            const [result] = await pool.execute(
+            const [result] = await db.execute(
                 `INSERT INTO tenants (name, slug, email, phone, address, logo_url, subscription_plan, max_employees, is_active) 
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)`,
                 [

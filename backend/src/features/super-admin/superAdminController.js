@@ -134,9 +134,9 @@ const superAdminController = {
                 });
             }
 
-            // Get tenant's users (no role join since roles table is removed)
+            // Get tenant's users
             const [users] = await pool.execute(
-                `SELECT id, first_name, last_name, email, phone, is_active, created_at
+                `SELECT id, first_name, last_name, email, phone, position, is_active, created_at
                  FROM users 
                  WHERE tenant_id = ?`,
                 [req.params.id]
@@ -156,8 +156,6 @@ const superAdminController = {
     createTenant: async (req, res) => {
         const connection = await pool.getConnection();
         try {
-            await connection.beginTransaction();
-
             const { 
                 name, slug, email, phone, address, logo_url,
                 subscription_plan, max_employees,
@@ -178,9 +176,12 @@ const superAdminController = {
                 });
             }
 
+            await connection.beginTransaction();
+
             // Check slug uniqueness
             const existingTenant = await Tenant.getBySlug(slug);
             if (existingTenant) {
+                await connection.rollback();
                 return res.status(400).json({ 
                     success: false,
                     message: 'Tenant slug already exists' 
@@ -191,17 +192,17 @@ const superAdminController = {
             const tenantId = await Tenant.create({
                 name, slug, email, phone, address, logo_url,
                 subscription_plan, max_employees
-            });
+            }, connection);
 
-            // Create admin user for tenant (no role_id)
+            // Create the first tenant user as a system admin.
             let passwordHash = null;
             if (admin_password) {
                 passwordHash = await bcrypt.hash(admin_password, 10);
             }
 
             await connection.execute(
-                `INSERT INTO users (tenant_id, first_name, last_name, email, password_hash, is_active) 
-                 VALUES (?, ?, ?, ?, ?, 1)`,
+                `INSERT INTO users (tenant_id, first_name, last_name, email, password_hash, position, is_active) 
+                 VALUES (?, ?, ?, ?, ?, 'admin', 1)`,
                 [tenantId, admin_first_name, admin_last_name, admin_email, passwordHash]
             );
 
