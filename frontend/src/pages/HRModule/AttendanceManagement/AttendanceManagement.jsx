@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { FaExclamationTriangle, FaCamera, FaCheckCircle, FaSync, FaFileExport, FaPrint } from 'react-icons/fa';
 import { attendanceAPI } from '../../../services/attendanceAPI';
 import { employeeAPI } from '../../../services/employeeAPI';
+import { leaveAPI } from '../../../services/leaveAPI';
 import { useTableControls } from '../../../hooks/useTableControls';
-// import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx';
 import './AttendanceManagement.css';
 import '../../../styles/tableControls.css';
 
@@ -500,7 +501,222 @@ const getUserAttendance = (user) => {
 
       const startDate = reportFilters.startDate;
       const endDate = reportFilters.endDate;
-      
+
+      {
+        const [usersResponse, attendanceResponse, leaveResponse] = await Promise.all([
+          employeeAPI.getAll(),
+          attendanceAPI.getAll({
+            start_date: startDate,
+            end_date: endDate
+          }),
+          leaveAPI.getAll({ status: 'Approved' }).catch(() => ({ data: { leaves: [] } }))
+        ]);
+
+        const allUsers = usersResponse.data?.users || usersResponse.data?.employees || [];
+        const filteredUsers = reportFilters.department
+          ? allUsers.filter((user) => user.department_name === reportFilters.department)
+          : allUsers;
+
+        const attendanceRecords = attendanceResponse.data?.attendance
+          || (Array.isArray(attendanceResponse.data) ? attendanceResponse.data : []);
+        const approvedLeaves = leaveResponse.data?.leaves
+          || (Array.isArray(leaveResponse.data) ? leaveResponse.data : []);
+
+        const addDays = (date, days) => {
+          const next = new Date(date);
+          next.setDate(next.getDate() + days);
+          return next;
+        };
+
+        const formatLocalDate = (date) => {
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        };
+
+        const selectedStart = new Date(`${startDate}T12:00:00`);
+        const selectedEnd = new Date(`${endDate}T12:00:00`);
+        const crossesMonth = selectedStart.getMonth() !== selectedEnd.getMonth()
+          || selectedStart.getFullYear() !== selectedEnd.getFullYear();
+        const dateRange = [];
+        let cursor = new Date(selectedStart);
+
+        while (cursor <= selectedEnd) {
+          dateRange.push({
+            date: formatLocalDate(cursor),
+            dayNumber: cursor.getDate(),
+            month: cursor.getMonth() + 1,
+            isWeeklyOff: cursor.getDay() === 0
+          });
+          cursor = addDays(cursor, 1);
+        }
+
+        const attendanceMap = new Map();
+        attendanceRecords.forEach((record) => {
+          const recordDate = normalizeDateString(record.date || record.attendance_date);
+          if (!recordDate) return;
+          [record.hr_employee_code, record.employee_id, record.user_id]
+            .filter(Boolean)
+            .forEach((keyValue) => {
+              attendanceMap.set(`${String(keyValue).trim()}_${recordDate}`, record);
+            });
+        });
+
+        const leaveMap = new Map();
+        approvedLeaves.forEach((leave) => {
+          const employeeKeys = [leave.employee_code, leave.employee_id, leave.user_id]
+            .filter(Boolean)
+            .map((value) => String(value).trim());
+          const leaveStartValue = normalizeDateString(leave.start_date);
+          const leaveEndValue = normalizeDateString(leave.end_date);
+          if (!leaveStartValue || !leaveEndValue) return;
+
+          let leaveDate = new Date(`${leaveStartValue}T12:00:00`);
+          const leaveEndDate = new Date(`${leaveEndValue}T12:00:00`);
+          while (leaveDate <= leaveEndDate) {
+            const dateKey = formatLocalDate(leaveDate);
+            employeeKeys.forEach((keyValue) => {
+              leaveMap.set(`${keyValue}_${dateKey}`, leave);
+            });
+            leaveDate = addDays(leaveDate, 1);
+          }
+        });
+
+        const getLeaveCode = (leave) => {
+          const leaveType = String(leave?.leave_type || '').trim().toLowerCase();
+          if (leaveType === 'casual') return 'CL';
+          if (leaveType === 'unpaid') return 'LWP';
+          return 'PL';
+        };
+
+        const getDateHeader = (dayInfo) => (
+          crossesMonth ? `${dayInfo.dayNumber}/${String(dayInfo.month).padStart(2, '0')}` : String(dayInfo.dayNumber)
+        );
+
+        const formattedReport = filteredUsers.map((user, index) => {
+          const userName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.name || 'Unknown';
+          const userKeys = [user.employee_id, user.user_id, user.id]
+            .filter(Boolean)
+            .map((value) => String(value).trim());
+          const row = {
+            'Sr no': index + 1,
+            'Employee Name': userName
+          };
+
+          let presentDays = 0;
+          let paidLeaveDays = 0;
+          let casualLeaveDays = 0;
+          let weeklyOffDays = 0;
+          let lwpDays = 0;
+          let delayedDays = 0;
+          let absentDays = 0;
+          let leaveDays = 0;
+
+          dateRange.forEach((dayInfo) => {
+            const attendance = userKeys
+              .map((keyValue) => attendanceMap.get(`${keyValue}_${dayInfo.date}`))
+              .find(Boolean);
+            const leave = userKeys
+              .map((keyValue) => leaveMap.get(`${keyValue}_${dayInfo.date}`))
+              .find(Boolean);
+            const header = getDateHeader(dayInfo);
+
+            if (dayInfo.isWeeklyOff) {
+              row[header] = 'W/O';
+              weeklyOffDays += 1;
+              return;
+            }
+
+            if (attendance) {
+              const status = String(attendance.status || '').trim().toLowerCase();
+              if (status === 'present') {
+                row[header] = 'P';
+                presentDays += 1;
+                return;
+              }
+              if (status === 'delayed' || status === 'late') {
+                row[header] = 'D';
+                presentDays += 1;
+                delayedDays += 1;
+                return;
+              }
+              if (status === 'half day' || status === 'half-day') {
+                row[header] = 'H';
+                presentDays += 0.5;
+                lwpDays += 0.5;
+                return;
+              }
+              if (status === 'on leave' || status === 'leave') {
+                const leaveCode = getLeaveCode(leave);
+                row[header] = leaveCode;
+                if (leaveCode === 'CL') casualLeaveDays += 1;
+                else if (leaveCode === 'LWP') lwpDays += 1;
+                else paidLeaveDays += 1;
+                leaveDays += 1;
+                return;
+              }
+            }
+
+            if (leave) {
+              const leaveCode = getLeaveCode(leave);
+              row[header] = leaveCode;
+              if (leaveCode === 'CL') casualLeaveDays += 1;
+              else if (leaveCode === 'LWP') lwpDays += 1;
+              else paidLeaveDays += 1;
+              leaveDays += 1;
+              return;
+            }
+
+            row[header] = 'A';
+            lwpDays += 1;
+            absentDays += 1;
+          });
+
+          row['Present Days'] = presentDays;
+          row.PL = paidLeaveDays;
+          row.CL = casualLeaveDays;
+          row['W/O'] = weeklyOffDays;
+          row.LWP = lwpDays;
+          row['Payable Days'] = presentDays + paidLeaveDays + casualLeaveDays + weeklyOffDays;
+
+          return {
+            row,
+            counters: {
+              presentDays,
+              paidLeaveDays,
+              casualLeaveDays,
+              weeklyOffDays,
+              lwpDays,
+              delayedDays,
+              absentDays,
+              leaveDays
+            }
+          };
+        })
+          .filter(({ counters }) => {
+            const statusFilter = reportFilters.status;
+            if (!statusFilter) return true;
+            if (statusFilter === 'Present') return counters.presentDays > 0;
+            if (statusFilter === 'Absent') return counters.absentDays > 0;
+            if (statusFilter === 'Delayed') return counters.delayedDays > 0;
+            if (statusFilter === 'On Leave') return counters.leaveDays > 0;
+            return true;
+          })
+          .map(({ row }, index) => ({ ...row, 'Sr no': index + 1 }));
+
+        if (formattedReport.length === 0) {
+          alert('No records found for the selected filters.');
+          setReportData([]);
+          setIsReportModalOpen(true);
+          return;
+        }
+
+        setReportData(formattedReport);
+        setIsReportModalOpen(true);
+      }
+
+      if (typeof window !== 'undefined' && window.__legacyAttendanceReportEnabled === true) {
       const usersResponse = await employeeAPI.getAll();
       let allUsers = usersResponse.data?.users || usersResponse.data?.employees || [];
       
@@ -685,6 +901,7 @@ const getUserAttendance = (user) => {
       
       setReportData(formattedReport);
       setIsReportModalOpen(true);
+      }
       
     } catch (err) {
       console.error('Error generating report:', err);
@@ -699,7 +916,31 @@ const getUserAttendance = (user) => {
       alert('No data to export');
       return;
     }
-    const ws = XLSX.utils.json_to_sheet(reportData);
+
+    const headers = Object.keys(reportData[0]);
+    const sheetRows = [
+      headers,
+      ...reportData.map((row) => headers.map((header) => row[header] ?? ''))
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(sheetRows);
+    ws['!cols'] = headers.map((header) => {
+      if (header === 'Employee Name') return { wch: 28 };
+      if (header === 'Sr no') return { wch: 8 };
+      if (header === 'Present Days' || header === 'Payable Days') return { wch: 14 };
+      return { wch: 7 };
+    });
+    ws['!freeze'] = { xSplit: 2, ySplit: 1 };
+
+    headers.forEach((_, columnIndex) => {
+      const cellAddress = XLSX.utils.encode_cell({ r: 0, c: columnIndex });
+      if (ws[cellAddress]) {
+        ws[cellAddress].s = {
+          font: { bold: true },
+          alignment: { horizontal: 'center', vertical: 'center' }
+        };
+      }
+    });
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Attendance Report');
     XLSX.writeFile(wb, `Attendance_Report_${reportFilters.startDate}_to_${reportFilters.endDate}.xlsx`);
@@ -724,6 +965,13 @@ const getUserAttendance = (user) => {
       <div className="attendance-management-header">
         <h2>Attendance Management</h2>
         <div className="attendance-header-actions">
+          <button
+            type="button"
+            className="attendance-action-btn"
+            onClick={() => setIsReportModalOpen(true)}
+          >
+            <FaFileExport /> Attendance Report
+          </button>
           <div className="attendance-current-date">{getCurrentDate()}</div>
         </div>
       </div>
@@ -912,6 +1160,14 @@ const getUserAttendance = (user) => {
                     <option value="">All Departments</option>
                     {departments.map(dept => <option key={dept.id} value={dept.name}>{dept.name}</option>)}
                   </select>
+                  <button
+                    type="button"
+                    onClick={handleGenerateReport}
+                    disabled={reportLoading}
+                    className="attendance-action-btn"
+                  >
+                    {reportLoading ? 'Generating...' : 'Generate Report'}
+                  </button>
                 </div>
               </div>
               {reportData.length > 0 && (
