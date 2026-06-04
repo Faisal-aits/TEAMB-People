@@ -60,6 +60,8 @@ const OfferLetter = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [history, setHistory] = useState([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [departments, setDepartments] = useState([]);
+  const [updatingOfferId, setUpdatingOfferId] = useState(null);
 
   const [formData, setFormData] = useState({
     issueDate: new Date().toISOString().split('T')[0],
@@ -110,6 +112,14 @@ const OfferLetter = () => {
         console.error("Error fetching employees:", err);
       }
     };
+    const fetchDepartments = async () => {
+      try {
+        const res = await employeeAPI.getDepartments();
+        setDepartments(res.data.departments || []);
+      } catch (err) {
+        console.error("Error fetching departments:", err);
+      }
+    };
     const fetchBranding = async () => {
       try {
         const res = await brandingAPI.get();
@@ -145,6 +155,7 @@ const OfferLetter = () => {
       }
     };
     fetchEmployees();
+    fetchDepartments();
     fetchHistory();
     fetchBranding();
   }, []);
@@ -214,6 +225,78 @@ const OfferLetter = () => {
       alert("Failed to download PDF. Please try again.");
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const getOfferCandidateName = (item) => {
+    return item.candidate_name || item.form_data?.fullName || `${item.first_name || ""} ${item.last_name || ""}`.trim() || "Candidate";
+  };
+
+  const getOfferCandidateEmail = (item) => {
+    return item.candidate_email || item.form_data?.email || item.email || "";
+  };
+
+  const getOfferStatus = (item) => String(item.status || "Pending");
+
+  const isFinalOfferStatus = (status) => ["Accepted", "Rejected"].includes(status);
+
+  const handleRejectOffer = async (item) => {
+    const status = getOfferStatus(item);
+    if (isFinalOfferStatus(status)) return;
+
+    if (!window.confirm(`Reject offer letter for ${getOfferCandidateName(item)}?`)) return;
+
+    setUpdatingOfferId(item.id);
+    try {
+      await offerLetterAPI.updateStatus(item.id, { status: "Rejected" });
+      alert("Offer letter rejected.");
+      await fetchHistory();
+    } catch (err) {
+      console.error("Error rejecting offer:", err);
+      alert(err.response?.data?.message || "Failed to reject offer letter.");
+    } finally {
+      setUpdatingOfferId(null);
+    }
+  };
+
+  const handleAcceptOffer = async (item) => {
+    const status = getOfferStatus(item);
+    if (isFinalOfferStatus(status)) return;
+
+    const candidateName = getOfferCandidateName(item);
+    const defaultEmployeeId = item.employee_display_id || "";
+    const newEmployeeId = window.prompt(`Enter employee ID for ${candidateName}`, defaultEmployeeId);
+    if (!newEmployeeId) return;
+
+    const departmentHelp = departments.length > 0
+      ? departments.map((department) => `${department.id}: ${department.name}`).join("\n")
+      : "Create a department first, then enter the department ID here.";
+    const departmentId = window.prompt(`Enter department ID:\n${departmentHelp}`, departments[0]?.id || "");
+    if (!departmentId) return;
+
+    const employmentType = window.prompt("Enter employment type", item.form_data?.employmentType || "Full-time");
+    if (!employmentType) return;
+
+    if (!window.confirm(`Accept offer for ${candidateName} and create employee ${newEmployeeId}?`)) return;
+
+    setUpdatingOfferId(item.id);
+    try {
+      await offerLetterAPI.updateStatus(item.id, {
+        status: "Accepted",
+        new_employee_id: newEmployeeId.trim(),
+        department_id: String(departmentId).trim(),
+        employment_type: employmentType.trim()
+      });
+      alert("Offer accepted and employee created successfully.");
+      await Promise.all([fetchHistory(), employeeAPI.getAll().then((res) => {
+        const employeesData = res.data.employees || res.data.data || (Array.isArray(res.data) ? res.data : []);
+        setEmployees(employeesData);
+      })]);
+    } catch (err) {
+      console.error("Error accepting offer:", err);
+      alert(err.response?.data?.message || "Failed to accept offer letter.");
+    } finally {
+      setUpdatingOfferId(null);
     }
   };
 
