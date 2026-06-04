@@ -7,7 +7,7 @@ const moduleAccessModel = require('../moduleAccess/moduleAccessModel');
 const { sendPasswordResetEmail } = require('../../services/mailService');
 const { ensurePasswordResetSchema } = require('./passwordResetSchema');
 
-const PASSWORD_RESET_MESSAGE = 'If an account with that email exists in the organization, a password reset link has been sent.';
+const PASSWORD_RESET_MESSAGE = 'If an account with that email exists, a password reset link has been sent.';
 
 const hashResetToken = (token) => crypto
   .createHash('sha256')
@@ -440,33 +440,34 @@ const authController = {
             const email = req.body.email?.trim();
             const tenantSlug = (req.body.tenant_slug || req.body.tenantSlug || '').trim();
 
-            if (!email || !tenantSlug) {
+            if (!email) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Email and Organization ID are required'
+                    message: 'Email is required'
                 });
             }
 
-            const tenants = await query(
-                'SELECT id, name, slug, is_active FROM tenants WHERE slug = ? LIMIT 1',
-                [tenantSlug]
-            );
-            const tenant = tenants[0];
-
-            if (!tenant || !tenant.is_active) {
-                return res.json({
-                    success: true,
-                    message: PASSWORD_RESET_MESSAGE
-                });
-            }
-
-            const users = await query(
-                `SELECT id, tenant_id, first_name, last_name, email, is_active
-                 FROM users
-                 WHERE LOWER(email) = LOWER(?) AND tenant_id = ?
-                 LIMIT 1`,
-                [email, tenant.id]
-            );
+            const users = tenantSlug
+                ? await query(
+                    `SELECT u.id, u.tenant_id, u.first_name, u.last_name, u.email, u.is_active
+                     FROM users u
+                     INNER JOIN tenants t ON t.id = u.tenant_id
+                     WHERE LOWER(u.email) = LOWER(?)
+                       AND t.slug = ?
+                       AND t.is_active = 1
+                     LIMIT 1`,
+                    [email, tenantSlug]
+                )
+                : await query(
+                    `SELECT u.id, u.tenant_id, u.first_name, u.last_name, u.email, u.is_active
+                     FROM users u
+                     INNER JOIN tenants t ON t.id = u.tenant_id
+                     WHERE LOWER(u.email) = LOWER(?)
+                       AND t.is_active = 1
+                     ORDER BY u.is_active DESC, u.id ASC
+                     LIMIT 1`,
+                    [email]
+                );
             const user = users[0];
 
             if (!user || !user.is_active) {
@@ -486,11 +487,11 @@ const authController = {
                      password_reset_expires_at = ?,
                      updated_at = NOW()
                  WHERE id = ? AND tenant_id = ?`,
-                [tokenHash, expiresAt, user.id, tenant.id]
+                [tokenHash, expiresAt, user.id, user.tenant_id]
             );
 
             const resetLink = `${getFrontendUrl(req)}/reset-password/${token}`;
-            await sendPasswordResetEmail(tenant.id, {
+            await sendPasswordResetEmail(user.tenant_id, {
                 email: user.email,
                 userName: [user.first_name, user.last_name].filter(Boolean).join(' ') || user.email,
                 resetLink

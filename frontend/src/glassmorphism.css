@@ -24,7 +24,7 @@ body, .dashboard, .dashboard-container, .hr-dashboard-container, .employee-porta
 
 /* Base Glass Class (can be applied to any card) */
 .glass-panel, .stat-card, .hr-stat-card, .employee-module-card, .glass-form, .chart-container, .notification-dropdown, .hr-tool-card {
-  background: var(--glass-bg) !important;
+  background: #030303b3 !important;
   backdrop-filter: var(--glass-blur) !important;
   -webkit-backdrop-filter: var(--glass-blur) !important;
   border: 1px solid var(--glass-border) !important;
