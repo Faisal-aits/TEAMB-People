@@ -81,12 +81,6 @@ router.get('/positions/suggested', employeeController.getSuggestedPositions);
 // POST /api/employees/positions/suggested - Add new suggested position
 router.post('/positions/suggested', employeeController.addSuggestedPosition);
 
-// GET /api/employees/:id - Get employee by ID
-router.get('/:id', employeeController.getEmployee);
-
-// GET /api/employees/:id/face-status - Get face enrollment status
-router.get('/:id/face-status', employeeController.getFaceStatus);
-
 // POST /api/employees - Create new employee
 router.post('/', employeeController.createEmployee);
 
@@ -95,6 +89,12 @@ router.post('/bulk-upload', handleBulkUploadFile, employeeController.bulkUploadE
 
 // POST /api/employees/bulk - Bulk create employees
 router.post('/bulk', employeeController.bulkCreateEmployee);
+
+// GET /api/employees/:id - Get employee by ID
+router.get('/:id', employeeController.getEmployee);
+
+// GET /api/employees/:id/face-status - Get face enrollment status
+router.get('/:id/face-status', employeeController.getFaceStatus);
 
 // PUT /api/employees/:id - Update employee
 router.put('/:id', employeeController.updateEmployee);

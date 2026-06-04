@@ -499,6 +499,75 @@ const EmployeeManagement = () => {
     }
   };
 
+  const downloadCsv = (rows, filename) => {
+    const escapeCsvValue = (value) => {
+      const text = String(value ?? '');
+      return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    };
+
+    const csv = rows
+      .map((row) => row.map(escapeCsvValue).join(','))
+      .join('\n');
+
+    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadBulkTemplate = () => {
+    const departmentName = departments[0]?.name || 'IT';
+    const today = new Date().toISOString().split('T')[0];
+    const headers = [
+      'employee_id',
+      'full_name',
+      'email',
+      'phone',
+      'department',
+      'position',
+      'employment_type',
+      'salary',
+      'salary_basic',
+      'joining_date',
+      'date_of_birth',
+      'address',
+      'emergency_contact',
+      'bank_account_number',
+      'ifsc_code',
+      'pan_number',
+      'aadhar_number',
+      'is_active'
+    ];
+
+    const sampleRow = [
+      'AITS001',
+      'Sample Employee',
+      'sample.employee@example.com',
+      '9876543210',
+      departmentName,
+      'Software Developer',
+      'Full-time',
+      '360000',
+      '180000',
+      today,
+      '1998-01-15',
+      'Office address',
+      '9876543210',
+      '',
+      '',
+      '',
+      '',
+      'true'
+    ];
+
+    downloadCsv([headers, sampleRow], 'Employees_Bulk_Upload_Template.csv');
+  };
+
   const getRoleBadge = (roleName) => {
     let badgeClass = 'role-badge ';
     switch (roleName?.toLowerCase()) {
@@ -616,6 +685,7 @@ const EmployeeManagement = () => {
               <option value="false">Inactive</option>
             </select>
 
+            <button className="export-btn" onClick={handleDownloadBulkTemplate}>Download CSV Template</button>
             <button className="export-btn" onClick={handleExport} disabled={employees.length === 0}>Export</button>
           </div>
         </div>
