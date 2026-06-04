@@ -1,5 +1,6 @@
     // backend/models/attendanceModel.js
     const {pool }= require('../../config/db');
+    const { getIndiaDate, getIndiaDateTime } = require('../../utils/indiaTime');
  // Helper function to calculate status based on check-in time and shift
     const calculateStatus = (checkInTime, shiftCheckInTimeStr, date, gracePeriodMinutes = 15) => {
         const [hours, minutes] = shiftCheckInTimeStr.split(':');
@@ -173,7 +174,7 @@ getAll: async (tenantId, filters = {}) => {
             query += ' AND a.date = ?';
             params.push(filters.date);
         } else {
-            const today = new Date().toLocaleString("sv-SE", {timeZone: "Asia/Kolkata"}).split(' ')[0];
+            const today = getIndiaDate();
             query += ' AND a.date = ?';
             params.push(today);
         }
@@ -202,7 +203,7 @@ getAll: async (tenantId, filters = {}) => {
        // Get attendance statistics - FIXED VERSION
 getStatistics: async (tenantId, date = null) => {
     try {
-        const targetDate = date || new Date().toLocaleString("sv-SE", {timeZone: "Asia/Kolkata"}).split(' ')[0];
+        const targetDate = date || getIndiaDate();
         
         // Use double quotes for string literals in CASE statements to avoid SQL parsing issues
         const query = `
@@ -290,9 +291,9 @@ getEmployeeHistory: async (tenantId, employeeId) => {
                 const [result] = await pool.execute(
                     `UPDATE tb_attendance a 
                     JOIN employee_details ed ON a.employee_id = ed.id
-                    SET a.status = 'Present', a.approved_by = ?, a.approved_at = NOW() 
+                    SET a.status = 'Present', a.approved_by = ?, a.approved_at = ? 
                     WHERE a.attendance_id = ? AND ed.tenant_id = ?`,
-                    [approvedByEmployeeId, attendanceId, tenantId]
+                    [approvedByEmployeeId, getIndiaDateTime(), attendanceId, tenantId]
                 );
 
                 if (result.affectedRows === 0) {
@@ -312,9 +313,9 @@ getEmployeeHistory: async (tenantId, employeeId) => {
                 const [result] = await pool.execute(
                     `UPDATE tb_attendance a
                     JOIN employee_details ed ON a.employee_id = ed.id 
-                    SET a.status = 'Absent', a.remarks = ?, a.approved_by = ?, a.approved_at = NOW() 
+                    SET a.status = 'Absent', a.remarks = ?, a.approved_by = ?, a.approved_at = ? 
                     WHERE a.attendance_id = ? AND ed.tenant_id = ?`,
-                    [remarks, approvedByEmployeeId, attendanceId, tenantId]
+                    [remarks, approvedByEmployeeId, getIndiaDateTime(), attendanceId, tenantId]
                 );
 
                 if (result.affectedRows === 0) {
@@ -489,7 +490,7 @@ create: async (tenantId, attendanceData) => {
              scheduled_check_in, grace_period_minutes, remarks, 
              should_deduct_salary, deduction_amount, deduction_reason,
              check_in_latitude, check_in_longitude, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         
         const [result] = await connection.execute(query, [
@@ -512,7 +513,8 @@ create: async (tenantId, attendanceData) => {
             deductionAmount,
             deductionReason,
             attendanceData.latitude || null,
-            attendanceData.longitude || null
+            attendanceData.longitude || null,
+            getIndiaDateTime()
         ]);
 
         await connection.commit();
@@ -612,10 +614,10 @@ updateCheckOut: async (tenantId, employeeId, date, checkOutTime, latitude = null
         // Update attendance
         await connection.execute(
             `UPDATE tb_attendance 
-            SET check_out = ?, status = ?, is_half_day = ?, worked_hours = ?, updated_at = NOW(),
+            SET check_out = ?, status = ?, is_half_day = ?, worked_hours = ?, updated_at = ?,
                 check_out_latitude = ?, check_out_longitude = ?
             WHERE employee_id = ? AND date = ? AND tenant_id = ?`,
-            [checkOutTime, status, isHalfDay ? 1 : 0, workedHours, latitude, longitude, employeeId, date, tenantId]
+            [checkOutTime, status, isHalfDay ? 1 : 0, workedHours, getIndiaDateTime(), latitude, longitude, employeeId, date, tenantId]
         );
         
         await connection.commit();
@@ -666,7 +668,7 @@ getByEmployeeAndDate: async (tenantId, employeeId, date) => {
                 );
                 if (eCheck.length === 0) throw new Error("Employee not found in tenant");
 
-                const today = new Date().toLocaleString("sv-SE", {timeZone: "Asia/Kolkata"}).split(' ')[0];
+                const today = getIndiaDate();
                 
                 // Get shift info
                 const shiftInfo = await getEmployeeShiftForDateHelper(connection, tenantId, employeeId, today);
@@ -699,15 +701,15 @@ getByEmployeeAndDate: async (tenantId, employeeId, date) => {
 
                 if (existing.length > 0) {
                     await connection.execute(
-                        `UPDATE tb_attendance SET check_in = ?, status = ?, shift_id = ?, updated_at = NOW()
+                        `UPDATE tb_attendance SET check_in = ?, status = ?, shift_id = ?, updated_at = ?
                         WHERE employee_id = ? AND date = ?`,
-                        [checkInTime, finalStatus, shiftId, employeeId, today]
+                        [checkInTime, finalStatus, shiftId, getIndiaDateTime(), employeeId, today]
                     );
                 } else {
                     await connection.execute(
                         `INSERT INTO tb_attendance (tenant_id, employee_id, shift_id, date, check_in, status, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, NOW())`,
-                        [tenantId, employeeId, shiftId, today, checkInTime, finalStatus]
+                        VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                        [tenantId, employeeId, shiftId, today, checkInTime, finalStatus, getIndiaDateTime()]
                     );
                 }
 
