@@ -776,3 +776,205 @@
     text-align: right;
     flex-shrink: 0;
 }
+
+/* Holiday summary cards and controls polish */
+.holiday-container .stats-grid {
+    grid-template-columns: minmax(360px, 1fr) minmax(300px, 1fr);
+    align-items: stretch;
+}
+
+.holiday-container .stat-card {
+    min-height: 128px;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.holiday-container .stat-card--combined {
+    padding: 16px;
+}
+
+.holiday-container .combined-top {
+    justify-content: flex-start;
+}
+
+.holiday-container .combined-divider {
+    margin: 2px 0;
+}
+
+.holiday-container .category-breakdown {
+    gap: 7px;
+}
+
+.holiday-container .cat-row {
+    gap: 8px;
+}
+
+.holiday-container .cat-pill {
+    min-width: 82px;
+    text-align: left;
+    padding: 3px 8px;
+}
+
+.holiday-container .cat-bar-track {
+    height: 6px;
+    background: #eef2f7;
+}
+
+.holiday-container .cat-count {
+    min-width: 22px;
+}
+
+.holiday-container .stat-card--upcoming {
+    justify-content: center;
+    padding: 18px;
+}
+
+.holiday-container .stat-card--upcoming .stat-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+}
+
+.holiday-container .stat-card--upcoming .stat-info {
+    min-width: 0;
+}
+
+.holiday-container .stat-value--holiday-name {
+    max-width: 100%;
+    font-size: 1.05rem;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.holiday-container .stat-date {
+    margin-top: 4px;
+    color: var(--success-color);
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.holiday-container .controls-card {
+    padding: 12px 16px;
+    border-radius: 12px;
+    align-items: end;
+}
+
+.holiday-filter-group,
+.holiday-action-group {
+    display: flex;
+    align-items: end;
+    gap: 12px;
+    min-width: 0;
+}
+
+.holiday-filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 180px;
+}
+
+.holiday-filter-field--period {
+    min-width: 340px;
+}
+
+.holiday-filter-field--year {
+    min-width: 140px;
+}
+
+.holiday-filter-field label {
+    color: #475569;
+    font-size: 0.82rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.holiday-select-row {
+    display: grid;
+    grid-template-columns: minmax(170px, 1fr) minmax(112px, 0.65fr);
+    gap: 10px;
+}
+
+.holiday-container .holiday-select {
+    width: 100%;
+    min-height: 40px;
+    padding: 0 2rem 0 0.85rem;
+    border: 1px solid #dbe3ef;
+    border-radius: 10px;
+    background-color: #ffffff;
+    color: #111827;
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 40px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    appearance: auto;
+}
+
+.holiday-container .holiday-select option {
+    color: #111827;
+    background: #ffffff;
+}
+
+.holiday-container .holiday-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+}
+
+.holiday-container .btn,
+.holiday-container .view-tab {
+    min-height: 40px;
+    justify-content: center;
+    white-space: nowrap;
+}
+
+.holiday-container .view-tabs {
+    min-height: 40px;
+    align-items: center;
+    border-radius: 10px;
+}
+
+@media (max-width: 900px) {
+    .holiday-container .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .holiday-container .controls-card {
+        align-items: stretch;
+    }
+
+    .holiday-filter-group,
+    .holiday-action-group {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .holiday-filter-field,
+    .holiday-filter-field--period,
+    .holiday-filter-field--year {
+        flex: 1 1 240px;
+        min-width: 0;
+    }
+}
+
+@media (max-width: 560px) {
+    .holiday-select-row,
+    .holiday-filter-group,
+    .holiday-action-group {
+        display: grid;
+        grid-template-columns: 1fr;
+        width: 100%;
+    }
+
+    .holiday-container .btn,
+    .holiday-container .view-tabs,
+    .holiday-container .view-tab {
+        width: 100%;
+    }
+
+    .holiday-container .view-tabs {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+}

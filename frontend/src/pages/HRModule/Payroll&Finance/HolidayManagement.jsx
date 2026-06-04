@@ -716,14 +716,17 @@ const HolidayManagement = () => {
                     </div>
                 </div>
 
-                <div className="stat-card">
-                    <div className="stat-icon" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger-color)' }}>
+                <div className="stat-card stat-card--upcoming">
+                    <div className="stat-icon" style={{ backgroundColor: 'rgba(16, 185, 129, 0.12)', color: 'var(--success-color)' }}>
                         <FaCalendarPlus />
                     </div>
                     <div className="stat-info">
-                        <span className="stat-value" style={{ fontSize: stats.upcoming ? '13px' : '18px', fontWeight: stats.upcoming ? '600' : '700' }}>
-                            {stats.upcoming ? `${stats.upcoming.name} (${normalizeDate(stats.upcoming.date)})` : 'None'}
+                        <span className="stat-value stat-value--holiday-name">
+                            {stats.upcoming ? stats.upcoming.name : 'None'}
                         </span>
+                        {stats.upcoming && (
+                            <span className="stat-date">{normalizeDate(stats.upcoming.date)}</span>
+                        )}
                         <span className="stat-label">Next Upcoming Holiday</span>
                     </div>
                 </div>
@@ -731,33 +734,50 @@ const HolidayManagement = () => {
 
             {/* Filter / View Toggles */}
             <div className="controls-card">
-                <div className="filter-group">
-                    <select className="holiday-select" value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))}>
-                        {[2023, 2024, 2025, 2026, 2027, 2028].map(year => (
-                            <option key={year} value={year}>{year}</option>
-                        ))}
-                    </select>
-
+                <div className="holiday-filter-group">
                     {viewMode === 'calendar' && (
-                        <select className="holiday-select" value={selectedMonth} onChange={(e) => setSelectedMonth(parseInt(e.target.value))}>
-                            {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
-                                <option key={month} value={month}>{getMonthName(month)}</option>
-                            ))}
-                        </select>
+                        <div className="holiday-filter-field holiday-filter-field--period">
+                            <label>Select Month</label>
+                            <div className="holiday-select-row">
+                                <select className="holiday-select" value={selectedMonth} onChange={(e) => setSelectedMonth(parseInt(e.target.value))}>
+                                    {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
+                                        <option key={month} value={month}>{getMonthName(month)}</option>
+                                    ))}
+                                </select>
+                                <select className="holiday-select" value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))}>
+                                    {[2023, 2024, 2025, 2026, 2027, 2028].map(year => (
+                                        <option key={year} value={year}>{year}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
                     )}
 
                     {viewMode === 'list' && (
-                        <select className="holiday-select" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
-                            <option value="All">All Categories</option>
-                            <option value="Gazetted">Gazetted</option>
-                            <option value="Restricted">Restricted</option>
-                            <option value="Company">Company Holiday</option>
-                            <option value="Local">Local</option>
-                        </select>
+                        <>
+                            <div className="holiday-filter-field holiday-filter-field--year">
+                                <label>Year</label>
+                                <select className="holiday-select" value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))}>
+                                    {[2023, 2024, 2025, 2026, 2027, 2028].map(year => (
+                                        <option key={year} value={year}>{year}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="holiday-filter-field">
+                                <label>Category</label>
+                                <select className="holiday-select" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
+                                    <option value="All">All Categories</option>
+                                    <option value="Gazetted">Gazetted</option>
+                                    <option value="Restricted">Restricted</option>
+                                    <option value="Company">Company Holiday</option>
+                                    <option value="Local">Local</option>
+                                </select>
+                            </div>
+                        </>
                     )}
                 </div>
 
-                <div className="filter-group">
+                <div className="holiday-action-group">
                     <button className="btn btn-secondary" onClick={loadHolidays} disabled={loading}>
                         <FaSync className={loading ? 'spin-icon' : ''} /> Sync
                     </button>
