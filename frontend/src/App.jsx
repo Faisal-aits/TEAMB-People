@@ -6,6 +6,8 @@ import PrivateRoute from './components/common/PrivateRoute';
 import LoadingSpinner from './components/common/LoadingSpinner';
 
 const Login = React.lazy(() => import('./pages/auth/Login'));
+const ForgotPassword = React.lazy(() => import('./pages/auth/ForgotPassword'));
+const ResetPassword = React.lazy(() => import('./pages/auth/ResetPassword'));
 const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
 const EmployeeApp = React.lazy(() => import('./pages/employees/EmployeeApp'));
 
@@ -33,6 +35,18 @@ const AppContent = () => {
           path="/login"
           element={
             user ? <Navigate to={getDashboardPath(user)} replace /> : <Login />
+          }
+        />
+        <Route
+          path="/forgot-password"
+          element={
+            user ? <Navigate to={getDashboardPath(user)} replace /> : <ForgotPassword />
+          }
+        />
+        <Route
+          path="/reset-password/:token"
+          element={
+            user ? <Navigate to={getDashboardPath(user)} replace /> : <ResetPassword />
           }
         />
 

@@ -1,8 +1,26 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const userRepository = require('../users/user.repository');
 const { query } = require('../../config/db');
 const moduleAccessModel = require('../moduleAccess/moduleAccessModel');
+const { sendPasswordResetEmail } = require('../../services/mailService');
+const { ensurePasswordResetSchema } = require('./passwordResetSchema');
+
+const PASSWORD_RESET_MESSAGE = 'If an account with that email exists in the organization, a password reset link has been sent.';
+
+const hashResetToken = (token) => crypto
+  .createHash('sha256')
+  .update(token)
+  .digest('hex');
+
+const getFrontendUrl = (req) => (
+  process.env.FRONTEND_URL ||
+  process.env.CLIENT_URL ||
+  process.env.APP_URL ||
+  req.get('origin') ||
+  'http://localhost:5173'
+).replace(/\/+$/, '');
 
 const authController = {
   login: async (req, res) => {
@@ -416,17 +434,143 @@ const authController = {
     },
 
     forgotPassword: async (req, res) => {
-        res.json({ 
-            success: true,
-            message: 'Password reset functionality coming soon' 
-        });
+        try {
+            await ensurePasswordResetSchema();
+
+            const email = req.body.email?.trim();
+            const tenantSlug = (req.body.tenant_slug || req.body.tenantSlug || '').trim();
+
+            if (!email || !tenantSlug) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Email and Organization ID are required'
+                });
+            }
+
+            const tenants = await query(
+                'SELECT id, name, slug, is_active FROM tenants WHERE slug = ? LIMIT 1',
+                [tenantSlug]
+            );
+            const tenant = tenants[0];
+
+            if (!tenant || !tenant.is_active) {
+                return res.json({
+                    success: true,
+                    message: PASSWORD_RESET_MESSAGE
+                });
+            }
+
+            const users = await query(
+                `SELECT id, tenant_id, first_name, last_name, email, is_active
+                 FROM users
+                 WHERE LOWER(email) = LOWER(?) AND tenant_id = ?
+                 LIMIT 1`,
+                [email, tenant.id]
+            );
+            const user = users[0];
+
+            if (!user || !user.is_active) {
+                return res.json({
+                    success: true,
+                    message: PASSWORD_RESET_MESSAGE
+                });
+            }
+
+            const token = crypto.randomBytes(32).toString('hex');
+            const tokenHash = hashResetToken(token);
+            const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+            await query(
+                `UPDATE users
+                 SET password_reset_token_hash = ?,
+                     password_reset_expires_at = ?,
+                     updated_at = NOW()
+                 WHERE id = ? AND tenant_id = ?`,
+                [tokenHash, expiresAt, user.id, tenant.id]
+            );
+
+            const resetLink = `${getFrontendUrl(req)}/reset-password/${token}`;
+            await sendPasswordResetEmail(tenant.id, {
+                email: user.email,
+                userName: [user.first_name, user.last_name].filter(Boolean).join(' ') || user.email,
+                resetLink
+            });
+
+            return res.json({
+                success: true,
+                message: PASSWORD_RESET_MESSAGE
+            });
+        } catch (error) {
+            console.error('Forgot password error:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to send password reset email: ' + error.message
+            });
+        }
     },
 
     resetPassword: async (req, res) => {
-        res.json({ 
-            success: true,
-            message: 'Password reset functionality coming soon' 
-        });
+        try {
+            await ensurePasswordResetSchema();
+
+            const { token } = req.params;
+            const newPassword = req.body.newPassword || req.body.new_password;
+
+            if (!token || !newPassword) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Reset token and new password are required'
+                });
+            }
+
+            if (String(newPassword).length < 6) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Password must be at least 6 characters'
+                });
+            }
+
+            const tokenHash = hashResetToken(token);
+            const users = await query(
+                `SELECT id, tenant_id
+                 FROM users
+                 WHERE password_reset_token_hash = ?
+                   AND password_reset_expires_at > NOW()
+                   AND is_active = 1
+                 LIMIT 1`,
+                [tokenHash]
+            );
+            const user = users[0];
+
+            if (!user) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Password reset token is invalid or has expired'
+                });
+            }
+
+            const passwordHash = await bcrypt.hash(newPassword, 10);
+            await query(
+                `UPDATE users
+                 SET password_hash = ?,
+                     password_reset_token_hash = NULL,
+                     password_reset_expires_at = NULL,
+                     updated_at = NOW()
+                 WHERE id = ? AND tenant_id = ?`,
+                [passwordHash, user.id, user.tenant_id]
+            );
+
+            return res.json({
+                success: true,
+                message: 'Password has been successfully reset. You can now login.'
+            });
+        } catch (error) {
+            console.error('Reset password error:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Server error: ' + error.message
+            });
+        }
     }
 };
 

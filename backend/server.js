@@ -38,6 +38,7 @@ const { ensureEmployeeSchema } = require('./src/features/employee/employeeSchema
 const { ensureSalarySchema } = require('./src/features/salary/salarySchema');
 const { ensureLeaveSchema } = require('./src/features/leave/leaveSchema');
 const { ensureAttendanceSchema } = require('./src/features/attendance/attendanceSchema');
+const { ensurePasswordResetSchema } = require('./src/features/login/passwordResetSchema');
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 
@@ -127,6 +128,7 @@ const startServer = async () => {
 
     await ensureEmployeeSchema();
     await ensureAttendanceSchema();
+    await ensurePasswordResetSchema();
     await ensureSalarySchema();
     await ensureServiceSettingSchema();
     await ensureLeaveSchema();

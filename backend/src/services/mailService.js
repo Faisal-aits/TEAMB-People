@@ -100,6 +100,25 @@ const buildOfferLetterTemplate = ({ candidateName, formData }) => {
   `;
 };
 
+const buildPasswordResetTemplate = ({ userName, resetLink }) => {
+  const safeName = escapeHtml(userName || 'there');
+  const safeResetLink = escapeHtml(resetLink);
+
+  return `
+    <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto; color: #111827;">
+      <h2 style="margin: 0 0 16px; color: #111827;">Reset Your Work Desk Password</h2>
+      <p>Hello ${safeName},</p>
+      <p>We received a request to reset your Work Desk password. Use the button below to choose a new password.</p>
+      <p style="margin: 24px 0;">
+        <a href="${safeResetLink}" style="background: #6d5dfc; color: #ffffff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block;">Reset Password</a>
+      </p>
+      <p>This link will expire in 1 hour.</p>
+      <p>If you did not request this, you can ignore this email.</p>
+      <p>Regards,<br />Work Desk Team</p>
+    </div>
+  `;
+};
+
 const sendMail = async (tenantId, { to, subject, html, text }) => {
   const { transporter, config } = await createTransportForTenant(tenantId);
   const fromName = config.from_name || 'Work Desk';
@@ -137,6 +156,24 @@ const sendTestEmail = async (tenantId, to) => sendMail(tenantId, {
   text: 'Your Work Desk SMTP configuration is working.'
 });
 
+const sendPasswordResetEmail = async (tenantId, user) => sendMail(tenantId, {
+  to: user.email,
+  subject: 'Reset Your Work Desk Password',
+  html: buildPasswordResetTemplate(user),
+  text: [
+    `Hello ${user.userName || 'there'},`,
+    '',
+    'We received a request to reset your Work Desk password.',
+    `Reset link: ${user.resetLink}`,
+    '',
+    'This link will expire in 1 hour.',
+    'If you did not request this, you can ignore this email.',
+    '',
+    'Regards,',
+    'Work Desk Team'
+  ].join('\n')
+});
+
 const sendOfferLetter = async (tenantId, offer) => sendMail(tenantId, {
   to: offer.candidateEmail,
   subject: `Offer Letter - ${offer.formData.designation || 'Work Desk'}`,
@@ -158,5 +195,6 @@ const sendOfferLetter = async (tenantId, offer) => sendMail(tenantId, {
 module.exports = {
   sendEmployeeCredentials,
   sendOfferLetter,
+  sendPasswordResetEmail,
   sendTestEmail
 };
