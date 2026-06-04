@@ -21,12 +21,12 @@ const AttendanceTable = () => {
   const [faceVerificationStep, setFaceVerificationStep] = useState('ready');
   const [pin, setPin] = useState('');
   const [verificationResult, setVerificationResult] = useState(null);
-  
+
   // Upload states
   const [uploadedImage, setUploadedImage] = useState(null);
   const [uploadImagePreview, setUploadImagePreview] = useState(null);
   const [isUploadMode, setIsUploadMode] = useState(false);
-  
+
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -35,11 +35,11 @@ const AttendanceTable = () => {
   const fetchAttendanceHistory = async () => {
     try {
       setLoading(true);
-    
-      
+
+
       const response = await attendanceAPI.getMyHistory();
-  
-      
+
+
       if (response.data.success) {
         const transformedData = response.data.history.map(record => ({
           id: record.history_id,
@@ -50,8 +50,8 @@ const AttendanceTable = () => {
           employee: record.employee_name || 'Current User',
           remarks: record.remarks || ''
         }));
-        
-    
+
+
         setAttendance(transformedData);
       } else {
         setError(response.data.message || 'Failed to fetch attendance data');
@@ -68,7 +68,7 @@ const AttendanceTable = () => {
   const fetchTodayAttendance = async () => {
     try {
       const response = await attendanceAPI.getMyTodayAttendance();
-   
+
     } catch (err) {
       console.error('Error fetching today attendance:', err);
     }
@@ -95,7 +95,7 @@ const AttendanceTable = () => {
     }
 
     setUploadedImage(file);
-    
+
     const reader = new FileReader();
     reader.onloadend = () => {
       setUploadImagePreview(reader.result);
@@ -118,7 +118,7 @@ const AttendanceTable = () => {
       formData.append('faceImage', uploadedImage, 'uploaded-face.jpg');
 
       const response = await attendanceAPI.verifyMyFaceAndMarkAttendance(formData);
-      
+
       if (response.data.success) {
         setVerificationResult({
           success: true,
@@ -130,14 +130,14 @@ const AttendanceTable = () => {
             confidence: response.data.confidence
           }
         });
-        
+
         await fetchAttendanceHistory();
-        
+
         setTimeout(() => {
           stopCamera();
           alert('Attendance marked successfully!');
         }, 3000);
-        
+
       } else if (response.data.requiresPIN) {
         setFaceVerificationStep('pin-required');
         setVerificationResult({
@@ -150,7 +150,7 @@ const AttendanceTable = () => {
           success: false,
           message: response.data.message || 'Face verification failed'
         });
-        
+
         setTimeout(() => {
           setVerificationResult(null);
         }, 3000);
@@ -195,15 +195,15 @@ const AttendanceTable = () => {
       setFaceVerificationStep('camera');
       setIsUploadMode(false);
       clearUploadedImage();
-      
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          width: 640, 
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: 640,
           height: 480,
-          facingMode: 'user' 
-        } 
+          facingMode: 'user'
+        }
       });
-      
+
       setCameraStream(stream);
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -239,11 +239,11 @@ const AttendanceTable = () => {
       const video = videoRef.current;
       const canvas = canvasRef.current;
       const context = canvas.getContext('2d');
-      
+
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
+
       const blob = await new Promise((resolve) => {
         canvas.toBlob(resolve, 'image/jpeg', 0.8);
       });
@@ -256,7 +256,7 @@ const AttendanceTable = () => {
       formData.append('faceImage', blob, 'face-capture.jpg');
 
       const response = await attendanceAPI.verifyMyFaceAndMarkAttendance(formData);
-      
+
       if (response.data.success) {
         setVerificationResult({
           success: true,
@@ -268,14 +268,14 @@ const AttendanceTable = () => {
             confidence: response.data.confidence
           }
         });
-        
+
         await fetchAttendanceHistory();
-        
+
         setTimeout(() => {
           stopCamera();
           alert('Attendance marked successfully!');
         }, 3000);
-        
+
       } else if (response.data.requiresPIN) {
         setFaceVerificationStep('pin-required');
         setVerificationResult({
@@ -288,7 +288,7 @@ const AttendanceTable = () => {
           success: false,
           message: response.data.message || 'Face verification failed'
         });
-        
+
         setTimeout(() => {
           setVerificationResult(null);
         }, 3000);
@@ -312,15 +312,15 @@ const AttendanceTable = () => {
 
     try {
       setFaceRecognitionLoading(true);
-      
+
       const attendanceData = {
         type: 'check_in',
         date: new Date().toISOString().split('T')[0],
         pin: pin
       };
-      
+
       const response = await attendanceAPI.markMyAttendance(attendanceData);
-      
+
       if (response.data.success) {
         setVerificationResult({
           success: true,
@@ -330,9 +330,9 @@ const AttendanceTable = () => {
             checkIn: new Date().toLocaleTimeString()
           }
         });
-        
+
         await fetchAttendanceHistory();
-        
+
         setTimeout(() => {
           stopCamera();
           alert('Attendance marked successfully with PIN verification!');
@@ -341,7 +341,7 @@ const AttendanceTable = () => {
         alert(response.data.message || 'PIN verification failed');
         setPin('');
       }
-      
+
     } catch (err) {
       console.error('PIN verification error:', err);
       alert(err.response?.data?.message || 'Error during PIN verification');
@@ -351,7 +351,7 @@ const AttendanceTable = () => {
   };
 
   const handleFaceRecognitionAttendance = async () => {
- 
+
     startCamera();
   };
 
@@ -365,7 +365,7 @@ const AttendanceTable = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.date) {
       alert('Please select a date');
       return;
@@ -384,18 +384,18 @@ const AttendanceTable = () => {
         checkOutTime: formData.checkOut
       };
 
-  
-      
+
+
       const response = await attendanceAPI.markMyAttendance(attendanceData);
-      
+
       setIsModalOpen(false);
-      
+
       setFormData({
         date: new Date().toISOString().split('T')[0],
         checkIn: '',
         checkOut: '',
       });
-      
+
       if (response.data && response.data.success) {
         await fetchAttendanceHistory();
         alert(`${type === 'check_in' ? 'Check-in' : 'Check-out'} successful!`);
@@ -418,7 +418,7 @@ const AttendanceTable = () => {
   const getStatusBadge = (status) => {
     // Convert any "Half Day" to "Delayed"
     let displayStatus = status === 'Half Day' ? 'Delayed' : status;
-    
+
     const statusClasses = {
       'Present': 'status-approved',
       'Delayed': 'status-pending',
@@ -428,7 +428,7 @@ const AttendanceTable = () => {
       'Pending': 'status-pending',
       'Not Checked In': 'status-pending'
     };
-    
+
     return (
       <span className={`status-badge ${statusClasses[displayStatus] || 'status-pending'}`}>
         {displayStatus}
@@ -436,12 +436,12 @@ const AttendanceTable = () => {
     );
   };
 
-  const filteredAttendance = filterStatus === 'All' 
-    ? attendance 
+  const filteredAttendance = filterStatus === 'All'
+    ? attendance
     : attendance.filter(record => {
-        let recordStatus = record.status === 'Half Day' ? 'Delayed' : record.status;
-        return recordStatus === filterStatus;
-      });
+      let recordStatus = record.status === 'Half Day' ? 'Delayed' : record.status;
+      return recordStatus === filterStatus;
+    });
 
   // Get unique records (keep ones with check-in)
   const uniqueAttendance = Array.from(
@@ -462,10 +462,10 @@ const AttendanceTable = () => {
         date: new Date().toISOString().split('T')[0]
       };
 
-   
-      
+
+
       const response = await attendanceAPI.markMyAttendance(attendanceData);
-      
+
       if (response.data.success) {
         await fetchAttendanceHistory();
         alert(`${type === 'check_in' ? 'Check-in' : 'Check-out'} successful!`);
@@ -507,7 +507,7 @@ const AttendanceTable = () => {
       <div className="attendance-header">
         <h2>Attendance Management</h2>
         <div className="attendance-actions">
-          <button 
+          <button
             className="face-recognition-btn"
             onClick={handleFaceRecognitionAttendance}
             disabled={isCameraOpen}
@@ -515,14 +515,14 @@ const AttendanceTable = () => {
             <span className="btn-icon">👤</span>
             Face Verification
           </button>
-         
-          <button 
+
+          <button
             className="check-in-btn"
             onClick={() => handleQuickCheckIn('check_in')}
           >
             📍 Quick Check In
           </button>
-          <button 
+          <button
             className="check-out-btn"
             onClick={() => handleQuickCheckIn('check_out')}
           >
@@ -555,7 +555,7 @@ const AttendanceTable = () => {
             {attendance.filter(record => {
               const today = new Date().toISOString().split('T')[0];
               const recordDate = new Date(record.date).toISOString().split('T')[0];
-              return recordDate === today && 
+              return recordDate === today &&
                 record.remarks && record.remarks.includes('Face');
             }).length}
           </p>
@@ -568,18 +568,18 @@ const AttendanceTable = () => {
           <div className="modal-content camera-modal">
             <div className="modal-header">
               <h2>
-                {faceVerificationStep === 'pin-required' 
-                  ? '🔒 Additional Verification Required' 
+                {faceVerificationStep === 'pin-required'
+                  ? '🔒 Additional Verification Required'
                   : 'Face Verification Attendance'}
               </h2>
-              <button 
+              <button
                 className="close-btn"
                 onClick={stopCamera}
               >
                 ×
               </button>
             </div>
-            
+
             {/* Verification Result Display */}
             {verificationResult && (
               <div className={`verification-result ${verificationResult.success ? 'success' : 'error'}`}>
@@ -621,7 +621,7 @@ const AttendanceTable = () => {
                       </div>
                     </div>
                     <div className="camera-controls">
-                      <button 
+                      <button
                         onClick={captureAndVerify}
                         disabled={faceRecognitionLoading || verificationResult?.success}
                         className="capture-btn"
@@ -635,10 +635,10 @@ const AttendanceTable = () => {
                           'Capture & Verify Face'
                         )}
                       </button>
-                      
-                      
-                      
-                      <button 
+
+
+
+                      <button
                         onClick={stopCamera}
                         className="cancel-btn"
                       >
@@ -650,7 +650,7 @@ const AttendanceTable = () => {
                   // Upload Mode
                   <div className="upload-mode-container">
                     <div className="upload-mode-header">
-                      <button 
+                      <button
                         onClick={() => {
                           setIsUploadMode(false);
                           startCamera();
@@ -660,7 +660,7 @@ const AttendanceTable = () => {
                         ← Back to Camera
                       </button>
                     </div>
-                    
+
                     {!uploadImagePreview ? (
                       <div className="upload-area">
                         <div className="upload-icon">📸</div>
@@ -674,7 +674,7 @@ const AttendanceTable = () => {
                           style={{ display: 'none' }}
                           id="face-upload-input"
                         />
-                        <button 
+                        <button
                           onClick={() => fileInputRef.current?.click()}
                           className="select-file-btn"
                         >
@@ -685,7 +685,7 @@ const AttendanceTable = () => {
                       <div className="image-preview-area">
                         <div className="image-preview-header">
                           <h4>Photo Preview</h4>
-                          <button 
+                          <button
                             onClick={clearUploadedImage}
                             className="change-photo-btn"
                           >
@@ -699,7 +699,7 @@ const AttendanceTable = () => {
                           <p>✅ Make sure your face is clearly visible</p>
                           <p>✅ Good lighting helps with verification</p>
                         </div>
-                        <button 
+                        <button
                           onClick={handleUploadAndVerify}
                           disabled={faceRecognitionLoading}
                           className="verify-upload-btn"
@@ -710,7 +710,7 @@ const AttendanceTable = () => {
                     )}
                   </div>
                 )}
-                
+
                 <div className="camera-instructions">
                   {!isUploadMode ? (
                     <p>📸 Ensure good lighting and face the camera directly</p>
@@ -728,7 +728,7 @@ const AttendanceTable = () => {
                     Low confidence match. Please enter your PIN for verification.
                   </p>
                 </div>
-                
+
                 <div className="pin-input-container">
                   <input
                     type="password"
@@ -743,7 +743,7 @@ const AttendanceTable = () => {
                     Enter your 4-digit security PIN
                   </div>
                 </div>
-                
+
                 <div className="pin-actions">
                   <button
                     onClick={handlePINVerification}
@@ -760,7 +760,7 @@ const AttendanceTable = () => {
                     Cancel
                   </button>
                 </div>
-                
+
                 <div className="pin-security-note">
                   <p>⚠️ <strong>Security Note:</strong> Face match confidence was low.</p>
                   <p>PIN verification ensures only you can mark your attendance.</p>
@@ -771,11 +771,11 @@ const AttendanceTable = () => {
         </div>
       )}
 
-      <div className="attendance-table-container glass-form">
+      <div className="attendance-table-container">
         <div className="table-header">
           <h3>Attendance History</h3>
           <div className="table-actions">
-            <select 
+            <select
               className="filter-btn"
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
@@ -790,7 +790,7 @@ const AttendanceTable = () => {
             </select>
           </div>
         </div>
-        
+
         {uniqueAttendance.length === 0 ? (
           <div className="no-data">
             <p>No attendance records found</p>

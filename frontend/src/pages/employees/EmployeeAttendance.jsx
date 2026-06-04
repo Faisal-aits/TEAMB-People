@@ -12,7 +12,7 @@ const LEAVE_SEARCH_FIELDS = ['created_at', 'description', 'start_date', 'end_dat
 
 const EmployeeAttendance = () => {
   const [activeTab, setActiveTab] = useState('attendance');
-  
+
   // ==================== ATTENDANCE STATES ====================
   const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,7 +33,7 @@ const EmployeeAttendance = () => {
   const [leaveFilterStatus, setLeaveFilterStatus] = useState('All');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [myBalances, setMyBalances] = useState([]);
-  
+
   const [leaveFormData, setLeaveFormData] = useState({
     description: '',
     start_date: '',
@@ -46,7 +46,7 @@ const EmployeeAttendance = () => {
     try {
       setLoading(true);
       const response = await attendanceAPI.getMyHistory();
-      
+
       if (response.data.success) {
         const transformedData = response.data.history.map(record => ({
           id: record.history_id,
@@ -154,7 +154,7 @@ const EmployeeAttendance = () => {
           ...prev,
           employee_id: response.data.employee_id
         }));
-        
+
         // Fetch balances
         try {
           const balRes = await leaveAPI.getMyBalances();
@@ -181,7 +181,7 @@ const EmployeeAttendance = () => {
 
   const handleLeaveSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!leaveFormData.description || !leaveFormData.start_date || !leaveFormData.end_date) {
       alert('Please fill in all required fields');
       return;
@@ -206,16 +206,16 @@ const EmployeeAttendance = () => {
         end_date: leaveFormData.end_date,
         leave_type: leaveFormData.leave_type
       };
-      
+
       await leaveAPI.create(leaveData);
-      
+
       setLeaveFormData({
         description: '',
         start_date: '',
         end_date: '',
         leave_type: 'Casual'
       });
-      
+
       setIsLeaveModalOpen(false);
       await loadMyLeaves();
       alert('Leave request submitted successfully!');
@@ -320,12 +320,12 @@ const EmployeeAttendance = () => {
     });
   };
 
-  const filteredAttendance = filterStatus === 'All' 
-    ? attendance 
+  const filteredAttendance = filterStatus === 'All'
+    ? attendance
     : attendance.filter(record => {
-        let recordStatus = record.status === 'Half Day' ? 'Delayed' : record.status;
-        return recordStatus === filterStatus;
-      });
+      let recordStatus = record.status === 'Half Day' ? 'Delayed' : record.status;
+      return recordStatus === filterStatus;
+    });
 
   const uniqueAttendance = Array.from(
     filteredAttendance.reduce((map, record) => {
@@ -337,8 +337,8 @@ const EmployeeAttendance = () => {
     }, new Map())
   ).map(([_, record]) => record);
 
-  const filteredLeaves = leaveFilterStatus === 'All' 
-    ? leaves 
+  const filteredLeaves = leaveFilterStatus === 'All'
+    ? leaves
     : leaves.filter(leave => leave.status === leaveFilterStatus);
 
   const {
@@ -398,25 +398,25 @@ const EmployeeAttendance = () => {
         <div className="attendance-header">
           <h2>My Attendance</h2>
           <div className="attendance-actions">
-            <button 
+            <button
               className="check-in-btn"
               onClick={() => handleQuickCheckIn('check_in')}
             >
-               Quick Check In
+              Quick Check In
             </button>
-            <button 
+            <button
               className="check-out-btn"
               onClick={() => handleQuickCheckIn('check_out')}
               disabled={!todayStatus.isCheckedIn}
             >
-               Quick Check Out
+              Quick Check Out
             </button>
           </div>
         </div>
 
-      
 
-        <div className="attendance-table-container glass-form">
+
+        <div className="attendance-table-container">
           <div className="table-header">
             <h3>Attendance History</h3>
             <div className="table-actions">
@@ -427,7 +427,7 @@ const EmployeeAttendance = () => {
                 value={attendanceSearch}
                 onChange={(event) => setAttendanceSearch(event.target.value)}
               />
-              <select 
+              <select
                 className="filter-btn"
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
@@ -438,7 +438,7 @@ const EmployeeAttendance = () => {
                 <option value="Late">Late</option>
                 <option value="Absent">Absent</option>
               </select>
-              <button 
+              <button
                 className="refresh-btn"
                 onClick={() => {
                   fetchAttendanceHistory();
@@ -450,7 +450,7 @@ const EmployeeAttendance = () => {
             </div>
           </div>
           <div className="table-count-label">{visibleAttendance.length} of {uniqueAttendance.length}</div>
-          
+
           {visibleAttendance.length === 0 ? (
             <div className="no-data">
               <p>No attendance records found</p>
@@ -523,7 +523,7 @@ const EmployeeAttendance = () => {
       <div className="leave-management-section">
         <div className="leave-management-header">
           <h2 className="leave-management-title">Leave Management</h2>
-          <button 
+          <button
             className="leave-add-btn"
             onClick={() => setIsLeaveModalOpen(true)}
             disabled={!currentUser}
@@ -531,32 +531,32 @@ const EmployeeAttendance = () => {
             <span className="leave-btn-icon">+</span>
             Apply for Leave
           </button>
-      </div>
-
-      {/* New Leave Balances Widget */}
-      {currentUser && myBalances.length > 0 && (
-        <div className="leave-balances-grid">
-          {myBalances.map(bal => (
-            <div key={bal.leave_type} className="leave-balance-card">
-              <div className="leave-balance-type">{bal.leave_type}</div>
-              <div className="leave-balance-value">
-                <span className="balance-remaining">{bal.allocated - bal.used - bal.pending}</span>
-                <span className="balance-divider">/</span>
-                <span className="balance-allocated">{bal.allocated}</span>
-              </div>
-              <div className="leave-balance-usage">
-                Used: {bal.used} | Pending: {bal.pending}
-              </div>
-            </div>
-          ))}
         </div>
-      )}
 
-      {!currentUser && (
-        <div className="error-message">
-          <p>Unable to load user information. Please contact administrator.</p>
-        </div>
-      )}
+        {/* New Leave Balances Widget */}
+        {currentUser && myBalances.length > 0 && (
+          <div className="leave-balances-grid">
+            {myBalances.map(bal => (
+              <div key={bal.leave_type} className="leave-balance-card">
+                <div className="leave-balance-type">{bal.leave_type}</div>
+                <div className="leave-balance-value">
+                  <span className="balance-remaining">{bal.allocated - bal.used - bal.pending}</span>
+                  <span className="balance-divider">/</span>
+                  <span className="balance-allocated">{bal.allocated}</span>
+                </div>
+                <div className="leave-balance-usage">
+                  Used: {bal.used} | Pending: {bal.pending}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!currentUser && (
+          <div className="error-message">
+            <p>Unable to load user information. Please contact administrator.</p>
+          </div>
+        )}
 
         <div className="leave-table-container glass-form-leave">
           <div className="leave-table-header">
@@ -569,7 +569,7 @@ const EmployeeAttendance = () => {
                 value={leaveSearch}
                 onChange={(event) => setLeaveSearch(event.target.value)}
               />
-              <select 
+              <select
                 className="leave-filter-select"
                 value={leaveFilterStatus}
                 onChange={(e) => setLeaveFilterStatus(e.target.value)}
@@ -579,8 +579,8 @@ const EmployeeAttendance = () => {
                 <option value="Approved">Approved</option>
                 <option value="Rejected">Rejected</option>
               </select>
-              <button 
-                className="leave-export-btn" 
+              <button
+                className="leave-export-btn"
                 onClick={handleExportLeaves}
                 disabled={visibleLeaves.length === 0}
               >
@@ -589,7 +589,7 @@ const EmployeeAttendance = () => {
             </div>
           </div>
           <div className="table-count-label">{visibleLeaves.length} of {filteredLeaves.length}</div>
-          
+
           <div className="table-wrapper">
             <table className="leave-records-table">
               <thead>
@@ -637,7 +637,7 @@ const EmployeeAttendance = () => {
                           onClick={() => handleDeleteLeave(leave.leave_id)}
                           title="Delete Leave Request"
                         >
-                         <i className="fa-solid fa-trash-arrow-up"></i>
+                          <i className="fa-solid fa-trash-arrow-up"></i>
                         </button>
                       )}
                     </td>
@@ -674,7 +674,7 @@ const EmployeeAttendance = () => {
             <div className="leave-modal-content">
               <div className="leave-modal-header">
                 <h2 className="leave-modal-title">Apply for Leave</h2>
-                <button 
+                <button
                   className="leave-modal-close"
                   onClick={() => setIsLeaveModalOpen(false)}
                 >
@@ -808,45 +808,45 @@ const EmployeeAttendance = () => {
     <div className="dashboard-main">
       {/* Tab Buttons */}
       <div className="view-tabs">
-  <button 
-    onClick={() => setActiveTab('attendance')}
-    style={{
-      padding: '12px 28px',
-      background: activeTab === 'attendance' 
-        ? '#3b82f6' 
-        : 'linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%)',
-      border: 'none',
-      fontSize: '15px',
-      fontWeight: 600,
-      cursor: 'pointer',
-      color: 'white',
-      borderRadius: '12px',
-      opacity: activeTab === 'attendance' ? 1 : 0.7,
-      transition: 'all 0.3s ease'
-    }}
-  >
-    Attendance
-  </button>
-  <button 
-    onClick={() => setActiveTab('leave')}
-    style={{
-      padding: '12px 28px',
-      background: activeTab === 'leave' 
-        ? '#3b82f6' 
-        : 'linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%)',
-      border: 'none',
-      fontSize: '15px',
-      fontWeight: 600,
-      cursor: 'pointer',
-      color: 'white',
-      borderRadius: '12px',
-      opacity: activeTab === 'leave' ? 1 : 0.7,
-      transition: 'all 0.3s ease'
-    }}
-  >
-    Leave
-  </button>
-</div>
+        <button
+          onClick={() => setActiveTab('attendance')}
+          style={{
+            padding: '12px 28px',
+            background: activeTab === 'attendance'
+              ? '#3b82f6'
+              : 'linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%)',
+            border: 'none',
+            fontSize: '15px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            color: 'white',
+            borderRadius: '12px',
+            opacity: activeTab === 'attendance' ? 1 : 0.7,
+            transition: 'all 0.3s ease'
+          }}
+        >
+          Attendance
+        </button>
+        <button
+          onClick={() => setActiveTab('leave')}
+          style={{
+            padding: '12px 28px',
+            background: activeTab === 'leave'
+              ? '#3b82f6'
+              : 'linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%)',
+            border: 'none',
+            fontSize: '15px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            color: 'white',
+            borderRadius: '12px',
+            opacity: activeTab === 'leave' ? 1 : 0.7,
+            transition: 'all 0.3s ease'
+          }}
+        >
+          Leave
+        </button>
+      </div>
       {/* Content based on active tab */}
       {activeTab === 'attendance' ? renderAttendanceView() : renderLeaveView()}
     </div>
