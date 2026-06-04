@@ -95,6 +95,45 @@
   border-color: #cbd5e0;
 }
 
+.export-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.bulk-upload-input {
+  display: none;
+}
+
+.bulk-upload-result {
+  margin: 1rem 1.5rem 0;
+  padding: 0.85rem 1rem;
+  border-radius: 6px;
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.bulk-upload-result.has-errors {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.bulk-upload-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.9rem;
+}
+
+.bulk-upload-errors {
+  margin: 0.75rem 0 0;
+  padding-left: 1.25rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
 .table-wrapper {
   overflow-x: auto;
 }
@@ -550,6 +589,12 @@
   .table-actions {
     align-self: stretch;
     justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .bulk-upload-summary {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .employee-table {

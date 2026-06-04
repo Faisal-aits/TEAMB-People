@@ -14,6 +14,20 @@ const addColumnIfMissing = async (table, definition) => {
   }
 };
 
+const createEmployeeDepartmentsIfMissing = async () => {
+  await pool.execute(`
+    CREATE TABLE IF NOT EXISTS employee_departments (
+      employee_id VARCHAR(20) NOT NULL,
+      department_id INT NOT NULL,
+      tenant_id INT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (employee_id, department_id, tenant_id),
+      INDEX idx_employee_departments_department (department_id),
+      INDEX idx_employee_departments_tenant (tenant_id)
+    )
+  `);
+};
+
 const ensureEmployeeSchema = () => {
   if (!schemaReady) {
     schemaReady = (async () => {
@@ -33,6 +47,7 @@ const ensureEmployeeSchema = () => {
       await addColumnIfMissing('employee_details', "salary_net DECIMAL(12,2) NOT NULL DEFAULT 0");
       await addColumnIfMissing('employee_details', "employer_pf DECIMAL(12,2) NOT NULL DEFAULT 0");
       await addColumnIfMissing('employee_details', "employer_esic DECIMAL(12,2) NOT NULL DEFAULT 0");
+      await createEmployeeDepartmentsIfMissing();
     })();
   }
 

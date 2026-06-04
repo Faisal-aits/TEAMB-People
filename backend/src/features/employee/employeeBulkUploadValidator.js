@@ -111,7 +111,7 @@ const validateEmployeeRows = (rows, departments, existingEmails, existingEmploye
 
     numericFields.forEach(([field, label]) => {
       const rawValue = String(data[field] || '').trim();
-      if (!rawValue && field !== 'salary' && field !== 'salary_basic') {
+      if (!rawValue) {
         normalized[field] = 0;
         return;
       }
@@ -122,14 +122,6 @@ const validateEmployeeRows = (rows, departments, existingEmails, existingEmploye
       }
       normalized[field] = value;
     });
-
-    if (normalized.salary <= 0) {
-      rowErrors.push('CTC must be greater than 0');
-    }
-
-    if (normalized.salary_basic <= 0) {
-      rowErrors.push('Basic must be greater than 0');
-    }
 
     normalized.joining_date = String(data.joining_date || '').trim();
     if (!isValidDate(normalized.joining_date)) {

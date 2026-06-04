@@ -59,7 +59,7 @@ const BULK_UPLOAD_COLUMNS = [
   {
     key: 'salary',
     label: 'CTC',
-    required: true,
+    required: false,
     aliases: ['salary', 'annual salary', 'annual ctc', 'ctc']
   },
   {
@@ -71,7 +71,7 @@ const BULK_UPLOAD_COLUMNS = [
   {
     key: 'salary_basic',
     label: 'Basic',
-    required: true,
+    required: false,
     aliases: ['basic', 'basic salary', 'salary_basic']
   },
   {
