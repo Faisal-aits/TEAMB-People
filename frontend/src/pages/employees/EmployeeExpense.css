@@ -1,14 +1,22 @@
 /* no-expenses */
 .no-expenses{
-    display: flex;               /* Enable flex layout */
+  display: flex;               /* Enable flex layout */
   flex-direction: column;      /* Stack children vertically */
   align-items: center;         /* Center horizontally */
   justify-content: center;     /* Center vertically */
   text-align: center;          /* Center text */
-  padding: 20px;               /* Optional padding */
+  min-width: 760px;
+  min-height: 190px;
+  padding: 32px 20px;          /* Optional padding */
   box-sizing: border-box;      /* Include padding in width/height */
-  color: #555;                 /* Text color */
+  color: #64748b;              /* Text color */
   font-family: Arial, sans-serif; /* Font */
+  background: #ffffff;
+  border-top: 1px solid #eef2f7;
+}
+
+.no-expenses p {
+  margin: 0.25rem 0;
 }
 /* Expense Section */
 .expense-section {
@@ -63,9 +71,15 @@
 .expense-table-container {
   background: white;
   border-radius: 12px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   width: 100%;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.expense-table-container.glass-form {
+  background: #ffffff !important;
+  color: #1a202c;
 }
 
 .table-header {
@@ -74,6 +88,8 @@
   align-items: center;
   padding: 1rem 1.5rem;
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  gap: 1rem;
+  min-width: 760px;
 }
 
 .table-header h3 {
@@ -86,6 +102,9 @@
 .table-actions {
   display: flex;
   gap: 0.5rem;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .filter-btn, .export-btn {
@@ -98,6 +117,18 @@
   font-weight: 500;
   color: black;
   transition: all 0.3s ease;
+  min-height: 38px;
+  white-space: nowrap;
+}
+
+.expense-table-container .table-search-input {
+  flex: 1 1 280px;
+  min-width: 240px;
+  max-width: 360px;
+}
+
+.expense-table-container .filter-btn {
+  min-width: 210px;
 }
 
 .filter-btn:hover, .export-btn:hover {
@@ -107,6 +138,7 @@
 
 .expense-table {
   width: 100%;
+  min-width: 760px;
   border-collapse: collapse;
   color: #1a202c;
   font-size: 0.8rem;
@@ -442,7 +474,16 @@
   }
   
   .table-actions {
-    align-self: flex-end;
+    align-self: stretch;
+    justify-content: flex-start;
+  }
+
+  .expense-table-container .table-search-input,
+  .expense-table-container .filter-btn,
+  .expense-table-container .export-btn {
+    flex: 1 1 100%;
+    max-width: 100%;
+    width: 100%;
   }
   
   .expense-table th,
