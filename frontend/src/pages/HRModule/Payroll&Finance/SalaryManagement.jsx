@@ -40,31 +40,31 @@ const SalaryManagement = () => {
     const [loadingDetails, setLoadingDetails] = useState(false);
     const [loadingAttendance, setLoadingAttendance] = useState(false);
     const [availableMonths, setAvailableMonths] = useState([]);
-    
+
     // Pagination states
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(10);
-    
+
     const [paymentForm, setPaymentForm] = useState({
         amount: '',
         payment_method: 'bank_transfer',
         transaction_id: '',
         notes: ''
     });
-    
+
     const token = localStorage.getItem('token');
-    
-    const authHeaders = useMemo(() => ({ 
+
+    const authHeaders = useMemo(() => ({
         Authorization: `Bearer ${token}`,
         'x-tenant-id': '1'
     }), [token]);
-    
+
     const getMonthName = (monthNumber) => {
         const months = ['January', 'February', 'March', 'April', 'May', 'June',
-                       'July', 'August', 'September', 'October', 'November', 'December'];
+            'July', 'August', 'September', 'October', 'November', 'December'];
         return months[monthNumber - 1];
     };
-    
+
     // Get Sundays count in a month
     const getSundaysCount = (month, year) => {
         let count = 0;
@@ -78,82 +78,82 @@ const SalaryManagement = () => {
         }
         return count;
     };
-    
+
     // Calculate net salary based on attendance
     const calculateNetSalary = (monthlySalary, presentDays, halfDays, lateDays, absentDays, holidayDays) => {
         const dailyRate = monthlySalary / 30;
         const effectiveDays = presentDays + (halfDays * 0.5) + (lateDays * 0.75) + holidayDays;
         return Math.round(dailyRate * effectiveDays);
     };
- const loadSalaries = useCallback(async () => {
-    try {
-        setLoading(true);
-        
-        // STEP 1: Fetch active employees (not deleted)
-        const employeesResponse = await axios.get(`${API_URL}/api/employees`, {
-            headers: authHeaders
-        });
-        
-        const activeEmployees = (employeesResponse.data.employees || []).filter(emp => {
-           
-            const isActive = emp.is_active === true || emp.is_active === 1 || emp.is_active === '1';
-           
-            const notDeleted = emp.status !== 'inactive' && !emp.deleted_at;
-            return isActive && notDeleted;
-        });
-        
-        const activeEmployeeIds = new Set(activeEmployees.map(emp => emp.employee_id));
-       
-        const response = await axios.get(`${API_URL}/api/salary/records`, {
-            params: { month: selectedMonth, year: selectedYear },
-            headers: authHeaders
-        });
-        
-        if (response.data.success) {
-            let allSalaries = response.data.salaries || [];
-         
-            if (allSalaries.length === 0) {
-                setSalaries([]);
-                setTotals({ total_net: 0, total_paid: 0, total_balance: 0 });
-                setLoading(false);
-                return;
-            }
-            
-            
-            const activeSalaries = allSalaries.filter(salary => {
-                const employeeId = salary.employee_id;
-                const isEmployeeActive = activeEmployeeIds.has(employeeId);
-                
-                return isEmployeeActive;
+    const loadSalaries = useCallback(async () => {
+        try {
+            setLoading(true);
+
+            // STEP 1: Fetch active employees (not deleted)
+            const employeesResponse = await axios.get(`${API_URL}/api/employees`, {
+                headers: authHeaders
             });
-            
-            setSalaries(activeSalaries);
-            
-            // Recalculate totals based on active salaries
-            const newTotals = activeSalaries.reduce((acc, salary) => {
-                acc.total_net += (salary.net_salary || 0);
-                acc.total_paid += (salary.paid_amount || 0);
-                acc.total_balance += (salary.balance_amount || 0);
-                return acc;
-            }, { total_net: 0, total_paid: 0, total_balance: 0 });
-            
-            setTotals(newTotals);
-            setCurrentPage(1);
-        } else {
-            console.error('Failed to load salaries:', response.data.message);
-            setSalaries([]);
+
+            const activeEmployees = (employeesResponse.data.employees || []).filter(emp => {
+
+                const isActive = emp.is_active === true || emp.is_active === 1 || emp.is_active === '1';
+
+                const notDeleted = emp.status !== 'inactive' && !emp.deleted_at;
+                return isActive && notDeleted;
+            });
+
+            const activeEmployeeIds = new Set(activeEmployees.map(emp => emp.employee_id));
+
+            const response = await axios.get(`${API_URL}/api/salary/records`, {
+                params: { month: selectedMonth, year: selectedYear },
+                headers: authHeaders
+            });
+
+            if (response.data.success) {
+                let allSalaries = response.data.salaries || [];
+
+                if (allSalaries.length === 0) {
+                    setSalaries([]);
+                    setTotals({ total_net: 0, total_paid: 0, total_balance: 0 });
+                    setLoading(false);
+                    return;
+                }
+
+
+                const activeSalaries = allSalaries.filter(salary => {
+                    const employeeId = salary.employee_id;
+                    const isEmployeeActive = activeEmployeeIds.has(employeeId);
+
+                    return isEmployeeActive;
+                });
+
+                setSalaries(activeSalaries);
+
+                // Recalculate totals based on active salaries
+                const newTotals = activeSalaries.reduce((acc, salary) => {
+                    acc.total_net += (salary.net_salary || 0);
+                    acc.total_paid += (salary.paid_amount || 0);
+                    acc.total_balance += (salary.balance_amount || 0);
+                    return acc;
+                }, { total_net: 0, total_paid: 0, total_balance: 0 });
+
+                setTotals(newTotals);
+                setCurrentPage(1);
+            } else {
+                console.error('Failed to load salaries:', response.data.message);
+                setSalaries([]);
+            }
+        } catch (error) {
+            console.error('Error loading salaries:', error);
+            if (error.response?.status === 404) {
+                setSalaries([]);
+            } else {
+                alert('Failed to load salaries: ' + (error.response?.data?.message || error.message));
+            }
+        } finally {
+            setLoading(false);
         }
-    } catch (error) {
-        console.error('Error loading salaries:', error);
-        if (error.response?.status === 404) {
-            setSalaries([]);
-        } else {
-            alert('Failed to load salaries: ' + (error.response?.data?.message || error.message));
-        }
-    } finally {
-        setLoading(false);
-    }
-}, [selectedMonth, selectedYear, authHeaders]);
+    }, [selectedMonth, selectedYear, authHeaders]);
     const loadAvailableMonths = useCallback(async () => {
         try {
             const response = await axios.get(`${API_URL}/api/salary/months`, {
@@ -166,7 +166,7 @@ const SalaryManagement = () => {
             console.error('Error loading months:', error);
         }
     }, [authHeaders]);
-    
+
     // Load custom holidays from HolidayManagement
     useEffect(() => {
         const loadCustomHolidays = async () => {
@@ -174,7 +174,7 @@ const SalaryManagement = () => {
                 const response = await axios.get(`${API_URL}/api/salary/holidays/year/${selectedYear}/month/${selectedMonth}`, {
                     headers: authHeaders
                 });
-                
+
                 if (response.data.success) {
                     setCustomHolidays(response.data.holidays || []);
                 } else {
@@ -185,24 +185,24 @@ const SalaryManagement = () => {
                 setCustomHolidays([]);
             }
         };
-        
+
         loadCustomHolidays();
     }, [selectedYear, selectedMonth]);
-    
+
     useEffect(() => {
         loadSalaries();
         loadAvailableMonths();
     }, [selectedMonth, selectedYear, loadSalaries, loadAvailableMonths]);
-    
+
     const loadAttendanceDetails = async (employeeId, month, year) => {
         try {
             setLoadingAttendance(true);
-            
+
             const response = await axios.get(`${API_URL}/api/salary/calculation/${employeeId}`, {
                 params: { month, year },
                 headers: authHeaders
             });
-            
+
             if (response.data.success) {
                 const sundays = getSundaysCount(month, year);
                 const totalHolidays = sundays + customHolidays.length;
@@ -211,11 +211,11 @@ const SalaryManagement = () => {
                 const halfDays = response.data.calculation?.half_days || 0;
                 const lateDays = response.data.calculation?.late_days || 0;
                 const absentDays = response.data.calculation?.absent_days || 0;
-                
+
                 const calculatedNetSalary = calculateNetSalary(
                     monthlySalary, presentDays, halfDays, lateDays, absentDays, totalHolidays
                 );
-                
+
                 const enhancedData = {
                     ...response.data,
                     calculation: {
@@ -238,14 +238,14 @@ const SalaryManagement = () => {
             setLoadingAttendance(false);
         }
     };
-    
+
     const loadEmployeeSalaryHistory = async (employeeId) => {
         try {
             setLoadingDetails(true);
             const response = await axios.get(`${API_URL}/api/salary/history/${employeeId}`, {
                 headers: authHeaders
             });
-            
+
             if (response.data.success) {
                 setSelectedEmployeeData({
                     employee: response.data.employee,
@@ -263,7 +263,7 @@ const SalaryManagement = () => {
             setLoadingDetails(false);
         }
     };
-    
+
     const getHolidayCountForMonth = async (year, month) => {
         try {
             const response = await axios.get(`${API_URL}/api/salary/holidays/year/${year}/month/${month}`, {
@@ -278,24 +278,24 @@ const SalaryManagement = () => {
             return 0;
         }
     };
-    
+
     const handleGenerateAllSalaries = async () => {
         if (!window.confirm(`Generate salaries for all employees for ${getMonthName(selectedMonth)} ${selectedYear}?`)) {
             return;
         }
-        
+
         try {
             setGenerating(true);
             const customCount = await getHolidayCountForMonth(selectedYear, selectedMonth);
             const sundays = getSundaysCount(selectedMonth, selectedYear);
             const totalHolidays = customCount + sundays;
-            
+
             const response = await axios.post(`${API_URL}/api/salary/generate-all`, {
                 month: selectedMonth,
                 year: selectedYear,
                 holiday_count: totalHolidays
             }, { headers: authHeaders });
-            
+
             if (response.data.success) {
                 alert(response.data.message);
                 loadSalaries();
@@ -310,7 +310,7 @@ const SalaryManagement = () => {
             setGenerating(false);
         }
     };
-    
+
     // Update net salary manually (editable by clicking on net salary)
     const handleUpdateSalary = async (salaryRecordId, newAmount) => {
         try {
@@ -319,7 +319,7 @@ const SalaryManagement = () => {
                 amount: roundedAmount,
                 reason: 'Manual adjustment by admin'
             }, { headers: authHeaders });
-            
+
             if (response.data.success) {
                 alert(`Net salary updated successfully to ${formatCurrency(roundedAmount)}`);
                 await loadSalaries();
@@ -331,7 +331,7 @@ const SalaryManagement = () => {
             alert(error.response?.data?.message || 'Failed to update salary');
         }
     };
-    
+
     // Edit net salary manually (does NOT record payment)
     const handleInlineEdit = (salaryId, currentAmount) => {
         const newAmount = prompt('Edit Net Salary Amount:', currentAmount);
@@ -347,36 +347,36 @@ const SalaryManagement = () => {
             alert('Please enter a valid amount');
         }
     };
-    
+
     // Record payment only (does NOT change net salary)
     const handleRecordPayment = async (e) => {
         e.preventDefault();
         if (!selectedSalary) return;
-        
+
         const roundedAmount = Math.round(parseFloat(paymentForm.amount));
-        
+
         if (roundedAmount > selectedSalary.balance_amount) {
             alert(`Payment amount cannot exceed due amount of ${formatCurrency(selectedSalary.balance_amount)}`);
             return;
         }
-        
+
         const paymentData = {
             amount: roundedAmount,
             payment_method: paymentForm.payment_method,
             transaction_id: paymentForm.transaction_id,
             notes: paymentForm.notes
         };
-        
+
         try {
-            const response = await axios.post(`${API_URL}/api/salary/payment/${selectedSalary.id}`, paymentData, { 
-                headers: authHeaders 
+            const response = await axios.post(`${API_URL}/api/salary/payment/${selectedSalary.id}`, paymentData, {
+                headers: authHeaders
             });
-            
+
             if (response.data.success) {
                 const newPaidAmount = selectedSalary.paid_amount + roundedAmount;
                 const newBalance = selectedSalary.net_salary - newPaidAmount;
                 const newStatus = newBalance <= 0 ? 'paid' : (newPaidAmount > 0 ? 'partial' : 'pending');
-                
+
                 alert(`Payment of ${formatCurrency(roundedAmount)} recorded successfully!\nStatus: ${newStatus.toUpperCase()}`);
                 setIsPaymentModalOpen(false);
                 setPaymentForm({ amount: '', payment_method: 'bank_transfer', transaction_id: '', notes: '' });
@@ -389,17 +389,17 @@ const SalaryManagement = () => {
             alert('Failed to record payment: ' + (error.response?.data?.message || error.message));
         }
     };
-    
+
     const getStatusBadge = (status) => {
         const statusConfig = {
-            'paid': { class: 'status-paid', text: 'PAID'},
-            'pending': { class: 'status-pending', text: 'PENDING'},
-            'partial': { class: 'status-partial', text: 'PARTIAL'}
+            'paid': { class: 'status-paid', text: 'PAID' },
+            'pending': { class: 'status-pending', text: 'PENDING' },
+            'partial': { class: 'status-partial', text: 'PARTIAL' }
         };
         const config = statusConfig[status] || statusConfig.pending;
         return <span className={`salary-status-badge ${config.class}`}>{config.text}</span>;
     };
-    
+
     const formatCurrency = (amount) => {
         const roundedAmount = Math.round(amount || 0);
         return new Intl.NumberFormat('en-IN', {
@@ -409,9 +409,9 @@ const SalaryManagement = () => {
             maximumFractionDigits: 0
         }).format(roundedAmount);
     };
-    
+
     // Apply status filter
-    const filteredByStatus = statusFilter 
+    const filteredByStatus = statusFilter
         ? salaries.filter(s => s.payment_status === statusFilter)
         : salaries;
 
@@ -422,13 +422,13 @@ const SalaryManagement = () => {
         requestSort,
         sortLabel,
     } = useTableControls(filteredByStatus, SALARY_SEARCH_FIELDS, { key: 'employee_id', accessor: 'employee_id', direction: 'asc' });
-    
+
     // Pagination calculations
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
     const currentSalaries = visibleSalaries.slice(indexOfFirstItem, indexOfLastItem);
     const totalPages = Math.ceil(visibleSalaries.length / itemsPerPage);
-    
+
     // Pagination functions
     const paginate = (pageNumber) => setCurrentPage(pageNumber);
     const goToPrevPage = () => {
@@ -437,36 +437,36 @@ const SalaryManagement = () => {
     const goToNextPage = () => {
         if (currentPage < totalPages) setCurrentPage(currentPage + 1);
     };
-    
+
     // Generate page numbers to display
     const getPageNumbers = () => {
         const pageNumbers = [];
         const maxPagesToShow = 5;
         let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
         let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
-        
+
         if (endPage - startPage + 1 < maxPagesToShow) {
             startPage = Math.max(1, endPage - maxPagesToShow + 1);
         }
-        
+
         for (let i = startPage; i <= endPage; i++) {
             pageNumbers.push(i);
         }
         return pageNumbers;
     };
-    
+
     const currentMonthName = getMonthName(selectedMonth);
     const sundaysCount = getSundaysCount(selectedMonth, selectedYear);
     const totalHolidayCount = sundaysCount + customHolidays.length;
-    
+
     return (
         <div className="salary-management">
             <div className="salary-header">
                 <h2>Salary Management</h2>
             </div>
-            
-           
-            
+
+
+
             <div className="summary-cards">
                 <div className="summary-card">
                     <div className="summary-label">Total Net Salary</div>
@@ -481,24 +481,24 @@ const SalaryManagement = () => {
                     <div className="summary-value balance">{formatCurrency(totals.total_balance)}</div>
                 </div>
             </div>
-            
+
             <div className="salary-table-container">
-               
-                 <div className="filters-card">
+
+                <div className="filters-card">
                     <div className="filters-row">
                         <div className="filter-group">
                             <label>Select Month</label>
                             <div className="month-year-select">
-                                <select 
-                                    value={selectedMonth} 
+                                <select
+                                    value={selectedMonth}
                                     onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
                                 >
                                     {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
                                         <option key={month} value={month}>{getMonthName(month)}</option>
                                     ))}
                                 </select>
-                                <select 
-                                    value={selectedYear} 
+                                <select
+                                    value={selectedYear}
                                     onChange={(e) => setSelectedYear(parseInt(e.target.value))}
                                 >
                                     {[2023, 2024, 2025, 2026].map(year => (
@@ -507,11 +507,11 @@ const SalaryManagement = () => {
                                 </select>
                             </div>
                         </div>
-                        
+
                         <div className="filter-group">
                             <label>Payment Status</label>
-                            <select 
-                                value={statusFilter} 
+                            <select
+                                value={statusFilter}
                                 onChange={(e) => {
                                     setStatusFilter(e.target.value);
                                     setCurrentPage(1); // Reset to first page on filter change
@@ -537,26 +537,27 @@ const SalaryManagement = () => {
                                 }}
                             />
                         </div>
-                        
-                     
-                            <button className="btn-generate-small" onClick={handleGenerateAllSalaries}>
-                                Generate Salaries
-                            </button>
-                       
-                    </div>
-                    <div className="salary-results-summary">
-                        <span className="table-count-label">{visibleSalaries.length} of {filteredByStatus.length}</span>
+
+
+                        <button className="btn-generate-small" onClick={handleGenerateAllSalaries}>
+                            Generate Salaries
+                        </button>
+
+                        <div className="salary-results-summary">
+                            <span className="table-count-label">{visibleSalaries.length} of {filteredByStatus.length}</span>
+                        </div>
+
                     </div>
                 </div>
-                
-                
+
+
                 <div className="table-wrapper">
                     {loading ? (
                         <div className="loading">Loading salaries...</div>
                     ) : visibleSalaries.length === 0 ? (
                         <div className="no-data">
                             <p>No salary records found for {currentMonthName} {selectedYear}</p>
-                           
+
                         </div>
                     ) : (
                         <>
@@ -576,11 +577,11 @@ const SalaryManagement = () => {
                                     {currentSalaries.map(salary => {
                                         const isFullyPaid = salary.payment_status === 'paid';
                                         const remainingAmount = Math.round(salary.net_salary - salary.paid_amount);
-                                        
+
                                         return (
                                             <tr key={salary.id}>
                                                 <td className="employee-cell">
-                                                    <div 
+                                                    <div
                                                         className="employee-name clickable"
                                                         onClick={() => loadAttendanceDetails(salary.employee_id, selectedMonth, selectedYear)}
                                                         style={{ cursor: 'pointer', color: '#007bff' }}
@@ -595,7 +596,7 @@ const SalaryManagement = () => {
                                                     {formatCurrency(salary.basic_salary)}
                                                 </td>
                                                 <td className="net-salary-cell">
-                                                    <div 
+                                                    <div
                                                         className="editable-salary"
                                                         onClick={() => handleInlineEdit(salary.id, salary.net_salary)}
                                                         title="Click to edit net salary (Manual override)"
@@ -620,7 +621,7 @@ const SalaryManagement = () => {
                                                 <td className="status-cell">{getStatusBadge(salary.payment_status)}</td>
                                                 <td className="action-cell">
                                                     <div className="action-buttons">
-                                                        <button 
+                                                        <button
                                                             className="btn-pay"
                                                             onClick={() => {
                                                                 setSelectedSalary(salary);
@@ -634,15 +635,15 @@ const SalaryManagement = () => {
                                                             }}
                                                             title="Record payment (Does NOT change net salary)"
                                                         >
-                                                           <i className="fa-solid fa-indian-rupee-sign"></i>{remainingAmount > 0 ? formatCurrency(remainingAmount) : ''}
+                                                            <i className="fa-solid fa-indian-rupee-sign"></i>{remainingAmount > 0 ? formatCurrency(remainingAmount) : ''}
                                                         </button>
-                                                        
-                                                        <button 
+
+                                                        <button
                                                             className="btn-history"
                                                             onClick={() => loadEmployeeSalaryHistory(salary.employee_id)}
                                                             title="View Salary History"
                                                         >
-                                                        <i className="fa-solid fa-clock-rotate-left"></i>
+                                                            <i className="fa-solid fa-clock-rotate-left"></i>
                                                         </button>
                                                     </div>
                                                 </td>
@@ -651,18 +652,18 @@ const SalaryManagement = () => {
                                     })}
                                 </tbody>
                             </table>
-                            
+
                             {/* Pagination */}
                             {totalPages > 1 && (
                                 <div className="pagination">
-                                    <button 
-                                        onClick={goToPrevPage} 
+                                    <button
+                                        onClick={goToPrevPage}
                                         disabled={currentPage === 1}
                                         className="pagination-btn"
                                     >
                                         <i className="fas fa-chevron-left"></i> Previous
                                     </button>
-                                    
+
                                     <div className="pagination-numbers">
                                         {getPageNumbers().map(number => (
                                             <button
@@ -674,9 +675,9 @@ const SalaryManagement = () => {
                                             </button>
                                         ))}
                                     </div>
-                                    
-                                    <button 
-                                        onClick={goToNextPage} 
+
+                                    <button
+                                        onClick={goToNextPage}
                                         disabled={currentPage === totalPages}
                                         className="pagination-btn"
                                     >
@@ -684,13 +685,13 @@ const SalaryManagement = () => {
                                     </button>
                                 </div>
                             )}
-                            
-                           
+
+
                         </>
                     )}
                 </div>
             </div>
-            
+
             {/* Attendance Details Modal */}
             {isAttendanceDetailsModalOpen && selectedAttendanceData && (
                 <div className="modal-overlay">
@@ -781,10 +782,10 @@ const SalaryManagement = () => {
                                             <div className="calc-row total">
                                                 <span>Effective Days:</span>
                                                 <span>
-                                                    {(selectedAttendanceData.calculation?.present_days || 0) + 
-                                                     ((selectedAttendanceData.calculation?.half_days || 0) * 0.5) + 
-                                                     ((selectedAttendanceData.calculation?.late_days || 0) * 0.75) + 
-                                                     totalHolidayCount} days
+                                                    {(selectedAttendanceData.calculation?.present_days || 0) +
+                                                        ((selectedAttendanceData.calculation?.half_days || 0) * 0.5) +
+                                                        ((selectedAttendanceData.calculation?.late_days || 0) * 0.75) +
+                                                        totalHolidayCount} days
                                                 </span>
                                             </div>
                                             <div className="calc-row grand-total">
@@ -802,7 +803,7 @@ const SalaryManagement = () => {
                     </div>
                 </div>
             )}
-            
+
             {/* Salary History Modal */}
             {isSalaryDetailsModalOpen && selectedEmployeeData && (
                 <div className="modal-overlay">
@@ -844,14 +845,14 @@ const SalaryManagement = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    
+
                                     <div className="summary-stats">
                                         <div className="stat-card"><div className="stat-label">Total Records</div><div className="stat-value">{selectedEmployeeData.summary?.total_records || 0}</div></div>
                                         <div className="stat-card success"><div className="stat-label">Paid Records</div><div className="stat-value">{selectedEmployeeData.summary?.paid_records || 0}</div></div>
                                         <div className="stat-card warning"><div className="stat-label">Pending Records</div><div className="stat-value">{selectedEmployeeData.summary?.pending_records || 0}</div></div>
                                         <div className="stat-card info"><div className="stat-label">Total Paid</div><div className="stat-value">{formatCurrency(selectedEmployeeData.summary?.total_paid)}</div></div>
                                     </div>
-                                    
+
                                     <div className="history-section">
                                         <h4>Salary Payment History</h4>
                                         <div className="table-responsive">
@@ -878,18 +879,18 @@ const SalaryManagement = () => {
                                                             <td>{record.payment_date ? new Date(record.payment_date).toLocaleDateString() : '-'}</td>
                                                             <td>
                                                                 {record.balance_amount > 0 && (
-                                                                    <button 
-                                                                        className="view-details-btn" 
-                                                                        onClick={() => { 
-                                                                            setSelectedSalary(record); 
+                                                                    <button
+                                                                        className="view-details-btn"
+                                                                        onClick={() => {
+                                                                            setSelectedSalary(record);
                                                                             setPaymentForm({
                                                                                 amount: Math.round(record.balance_amount).toString(),
                                                                                 payment_method: 'bank_transfer',
                                                                                 transaction_id: '',
                                                                                 notes: ''
                                                                             });
-                                                                            setIsPaymentModalOpen(true); 
-                                                                            setIsSalaryDetailsModalOpen(false); 
+                                                                            setIsPaymentModalOpen(true);
+                                                                            setIsSalaryDetailsModalOpen(false);
                                                                         }}
                                                                     >
                                                                         Pay
@@ -911,7 +912,7 @@ const SalaryManagement = () => {
                     </div>
                 </div>
             )}
-            
+
             {/* Payment Modal */}
             {isPaymentModalOpen && selectedSalary && (
                 <div className="modal-overlay">
@@ -935,23 +936,23 @@ const SalaryManagement = () => {
                             </div>
                             <div className="form-group">
                                 <label>Payment Amount *</label>
-                                <input 
-                                    type="number" 
-                                    step="1" 
-                                    min="1" 
-                                    max={Math.round(selectedSalary.balance_amount)} 
-                                    required 
-                                    value={paymentForm.amount} 
-                                    onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })} 
+                                <input
+                                    type="number"
+                                    step="1"
+                                    min="1"
+                                    max={Math.round(selectedSalary.balance_amount)}
+                                    required
+                                    value={paymentForm.amount}
+                                    onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
                                 />
                             </div>
                             <div className="form-group">
                                 <label>Payment Method</label>
                                 <div className="payment-method-options">
                                     <label className="payment-option-label">
-                                        <input 
-                                            type="radio" 
-                                            name="payment_method" 
+                                        <input
+                                            type="radio"
+                                            name="payment_method"
                                             value="bank_transfer"
                                             checked={paymentForm.payment_method === 'bank_transfer'}
                                             onChange={(e) => setPaymentForm({ ...paymentForm, payment_method: e.target.value })}
@@ -959,9 +960,9 @@ const SalaryManagement = () => {
                                         Bank Transfer
                                     </label>
                                     <label className="payment-option-label">
-                                        <input 
-                                            type="radio" 
-                                            name="payment_method" 
+                                        <input
+                                            type="radio"
+                                            name="payment_method"
                                             value="cheque"
                                             checked={paymentForm.payment_method === 'cheque'}
                                             onChange={(e) => setPaymentForm({ ...paymentForm, payment_method: e.target.value })}
@@ -969,9 +970,9 @@ const SalaryManagement = () => {
                                         Cheque
                                     </label>
                                     <label className="payment-option-label">
-                                        <input 
-                                            type="radio" 
-                                            name="payment_method" 
+                                        <input
+                                            type="radio"
+                                            name="payment_method"
                                             value="upi"
                                             checked={paymentForm.payment_method === 'upi'}
                                             onChange={(e) => setPaymentForm({ ...paymentForm, payment_method: e.target.value })}
@@ -979,9 +980,9 @@ const SalaryManagement = () => {
                                         UPI
                                     </label>
                                     <label className="payment-option-label">
-                                        <input 
-                                            type="radio" 
-                                            name="payment_method" 
+                                        <input
+                                            type="radio"
+                                            name="payment_method"
                                             value="cash"
                                             checked={paymentForm.payment_method === 'cash'}
                                             onChange={(e) => setPaymentForm({ ...paymentForm, payment_method: e.target.value })}

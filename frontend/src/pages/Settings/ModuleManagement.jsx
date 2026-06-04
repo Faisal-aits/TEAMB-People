@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { moduleAccessAPI } from '../../services/moduleAccessAPI';
 import './ModuleManagement.css';
 
@@ -80,6 +80,9 @@ const getAccessSummary = (user) => {
   return `${enabled} module${enabled === 1 ? '' : 's'}`;
 };
 
+const getModuleGroupTitle = (moduleKey) =>
+  MODULE_GROUPS.find((group) => group.keys.includes(moduleKey))?.title || '';
+
 const ModuleManagement = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -89,6 +92,8 @@ const ModuleManagement = () => {
   const [moduleAccess, setModuleAccess] = useState([]);
   const [saving, setSaving] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
+  const [userSearch, setUserSearch] = useState('');
+  const [moduleSearch, setModuleSearch] = useState('');
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -130,6 +135,7 @@ const ModuleManagement = () => {
     setModalOpen(false);
     setSelectedUser(null);
     setModuleAccess([]);
+    setModuleSearch('');
   };
 
   const handleAccessChange = (moduleKey, access) => {
@@ -161,7 +167,49 @@ const ModuleManagement = () => {
     }
   };
 
-  const groupedModuleAccess = groupModules(moduleAccess);
+  const filteredUsers = useMemo(() => {
+    const query = userSearch.trim().toLowerCase();
+    if (!query) return users;
+
+    return users.filter((user) => {
+      const searchableText = [
+        user.first_name,
+        user.last_name,
+        user.email,
+        user.job_position,
+        user.system_role,
+        getAccessSummary(user),
+        ...Object.keys(user.module_access || {}),
+        ...Object.values(user.module_access || {}),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return searchableText.includes(query);
+    });
+  }, [userSearch, users]);
+
+  const filteredModuleAccess = useMemo(() => {
+    const query = moduleSearch.trim().toLowerCase();
+    if (!query) return moduleAccess;
+
+    return moduleAccess.filter((mod) => {
+      const searchableText = [
+        mod.name,
+        mod.module_key,
+        mod.access,
+        getModuleGroupTitle(mod.module_key),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return searchableText.includes(query);
+    });
+  }, [moduleAccess, moduleSearch]);
+
+  const groupedModuleAccess = groupModules(filteredModuleAccess);
 
   return (
     <div className="module-management">
@@ -180,6 +228,18 @@ const ModuleManagement = () => {
       {error && <div className="mm-error">{error}</div>}
 
       <div className="mm-table-wrap glass-form">
+        <div className="mm-table-toolbar">
+          <input
+            type="search"
+            className="mm-search-input"
+            placeholder="Search users, email, role, module..."
+            value={userSearch}
+            onChange={(event) => setUserSearch(event.target.value)}
+          />
+          <span className="mm-result-count">
+            {filteredUsers.length} of {users.length} users
+          </span>
+        </div>
         {loading ? (
           <p className="mm-loading">Loading users...</p>
         ) : (
@@ -195,14 +255,14 @@ const ModuleManagement = () => {
               </tr>
             </thead>
             <tbody>
-              {users.length === 0 ? (
+              {filteredUsers.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="mm-empty">
                     No users found.
                   </td>
                 </tr>
               ) : (
-                users.map((user) => (
+                filteredUsers.map((user) => (
                   <tr key={user.id}>
                     <td>
                       {user.first_name} {user.last_name}
@@ -263,35 +323,51 @@ const ModuleManagement = () => {
               <p className="mm-loading">Loading access...</p>
             ) : (
               <>
+                <div className="mm-modal-search">
+                  <input
+                    type="search"
+                    className="mm-search-input"
+                    placeholder="Search modules..."
+                    value={moduleSearch}
+                    onChange={(event) => setModuleSearch(event.target.value)}
+                  />
+                  <span className="mm-result-count">
+                    {filteredModuleAccess.length} of {moduleAccess.length} modules
+                  </span>
+                </div>
                 <div className="mm-modal-modules">
-                  {groupedModuleAccess.map((group) => (
-                    <section key={group.title} className="mm-module-group">
-                      <h4>{group.title}</h4>
-                      <div className="mm-module-group-list">
-                        {group.modules.map((mod) => (
-                          <div key={mod.module_key} className="mm-module-row">
-                            <span className="mm-module-name">{mod.name}</span>
-                            <div className="mm-access-options">
-                              {ACCESS_OPTIONS.map((opt) => (
-                                <label key={opt.value} className="mm-access-label">
-                                  <input
-                                    type="radio"
-                                    name={`access-${mod.module_key}`}
-                                    value={opt.value}
-                                    checked={mod.access === opt.value}
-                                    onChange={() =>
-                                      handleAccessChange(mod.module_key, opt.value)
-                                    }
-                                  />
-                                  {opt.label}
-                                </label>
-                              ))}
+                  {groupedModuleAccess.length === 0 ? (
+                    <p className="mm-empty">No modules found.</p>
+                  ) : (
+                    groupedModuleAccess.map((group) => (
+                      <section key={group.title} className="mm-module-group">
+                        <h4>{group.title}</h4>
+                        <div className="mm-module-group-list">
+                          {group.modules.map((mod) => (
+                            <div key={mod.module_key} className="mm-module-row">
+                              <span className="mm-module-name">{mod.name}</span>
+                              <div className="mm-access-options">
+                                {ACCESS_OPTIONS.map((opt) => (
+                                  <label key={opt.value} className="mm-access-label">
+                                    <input
+                                      type="radio"
+                                      name={`access-${mod.module_key}`}
+                                      value={opt.value}
+                                      checked={mod.access === opt.value}
+                                      onChange={() =>
+                                        handleAccessChange(mod.module_key, opt.value)
+                                      }
+                                    />
+                                    {opt.label}
+                                  </label>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    </section>
-                  ))}
+                          ))}
+                        </div>
+                      </section>
+                    ))
+                  )}
                 </div>
 
                 <div className="mm-modal-actions">
