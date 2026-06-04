@@ -542,11 +542,6 @@ const SalaryManagement = () => {
                         <button className="btn-generate-small" onClick={handleGenerateAllSalaries}>
                             Generate Salaries
                         </button>
-
-                        <div className="salary-results-summary">
-                            <span className="table-count-label">{visibleSalaries.length} of {filteredByStatus.length}</span>
-                        </div>
-
                     </div>
                 </div>
 
