@@ -29,6 +29,20 @@ const UserModuleContent = ({ activeTab, navigateToTab, DashboardComponent }) => 
   const canAccessHr = hasModuleAccess(user, 'hr');
   const canAccessAccounts = hasModuleAccess(user, 'accounts');
   const canAccessServices = hasModuleAccess(user, 'services');
+  const canAccessHrDashboard = hasModuleAccess(user, 'hr_dashboard');
+  const canAccessEmployeeManagement = hasModuleAccess(user, 'employee_management');
+  const canAccessAttendanceManagement = hasModuleAccess(user, 'attendance_management');
+  const canAccessLeaveManagement = hasModuleAccess(user, 'leave_management');
+  const canAccessShiftManagement = hasModuleAccess(user, 'shift_management');
+  const canAccessSalaryManagement = hasModuleAccess(user, 'salary_management');
+  const canAccessHolidayManagement = hasModuleAccess(user, 'holiday_management');
+  const canAccessAiDocumentGenerator = hasModuleAccess(user, 'ai_document_generator');
+  const canAccessBillingManagement = hasModuleAccess(user, 'billing_management');
+  const canAccessBillingSettings = hasModuleAccess(user, 'billing_settings');
+  const canAccessDeliveryManagement = hasModuleAccess(user, 'delivery_management');
+  const canAccessExpenseManagement = hasModuleAccess(user, 'expense_management');
+  const canAccessQuotationManagement = hasModuleAccess(user, 'quotation_management');
+  const canAccessServiceManagement = hasModuleAccess(user, 'service_management');
   const canAccessEmployeeAttendance = hasModuleAccess(user, 'employee_attendance');
   const canAccessEmployeeLeave = hasModuleAccess(user, 'employee_attendance');
   const canAccessEmployeeExpense = hasModuleAccess(user, 'employee_expense');
@@ -41,20 +55,20 @@ const UserModuleContent = ({ activeTab, navigateToTab, DashboardComponent }) => 
       {activeTab === 'dashboard' && (
         <DashboardComponent user={user} navigateToTab={navigateToTab} />
       )}
-      {activeTab === 'employee' && canAccessHr && <EmployeeManagement />}
-      {activeTab === 'attendance' && canAccessHr && <AttendanceManagement />}
-      {activeTab === 'leave' && canAccessHr && <LeaveManagement />}
-      {activeTab === 'shift' && canAccessHr && <ShiftManagement />}
-      {activeTab === 'hrdashboard' && canAccessHr && <HrDashboard navigateToTab={navigateToTab} />}
-      {activeTab === 'salary' && canAccessHr && <SalaryManagement />}
-      {activeTab === 'holiday' && canAccessHr && <HolidayManagement />}
-      {activeTab === 'aiDocumentGenerator' && canAccessHr && <AiDocumentGenerator />}
-      {activeTab === 'billing' && canAccessAccounts && <BillingManagement />}
-      {activeTab === 'billingsettings' && canAccessAccounts && <BillingSettings />}
-      {activeTab === 'delivery' && canAccessAccounts && <DeliveryManagement />}
-      {activeTab === 'expenses' && canAccessAccounts && <ExpenseManagement />}
-      {activeTab === 'quotation' && canAccessAccounts && <QuotationManagement />}
-      {activeTab === 'service' && canAccessServices && (
+      {activeTab === 'employee' && canAccessEmployeeManagement && <EmployeeManagement />}
+      {activeTab === 'attendance' && canAccessAttendanceManagement && <AttendanceManagement />}
+      {activeTab === 'leave' && canAccessLeaveManagement && <LeaveManagement />}
+      {activeTab === 'shift' && canAccessShiftManagement && <ShiftManagement />}
+      {activeTab === 'hrdashboard' && canAccessHrDashboard && <HrDashboard navigateToTab={navigateToTab} />}
+      {activeTab === 'salary' && canAccessSalaryManagement && <SalaryManagement />}
+      {activeTab === 'holiday' && canAccessHolidayManagement && <HolidayManagement />}
+      {activeTab === 'aiDocumentGenerator' && canAccessAiDocumentGenerator && <AiDocumentGenerator />}
+      {activeTab === 'billing' && canAccessBillingManagement && <BillingManagement />}
+      {activeTab === 'billingsettings' && canAccessBillingSettings && <BillingSettings />}
+      {activeTab === 'delivery' && canAccessDeliveryManagement && <DeliveryManagement />}
+      {activeTab === 'expenses' && canAccessExpenseManagement && <ExpenseManagement />}
+      {activeTab === 'quotation' && canAccessQuotationManagement && <QuotationManagement />}
+      {activeTab === 'service' && canAccessServiceManagement && (
         <ServiceManagement initialTab="services" />
       )}
       {activeTab === 'personal-info' && (

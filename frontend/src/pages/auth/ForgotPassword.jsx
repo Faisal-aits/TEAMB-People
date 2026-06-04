@@ -69,7 +69,7 @@ const ForgotPassword = () => {
                     </div>
                 )}
 
-                <div className="form-wrapper glass-form active">
+                <div className="form-wrapper active">
                     <h2 className="form-title">Forgot Password?</h2>
                     <p className="form-subtitle">We'll send you a recovery link</p>
 

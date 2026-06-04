@@ -30,15 +30,120 @@ const MODULE_META = {
     description: 'Employees, attendance, leave, salary, and holidays.',
     icon: <HiOutlineUsers />,
   },
+  hr_dashboard: {
+    title: 'HR Dashboard',
+    description: 'View HR summaries, activity, and workforce metrics.',
+    icon: <HiOutlineClipboardDocumentList />,
+  },
+  employee_management: {
+    title: 'Employee Management',
+    description: 'Manage employee records, documents, and lifecycle actions.',
+    icon: <HiOutlineUsers />,
+  },
+  attendance_management: {
+    title: 'Attendance Management',
+    description: 'Review attendance, locations, delays, and reports.',
+    icon: <HiOutlineClock />,
+  },
+  leave_management: {
+    title: 'Leave Management',
+    description: 'Review leave requests and employee leave records.',
+    icon: <HiOutlineCalendarDays />,
+  },
+  shift_management: {
+    title: 'Shift Management',
+    description: 'Manage employee shifts and schedule assignments.',
+    icon: <HiOutlineArrowPath />,
+  },
+  salary_management: {
+    title: 'Salary Management',
+    description: 'Generate salaries, track payments, and review balances.',
+    icon: <HiOutlineBanknotes />,
+  },
+  holiday_management: {
+    title: 'Holiday Management',
+    description: 'Maintain holidays and paid non-working days.',
+    icon: <HiOutlineCalendarDays />,
+  },
+  ai_document_generator: {
+    title: 'AI Document Generator',
+    description: 'Create HR documents from approved templates.',
+    icon: <HiOutlineDocumentText />,
+  },
+  offer_letters: {
+    title: 'Offer Letters',
+    description: 'Create, track, accept, and reject offer letters.',
+    icon: <HiOutlineDocumentText />,
+  },
+  declarations: {
+    title: 'Declaration Forms',
+    description: 'Manage employee declaration documents.',
+    icon: <HiOutlineDocumentText />,
+  },
+  resignations: {
+    title: 'Resignation Requests',
+    description: 'Review and process resignation requests.',
+    icon: <HiOutlineExclamationTriangle />,
+  },
+  salary_slips: {
+    title: 'Salary Slips',
+    description: 'Generate and review employee salary slips.',
+    icon: <HiOutlineReceiptPercent />,
+  },
+  experience_letters: {
+    title: 'Experience Letters',
+    description: 'Prepare and manage experience letters.',
+    icon: <HiOutlineDocumentText />,
+  },
+  increment_letters: {
+    title: 'Increment Letters',
+    description: 'Prepare and manage increment letters.',
+    icon: <HiOutlineCheckCircle />,
+  },
   accounts: {
     title: 'Accounts Module',
     description: 'Billing, delivery, expenses, quotations, and settings.',
     icon: <HiOutlineBanknotes />,
   },
+  billing_management: {
+    title: 'Billing Management',
+    description: 'Create and manage invoices and billing records.',
+    icon: <HiOutlineBanknotes />,
+  },
+  delivery_management: {
+    title: 'Delivery Management',
+    description: 'Create and track delivery challans.',
+    icon: <HiOutlineClipboardDocumentList />,
+  },
+  expense_management: {
+    title: 'Expense Management',
+    description: 'Review expenses, receipts, and payment statuses.',
+    icon: <HiOutlineReceiptPercent />,
+  },
+  billing_settings: {
+    title: 'Billing Settings',
+    description: 'Configure billing details and document settings.',
+    icon: <HiOutlineClipboardDocumentList />,
+  },
+  quotation_management: {
+    title: 'Quotation Management',
+    description: 'Create and manage customer quotations.',
+    icon: <HiOutlineDocumentText />,
+  },
   services: {
     title: 'Services Module',
     description: 'Clients, projects, and service management.',
     icon: <HiOutlineBriefcase />,
+  },
+  service_management: {
+    title: 'Service Management',
+    description: 'Manage clients, projects, and service work.',
+    icon: <HiOutlineBriefcase />,
+  },
+  pttm: {
+    title: 'PTTM',
+    description: 'Track planning, tasks, timelines, and project progress.',
+    icon: <HiOutlineClipboardDocumentList />,
   },
   employee_attendance: {
     title: 'My Attendance',

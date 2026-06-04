@@ -8,11 +8,76 @@ const ACCESS_OPTIONS = [
   { value: 'none', label: 'No Access' },
 ];
 
+const MODULE_GROUPS = [
+  {
+    title: 'HR Module',
+    keys: [
+      'hr',
+      'hr_dashboard',
+      'employee_management',
+      'attendance_management',
+      'leave_management',
+      'shift_management',
+      'salary_management',
+      'holiday_management',
+      'ai_document_generator',
+      'offer_letters',
+      'declarations',
+      'resignations',
+      'salary_slips',
+      'experience_letters',
+      'increment_letters',
+    ],
+  },
+  {
+    title: 'Accounts Module',
+    keys: [
+      'accounts',
+      'billing_management',
+      'delivery_management',
+      'expense_management',
+      'billing_settings',
+      'quotation_management',
+    ],
+  },
+  { title: 'Services', keys: ['services', 'service_management'] },
+  { title: 'Planning & Tasks', keys: ['pttm'] },
+  { title: 'Employee Self Service', keys: ['employee_attendance', 'employee_expense'] },
+];
+
 const formatLastActive = (value) => {
   if (!value) return 'Never';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 'Never';
   return date.toLocaleString();
+};
+
+const groupModules = (modules) => {
+  const moduleMap = new Map(modules.map((mod) => [mod.module_key, mod]));
+  const usedKeys = new Set();
+
+  const grouped = MODULE_GROUPS
+    .map((group) => {
+      const groupModulesList = group.keys
+        .map((key) => moduleMap.get(key))
+        .filter(Boolean);
+      groupModulesList.forEach((mod) => usedKeys.add(mod.module_key));
+      return { ...group, modules: groupModulesList };
+    })
+    .filter((group) => group.modules.length > 0);
+
+  const otherModules = modules.filter((mod) => !usedKeys.has(mod.module_key));
+  if (otherModules.length > 0) grouped.push({ title: 'Other Modules', modules: otherModules });
+
+  return grouped;
+};
+
+const getAccessSummary = (user) => {
+  if (user.system_role === 'admin') return 'Full access';
+  const enabled = Object.values(user.module_access || {})
+    .filter((level) => level && level !== 'none').length;
+  if (enabled === 0) return 'No modules';
+  return `${enabled} module${enabled === 1 ? '' : 's'}`;
 };
 
 const ModuleManagement = () => {
@@ -96,6 +161,8 @@ const ModuleManagement = () => {
     }
   };
 
+  const groupedModuleAccess = groupModules(moduleAccess);
+
   return (
     <div className="module-management">
       <div className="module-management-header">
@@ -122,6 +189,7 @@ const ModuleManagement = () => {
                 <th>User</th>
                 <th>Email</th>
                 <th>Position</th>
+                <th>Access</th>
                 <th>Last Active</th>
                 <th>Action</th>
               </tr>
@@ -129,7 +197,7 @@ const ModuleManagement = () => {
             <tbody>
               {users.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="mm-empty">
+                  <td colSpan={6} className="mm-empty">
                     No users found.
                   </td>
                 </tr>
@@ -144,6 +212,9 @@ const ModuleManagement = () => {
                     </td>
                     <td>{user.email}</td>
                     <td>{user.job_position}</td>
+                    <td>
+                      <span className="mm-access-summary">{getAccessSummary(user)}</span>
+                    </td>
                     <td>{formatLastActive(user.last_active_at)}</td>
                     <td>
                       {user.system_role === 'admin' ? (
@@ -193,26 +264,33 @@ const ModuleManagement = () => {
             ) : (
               <>
                 <div className="mm-modal-modules">
-                  {moduleAccess.map((mod) => (
-                    <div key={mod.module_key} className="mm-module-row">
-                      <span className="mm-module-name">{mod.name}</span>
-                      <div className="mm-access-options">
-                        {ACCESS_OPTIONS.map((opt) => (
-                          <label key={opt.value} className="mm-access-label">
-                            <input
-                              type="radio"
-                              name={`access-${mod.module_key}`}
-                              value={opt.value}
-                              checked={mod.access === opt.value}
-                              onChange={() =>
-                                handleAccessChange(mod.module_key, opt.value)
-                              }
-                            />
-                            {opt.label}
-                          </label>
+                  {groupedModuleAccess.map((group) => (
+                    <section key={group.title} className="mm-module-group">
+                      <h4>{group.title}</h4>
+                      <div className="mm-module-group-list">
+                        {group.modules.map((mod) => (
+                          <div key={mod.module_key} className="mm-module-row">
+                            <span className="mm-module-name">{mod.name}</span>
+                            <div className="mm-access-options">
+                              {ACCESS_OPTIONS.map((opt) => (
+                                <label key={opt.value} className="mm-access-label">
+                                  <input
+                                    type="radio"
+                                    name={`access-${mod.module_key}`}
+                                    value={opt.value}
+                                    checked={mod.access === opt.value}
+                                    onChange={() =>
+                                      handleAccessChange(mod.module_key, opt.value)
+                                    }
+                                  />
+                                  {opt.label}
+                                </label>
+                              ))}
+                            </div>
+                          </div>
                         ))}
                       </div>
-                    </div>
+                    </section>
                   ))}
                 </div>
 

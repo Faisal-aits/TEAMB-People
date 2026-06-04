@@ -62,6 +62,26 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
   const canAccessHr = hasModuleAccess(user, 'hr');
   const canAccessAccounts = hasModuleAccess(user, 'accounts');
   const canAccessServices = hasModuleAccess(user, 'services');
+  const canAccessHrDashboard = hasModuleAccess(user, 'hr_dashboard');
+  const canAccessEmployeeManagement = hasModuleAccess(user, 'employee_management');
+  const canAccessAttendanceManagement = hasModuleAccess(user, 'attendance_management');
+  const canAccessLeaveManagement = hasModuleAccess(user, 'leave_management');
+  const canAccessShiftManagement = hasModuleAccess(user, 'shift_management');
+  const canAccessSalaryManagement = hasModuleAccess(user, 'salary_management');
+  const canAccessHolidayManagement = hasModuleAccess(user, 'holiday_management');
+  const canAccessAiDocumentGenerator = hasModuleAccess(user, 'ai_document_generator');
+  const canAccessOfferLetters = hasModuleAccess(user, 'offer_letters');
+  const canAccessDeclarations = hasModuleAccess(user, 'declarations');
+  const canAccessResignations = hasModuleAccess(user, 'resignations');
+  const canAccessSalarySlips = hasModuleAccess(user, 'salary_slips');
+  const canAccessExperienceLetters = hasModuleAccess(user, 'experience_letters');
+  const canAccessIncrementLetters = hasModuleAccess(user, 'increment_letters');
+  const canAccessBillingManagement = hasModuleAccess(user, 'billing_management');
+  const canAccessBillingSettings = hasModuleAccess(user, 'billing_settings');
+  const canAccessDeliveryManagement = hasModuleAccess(user, 'delivery_management');
+  const canAccessExpenseManagement = hasModuleAccess(user, 'expense_management');
+  const canAccessQuotationManagement = hasModuleAccess(user, 'quotation_management');
+  const canAccessServiceManagement = hasModuleAccess(user, 'service_management');
 
   useEffect(() => {
     localStorage.setItem("activeTab", activeTab);
@@ -216,50 +236,50 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
                 {sidebarOpen && hrModuleOpen && (
                   <ul className="dropdown-menu">
 
-                    <li className={activeTab === 'hrdashboard' ? 'active' : ''}>
+                    {canAccessHrDashboard && <li className={activeTab === 'hrdashboard' ? 'active' : ''}>
                       <button onClick={() => navigateToTab('hrdashboard')}>
                         <span className="dropdown-text">HR Dashboard</span>
                       </button>
-                    </li>
+                    </li>}
 
 
-                    <li className={activeTab === 'employee' ? 'active' : ''}>
+                    {canAccessEmployeeManagement && <li className={activeTab === 'employee' ? 'active' : ''}>
                       <button onClick={() => navigateToTab('employee')}>
                         <span className="dropdown-text">Employee Management</span>
                       </button>
-                    </li>
-                    <li className={activeTab === 'attendance' ? 'active' : ''}>
+                    </li>}
+                    {canAccessAttendanceManagement && <li className={activeTab === 'attendance' ? 'active' : ''}>
                       <button onClick={() => navigateToTab('attendance')}>
                         <span className="dropdown-text">Attendance Management</span>
                       </button>
-                    </li>
-                    <li className={activeTab === 'leave' ? 'active' : ''}>
+                    </li>}
+                    {canAccessLeaveManagement && <li className={activeTab === 'leave' ? 'active' : ''}>
                       <button onClick={() => navigateToTab('leave')}>
                         <span className="dropdown-text">Leave Management</span>
                       </button>
-                    </li>
-                    <li className={activeTab === 'shift' ? 'active' : ''}>
+                    </li>}
+                    {canAccessShiftManagement && <li className={activeTab === 'shift' ? 'active' : ''}>
                       <button onClick={() => navigateToTab('shift')}>
                         <span className="dropdown-text">Shift Management</span>
                       </button>
-                    </li>
-                     <li className={activeTab === 'salary' ? 'active' : ''}>
+                    </li>}
+                     {canAccessSalaryManagement && <li className={activeTab === 'salary' ? 'active' : ''}>
                       <button onClick={() => navigateToTab('salary')}>
                         <span className="dropdown-text">Salary Management</span>
                       </button>
-                    </li>
+                    </li>}
 
 
-                    <li className={activeTab === 'holiday' ? 'active' : ''}>
+                    {canAccessHolidayManagement && <li className={activeTab === 'holiday' ? 'active' : ''}>
                       <button onClick={() => navigateToTab('holiday')}>
                         <span className="dropdown-text">Holiday Management</span>
                       </button>
-                    </li>
-                    <li className={activeTab === 'aiDocumentGenerator' ? 'active' : ''}>
+                    </li>}
+                    {canAccessAiDocumentGenerator && <li className={activeTab === 'aiDocumentGenerator' ? 'active' : ''}>
                       <button onClick={() => navigateToTab('aiDocumentGenerator')}>
                         <span className="dropdown-text">AI Document Generator</span>
                       </button>
-                    </li>
+                    </li>}
                      </ul>
                 )}
               </li>
@@ -284,32 +304,32 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
                   <ul className="dropdown-menu">
 
 
-                    <li className={activeTab === 'billing' ? 'active' : ''}>
+                    {canAccessBillingManagement && <li className={activeTab === 'billing' ? 'active' : ''}>
                       <button onClick={() => navigateToTab('billing')}>
                         <span className="dropdown-text">Billing Management</span>
                       </button>
-                    </li>
-                    <li className={activeTab === 'delivery' ? 'active' : ''}>
+                    </li>}
+                    {canAccessDeliveryManagement && <li className={activeTab === 'delivery' ? 'active' : ''}>
                       <button onClick={() => navigateToTab('delivery')}>
                         <span className="dropdown-text">Delivery Management</span>
                       </button>
-                    </li>
-                    <li className={activeTab === 'expenses' ? 'active' : ''}>
+                    </li>}
+                    {canAccessExpenseManagement && <li className={activeTab === 'expenses' ? 'active' : ''}>
                       <button onClick={() => navigateToTab('expenses')}>
                         <span className="dropdown-text">Expense Management</span>
                       </button>
-                    </li>
-                    <li className={activeTab === 'billingsettings' ? 'active' : ''}>
+                    </li>}
+                    {canAccessBillingSettings && <li className={activeTab === 'billingsettings' ? 'active' : ''}>
                       <button onClick={() => navigateToTab('billingsettings')}>
                         <span className="dropdown-text">Billing Settings</span>
                       </button>
-                    </li>
+                    </li>}
 
-                    <li className={activeTab === 'quotation' ? 'active' : ''}>
+                    {canAccessQuotationManagement && <li className={activeTab === 'quotation' ? 'active' : ''}>
                       <button onClick={() => navigateToTab('quotation')}>
                         <span className="dropdown-text">Quotation Management</span>
                       </button>
-                    </li>
+                    </li>}
                     
                      </ul>
                 )}
@@ -332,11 +352,11 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
                 </button>
                 {sidebarOpen && servicesModuleOpen && (
                   <ul className="dropdown-menu">
-                    <li className={activeTab === 'service' ? 'active' : ''}>
+                    {canAccessServiceManagement && <li className={activeTab === 'service' ? 'active' : ''}>
                       <button onClick={() => navigateToTab('service')}>
                         <span className="dropdown-text">Service Management</span>
                       </button>
-                    </li>
+                    </li>}
                   </ul>
                 )}
               </li>
@@ -421,42 +441,42 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
         {/* Main Content - ADD THE EMPLOYEE CASE HERE */}
         <main className="dashboard-main">
           {activeTab === 'dashboard' && <Dashboard user={user} navigateToTab={navigateToTab} />}
-          {activeTab === 'employee' && canAccessHr && <EmployeeManagement />}
-          {activeTab === 'attendance' && canAccessHr && <AttendanceManagement />}
-          {activeTab === 'leave' && canAccessHr && <LeaveManagement />}
-          {activeTab === 'shift' && canAccessHr && <ShiftManagement />}
-          {activeTab === 'hrdashboard' && canAccessHr && <HrDashboard navigateToTab={navigateToTab} />}
+          {activeTab === 'employee' && canAccessEmployeeManagement && <EmployeeManagement />}
+          {activeTab === 'attendance' && canAccessAttendanceManagement && <AttendanceManagement />}
+          {activeTab === 'leave' && canAccessLeaveManagement && <LeaveManagement />}
+          {activeTab === 'shift' && canAccessShiftManagement && <ShiftManagement />}
+          {activeTab === 'hrdashboard' && canAccessHrDashboard && <HrDashboard navigateToTab={navigateToTab} />}
 
-          {activeTab === 'salary' && canAccessHr && <SalaryManagement />}
-          {activeTab === 'billing' && canAccessAccounts && <BillingManagement />}
-          {activeTab === 'billingsettings' && canAccessAccounts && <BillingSettings />}
-          {activeTab === 'delivery' && canAccessAccounts && <DeliveryManagement />}
-          {activeTab === 'expenses' && canAccessAccounts && <ExpenseManagement />}
-          {activeTab === 'quotation' && canAccessAccounts && <QuotationManagement />}
-          {activeTab === 'holiday' && canAccessHr && <HolidayManagement />}
-          {activeTab === 'aiDocumentGenerator' && canAccessHr && <AiDocumentGenerator />}
-          {activeTab === 'service' && canAccessServices && <ServiceManagement initialTab="services" />}
+          {activeTab === 'salary' && canAccessSalaryManagement && <SalaryManagement />}
+          {activeTab === 'billing' && canAccessBillingManagement && <BillingManagement />}
+          {activeTab === 'billingsettings' && canAccessBillingSettings && <BillingSettings />}
+          {activeTab === 'delivery' && canAccessDeliveryManagement && <DeliveryManagement />}
+          {activeTab === 'expenses' && canAccessExpenseManagement && <ExpenseManagement />}
+          {activeTab === 'quotation' && canAccessQuotationManagement && <QuotationManagement />}
+          {activeTab === 'holiday' && canAccessHolidayManagement && <HolidayManagement />}
+          {activeTab === 'aiDocumentGenerator' && canAccessAiDocumentGenerator && <AiDocumentGenerator />}
+          {activeTab === 'service' && canAccessServiceManagement && <ServiceManagement initialTab="services" />}
           {activeTab === 'modulemanagement' && isAdmin && <ModuleManagement />}
           {activeTab === 'branding' && isAdmin && <BrandingSettings />}
           {activeTab === 'master' && isAdmin && <MasterSettings />}
           {activeTab === 'smtpconfig' && isAdmin && <SmtpConfig />}
           {activeTab === 'pttm' && <PTTMContainer />}
-          {activeTab === 'offerletter' && canAccessHr && (
+          {activeTab === 'offerletter' && canAccessOfferLetters && (
             <OfferLetter initialEmployee={navigationState?.employee} />
           )}
-           {activeTab === 'declaration' && canAccessHr && (
+           {activeTab === 'declaration' && canAccessDeclarations && (
             <DeclarationForm initialEmployee={navigationState?.employee} />
           )}
-            {activeTab === 'resignation' && canAccessHr && (
+            {activeTab === 'resignation' && canAccessResignations && (
               <ResignationRequests />
             )}
-              {activeTab === 'salaryslip' && canAccessHr && (
+              {activeTab === 'salaryslip' && canAccessSalarySlips && (
                 <SalarySlip />
               )}
-              {activeTab === 'experienceletters' && canAccessHr && (
+              {activeTab === 'experienceletters' && canAccessExperienceLetters && (
                 <ExperienceLetters />
               )}
-              {activeTab === 'incrementletters' && canAccessHr && (
+              {activeTab === 'incrementletters' && canAccessIncrementLetters && (
                 <IncrementLetters />
               )}
         </main>

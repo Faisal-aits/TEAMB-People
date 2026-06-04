@@ -1,7 +1,36 @@
 const { query } = require('../../config/db');
 const { addForeignKeyIfMissing, addIndexIfMissing } = require('../../utils/schemaHelpers');
 
-const MANAGEABLE_MODULES = ['hr', 'accounts', 'services'];
+const MODULE_DEFINITIONS = [
+  ['hr', 'HR Module', 10],
+  ['hr_dashboard', 'HR Dashboard', 11],
+  ['employee_management', 'Employee Management', 12],
+  ['attendance_management', 'Attendance Management', 13],
+  ['leave_management', 'Leave Management', 14],
+  ['shift_management', 'Shift Management', 15],
+  ['salary_management', 'Salary Management', 16],
+  ['holiday_management', 'Holiday Management', 17],
+  ['ai_document_generator', 'AI Document Generator', 18],
+  ['offer_letters', 'Offer Letters', 19],
+  ['declarations', 'Declaration Forms', 20],
+  ['resignations', 'Resignation Requests', 21],
+  ['salary_slips', 'Salary Slips', 22],
+  ['experience_letters', 'Experience Letters', 23],
+  ['increment_letters', 'Increment Letters', 24],
+  ['accounts', 'Accounts Module', 40],
+  ['billing_management', 'Billing Management', 41],
+  ['delivery_management', 'Delivery Management', 42],
+  ['expense_management', 'Expense Management', 43],
+  ['billing_settings', 'Billing Settings', 44],
+  ['quotation_management', 'Quotation Management', 45],
+  ['services', 'Services Module', 60],
+  ['service_management', 'Service Management', 61],
+  ['pttm', 'PTTM', 80],
+  ['employee_attendance', 'My Attendance & Leave', 100],
+  ['employee_expense', 'My Expense', 101],
+];
+
+const MANAGEABLE_MODULES = MODULE_DEFINITIONS.map(([moduleKey]) => moduleKey);
 
 const moduleAccessModel = {
   async ensureSchema() {
@@ -64,13 +93,11 @@ const moduleAccessModel = {
       'FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL'
     );
 
-    for (const [moduleKey, name, sortOrder] of [
-      ['hr', 'HR Module', 1],
-      ['accounts', 'Accounts Module', 2],
-      ['services', 'Services Module', 3],
-    ]) {
+    for (const [moduleKey, name, sortOrder] of MODULE_DEFINITIONS) {
       await query(
-        `INSERT IGNORE INTO modules (module_key, name, sort_order) VALUES (?, ?, ?)`,
+        `INSERT INTO modules (module_key, name, sort_order)
+         VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE name = VALUES(name), sort_order = VALUES(sort_order)`,
         [moduleKey, name, sortOrder]
       );
     }
@@ -87,9 +114,10 @@ const moduleAccessModel = {
   },
 
   async getModules() {
+    const placeholders = MANAGEABLE_MODULES.map(() => '?').join(', ');
     const rows = await query(
       `SELECT module_key, name, sort_order FROM modules
-       WHERE module_key IN (?, ?, ?)
+       WHERE module_key IN (${placeholders})
        ORDER BY sort_order`,
       MANAGEABLE_MODULES
     );
