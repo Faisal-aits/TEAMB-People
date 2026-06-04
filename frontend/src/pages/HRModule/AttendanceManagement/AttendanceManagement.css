@@ -863,3 +863,163 @@
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
 }
+
+/* Attendance management header and table controls polish */
+.attendance-management-header {
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.attendance-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.attendance-current-date {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.9rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.attendance-action-btn {
+  min-height: 40px;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.attendance-table-container {
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.attendance-table-header {
+  display: grid;
+  grid-template-columns: minmax(190px, 1fr) minmax(0, 760px);
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+}
+
+.attendance-filters {
+  display: grid;
+  grid-template-columns: minmax(205px, 230px) minmax(260px, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.attendance-filters .filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.attendance-filters .filter-group label {
+  color: #475569;
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.attendance-filters .status-filter-select,
+.attendance-filters .table-search-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  border: 1px solid #dbe3ef;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #1f2937;
+  font: inherit;
+  font-size: 0.9rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.attendance-filters .status-filter-select {
+  padding: 0 2rem 0 0.85rem;
+}
+
+.attendance-filters .table-search-input {
+  padding: 0 0.85rem;
+}
+
+.attendance-filters .status-filter-select:focus,
+.attendance-filters .table-search-input:focus {
+  outline: none;
+  border-color: #8a87c9;
+  box-shadow: 0 0 0 3px rgba(138, 135, 201, 0.14);
+}
+
+.attendance-filters .table-count-label {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4f46e5;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.attendance-main-table {
+  min-width: 980px;
+}
+
+@media (max-width: 1100px) {
+  .attendance-table-header {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 900px) {
+  .attendance-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .attendance-filters .filter-group {
+    align-items: stretch;
+  }
+
+  .attendance-filters .table-count-label {
+    justify-content: flex-start;
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .attendance-management-header {
+    align-items: stretch;
+    padding: 0;
+  }
+
+  .attendance-header-actions {
+    justify-content: flex-start;
+  }
+
+  .attendance-current-date,
+  .attendance-action-btn {
+    flex: 1 1 220px;
+  }
+
+  .attendance-table-header {
+    align-items: stretch;
+  }
+}
