@@ -213,11 +213,17 @@ const OfferLetter = ({ onEmployeeConverted }) => {
   };
 
   const getStatusBadge = (status) => {
-    switch (status) {
-      case 'Accepted': return <span className="status-badge status-active">ACCEPTED</span>;
-      case 'Rejected': return <span className="status-badge status-inactive">REJECTED</span>;
+    switch (String(status || '').toLowerCase()) {
+      case 'accepted': return <span className="status-badge status-active">ACCEPTED</span>;
+      case 'rejected': return <span className="status-badge status-inactive">REJECTED</span>;
+      case 'sent': return <span className="status-badge" style={{ background: '#3b82f6', color: 'white' }}>SENT</span>;
       default: return <span className="status-badge" style={{ background: '#f59e0b', color: 'white' }}>PENDING</span>;
     }
+  };
+
+  const canActOnOffer = (status) => {
+    const normalizedStatus = String(status || '').toLowerCase();
+    return !['accepted', 'rejected'].includes(normalizedStatus);
   };
 
   const renderPreviewHeader = () => (
@@ -273,7 +279,7 @@ const OfferLetter = ({ onEmployeeConverted }) => {
                       <button className="viewedit-btn" title="View PDF" onClick={() => handleViewPDF(offer)}>
                         <i className="fas fa-eye"></i>
                       </button>
-                      {offer.status === 'Pending' && (
+                      {canActOnOffer(offer.status) && (
                         <>
                           <button className="accept-btn" title="Accept Offer" onClick={() => handleUpdateStatus(offer.id, 'Accepted')}
                             >
