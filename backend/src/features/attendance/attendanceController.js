@@ -4,6 +4,7 @@ const Employee = require('../employee/employeeModel');
 // const FaceRecognition = require('../utils/faceRecognition');
 const Shift = require('../shift/shiftModel');
 const {pool} = require('../../config/db');
+const { getIndiaDate, getIndiaDateTime } = require('../../utils/indiaTime');
 
 
 const attendanceController = {
@@ -15,7 +16,7 @@ const attendanceController = {
 
 
             // Get today's date in the correct format
-            const today = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" }).split(' ')[0];
+            const today = getIndiaDate();
             let targetDate = date || today;
 
 
@@ -160,8 +161,8 @@ const attendanceController = {
                 return res.status(400).json({ success: false, message: 'Employee ID and type are required' });
             }
 
-            const today = date || new Date().toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" }).split(' ')[0];
-            const currentDateTime = new Date();
+            const today = date || getIndiaDate();
+            const currentDateTime = getIndiaDateTime();
             const attendanceExists = await Attendance.checkExists(req.tenantId, employee_id, today);
 
             let result;
@@ -210,7 +211,7 @@ const attendanceController = {
             }
 
             const employeeId = employees[0].id;
-            const today = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" }).split(' ')[0];
+            const today = getIndiaDate();
 
             const [attendance] = await pool.execute(
                 `SELECT a.*, DATE_FORMAT(a.check_in, '%h:%i %p') as check_in_time,
@@ -279,8 +280,8 @@ const attendanceController = {
             }
 
             const employeeId = employees[0].id;
-            const today = date || new Date().toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" }).split(' ')[0];
-            const currentDateTime = new Date();
+            const today = date || getIndiaDate();
+            const currentDateTime = getIndiaDateTime();
             const attendanceExists = await Attendance.checkExists(req.tenantId, employeeId, today);
 
             let result;
@@ -347,8 +348,8 @@ const attendanceController = {
                 return res.json({ success: false, message: `Face verification failed (${similarityPercent}% match)` });
             }
 
-            const today = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" }).split(' ')[0];
-            const currentTime = new Date();
+            const today = getIndiaDate();
+            const currentTime = getIndiaDateTime();
 
             const attendanceResult = await Attendance.create(req.tenantId, {
                 employee_id: employee.employee_id,
@@ -360,7 +361,7 @@ const attendanceController = {
             res.json({
                 success: true,
                 message: 'Attendance marked successfully!',
-                attendance: { status: attendanceResult.status, check_in_time: currentTime.toLocaleTimeString() },
+                attendance: { status: attendanceResult.status, check_in_time: currentTime.split(' ')[1] },
                 confidence: `${similarityPercent}%`
             });
         } catch (error) {
@@ -401,8 +402,8 @@ const attendanceController = {
                 return res.json({ success: false, message: 'No matching employee found' });
             }
 
-            const today = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" }).split(' ')[0];
-            const currentTime = new Date();
+            const today = getIndiaDate();
+            const currentTime = getIndiaDateTime();
 
             const attendanceResult = await Attendance.create(req.tenantId, {
                 employee_id: identifiedEmployee.employee_id,
@@ -424,8 +425,9 @@ const attendanceController = {
             const { employeeId } = req.params;
             const { month, year } = req.query;
 
-            const targetMonth = month || new Date().getMonth() + 1;
-            const targetYear = year || new Date().getFullYear();
+            const [indiaYear, indiaMonth] = getIndiaDate().split('-');
+            const targetMonth = month || Number(indiaMonth);
+            const targetYear = year || Number(indiaYear);
             const percentage = await Attendance.getMonthlyPercentage(req.tenantId, employeeId, targetMonth, targetYear);
 
             res.json({ success: true, attendance_percentage: percentage });
@@ -441,8 +443,9 @@ const attendanceController = {
             const { employeeId } = req.params;
             let { month, year } = req.query;
 
-            const targetMonth = month || new Date().getMonth() + 1;
-            const targetYear = year || new Date().getFullYear();
+            const [indiaYear, indiaMonth] = getIndiaDate().split('-');
+            const targetMonth = month || Number(indiaMonth);
+            const targetYear = year || Number(indiaYear);
             const summary = await Attendance.getMonthlyAttendanceSummary(req.tenantId, employeeId, parseInt(targetMonth), parseInt(targetYear));
 
             res.json({ success: true, summary });
@@ -456,7 +459,7 @@ const attendanceController = {
     markAbsent: async (req, res) => {
         try {
             const userId = req.user.id;
-            const today = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" }).split(' ')[0];
+            const today = getIndiaDate();
 
             const employee = await Employee.getByUserId(req.tenantId, userId);
             if (!employee || !employee.employee_id) {
@@ -506,8 +509,8 @@ const attendanceController = {
                 targetEmployeeId = employee.employee_id;
             }
 
-            const today = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" }).split(' ')[0];
-            const checkOutTime = check_out_time || new Date();
+            const today = getIndiaDate();
+            const checkOutTime = check_out_time || getIndiaDateTime();
             const result = await Attendance.updateCheckOut(req.tenantId, targetEmployeeId, today, checkOutTime, latitude, longitude);
 
             res.json({ success: true, message: 'Check-out successful', attendance: result });

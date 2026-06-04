@@ -549,7 +549,7 @@
     position: relative;
 }
 
-.holiday-container .modal-header::before {
+/* .holiday-container .modal-header::before {
     content: "";
     position: absolute;
     left: 0;
@@ -557,7 +557,7 @@
     bottom: 0;
     width: 4px;
     background: var(--primary-color);
-}
+} */
 
 .holiday-container .modal-header h3 {
     margin: 0;
