@@ -75,7 +75,7 @@
 .travel-login-container .form-wrapper {
   width: 100%;
   max-width: 28rem;
-  /* background: rgba(12, 18, 36, 0.62); */
+  background: #030303b3;
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   border-radius: 16px;
