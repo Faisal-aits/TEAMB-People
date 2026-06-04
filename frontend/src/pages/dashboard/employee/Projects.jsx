@@ -571,7 +571,7 @@ const getGroupedTasks = (tasksList) => {
     }
   }, [isTaskModalOpen, selectedProject]);
 
-  const loadTeamMembers = async (teamId) => {
+  async function loadTeamMembers(teamId) {
     try {
       setLoadingTeamMembers(true);
       const response = await projectAPI.getTeamMembers(teamId);
@@ -607,9 +607,9 @@ const getGroupedTasks = (tasksList) => {
     } finally {
       setLoadingTeamMembers(false);
     }
-  };
+  }
 
-  const fetchAllData = async () => {
+  async function fetchAllData() {
     try {
       setLoading(true);
       const isHrUser = currentUser.role === 'hr';
@@ -695,7 +695,7 @@ const getGroupedTasks = (tasksList) => {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   // Get filtered data based on user role
   const getUserProjects = () => {
