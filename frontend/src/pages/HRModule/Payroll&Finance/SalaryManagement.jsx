@@ -544,6 +544,9 @@ const SalaryManagement = () => {
                             </button>
                        
                     </div>
+                    <div className="salary-results-summary">
+                        <span className="table-count-label">{visibleSalaries.length} of {filteredByStatus.length}</span>
+                    </div>
                 </div>
                 
                 
@@ -557,7 +560,6 @@ const SalaryManagement = () => {
                         </div>
                     ) : (
                         <>
-                            <div className="table-count-label">{visibleSalaries.length} of {filteredByStatus.length}</div>
                             <table className="salary-table">
                                 <thead>
                                     <tr>
