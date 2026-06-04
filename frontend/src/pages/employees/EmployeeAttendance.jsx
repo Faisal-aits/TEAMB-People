@@ -805,7 +805,7 @@ const EmployeeAttendance = () => {
   };
 
   return (
-    <div className="dashboard-main">
+    <div className="dashboard-main employee-attendance-main">
       {/* Tab Buttons */}
       <div className="view-tabs">
         <button
