@@ -42,6 +42,8 @@ const OfferLetter = ({ onEmployeeConverted }) => {
   const [acceptFormData, setAcceptFormData] = useState({ employee_id: '', department_id: '', employment_type: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [departments, setDepartments] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
 
   const [formData, setFormData] = useState({
     issueDate: new Date().toISOString().slice(0, 10),
@@ -73,6 +75,7 @@ const OfferLetter = ({ onEmployeeConverted }) => {
       setLoading(true);
       const response = await offerLetterAPI.getAll();
       setOfferLetters(response.data.data || []);
+      setCurrentPage(1);
     } catch (error) {
       console.error('Failed to load offer letters:', error);
     } finally {
@@ -93,6 +96,20 @@ const OfferLetter = ({ onEmployeeConverted }) => {
     loadOfferLetters();
     loadDepartments();
   }, [loadOfferLetters]);
+
+  const totalPages = Math.ceil(offerLetters.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentOfferLetters = offerLetters.slice(indexOfFirstItem, indexOfLastItem);
+  const pageNumbers = Array.from({ length: totalPages }, (_, index) => index + 1);
+
+  const goToPrevPage = () => {
+    setCurrentPage((page) => Math.max(1, page - 1));
+  };
+
+  const goToNextPage = () => {
+    setCurrentPage((page) => Math.min(totalPages, page + 1));
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -256,6 +273,7 @@ const OfferLetter = ({ onEmployeeConverted }) => {
               <p className="no-data-subtext">Generate an offer letter to see it here.</p>
             </div>
           ) : (
+            <>
             <table className="employee-table">
               <thead>
                 <tr>
@@ -268,7 +286,7 @@ const OfferLetter = ({ onEmployeeConverted }) => {
                 </tr>
               </thead>
               <tbody>
-                {offerLetters.map((offer) => (
+                {currentOfferLetters.map((offer) => (
                   <tr key={offer.id}>
                     <td>{offer.candidate_name || offer.form_data?.fullName}</td>
                     <td>{offer.candidate_email || offer.form_data?.email}</td>
@@ -296,6 +314,41 @@ const OfferLetter = ({ onEmployeeConverted }) => {
                 ))}
               </tbody>
             </table>
+            {totalPages > 1 && (
+              <>
+                <div className="pagination">
+                  <button
+                    onClick={goToPrevPage}
+                    disabled={currentPage === 1}
+                    className="pagination-btn"
+                  >
+                    <i className="fas fa-chevron-left"></i> Previous
+                  </button>
+                  <div className="pagination-numbers">
+                    {pageNumbers.map((number) => (
+                      <button
+                        key={number}
+                        onClick={() => setCurrentPage(number)}
+                        className={`pagination-number ${currentPage === number ? 'active' : ''}`}
+                      >
+                        {number}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={goToNextPage}
+                    disabled={currentPage === totalPages}
+                    className="pagination-btn"
+                  >
+                    Next <i className="fas fa-chevron-right"></i>
+                  </button>
+                </div>
+                <div className="pagination-info">
+                  Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, offerLetters.length)} of {offerLetters.length} offer letters
+                </div>
+              </>
+            )}
+            </>
           )}
         </div>
       </div>
