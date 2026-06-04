@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './Attendance.css';
-import { attendanceAPI } from '../../../services/attendanceAPI';
+import { attendanceAPI, getIndiaDate } from '../../../services/attendanceAPI';
 
 const AttendanceTable = () => {
   const [attendance, setAttendance] = useState([]);
@@ -9,7 +9,7 @@ const AttendanceTable = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState('All');
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
+    date: getIndiaDate(),
     checkIn: '',
     checkOut: '',
   });
@@ -315,7 +315,7 @@ const AttendanceTable = () => {
 
       const attendanceData = {
         type: 'check_in',
-        date: new Date().toISOString().split('T')[0],
+        date: getIndiaDate(),
         pin: pin
       };
 
@@ -391,7 +391,7 @@ const AttendanceTable = () => {
       setIsModalOpen(false);
 
       setFormData({
-        date: new Date().toISOString().split('T')[0],
+        date: getIndiaDate(),
         checkIn: '',
         checkOut: '',
       });
@@ -406,7 +406,7 @@ const AttendanceTable = () => {
       console.error('❌ Error marking attendance:', err);
       setIsModalOpen(false);
       setFormData({
-        date: new Date().toISOString().split('T')[0],
+        date: getIndiaDate(),
         checkIn: '',
         checkOut: '',
       });
@@ -459,7 +459,7 @@ const AttendanceTable = () => {
     try {
       const attendanceData = {
         type: type,
-        date: new Date().toISOString().split('T')[0]
+        date: getIndiaDate()
       };
 
 
@@ -553,8 +553,8 @@ const AttendanceTable = () => {
           <h3>Face Verified Today</h3>
           <p className="stat-number">
             {attendance.filter(record => {
-              const today = new Date().toISOString().split('T')[0];
-              const recordDate = new Date(record.date).toISOString().split('T')[0];
+              const today = getIndiaDate();
+              const recordDate = typeof record.date === 'string' ? record.date.split('T')[0] : '';
               return recordDate === today &&
                 record.remarks && record.remarks.includes('Face');
             }).length}

@@ -684,7 +684,7 @@ getByEmployeeAndDate: async (tenantId, employeeId, date) => {
                 let finalStatus = status;
                 if (status === 'Present') {
                     const checkInDateTime = new Date(checkInTime);
-                    const shiftTime = new Date();
+                    const shiftTime = new Date(today);
                     const [hours, minutes] = shiftCheckInTime.split(':');
                     shiftTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
                     
@@ -727,9 +727,9 @@ getByEmployeeAndDate: async (tenantId, employeeId, date) => {
         // Get monthly percentage
         getMonthlyPercentage: async (tenantId, employeeId, month = null, year = null) => {
             try {
-                const currentDate = new Date();
-                const targetMonth = month || currentDate.getMonth() + 1;
-                const targetYear = year || currentDate.getFullYear();
+                const [indiaYear, indiaMonth] = getIndiaDate().split('-');
+                const targetMonth = month || Number(indiaMonth);
+                const targetYear = year || Number(indiaYear);
                 
                 const query = `
                     SELECT 

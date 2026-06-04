@@ -14,7 +14,7 @@ import {
   HiOutlineUsers
 } from 'react-icons/hi2';
 import { MODULE_DEFAULT_TAB } from '../../contexts/ModuleAccessContext';
-import { attendanceAPI } from '../../services/attendanceAPI';
+import { attendanceAPI, getIndiaDate } from '../../services/attendanceAPI';
 import { employeeAPI } from '../../services/employeeAPI';
 import { expenseAPI } from '../../services/expenseAPI';
 import experienceLetterAPI from '../../services/experienceLetterAPI';
@@ -303,7 +303,7 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
       try {
         const attendanceData = {
           type,
-          date: new Date().toISOString().split('T')[0],
+          date: getIndiaDate(),
           ...location,
         };
         await attendanceAPI.markMyAttendance(attendanceData);

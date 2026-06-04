@@ -1,6 +1,6 @@
 // src/pages/employees/EmployeeAttendance.jsx
 import React, { useState, useEffect } from 'react';
-import { attendanceAPI } from '../../services/attendanceAPI';
+import { attendanceAPI, getIndiaDate } from '../../services/attendanceAPI';
 import { leaveAPI } from '../../services/leaveAPI';
 import * as XLSX from 'xlsx';
 import { useTableControls } from '../../hooks/useTableControls';
@@ -91,7 +91,7 @@ const EmployeeAttendance = () => {
       try {
         const attendanceData = {
           type: type,
-          date: new Date().toISOString().split('T')[0],
+          date: getIndiaDate(),
           ...location
         };
         const response = await attendanceAPI.markMyAttendance(attendanceData);
