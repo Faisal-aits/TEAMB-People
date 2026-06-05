@@ -18,6 +18,7 @@ import DeliveryManagement from '../../pages/Accounts/DeliveryChallan';
 import ExpenseManagement from '../../pages/Accounts/ExpenseManagement';
 import QuotationManagement from '../../pages/Accounts/QuotationManagement';
 import ServiceManagement from '../../pages/services/ServiceManagement';
+import PTTMContainer from '../../pages/PTTM/PTTMContainer';
 import EmployeeAttendance from '../../pages/employees/EmployeeAttendance';
 import EmployeePersonalInfo from '../../pages/employees/EmployeePersonalInfo';
 import EmployeeLeave from '../../pages/employees/EmployeeLeave';
@@ -43,6 +44,7 @@ const UserModuleContent = ({ activeTab, navigateToTab, DashboardComponent }) => 
   const canAccessExpenseManagement = hasModuleAccess(user, 'expense_management');
   const canAccessQuotationManagement = hasModuleAccess(user, 'quotation_management');
   const canAccessServiceManagement = hasModuleAccess(user, 'service_management');
+  const canAccessPttm = hasModuleAccess(user, 'pttm');
   const canAccessEmployeeAttendance = hasModuleAccess(user, 'employee_attendance');
   const canAccessEmployeeLeave = hasModuleAccess(user, 'employee_attendance');
   const canAccessEmployeeExpense = hasModuleAccess(user, 'employee_expense');
@@ -71,6 +73,7 @@ const UserModuleContent = ({ activeTab, navigateToTab, DashboardComponent }) => 
       {activeTab === 'service' && canAccessServiceManagement && (
         <ServiceManagement initialTab="services" />
       )}
+      {activeTab === 'pttm' && canAccessPttm && <PTTMContainer />}
       {activeTab === 'personal-info' && (
         <EmployeePersonalInfo />
       )}
