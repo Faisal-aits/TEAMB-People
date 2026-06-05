@@ -191,9 +191,9 @@ const Leave = {
 
             // 3. Insert leave request
             const [result] = await connection.execute(
-                `INSERT INTO leave_requests (tenant_id, employee_id, leave_type, description, start_date, end_date, status) 
-                 VALUES (?, ?, ?, ?, ?, ?, 'Pending')`,
-                [tenantId, employee_id, leave_type, description, start_date, end_date]
+                `INSERT INTO leave_requests (tenant_id, employee_id, leave_type, description, start_date, end_date, medical_document, status) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, 'Pending')`,
+                [tenantId, employee_id, leave_type, description, start_date, end_date, leaveData.medical_document || null]
             );
 
             // 4. Update pending balance
@@ -233,7 +233,8 @@ const Leave = {
                     lr.approved_by,
                     lr.approved_at,
                     lr.created_at,
-                    lr.updated_at
+                    lr.updated_at,
+                    CASE WHEN lr.medical_document IS NOT NULL THEN 1 ELSE 0 END as has_document
                 FROM leave_requests lr
                 WHERE lr.employee_id = ? AND lr.tenant_id = ?
                 ORDER BY lr.created_at DESC
@@ -264,7 +265,8 @@ const Leave = {
                     lr.status,
                     lr.approved_by,
                     DATE_FORMAT(lr.approved_at, '%Y-%m-%d %h:%i %p') as approved_at,
-                    lr.created_at
+                    lr.created_at,
+                    CASE WHEN lr.medical_document IS NOT NULL THEN 1 ELSE 0 END as has_document
                 FROM leave_requests lr
                 JOIN employee_details ed ON lr.employee_id = ed.id
                 JOIN users u ON ed.employee_id = u.id
