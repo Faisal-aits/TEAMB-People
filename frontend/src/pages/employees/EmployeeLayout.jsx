@@ -76,16 +76,27 @@ const EmployeeLayout = () => {
   const [employeeExpenseModuleOpen, setEmployeeExpenseModuleOpen] = useState(false);
 const [attendanceDropdownOpen, setAttendanceDropdownOpen] = useState(false);
 const [showAttendanceMenu, setShowAttendanceMenu] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, logout, checkAuthStatus } = useAuth();
 
   const canAccessHr = hasModuleAccess(user, 'hr');
   const canAccessAccounts = hasModuleAccess(user, 'accounts');
   const canAccessServices = hasModuleAccess(user, 'services');
+  const canAccessPttm = hasModuleAccess(user, 'pttm');
   const canAccessEmployeeAttendance = hasModuleAccess(user, 'employee_attendance');
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, activeTab);
   }, [activeTab]);
+
+  useEffect(() => {
+    checkAuthStatus();
+
+    const refreshAccessOnFocus = () => {
+      checkAuthStatus();
+    };
+    window.addEventListener('focus', refreshAccessOnFocus);
+    return () => window.removeEventListener('focus', refreshAccessOnFocus);
+  }, []);
 
   useEffect(() => {
     const moduleKey = TAB_TO_MODULE[activeTab];
@@ -330,6 +341,15 @@ useEffect(() => {
                         </li>
                       </ul>
                     )}
+                  </li>
+                )}
+
+                {canAccessPttm && (
+                  <li className={activeTab === 'pttm' ? 'active' : ''}>
+                    <button type="button" onClick={() => navigateToTab('pttm')}>
+                      <span className="nav-icon"><ManageIcon /></span>
+                      {sidebarOpen && <span className="nav-text">PTTM</span>}
+                    </button>
                   </li>
                 )}
 
