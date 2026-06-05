@@ -8,8 +8,21 @@ import './EmployeeLeave.css';
 
 const LEAVE_SEARCH_FIELDS = ['created_at', 'description', 'start_date', 'end_date', 'total_days', 'status', 'leave_id'];
 
+// Leave types that require/recommend a medical certificate
+const MEDICAL_LEAVE_TYPES = ['Sick', 'Maternity'];
+
+const LEAVE_TYPES = [
+  { value: 'Casual', label: 'Casual Leave' },
+  { value: 'Sick', label: 'Sick Leave (Medical Certificate recommended)' },
+  { value: 'Maternity', label: 'Maternity Leave (Medical Certificate required)' },
+  { value: 'Earned', label: 'Earned / Privilege Leave' },
+  { value: 'Unpaid', label: 'Unpaid Leave' },
+  { value: 'Compensatory', label: 'Compensatory Leave' },
+];
+
 const EmployeeLeave = () => {
   const [leaves, setLeaves] = useState([]);
+  const [balances, setBalances] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [leaveLoading, setLeaveLoading] = useState(true);
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
@@ -17,10 +30,15 @@ const EmployeeLeave = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [leaveFormData, setLeaveFormData] = useState({
+    leave_type: 'Casual',
     description: '',
     start_date: '',
     end_date: '',
   });
+
+  // For file upload
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [fileError, setFileError] = useState('');
 
   // ==================== LEAVE FUNCTIONS ====================
   const loadCurrentEmployeeData = async () => {
@@ -42,16 +60,31 @@ const EmployeeLeave = () => {
   const loadMyLeaves = async () => {
     try {
       setLeaveLoading(true);
-      const response = await leaveAPI.getMyLeaves();
-      setLeaves(response.data.leaves || []);
-      if (response.data.employee_id) {
-        setCurrentUser(prev => ({
-          ...prev,
-          employee_id: response.data.employee_id
-        }));
+      
+      // Fetch leaves
+      try {
+        const response = await leaveAPI.getMyLeaves();
+        setLeaves(response.data.leaves || []);
+        if (response.data.employee_id) {
+          setCurrentUser(prev => ({
+            ...prev,
+            employee_id: response.data.employee_id
+          }));
+        }
+      } catch (err) {
+        console.error('Error loading leaves:', err);
       }
+      
+      // Fetch balances
+      try {
+        const response = await leaveAPI.getMyBalances();
+        setBalances(response.data.balances || []);
+      } catch (err) {
+        console.error('Error loading balances:', err);
+      }
+      
     } catch (error) {
-      console.error('Error loading my leaves:', error);
+      console.error('Error loading my leaves data:', error);
       alert('Error loading your leave data. Please try again.');
     } finally {
       setLeaveLoading(false);
@@ -64,6 +97,42 @@ const EmployeeLeave = () => {
       ...prev,
       [name]: value
     }));
+
+    // Clear file if switching away from medical leave type
+    if (name === 'leave_type' && !MEDICAL_LEAVE_TYPES.includes(value)) {
+      setSelectedFile(null);
+      setFileError('');
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    setFileError('');
+
+    if (!file) {
+      setSelectedFile(null);
+      return;
+    }
+
+    const allowedTypes = [
+      'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'
+    ];
+    if (!allowedTypes.includes(file.type)) {
+      setFileError('Only JPEG, PNG, GIF, WebP images or PDF files are allowed.');
+      setSelectedFile(null);
+      e.target.value = '';
+      return;
+    }
+
+    const maxSize = 10 * 1024 * 1024; // 10 MB
+    if (file.size > maxSize) {
+      setFileError('File size must not exceed 10 MB.');
+      setSelectedFile(null);
+      e.target.value = '';
+      return;
+    }
+
+    setSelectedFile(file);
   };
 
   const handleLeaveSubmit = async (e) => {
@@ -84,28 +153,47 @@ const EmployeeLeave = () => {
       return;
     }
 
+    if (fileError) {
+      alert('Please fix the file error before submitting.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      const leaveData = {
-        description: leaveFormData.description,
-        start_date: leaveFormData.start_date,
-        end_date: leaveFormData.end_date
-      };
+      let payload;
+      if (selectedFile) {
+        payload = new FormData();
+        payload.append('leave_type', leaveFormData.leave_type);
+        payload.append('description', leaveFormData.description);
+        payload.append('start_date', leaveFormData.start_date);
+        payload.append('end_date', leaveFormData.end_date);
+        payload.append('medical_document', selectedFile);
+      } else {
+        payload = {
+          leave_type: leaveFormData.leave_type,
+          description: leaveFormData.description,
+          start_date: leaveFormData.start_date,
+          end_date: leaveFormData.end_date
+        };
+      }
       
-      await leaveAPI.create(leaveData);
+      await leaveAPI.create(payload);
       
       setLeaveFormData({
+        leave_type: 'Casual',
         description: '',
         start_date: '',
         end_date: '',
       });
+      setSelectedFile(null);
+      setFileError('');
       
       setIsLeaveModalOpen(false);
       await loadMyLeaves();
       alert('Leave request submitted successfully!');
     } catch (error) {
-      console.error('? Error submitting leave request:', error);
+      console.error('❌ Error submitting leave request:', error);
       const errorMessage = error.response?.data?.message || 'Error submitting leave request. Please try again.';
       alert(errorMessage);
     } finally {
@@ -227,6 +315,53 @@ const EmployeeLeave = () => {
         </div>
       )}
 
+      {/* Leave Balances Section */}
+      {balances && balances.length > 0 && (
+        <div className="leave-balances-container">
+          <div className="leave-balances-header-compact">
+            <h3 className="leave-balances-title-compact">Remaining Leaves</h3>
+          </div>
+          <div className="leave-balances-grid-compact">
+            {balances.map((bal) => {
+              const allocated = bal.allocated || 0;
+              const used = bal.used || 0;
+              const pending = bal.pending || 0;
+              const remaining = bal.remaining || 0;
+              const totalTaken = used + pending;
+              const progressPercent = allocated > 0 ? Math.min(100, (totalTaken / allocated) * 100) : 0;
+              
+              let cardThemeClass = 'theme-casual';
+              if (bal.leave_type.toLowerCase().includes('sick')) cardThemeClass = 'theme-sick';
+              else if (bal.leave_type.toLowerCase().includes('maternity')) cardThemeClass = 'theme-maternity';
+              else if (bal.leave_type.toLowerCase().includes('earned')) cardThemeClass = 'theme-earned';
+              else if (bal.leave_type.toLowerCase().includes('unpaid')) cardThemeClass = 'theme-unpaid';
+              else if (bal.leave_type.toLowerCase().includes('compensatory')) cardThemeClass = 'theme-compensatory';
+
+              return (
+                <div key={bal.leave_type} className={`leave-balance-card-compact ${cardThemeClass}`} title={`Allocated: ${allocated} | Used: ${used} | Pending: ${pending}`}>
+                  <div className="leave-balance-card-left">
+                    <span className="leave-balance-type-compact">{bal.leave_type}</span>
+                    <span className="leave-balance-progress-text-compact">
+                      {totalTaken} of {allocated} used
+                    </span>
+                  </div>
+                  <div className="leave-balance-card-right">
+                    <span className="leave-balance-remaining-num-compact">{remaining}</span>
+                    <span className="leave-balance-remaining-label-compact">days left</span>
+                  </div>
+                  <div className="leave-balance-progress-bar-compact">
+                    <div 
+                      className="leave-balance-progress-fill-compact" 
+                      style={{ width: `${progressPercent}%` }}
+                    ></div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="leave-table-container glass-form-leave">
         <div className="leave-table-header">
           <h3 className="leave-table-title">My Leave Requests</h3>
@@ -256,6 +391,7 @@ const EmployeeLeave = () => {
             <thead>
               <tr>
                 <th className="leave-th-date">Applied Date</th>
+                <th className="leave-th-type">Leave Type</th>
                 <th className="leave-th-description">Description</th>
                 <th className="leave-th-from">From Date</th>
                 <th className="leave-th-to">To Date</th>
@@ -269,6 +405,14 @@ const EmployeeLeave = () => {
                 <tr key={leave.leave_id} className="leave-table-row">
                   <td className="leave-td-date">
                     <div className="leave-date-cell">{formatDate(leave.created_at)}</div>
+                  </td>
+                  <td className="leave-td-type">
+                    <div className="leave-type-cell">
+                      {leave.leave_type || 'Casual'}
+                      {leave.has_document ? (
+                        <span className="leave-doc-badge" title="Medical document attached" style={{ marginLeft: '6px' }}>📎</span>
+                      ) : null}
+                    </div>
                   </td>
                   <td className="leave-td-description">
                     <div className="leave-description-cell">{leave.description}</div>
@@ -361,6 +505,23 @@ const EmployeeLeave = () => {
                 </small>
               </div>
 
+              {/* Leave Type Select */}
+              <div className="leave-form-group">
+                <label htmlFor="leave-type-select" className="leave-form-label">Leave Type *</label>
+                <select
+                  id="leave-type-select"
+                  name="leave_type"
+                  value={leaveFormData.leave_type}
+                  onChange={handleLeaveInputChange}
+                  required
+                  className="leave-form-select"
+                >
+                  {LEAVE_TYPES.map(lt => (
+                    <option key={lt.value} value={lt.value}>{lt.label}</option>
+                  ))}
+                </select>
+              </div>
+
               <div className="leave-form-group">
                 <label className="leave-form-label">Description *</label>
                 <input
@@ -414,6 +575,50 @@ const EmployeeLeave = () => {
                     disabled
                     className="leave-disabled-input"
                   />
+                </div>
+              )}
+
+              {/* Medical Document Upload — shown only for Sick / Maternity */}
+              {MEDICAL_LEAVE_TYPES.includes(leaveFormData.leave_type) && (
+                <div className="leave-form-group">
+                  <label htmlFor="leave-medical-doc" className="leave-form-label">
+                    Medical Certificate
+                    {leaveFormData.leave_type === 'Maternity' ? ' *' : ' (recommended)'}
+                  </label>
+                  <div className="leave-file-upload-wrapper">
+                    <input
+                      id="leave-medical-doc"
+                      type="file"
+                      accept="image/jpeg,image/png,image/gif,image/webp,application/pdf"
+                      onChange={handleFileChange}
+                      className="leave-file-input"
+                    />
+                    {selectedFile && (
+                      <div className="leave-file-selected">
+                        <span>📎 {selectedFile.name}</span>
+                        <span className="leave-file-size">
+                          ({(selectedFile.size / 1024).toFixed(1)} KB)
+                        </span>
+                        <button
+                          type="button"
+                          className="leave-file-remove-btn"
+                          onClick={() => {
+                            setSelectedFile(null);
+                            document.getElementById('leave-medical-doc').value = '';
+                          }}
+                          title="Remove file"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
+                    {fileError && (
+                      <p className="leave-file-error">{fileError}</p>
+                    )}
+                    <small className="leave-helper-text">
+                      Accepted formats: JPEG, PNG, GIF, WebP, PDF &bull; Max size: 10 MB
+                    </small>
+                  </div>
                 </div>
               )}
 

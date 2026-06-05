@@ -46,8 +46,9 @@ export const leaveAPI = {
   // leaveData can be a plain object or FormData (when a file is attached)
   create: (leaveData) => {
     if (leaveData instanceof FormData) {
-      // Let the axios interceptor strip Content-Type so the browser sets multipart boundary
-      return api.post('/leaves', leaveData);
+      return api.post('/leaves', leaveData, {
+        headers: { 'Content-Type': undefined }
+      });
     }
     return api.post('/leaves', leaveData);
   },
