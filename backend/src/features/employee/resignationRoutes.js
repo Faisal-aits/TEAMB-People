@@ -4,6 +4,7 @@ const router = express.Router();
 const resignationController = require('./resignationController');
 const authMiddleware = require('../../middleware/auth.middleware');
 const tenantMiddleware = require('../../middleware/tenantMiddleware');
+const requireAdmin = require('../../middleware/requireAdmin');
 
 // All routes require authentication and tenant context
 router.use(authMiddleware.verifyToken);
@@ -18,15 +19,15 @@ router.post('/', resignationController.submitRequest);
 router.get('/my', resignationController.getMyRequests);
 
 // GET /api/resignation-requests - HR/Admin views all requests (ADMIN/HR ONLY)
-router.get('/',authMiddleware.verifyToken, resignationController.getAllRequests);
+router.get('/', requireAdmin, resignationController.getAllRequests);
 
 // GET /api/resignation-requests/:id - View specific request (ADMIN/HR)
-router.get('/:id', resignationController.getRequestById);
+router.get('/:id', requireAdmin, resignationController.getRequestById);
 
 // PUT /api/resignation-requests/:id/accept - HR/Admin accepts resignation (ADMIN/HR ONLY)
-router.put('/:id/accept', authMiddleware.verifyToken, resignationController.uploadPDFMiddleware, resignationController.acceptRequest);
+router.put('/:id/accept', requireAdmin, resignationController.uploadPDFMiddleware, resignationController.acceptRequest);
 
 // PUT /api/resignation-requests/:id/reject - HR/Admin rejects resignation (ADMIN/HR ONLY)
-router.put('/:id/reject', authMiddleware.verifyToken, resignationController.rejectRequest);
+router.put('/:id/reject', requireAdmin, resignationController.rejectRequest);
 
 module.exports = router;

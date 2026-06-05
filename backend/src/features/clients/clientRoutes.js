@@ -2,9 +2,11 @@ const express = require('express');
 const router = express.Router();
 const clientController = require('./clientController');
 const { verifyToken } = require('../../middleware/auth.middleware');
+const requireAdmin = require('../../middleware/requireAdmin');
 
 // All routes require authentication
 router.use(verifyToken);
+router.use(requireAdmin);
 
 // GET /api/clients
 router.get('/', clientController.getAllClients);

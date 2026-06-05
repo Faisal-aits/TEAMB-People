@@ -2,11 +2,13 @@
 const express = require('express');
 const shiftController = require('./shiftController');
 const authMiddleware = require('../../middleware/auth.middleware');
+const requireAdmin = require('../../middleware/requireAdmin');
 
 const router = express.Router();
 
 // All routes require authentication
 router.use(authMiddleware.verifyToken);
+router.use(requireAdmin);
 
 // GET /api/shifts - Get all shifts
 router.get('/', shiftController.getAllShifts);

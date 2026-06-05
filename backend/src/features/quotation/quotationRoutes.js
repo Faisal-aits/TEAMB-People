@@ -2,11 +2,13 @@
 const express = require('express');
 const quotationController = require('./quotationController');
 const authMiddleware = require('../../middleware/auth.middleware');
+const requireAdmin = require('../../middleware/requireAdmin');
 
 const router = express.Router();
 
 // All routes are protected
 router.use(authMiddleware.verifyToken);
+router.use(requireAdmin);
 
 // GET /api/quotations - Get all quotations
 router.get('/', quotationController.getAllQuotations);

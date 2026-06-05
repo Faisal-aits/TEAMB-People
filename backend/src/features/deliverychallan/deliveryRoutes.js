@@ -2,11 +2,13 @@
 const express = require('express');
 const deliveryController = require('./deliveryController');
 const authMiddleware = require('../../middleware/auth.middleware');
+const requireAdmin = require('../../middleware/requireAdmin');
 
 const router = express.Router();
 
 // All routes are protected
 router.use(authMiddleware.verifyToken);
+router.use(requireAdmin);
 
 // GET /api/delivery/challans - Get all delivery challans
 router.get('/challans', deliveryController.getAllChallans);

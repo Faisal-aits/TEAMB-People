@@ -5,6 +5,7 @@ const Attendance = require('./attendanceModel');
 const { pool } = require('../../config/db');
 const attendanceController = require('./attendanceController');
 const authMiddleware = require('../../middleware/auth.middleware');
+const requireAdmin = require('../../middleware/requireAdmin');
 // const AutoAbsentService = require('../services/autoAbsentService');
 const router = express.Router();
 
@@ -28,25 +29,25 @@ router.use(authMiddleware.verifyToken);
 // ==================== EXISTING ROUTES ====================
 
 // GET /api/attendance - Get all attendance records
-router.get('/', attendanceController.getAllAttendance);
+router.get('/', requireAdmin, attendanceController.getAllAttendance);
 
 // GET /api/attendance/shifts - Get all shifts
-router.get('/shifts', attendanceController.getShifts);
+router.get('/shifts', requireAdmin, attendanceController.getShifts);
 
 // GET /api/attendance/stats - Get attendance statistics
-router.get('/stats', attendanceController.getAttendanceStats);
+router.get('/stats', requireAdmin, attendanceController.getAttendanceStats);
 
 // GET /api/attendance/history/:employeeId - Get employee attendance history
-router.get('/history/:employeeId', attendanceController.getEmployeeHistory);
+router.get('/history/:employeeId', requireAdmin, attendanceController.getEmployeeHistory);
 
 // POST /api/attendance/:attendanceId/approve - Approve attendance
-router.post('/:attendanceId/approve', attendanceController.approveAttendance);
+router.post('/:attendanceId/approve', requireAdmin, attendanceController.approveAttendance);
 
 // POST /api/attendance/:attendanceId/reject - Reject attendance (mark as leave)
-router.post('/:attendanceId/reject', attendanceController.rejectAttendance);
+router.post('/:attendanceId/reject', requireAdmin, attendanceController.rejectAttendance);
 
 // POST /api/attendance/mark - Manual attendance marking
-router.post('/mark', attendanceController.markAttendance);
+router.post('/mark', requireAdmin, attendanceController.markAttendance);
 
 // ==================== EMPLOYEE-SPECIFIC ROUTES ====================
 
@@ -63,14 +64,14 @@ router.post('/my/mark', attendanceController.markMyAttendance);
 
 // POST /api/attendance/identify-and-mark - Face detection and automatic attendance
 router.post('/verify-my-face', upload.single('faceImage'), attendanceController.verifyMyFaceAndMarkAttendance);
-router.post('/identify-and-mark', upload.single('faceImage'), attendanceController.identifyAndMarkAttendance);
+router.post('/identify-and-mark', requireAdmin, upload.single('faceImage'), attendanceController.identifyAndMarkAttendance);
 
 
 // In your attendanceRoutes.js file, add this route
-router.get('/percentage/:employeeId', attendanceController.getEmployeeAttendancePercentage);
+router.get('/percentage/:employeeId', requireAdmin, attendanceController.getEmployeeAttendancePercentage);
 
 // POST /api/attendance/mark-absent - Manually trigger absent marking (for testing/admin)
-router.post('/mark-absent', async (req, res) => {
+router.post('/mark-absent', requireAdmin, async (req, res) => {
   try {
     const result = await AutoAbsentService.markAbsentForToday();
     res.json({
@@ -88,7 +89,7 @@ router.post('/mark-absent', async (req, res) => {
 });
 // Get monthly attendance summary for salary calculation
 router.get('/summary/:employeeId',
-  authMiddleware.verifyToken,
+  requireAdmin,
   attendanceController.getMonthlyAttendanceSummary
 );
 module.exports = router;

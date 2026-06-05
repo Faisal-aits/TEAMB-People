@@ -2,29 +2,33 @@ const express = require('express');
 const router = express.Router();
 const serviceController = require('./serviceController');
 const { verifyToken } = require('../../middleware/auth.middleware');
+const requireAdmin = require('../../middleware/requireAdmin');
+
+router.use(verifyToken);
+router.use(requireAdmin);
 
 // GET /api/services
-router.get('/', verifyToken, serviceController.getAllServices);
+router.get('/', serviceController.getAllServices);
 
 // GET /api/services/types
-router.get('/types', verifyToken, serviceController.getServiceTypes);
+router.get('/types', serviceController.getServiceTypes);
 
 // GET /api/services/status
-router.get('/status', verifyToken, serviceController.getStatusTypes);
+router.get('/status', serviceController.getStatusTypes);
 
 // GET /api/services/:id
-router.get('/:id', verifyToken, serviceController.getServiceById);
+router.get('/:id', serviceController.getServiceById);
 
 // POST /api/services
-router.post('/', verifyToken, serviceController.createService);
+router.post('/', serviceController.createService);
 
 // PUT /api/services/:id
-router.put('/:id', verifyToken, serviceController.updateService);
+router.put('/:id', serviceController.updateService);
 
 // DELETE /api/services/:id
-router.delete('/:id', verifyToken, serviceController.deleteService);
+router.delete('/:id', serviceController.deleteService);
 
 // POST /api/services/:id/assign
-router.post('/:id/assign', verifyToken, serviceController.assignTeam);
+router.post('/:id/assign', serviceController.assignTeam);
 
 module.exports = router;

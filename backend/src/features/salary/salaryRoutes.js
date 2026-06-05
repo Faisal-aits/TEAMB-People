@@ -6,6 +6,7 @@ const router = express.Router();
 const salaryController = require('./salaryController');
 const holidayController = require('./holidayController');
 const authMiddleware = require('../../middleware/auth.middleware');
+const requireAdmin = require('../../middleware/requireAdmin');
 
 const setTenantId = (req, res, next) => {
     req.tenantId = req.user?.tenant_id || req.headers['x-tenant-id'] || 1;
@@ -13,6 +14,7 @@ const setTenantId = (req, res, next) => {
 };
 
 router.use(authMiddleware.verifyToken);
+router.use(requireAdmin);
 router.use(setTenantId);
 
 // ==================== HOLIDAY ROUTES ====================

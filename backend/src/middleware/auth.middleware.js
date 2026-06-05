@@ -13,7 +13,13 @@ const verifyToken = (req, res, next) => {
   
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'arham_simple_secret_2023');
+    const role = decoded.role || decoded.position || decoded.role_name;
     req.user = decoded;
+    req.user.id = decoded.id || decoded.user_id;
+    req.user.user_id = decoded.user_id || decoded.id;
+    req.user.position = decoded.position || role;
+    req.user.role = decoded.role || role;
+    req.user.role_name = decoded.role_name || role;
     req.tenantId = decoded.tenant_id;
     next();
   } catch (error) {

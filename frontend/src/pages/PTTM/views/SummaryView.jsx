@@ -3,6 +3,19 @@
 import { useApp } from '../context/PTTMContext';
 import { exportCSV, today } from '../utils/exportCsv';
 
+const formatDate = (value) => {
+  if (!value) return '';
+  const [datePart] = String(value).split('T');
+  const parts = datePart.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(Number.isNaN)) return String(value);
+  const [year, month, day] = parts;
+  return new Date(year, month - 1, day).toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+};
+
 export default function SummaryView({ openDocFlow, openProjectTeams, openProjectPhases, openAddPhase }) {
   const { projects, teams, phases, tasks } = useApp();
   const completed = tasks.filter(t => t.status === 'Completed').length;
@@ -20,8 +33,8 @@ export default function SummaryView({ openDocFlow, openProjectTeams, openProject
       return [
         p.name || '',
         p.status || '',
-        p.start_date || '',
-        p.end_date || '',
+        formatDate(p.start_date),
+        formatDate(p.end_date),
         pt.length,
         pc,
         ip,
@@ -93,7 +106,7 @@ export default function SummaryView({ openDocFlow, openProjectTeams, openProject
               <div className="sstat" style={{ color: 'var(--status-ct)' }}><span>✅ Completed</span><span>{pc}</span></div>
               <div className="sstat" style={{ color: '#084298' }}><span>🔄 In Progress</span><span>{pt.filter(t => t.status === 'In Progress').length}</span></div>
               <div className="sstat" style={{ color: '#856404' }}><span>⏳ Pending</span><span>{pt.filter(t => t.status === 'Pending' || t.status === 'Not Started').length}</span></div>
-              {p.start_date && <div className="sstat" style={{ fontSize: 11 }}><span>📅 Period</span><span>{p.start_date} → {p.end_date || '?'}</span></div>}
+              {p.start_date && <div className="sstat" style={{ fontSize: 11 }}><span>📅 Period</span><span>{formatDate(p.start_date)} → {formatDate(p.end_date) || '?'}</span></div>}
               {pt.length ? <><div className="pbar" style={{ marginTop: 8 }}><div className="pfill" style={{ width: `${pct}%` }} /></div><div style={{ fontSize: 10, color: '#888', textAlign: 'right', marginTop: 2 }}>{pct}% complete</div></> : <div style={{ fontSize: 11, color: '#bbb', marginTop: 6 }}>No tasks yet</div>}
               <div style={{ display: 'flex', gap: 6, marginTop: 10, borderTop: '1px solid #eee', paddingTop: 8 }}>
                 <SmallButton color="#217346" bg="#f0f8f3" border="#c3e0cf" onClick={() => openProjectTeams(p.id)}>👥 Teams →</SmallButton>

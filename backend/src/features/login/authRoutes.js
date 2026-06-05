@@ -2,6 +2,7 @@
 const express = require('express');
 const authController = require('./authController');
 const authMiddleware = require('../../middleware/auth.middleware');
+const requireAdmin = require('../../middleware/requireAdmin');
 
 const router = express.Router();
 
@@ -13,7 +14,7 @@ router.post('/login', authController.login);
 // @route   POST /api/auth/register
 // @desc    Register new user (Admin only)
 // @access  Private
-router.post('/register', authMiddleware.verifyToken, authController.register);
+router.post('/register', authMiddleware.verifyToken, requireAdmin, authController.register);
 
 // @route   GET /api/auth/profile
 // @desc    Get current user profile

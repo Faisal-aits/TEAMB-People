@@ -1,5 +1,6 @@
 const express = require('express');
 const { verifyToken } = require('../../middleware/auth.middleware');
+const requireAdmin = require('../../middleware/requireAdmin');
 const { pool } = require('../../config/db');
 const { tableExists } = require('../../utils/schemaHelpers');
 
@@ -56,6 +57,7 @@ const getIndiaMonthStart = (date = new Date()) => {
 };
 
 router.use(verifyToken);
+router.use(requireAdmin);
 
 router.get('/overview', async (req, res) => {
   try {

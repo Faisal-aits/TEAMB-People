@@ -25,7 +25,7 @@ const validateSmtpConfig = (data, requirePassword = false) => {
   return errors;
 };
 
-router.get('/bank', async (req, res) => {
+router.get('/bank', requireAdmin, async (req, res) => {
   try {
     const bank = await ServiceSetting.getBankDetails(req.tenantId);
     res.json({ success: true, bank });
@@ -35,7 +35,7 @@ router.get('/bank', async (req, res) => {
   }
 });
 
-router.put('/bank', async (req, res) => {
+router.put('/bank', requireAdmin, async (req, res) => {
   try {
     await ServiceSetting.updateBankDetails(req.tenantId, req.body);
     const bank = await ServiceSetting.getBankDetails(req.tenantId);
@@ -46,7 +46,7 @@ router.put('/bank', async (req, res) => {
   }
 });
 
-router.get('/gst', async (req, res) => {
+router.get('/gst', requireAdmin, async (req, res) => {
   try {
     const gst = await ServiceSetting.getGstDetails(req.tenantId);
     res.json({ success: true, gst });
@@ -56,7 +56,7 @@ router.get('/gst', async (req, res) => {
   }
 });
 
-router.put('/gst', async (req, res) => {
+router.put('/gst', requireAdmin, async (req, res) => {
   try {
     await ServiceSetting.updateGstDetails(req.tenantId, req.body);
     const gst = await ServiceSetting.getGstDetails(req.tenantId);
@@ -67,7 +67,7 @@ router.put('/gst', async (req, res) => {
   }
 });
 
-router.get('/quotation', async (req, res) => {
+router.get('/quotation', requireAdmin, async (req, res) => {
   try {
     const settings = await ServiceSetting.getQuotationSettings(req.tenantId);
     res.json({ success: true, settings });

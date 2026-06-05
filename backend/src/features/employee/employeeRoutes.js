@@ -58,10 +58,10 @@ router.use(authMiddleware.verifyToken);
 // ==================== EMPLOYEE ROUTES ====================
 
 // GET /api/employees - Get all employees
-router.get('/', employeeController.getAllEmployees);
+router.get('/', requireAdmin, employeeController.getAllEmployees);
 
 // GET /api/employees/departments - Get departments
-router.get('/departments', employeeController.getDepartments);
+router.get('/departments', requireAdmin, employeeController.getDepartments);
 
 // POST /api/employees/departments - Create department
 router.post('/departments', requireAdmin, employeeController.createDepartment);
@@ -76,36 +76,36 @@ router.delete('/departments/:departmentId', requireAdmin, employeeController.del
 router.get('/my-profile', employeeController.getMyProfile);
 
 // GET /api/employees/positions/suggested - Get suggested positions
-router.get('/positions/suggested', employeeController.getSuggestedPositions);
+router.get('/positions/suggested', requireAdmin, employeeController.getSuggestedPositions);
 
 // POST /api/employees/positions/suggested - Add new suggested position
-router.post('/positions/suggested', employeeController.addSuggestedPosition);
+router.post('/positions/suggested', requireAdmin, employeeController.addSuggestedPosition);
 
 // POST /api/employees - Create new employee
-router.post('/', employeeController.createEmployee);
+router.post('/', requireAdmin, employeeController.createEmployee);
 
 // POST /api/employees/bulk-upload - Upload CSV/XLSX file and create employees
-router.post('/bulk-upload', handleBulkUploadFile, employeeController.bulkUploadEmployees);
+router.post('/bulk-upload', requireAdmin, handleBulkUploadFile, employeeController.bulkUploadEmployees);
 
 // POST /api/employees/bulk - Bulk create employees
-router.post('/bulk', employeeController.bulkCreateEmployee);
+router.post('/bulk', requireAdmin, employeeController.bulkCreateEmployee);
 
 // GET /api/employees/:id - Get employee by ID
-router.get('/:id', employeeController.getEmployee);
+router.get('/:id', requireAdmin, employeeController.getEmployee);
 
 // GET /api/employees/:id/face-status - Get face enrollment status
-router.get('/:id/face-status', employeeController.getFaceStatus);
+router.get('/:id/face-status', requireAdmin, employeeController.getFaceStatus);
 
 // PUT /api/employees/:id - Update employee
-router.put('/:id', employeeController.updateEmployee);
+router.put('/:id', requireAdmin, employeeController.updateEmployee);
 
 // DELETE /api/employees/:id - Delete employee
-router.delete('/:id', employeeController.deleteEmployee);
+router.delete('/:id', requireAdmin, employeeController.deleteEmployee);
 
 // POST /api/employees/:id/reset-password - Reset employee password
-router.post('/:id/reset-password', employeeController.resetPassword);
+router.post('/:id/reset-password', requireAdmin, employeeController.resetPassword);
 
 // POST /api/employees/:id/enroll-face - Enroll face for employee
-router.post('/:id/enroll-face', upload.single('faceImage'), employeeController.enrollFace);
+router.post('/:id/enroll-face', requireAdmin, upload.single('faceImage'), employeeController.enrollFace);
 
 module.exports = router;

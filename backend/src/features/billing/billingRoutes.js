@@ -2,11 +2,13 @@
 const express = require('express');
 const billingController = require('./billingController');
 const authMiddleware = require('../../middleware/auth.middleware');
+const requireAdmin = require('../../middleware/requireAdmin');
 
 const router = express.Router();
 
 // All routes are protected
 router.use(authMiddleware.verifyToken);
+router.use(requireAdmin);
 
 // GET /api/billing/invoices - Get all invoices
 router.get('/invoices', billingController.getAllInvoices);
