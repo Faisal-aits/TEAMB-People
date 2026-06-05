@@ -2,7 +2,7 @@
 
 # 1. Pull latest code
 echo "--- Pulling latest changes from GitHub ---"
-git pull origin main
+git pull origin new-workdesk
 
 # 2. Build Frontend
 echo "--- Building Frontend ---"
