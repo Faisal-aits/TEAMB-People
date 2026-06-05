@@ -2,6 +2,9 @@
 import api from './api';
 
 export const dashboardAPI = {
+  // Get admin cockpit overview
+  getOverview: () => api.get('/dashboard/overview'),
+
   // Get dashboard statistics
   getStats: () => api.get('/dashboard/stats'),
 
@@ -10,8 +13,6 @@ export const dashboardAPI = {
 
   // Get projects overview for pie chart
   getProjectsOverview: () => api.get('/dashboard/projects-overview'),
-
-
 
   // Get recent projects
   getRecentProjects: () => api.get('/dashboard/recent-projects'),

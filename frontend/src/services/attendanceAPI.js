@@ -1,6 +1,8 @@
 // src/services/attendanceAPI.js
 import api from './api';
 
+export const getIndiaDate = () => new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }).split(' ')[0];
+
 export const attendanceAPI = {
   // Get all attendance records (admin)
   getAll: (filters = {}) => {
@@ -62,13 +64,6 @@ export const attendanceAPI = {
     return api.get(`/attendance/percentage/${employeeId}?${params.toString()}`);
   },
 
-  getMyAttendancePercentage: (month = null, year = null) => {
-    const params = new URLSearchParams();
-    if (month) params.append('month', month);
-    if (year) params.append('year', year);
-    return api.get(`/attendance/my/percentage?${params.toString()}`);
-  },
-
   // FIXED: Verify face and mark attendance - use correct path
   verifyMyFaceAndMarkAttendance: (formData) => {
     return api.post('/attendance/verify-my-face', formData, {
@@ -127,11 +122,11 @@ export const attendanceAPI = {
   },
 
   getTodayAttendance: (employeeId) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getIndiaDate();
     return api.get(`/attendance/history/${employeeId}`).then(response => {
       let attendance = response.data.history || response.data.attendance || response.data || [];
       const todayRecord = Array.isArray(attendance) ? attendance.find(record => {
-        const recordDate = new Date(record.date).toISOString().split('T')[0];
+        const recordDate = typeof record.date === 'string' ? record.date.split('T')[0] : '';
         return recordDate === today;
       }) : null;
       return { data: { attendance: todayRecord ? [todayRecord] : [] } };

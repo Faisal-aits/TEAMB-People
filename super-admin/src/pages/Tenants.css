@@ -38,7 +38,7 @@
 .btn-primary:hover {
   opacity: 0.9;
   transform: translateY(-1px);
-  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
 }
 
 .btn-secondary {
@@ -106,7 +106,7 @@
 
 .search-input:focus {
   border-color: var(--accent-primary);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05);
 }
 
 .search-input::placeholder {
@@ -212,7 +212,7 @@
   max-height: 90vh;
   overflow-y: auto;
   animation: fadeIn 0.3s ease-out;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
 }
 
 .modal-header {
@@ -226,7 +226,8 @@
 .modal-header h2 {
   font-size: 20px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: white;
+  /* color: var(--text-primary); */
 }
 
 .modal-close {
@@ -339,7 +340,7 @@
 
 .form-select:focus {
   border-color: var(--accent-primary);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05);
 }
 
 /* ── Tabs ───────────────────────────────────────────────── */
@@ -462,7 +463,7 @@
 .archived-card:hover {
   opacity: 1;
   border-color: rgba(245, 158, 11, 0.5) !important;
-  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.12) !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
   transform: translateY(-2px);
 }
 

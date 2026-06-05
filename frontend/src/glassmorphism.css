@@ -1,0 +1,191 @@
+/* src/glassmorphism.css */
+/* Modern Glassmorphic Dashboard Styles */
+
+:root {
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+  --glass-blur: blur(12px);
+  --gradient-primary: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+  --gradient-success: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+  --gradient-warning: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+  --gradient-danger: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+}
+
+/* Global Dashboard Background */
+body, .dashboard, .dashboard-container, .hr-dashboard-container, .employee-portal, .dashboard-main, .dashboard-content {
+  background: #f0f4f8 !important;
+  background-image: 
+    radial-gradient(at 40% 20%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
+    radial-gradient(at 80% 0%, rgba(168, 85, 247, 0.08) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, rgba(16, 185, 129, 0.08) 0px, transparent 50%) !important;
+  background-attachment: fixed !important;
+}
+
+/* Base Glass Class (can be applied to any card) */
+.glass-panel, .stat-card, .hr-stat-card, .employee-module-card, .glass-form, .chart-container, .notification-dropdown, .hr-tool-card {
+  background: var(--glass-bg) !important;
+  backdrop-filter: var(--glass-blur) !important;
+  -webkit-backdrop-filter: var(--glass-blur) !important;
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: var(--glass-shadow) !important;
+  border-radius: 16px !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-panel:hover, .stat-card:hover, .hr-stat-card:hover, .employee-module-card:hover, .chart-container:hover, .hr-tool-card:hover {
+  transform: translateY(-5px) !important;
+  box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.12) !important;
+  background: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* Employee Dashboard Grid Adjustments */
+.employee-module-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  padding: 20px 0;
+}
+
+.employee-module-card {
+  padding: 24px !important;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  gap: 12px;
+  cursor: pointer;
+  border-top-width: 4px !important;
+  border-top-style: solid !important;
+}
+
+.employee-module-card-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  margin-bottom: 8px;
+  transition: transform 0.3s ease;
+}
+
+.employee-module-card:hover .employee-module-card-icon {
+  transform: scale(1.1) rotate(5deg);
+}
+
+.employee-module-card h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.employee-module-desc {
+  color: #64748b;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0 0 16px 0;
+  flex-grow: 1;
+}
+
+.employee-module-open {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #6366f1;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-top: auto;
+  opacity: 0.8;
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+.employee-module-card:hover .employee-module-open {
+  opacity: 1;
+  transform: translateX(5px);
+}
+
+/* Employee Welcome Header */
+.employee-dashboard-header h2 {
+  font-size: 2rem;
+  font-weight: 800;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 0.5rem;
+}
+
+.employee-dashboard-header p {
+  color: #64748b;
+  font-size: 1.1rem;
+}
+
+/* HR Dashboard Header Animation */
+.hr-header-info h1 {
+  background: black;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  display: inline-block;
+}
+
+/* Admin Dashboard Specifics */
+.stat-icon {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%) !important;
+  color: #6366f1 !important;
+  border-radius: 14px !important;
+  padding: 12px !important;
+}
+
+.stat-card:nth-child(2n) .stat-icon {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(52, 211, 153, 0.1) 100%) !important;
+  color: #10b981 !important;
+}
+
+.stat-card:nth-child(3n) .stat-icon {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(251, 191, 36, 0.1) 100%) !important;
+  color: #f59e0b !important;
+}
+
+/* Entrance Animations */
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stat-card, .hr-stat-card, .employee-module-card, .hr-tool-card {
+  animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+
+.stat-card:nth-child(1) { animation-delay: 0.1s; }
+.stat-card:nth-child(2) { animation-delay: 0.2s; }
+.stat-card:nth-child(3) { animation-delay: 0.3s; }
+.stat-card:nth-child(4) { animation-delay: 0.4s; }
+
+.hr-stat-card:nth-child(1) { animation-delay: 0.1s; }
+.hr-stat-card:nth-child(2) { animation-delay: 0.2s; }
+.hr-stat-card:nth-child(3) { animation-delay: 0.3s; }
+
+.employee-module-card:nth-child(1) { animation-delay: 0.1s; }
+.employee-module-card:nth-child(2) { animation-delay: 0.2s; }
+.employee-module-card:nth-child(3) { animation-delay: 0.3s; }
+.employee-module-card:nth-child(4) { animation-delay: 0.4s; }
+
+.hr-tool-card:nth-child(1) { animation-delay: 0.1s; }
+.hr-tool-card:nth-child(2) { animation-delay: 0.2s; }
+.hr-tool-card:nth-child(3) { animation-delay: 0.3s; }
+.hr-tool-card:nth-child(4) { animation-delay: 0.4s; }
+
+/* Custom Scrollbar for a premium feel */

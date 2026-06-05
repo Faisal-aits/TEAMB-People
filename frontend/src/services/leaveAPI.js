@@ -8,6 +8,7 @@ export const leaveAPI = {
   getAll: (filters = {}) => {
     const params = new URLSearchParams();
     if (filters.status) params.append('status', filters.status);
+    if (filters.leave_type) params.append('leave_type', filters.leave_type);
     return api.get(`/leaves?${params.toString()}`);
   },
 
@@ -23,6 +24,10 @@ export const leaveAPI = {
   // Get employee attendance history (admin)
   getEmployeeAttendanceHistory: (employeeId) => api.get(`/leaves/history/${employeeId}`),
 
+  // Get leave balances for a specific employee (admin)
+  getBalances: (employeeId, year = new Date().getFullYear()) => 
+    api.get(`/leaves/balances/${employeeId}?year=${year}`),
+
   // ==================== EMPLOYEE ENDPOINTS ====================
   
   // Get current user's leaves (employee)
@@ -32,5 +37,12 @@ export const leaveAPI = {
   create: (leaveData) => api.post('/leaves', leaveData),
 
   // Delete leave request (employee - only their own pending leaves)
-  delete: (leaveId) => api.delete(`/leaves/${leaveId}`)
+  delete: (leaveId) => api.delete(`/leaves/${leaveId}`),
+
+  // Get leave balances for the logged-in employee (self)
+  getMyBalances: (year = new Date().getFullYear()) => 
+    api.get(`/leaves/balances/my?year=${year}`),
+
+  // Get active leave types
+  getLeaveTypes: () => api.get('/leaves/types')
 };

@@ -20,6 +20,20 @@ export const employeeAPI = {
   // Create new employee
   create: (employeeData) => api.post('/employees', employeeData),
 
+  // Bulk create employees
+  bulkCreate: (employees) => api.post('/employees/bulk', { employees }),
+
+  // Upload CSV/XLSX file for employee bulk creation
+  bulkUploadFile: (file, config = {}) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    return api.post('/employees/bulk-upload', formData, {
+      ...config,
+      headers: config.headers,
+    });
+  },
+
   // Update employee
   update: (id, employeeData) => api.put(`/employees/${id}`, employeeData),
 
@@ -34,6 +48,15 @@ export const employeeAPI = {
 
   // Get departments
   getDepartments: () => api.get('/employees/departments'),
+
+  // Create department
+  createDepartment: (departmentData) => api.post('/employees/departments', departmentData),
+
+  // Update department
+  updateDepartment: (departmentId, departmentData) => api.put(`/employees/departments/${departmentId}`, departmentData),
+
+  // Delete department
+  deleteDepartment: (departmentId) => api.delete(`/employees/departments/${departmentId}`),
 
   // Get positions
   getPositions: () => api.get('/employees/positions'),

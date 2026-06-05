@@ -22,4 +22,7 @@ export const serviceSettingAPI = {
 
   // Update SMTP details
   updateSmtpDetails: (smtpData) => api.put('/service-settings/smtp', smtpData),
+
+  // Send SMTP test email
+  sendSmtpTestEmail: (to) => api.post('/service-settings/smtp/test', { to }),
 };

@@ -8,33 +8,24 @@ import companyLogo from '../../src/assets/img/company.png';
 export const quotationPDFService = {
   downloadQuotationPDF: async (quotation) => {
     try {
-      console.log('📄 Generating PDF for quotation:', quotation.quotation_no);
-      console.log('📄 Full quotation data:', quotation);
-      
-      // Check if service_gst_details exists in quotation (from backend)
+   
       const serviceGstDetails = quotation.service_gst_details || null;
-      console.log('📄 Service GST details from quotation:', serviceGstDetails);
-      
-      // Get GSTIN - check multiple possible locations
+     
       let gstin = null;
-      
-      // Check in service_gst_details first
+   
       if (serviceGstDetails && serviceGstDetails.gstin) {
         gstin = serviceGstDetails.gstin;
       }
-      // Fallback to hardcoded GSTIN
+     
       if (!gstin) {
         gstin = "27EGFPS7476H127";
       }
       
-      // Get PAN number
+     
       const panNumber = serviceGstDetails?.pan_number || "";
       
-      // Ensure total_after_tax is a valid number
       const totalAfterTax = parseFloat(quotation.total_after_tax) || 0;
-      console.log('📄 Total after tax:', totalAfterTax, 'Type:', typeof totalAfterTax);
-      
-      // Create quotation data with service settings
+    
       const quotationData = {
         quotation: {
           id: quotation.id,
@@ -65,13 +56,8 @@ export const quotationPDFService = {
         }
       };
 
-      console.log('📄 Final quotation data for PDF:', quotationData);
-      console.log('📄 Generating PDF with GSTIN:', gstin);
-
-      // Generate PDF
       const pdf = await generatePDF(quotationData);
-      
-      // Download as PDF file
+
       pdf.save(`quotation-${quotation.quotation_no}.pdf`);
 
     } catch (error) {
@@ -167,36 +153,27 @@ const generateQuotationHTML = (quotationData) => {
   };
 
 const numberToWords = (num) => {
-  // First, ensure we have a value
+
   if (num === null || num === undefined || num === '') {
-    console.log('Number to words: input is null/undefined/empty:', num);
+   
     return 'Zero Rupees only';
   }
   
-  // Convert to string and remove any commas for parsing
   let numStr = String(num);
-  console.log('Number to words: input string:', numStr);
-  
-  // Remove commas and any non-numeric characters except decimal point
+ 
   numStr = numStr.replace(/,/g, '').trim();
-  console.log('Number to words: after removing commas:', numStr);
-  
-  // Parse the number
+
   const number = parseFloat(numStr);
-  console.log('Number to words: parsed number:', number);
-  
-  // Handle NaN
+ 
   if (isNaN(number)) {
-    console.log('Number to words: NaN after parsing');
+  
     return 'Zero Rupees only';
   }
   
-  // Handle zero
   if (number === 0) {
     return 'Zero Rupees only';
   }
   
-  // Handle negative numbers
   const isNegative = number < 0;
   const absoluteNumber = Math.abs(number);
   
@@ -267,23 +244,18 @@ const numberToWords = (num) => {
     
     return words.trim();
   };
-  
-  // Separate rupees and paise
+
   const rupeePart = Math.floor(absoluteNumber);
   const paisePart = Math.round((absoluteNumber - rupeePart) * 100);
-  
-  console.log('Number to words: rupeePart:', rupeePart, 'paisePart:', paisePart);
-  
+
   let result = '';
-  
-  // Convert rupees part
+
   if (rupeePart > 0) {
     result = convertNumberToWords(rupeePart) + ' Rupees';
   } else {
     result = 'Zero Rupees';
   }
   
-  // Convert paise part
   if (paisePart > 0) {
     if (rupeePart > 0) {
       result += ' and ';
@@ -293,16 +265,15 @@ const numberToWords = (num) => {
   
   result += ' only';
   
-  // Add negative prefix if needed
+
   if (isNegative) {
     result = 'Minus ' + result;
   }
-  
-  console.log('Number to words: final result:', result);
+ 
   return result;
 };
 
-  // Calculate GST breakdown for quotation
+
   const calculateGSTBreakdown = () => {
     const taxableAmount = (quotation.total_before_discount || 0) - (quotation.discount || 0);
     const gstBreakdown = [];

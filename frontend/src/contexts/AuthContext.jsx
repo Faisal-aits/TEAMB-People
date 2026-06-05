@@ -9,13 +9,27 @@ export const useAuth = () => {
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
-  return context;  
+  return context;
 };
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  const isAdmin = user?.position === 'admin';
+
+  const isTokenExpired = (token) => {
+    if (!token) return true;
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const payload = JSON.parse(atob(base64));
+      return payload.exp * 1000 < Date.now();
+    } catch {
+      return true;
+    }
+  };
 
   useEffect(() => {
     checkAuthStatus();
@@ -25,16 +39,23 @@ export const AuthProvider = ({ children }) => {
     try {
       const token = localStorage.getItem('token');
       const userData = localStorage.getItem('user');
-      
-      if (token && userData) {
-        // Set user from localStorage immediately for fast loading
+
+      if (token && userData && !isTokenExpired(token)) {
         setUser(JSON.parse(userData));
         setIsAuthenticated(true);
-        
-        // Then verify with backend
-        const response = await authAPI.getProfile();
-        setUser(response.data.user);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
+
+        try {
+          const response = await authAPI.getProfile();
+          const profileUser = response.data?.user || response.data?.data;
+          if (profileUser) {
+            setUser(profileUser);
+            localStorage.setItem('user', JSON.stringify(profileUser));
+          }
+        } catch (err) {
+          console.error('Profile verification failed:', err);
+        }
+      } else if (token && isTokenExpired(token)) {
+        logout();
       }
     } catch (error) {
       console.error('Auth check failed:', error);
@@ -46,23 +67,21 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     try {
-      // credentials now includes { email, password, tenant_slug }
       const response = await authAPI.login(credentials);
-      const { token, user } = response.data;
-      
-      // console.log('Login successful, user:', user);
-      
-      // Store in localStorage
+      const { token, user: userData } = response.data;
+
+      if (!token || !userData) {
+        return { success: false, message: 'Invalid server response' };
+      }
+
       localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-      
-      // Update state
-      setUser(user);
+      localStorage.setItem('user', JSON.stringify(userData));
+
+      setUser(userData);
       setIsAuthenticated(true);
-      
-      return { success: true, user };
+
+      return { success: true, user: userData };
     } catch (error) {
-      console.error('Login error:', error);
       const message = error.response?.data?.message || 'Login failed';
       return { success: false, message };
     }
@@ -80,6 +99,7 @@ export const AuthProvider = ({ children }) => {
     user,
     loading,
     isAuthenticated,
+    isAdmin,
     login,
     logout,
     checkAuthStatus,

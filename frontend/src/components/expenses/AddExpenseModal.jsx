@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { expenseAPI } from '../../services/expenseAPI';
+import './AddExpenseModal.css';
 
 const AddExpenseModal = ({ isOpen, onClose, onExpenseAdded }) => {
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [addingCategory, setAddingCategory] = useState(false);
   const [newCategoryData, setNewCategoryData] = useState({
@@ -15,12 +14,24 @@ const AddExpenseModal = ({ isOpen, onClose, onExpenseAdded }) => {
     category_id: '',
     amount: '',
     description: '',
-    receipt_url: ''
   });
+  const [image, setImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [categories, setCategories] = useState([]);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (isOpen) {
       loadCategories();
+      // Reset form when modal opens
+      setFormData({
+        category_id: '',
+        amount: '',
+        description: '',
+      });
+      setImage(null);
+      setImagePreview(null);
+      setError(null);
     }
   }, [isOpen]);
 

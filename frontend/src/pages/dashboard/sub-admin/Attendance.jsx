@@ -21,7 +21,7 @@ const AttendanceTable = () => {
   const [faceVerificationStep, setFaceVerificationStep] = useState('ready'); // 'ready', 'camera', 'pin-required'
   const [pin, setPin] = useState('');
   const [verificationResult, setVerificationResult] = useState(null);
-  
+
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
@@ -29,10 +29,10 @@ const AttendanceTable = () => {
   const fetchAttendanceHistory = async () => {
     try {
       setLoading(true);
-          
+
       const response = await attendanceAPI.getMyHistory();
-    
-      
+
+
       if (response.data.success) {
         // Transform backend data to match frontend structure
         const transformedData = response.data.history.map(record => ({
@@ -44,7 +44,7 @@ const AttendanceTable = () => {
           employee: record.employee_name || 'Current User',
           remarks: record.remarks || ''
         }));
-        
+
         setAttendance(transformedData);
       } else {
         setError(response.data.message || 'Failed to fetch attendance data');
@@ -61,7 +61,7 @@ const AttendanceTable = () => {
   const fetchTodayAttendance = async () => {
     try {
       const response = await attendanceAPI.getMyTodayAttendance();
-    
+
     } catch (err) {
       console.error('Error fetching today attendance:', err);
     }
@@ -77,14 +77,14 @@ const AttendanceTable = () => {
     try {
       setIsCameraOpen(true);
       setFaceVerificationStep('camera');
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          width: 640, 
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: 640,
           height: 480,
-          facingMode: 'user' 
-        } 
+          facingMode: 'user'
+        }
       });
-      
+
       setCameraStream(stream);
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -117,14 +117,14 @@ const AttendanceTable = () => {
       const video = videoRef.current;
       const canvas = canvasRef.current;
       const context = canvas.getContext('2d');
-      
+
       // Set canvas dimensions to match video
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-      
+
       // Draw current video frame to canvas
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
+
       // Convert to blob
       const blob = await new Promise((resolve) => {
         canvas.toBlob(resolve, 'image/jpeg', 0.8);
@@ -134,36 +134,36 @@ const AttendanceTable = () => {
         throw new Error('Failed to capture image');
       }
 
-    
+
 
       const formData = new FormData();
       formData.append('faceImage', blob, 'face-capture.jpg');
 
       // ✅ UPDATED: Use optimized endpoint that only checks logged-in user
       const response = await attendanceAPI.verifyMyFaceAndMarkAttendance(formData);
-      
+
       if (response.data.success) {
         // Success - show confirmation
-      setVerificationResult({
-  success: true,
-  message: `✅ Attendance marked successfully!`,
-  details: {
-    status: response.data.attendance.status,
-    checkIn: response.data.attendance.check_in_time,
-    shift: response.data.attendance.shift_name || response.data.attendance.shift,
-    confidence: response.data.confidence
-  }
-});
-        
+        setVerificationResult({
+          success: true,
+          message: `✅ Attendance marked successfully!`,
+          details: {
+            status: response.data.attendance.status,
+            checkIn: response.data.attendance.check_in_time,
+            shift: response.data.attendance.shift_name || response.data.attendance.shift,
+            confidence: response.data.confidence
+          }
+        });
+
         // Refresh attendance data
         await fetchAttendanceHistory();
-        
+
         // Auto-close after 3 seconds
         setTimeout(() => {
           stopCamera();
           alert('Attendance marked successfully!');
         }, 3000);
-        
+
       } else if (response.data.requiresPIN) {
         // PIN verification required
         setFaceVerificationStep('pin-required');
@@ -172,14 +172,14 @@ const AttendanceTable = () => {
           message: '🔒 Additional verification required',
           confidence: response.data.confidence
         });
-        
+
       } else {
         // Failed verification
         setVerificationResult({
           success: false,
           message: response.data.message || 'Face verification failed'
         });
-        
+
         // Auto-clear error after 3 seconds
         setTimeout(() => {
           setVerificationResult(null);
@@ -204,20 +204,20 @@ const AttendanceTable = () => {
 
     try {
       setFaceRecognitionLoading(true);
-      
+
       // In a real implementation, you'd send PIN to backend
       // For now, we'll simulate success
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       // Mark attendance with PIN verification
       const attendanceData = {
         type: 'check_in',
         date: new Date().toISOString().split('T')[0],
         pin: pin
       };
-      
+
       const response = await attendanceAPI.markMyAttendance(attendanceData);
-      
+
       if (response.data.success) {
         setVerificationResult({
           success: true,
@@ -227,9 +227,9 @@ const AttendanceTable = () => {
             checkIn: new Date().toLocaleTimeString()
           }
         });
-        
+
         await fetchAttendanceHistory();
-        
+
         setTimeout(() => {
           stopCamera();
           alert('Attendance marked successfully with PIN verification!');
@@ -238,7 +238,7 @@ const AttendanceTable = () => {
         alert(response.data.message || 'PIN verification failed');
         setPin('');
       }
-      
+
     } catch (err) {
       console.error('PIN verification error:', err);
       alert(err.response?.data?.message || 'Error during PIN verification');
@@ -250,7 +250,7 @@ const AttendanceTable = () => {
   const handleFaceRecognitionAttendance = async () => {
     // First check if user has face enrolled
     try {
-    
+
       startCamera();
     } catch (error) {
       console.error('Face recognition setup error:', error);
@@ -266,9 +266,9 @@ const AttendanceTable = () => {
     }));
   };
 
-const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.date) {
       alert('Please select a date');
       return;
@@ -288,19 +288,19 @@ const handleSubmit = async (e) => {
         checkOutTime: formData.checkOut
       };
 
-      
+
       const response = await attendanceAPI.markMyAttendance(attendanceData);
-      
+
       // close modal regardless of response structure
       setIsModalOpen(false);
-      
+
       // Reset form data
       setFormData({
         date: new Date().toISOString().split('T')[0],
         checkIn: '',
         checkOut: '',
       });
-      
+
       if (response.data && response.data.success) {
         // Refresh the attendance data
         await fetchAttendanceHistory();
@@ -331,7 +331,7 @@ const handleSubmit = async (e) => {
       'Pending': 'status-pending',
       'Not Checked In': 'status-pending'
     };
-    
+
     return (
       <span className={`status-badge ${statusClasses[status] || 'status-pending'}`}>
         {status}
@@ -339,21 +339,21 @@ const handleSubmit = async (e) => {
     );
   };
 
-  const filteredAttendance = filterStatus === 'All' 
-    ? attendance 
+  const filteredAttendance = filterStatus === 'All'
+    ? attendance
     : attendance.filter(record => record.status === filterStatus);
 
-// to get unique records (keep ones with check-in)
-const uniqueAttendance = Array.from(
-  filteredAttendance.reduce((map, record) => {
-    const dateKey = new Date(record.date).toDateString();
-    // Keep record if it has check-in time and existing doesn't
-    if (!map.has(dateKey) || (record.checkIn && record.checkIn !== '--')) {
-      map.set(dateKey, record);
-    }
-    return map;
-  }, new Map())
-).map(([_, record]) => record);
+  // to get unique records (keep ones with check-in)
+  const uniqueAttendance = Array.from(
+    filteredAttendance.reduce((map, record) => {
+      const dateKey = new Date(record.date).toDateString();
+      // Keep record if it has check-in time and existing doesn't
+      if (!map.has(dateKey) || (record.checkIn && record.checkIn !== '--')) {
+        map.set(dateKey, record);
+      }
+      return map;
+    }, new Map())
+  ).map(([_, record]) => record);
 
   // Manual check-in/check-out
   const handleQuickCheckIn = async (type) => {
@@ -364,7 +364,7 @@ const uniqueAttendance = Array.from(
       };
 
       const response = await attendanceAPI.markMyAttendance(attendanceData);
-      
+
       if (response.data.success) {
         await fetchAttendanceHistory();
         alert(`${type === 'check_in' ? 'Check-in' : 'Check-out'} successful!`);
@@ -406,7 +406,7 @@ const uniqueAttendance = Array.from(
       <div className="attendance-header">
         <h2>Attendance Management</h2>
         <div className="attendance-actions">
-          <button 
+          <button
             className="face-recognition-btn"
             onClick={handleFaceRecognitionAttendance}
             disabled={isCameraOpen}
@@ -414,21 +414,21 @@ const uniqueAttendance = Array.from(
             <span className="btn-icon">👤</span>
             Face Verification
           </button>
-         
-            <button 
-              className="check-in-btn"
-              onClick={() => handleQuickCheckIn('check_in')}
-            >
-              📍 Quick Check In
-            </button>
-            <button 
-              className="check-out-btn"
-              onClick={() => handleQuickCheckIn('check_out')}
-            >
-              🏠 Quick Check Out
-            </button>
-      
-          <button 
+
+          <button
+            className="check-in-btn"
+            onClick={() => handleQuickCheckIn('check_in')}
+          >
+            📍 Quick Check In
+          </button>
+          <button
+            className="check-out-btn"
+            onClick={() => handleQuickCheckIn('check_out')}
+          >
+            🏠 Quick Check Out
+          </button>
+
+          <button
             className="add-attendance-btn"
             onClick={() => setIsModalOpen(true)}
           >
@@ -462,7 +462,7 @@ const uniqueAttendance = Array.from(
             {attendance.filter(record => {
               const today = new Date().toISOString().split('T')[0];
               const recordDate = new Date(record.date).toISOString().split('T')[0];
-              return recordDate === today && 
+              return recordDate === today &&
                 record.remarks && record.remarks.includes('Face');
             }).length}
           </p>
@@ -475,18 +475,18 @@ const uniqueAttendance = Array.from(
           <div className="modal-content camera-modal">
             <div className="modal-header">
               <h2>
-                {faceVerificationStep === 'pin-required' 
-                  ? '🔒 Additional Verification Required' 
+                {faceVerificationStep === 'pin-required'
+                  ? '🔒 Additional Verification Required'
                   : 'Face Verification Attendance'}
               </h2>
-              <button 
+              <button
                 className="close-btn"
                 onClick={stopCamera}
               >
                 ×
               </button>
             </div>
-            
+
             {/* Verification Result Display */}
             {verificationResult && (
               <div className={`verification-result ${verificationResult.success ? 'success' : 'error'}`}>
@@ -495,16 +495,16 @@ const uniqueAttendance = Array.from(
                 </div>
                 <div className="result-message">
                   <p>{verificationResult.message}</p>
-                {verificationResult.details && (
-  <div className="result-details">
-    <p><strong>Status:</strong> {verificationResult.details.status}</p>
-    <p><strong>Check-in Time:</strong> {verificationResult.details.checkIn}</p>
-    {verificationResult.details.shift && (
-      <p><strong>Shift:</strong> {verificationResult.details.shift}</p>
-    )}
-    <p><strong>Confidence:</strong> {verificationResult.details.confidence}</p>
-  </div>
-)}
+                  {verificationResult.details && (
+                    <div className="result-details">
+                      <p><strong>Status:</strong> {verificationResult.details.status}</p>
+                      <p><strong>Check-in Time:</strong> {verificationResult.details.checkIn}</p>
+                      {verificationResult.details.shift && (
+                        <p><strong>Shift:</strong> {verificationResult.details.shift}</p>
+                      )}
+                      <p><strong>Confidence:</strong> {verificationResult.details.confidence}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -525,7 +525,7 @@ const uniqueAttendance = Array.from(
                   </div>
                 </div>
                 <div className="camera-controls">
-                  <button 
+                  <button
                     onClick={captureAndVerify}
                     disabled={faceRecognitionLoading || verificationResult?.success}
                     className="capture-btn"
@@ -539,7 +539,7 @@ const uniqueAttendance = Array.from(
                       'Capture & Verify Face'
                     )}
                   </button>
-                  <button 
+                  <button
                     onClick={stopCamera}
                     className="cancel-btn"
                   >
@@ -561,7 +561,7 @@ const uniqueAttendance = Array.from(
                     Low confidence match. Please enter your PIN for verification.
                   </p>
                 </div>
-                
+
                 <div className="pin-input-container">
                   <input
                     type="password"
@@ -576,7 +576,7 @@ const uniqueAttendance = Array.from(
                     Enter your 4-digit security PIN
                   </div>
                 </div>
-                
+
                 <div className="pin-actions">
                   <button
                     onClick={handlePINVerification}
@@ -593,7 +593,7 @@ const uniqueAttendance = Array.from(
                     Cancel
                   </button>
                 </div>
-                
+
                 <div className="pin-security-note">
                   <p>⚠️ <strong>Security Note:</strong> Face match confidence was low.</p>
                   <p>PIN verification ensures only you can mark your attendance.</p>
@@ -604,11 +604,11 @@ const uniqueAttendance = Array.from(
         </div>
       )}
 
-      <div className="attendance-table-container glass-form">
+      <div className="attendance-table-container">
         <div className="table-header">
           <h3>Attendance History</h3>
           <div className="table-actions">
-            <select 
+            <select
               className="filter-btn"
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
@@ -622,10 +622,10 @@ const uniqueAttendance = Array.from(
               <option value="Half Day">Half Day</option>
               <option value="Face Verified">Face Verified</option>
             </select>
-          
+
           </div>
         </div>
-        
+
         {filteredAttendance.length === 0 ? (
           <div className="no-data">
             <p>No attendance records found</p>
@@ -695,7 +695,7 @@ const uniqueAttendance = Array.from(
           <div className="modal-content">
             <div className="modal-header">
               <h2>Add Attendance Record</h2>
-              <button 
+              <button
                 className="close-btn"
                 onClick={() => setIsModalOpen(false)}
               >

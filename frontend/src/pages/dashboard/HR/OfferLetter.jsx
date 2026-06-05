@@ -60,6 +60,8 @@ const OfferLetter = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [history, setHistory] = useState([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [departments, setDepartments] = useState([]);
+  const [updatingOfferId, setUpdatingOfferId] = useState(null);
 
   const [formData, setFormData] = useState({
     issueDate: new Date().toISOString().split('T')[0],
@@ -110,6 +112,14 @@ const OfferLetter = () => {
         console.error("Error fetching employees:", err);
       }
     };
+    const fetchDepartments = async () => {
+      try {
+        const res = await employeeAPI.getDepartments();
+        setDepartments(res.data.departments || []);
+      } catch (err) {
+        console.error("Error fetching departments:", err);
+      }
+    };
     const fetchBranding = async () => {
       try {
         const res = await brandingAPI.get();
@@ -145,6 +155,7 @@ const OfferLetter = () => {
       }
     };
     fetchEmployees();
+    fetchDepartments();
     fetchHistory();
     fetchBranding();
   }, []);
@@ -214,6 +225,78 @@ const OfferLetter = () => {
       alert("Failed to download PDF. Please try again.");
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const getOfferCandidateName = (item) => {
+    return item.candidate_name || item.form_data?.fullName || `${item.first_name || ""} ${item.last_name || ""}`.trim() || "Candidate";
+  };
+
+  const getOfferCandidateEmail = (item) => {
+    return item.candidate_email || item.form_data?.email || item.email || "";
+  };
+
+  const getOfferStatus = (item) => String(item.status || "Pending");
+
+  const isFinalOfferStatus = (status) => ["Accepted", "Rejected"].includes(status);
+
+  const handleRejectOffer = async (item) => {
+    const status = getOfferStatus(item);
+    if (isFinalOfferStatus(status)) return;
+
+    if (!window.confirm(`Reject offer letter for ${getOfferCandidateName(item)}?`)) return;
+
+    setUpdatingOfferId(item.id);
+    try {
+      await offerLetterAPI.updateStatus(item.id, { status: "Rejected" });
+      alert("Offer letter rejected.");
+      await fetchHistory();
+    } catch (err) {
+      console.error("Error rejecting offer:", err);
+      alert(err.response?.data?.message || "Failed to reject offer letter.");
+    } finally {
+      setUpdatingOfferId(null);
+    }
+  };
+
+  const handleAcceptOffer = async (item) => {
+    const status = getOfferStatus(item);
+    if (isFinalOfferStatus(status)) return;
+
+    const candidateName = getOfferCandidateName(item);
+    const defaultEmployeeId = item.employee_display_id || "";
+    const newEmployeeId = window.prompt(`Enter employee ID for ${candidateName}`, defaultEmployeeId);
+    if (!newEmployeeId) return;
+
+    const departmentHelp = departments.length > 0
+      ? departments.map((department) => `${department.id}: ${department.name}`).join("\n")
+      : "Create a department first, then enter the department ID here.";
+    const departmentId = window.prompt(`Enter department ID:\n${departmentHelp}`, departments[0]?.id || "");
+    if (!departmentId) return;
+
+    const employmentType = window.prompt("Enter employment type", item.form_data?.employmentType || "Full-time");
+    if (!employmentType) return;
+
+    if (!window.confirm(`Accept offer for ${candidateName} and create employee ${newEmployeeId}?`)) return;
+
+    setUpdatingOfferId(item.id);
+    try {
+      await offerLetterAPI.updateStatus(item.id, {
+        status: "Accepted",
+        new_employee_id: newEmployeeId.trim(),
+        department_id: String(departmentId).trim(),
+        employment_type: employmentType.trim()
+      });
+      alert("Offer accepted and employee created successfully.");
+      await Promise.all([fetchHistory(), employeeAPI.getAll().then((res) => {
+        const employeesData = res.data.employees || res.data.data || (Array.isArray(res.data) ? res.data : []);
+        setEmployees(employeesData);
+      })]);
+    } catch (err) {
+      console.error("Error accepting offer:", err);
+      alert(err.response?.data?.message || "Failed to accept offer letter.");
+    } finally {
+      setUpdatingOfferId(null);
     }
   };
 
@@ -891,51 +974,91 @@ const OfferLetter = () => {
                   <th style={{ padding: "12px 16px", fontWeight: "600" }}>Employee ID</th>
                   <th style={{ padding: "12px 16px", fontWeight: "600" }}>Designation</th>
                   <th style={{ padding: "12px 16px", fontWeight: "600" }}>Issue Date</th>
+                  <th style={{ padding: "12px 16px", fontWeight: "600" }}>Status</th>
                   <th style={{ padding: "12px 16px", fontWeight: "600", textAlign: "right" }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {history.map((item) => (
-                  <tr key={item.id} style={{ borderBottom: "1px solid #f1f5f9", fontSize: "14px", transition: "background 0.2s" }}>
-                    <td style={{ padding: "16px" }}>
-                      <div style={{ fontWeight: "600", color: "#1e293b" }}>{item.first_name} {item.last_name}</div>
-                      <div style={{ fontSize: "12px", color: "#64748b" }}>{item.email}</div>
-                    </td>
-                    <td style={{ padding: "16px", color: "#64748b" }}>{item.employee_display_id || "N/A"}</td>
-                    <td style={{ padding: "16px", color: "#1e293b" }}>{item.form_data.designation}</td>
-                    <td style={{ padding: "16px", color: "#64748b" }}>{new Date(item.issue_date).toLocaleDateString('en-GB')}</td>
-                    <td style={{ padding: "16px", textAlign: "right" }}>
-                      <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-                        <button
-                          onClick={() => offerLetterPDFService.viewOfferLetter(item.form_data)}
-                          title="View"
-                          style={{ padding: "6px", background: "#f1f5f9", border: "none", borderRadius: "4px", cursor: "pointer", color: "#4f46e5" }}
-                        >
-                          <HiOutlineEye size={18} />
-                        </button>
-                        <button
-                          onClick={() => offerLetterPDFService.downloadOfferLetter(item.form_data)}
-                          title="Download"
-                          style={{ padding: "6px", background: "#f1f5f9", border: "none", borderRadius: "4px", cursor: "pointer", color: "#2ecc71" }}
-                        >
-                          <HiOutlineArrowDownTray size={18} />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setFormData(item.form_data);
-                            setSelectedEmployee(item.employee_display_id);
-                            setSelectedUserId(item.employee_id);
-                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                          }}
-                          title="Edit"
-                          style={{ padding: "6px", background: "#f1f5f9", border: "none", borderRadius: "4px", cursor: "pointer", color: "#64748b" }}
-                        >
-                          <HiOutlineArrowDownOnSquare size={18} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {history.map((item) => {
+                  const status = getOfferStatus(item);
+                  const isFinalStatus = isFinalOfferStatus(status);
+                  const isUpdating = updatingOfferId === item.id;
+
+                  return (
+                    <tr key={item.id} style={{ borderBottom: "1px solid #f1f5f9", fontSize: "14px", transition: "background 0.2s" }}>
+                      <td style={{ padding: "16px" }}>
+                        <div style={{ fontWeight: "600", color: "#1e293b" }}>{getOfferCandidateName(item)}</div>
+                        <div style={{ fontSize: "12px", color: "#64748b" }}>{getOfferCandidateEmail(item) || "No email"}</div>
+                      </td>
+                      <td style={{ padding: "16px", color: "#64748b" }}>{item.employee_display_id || "N/A"}</td>
+                      <td style={{ padding: "16px", color: "#1e293b" }}>{item.form_data?.designation || "-"}</td>
+                      <td style={{ padding: "16px", color: "#64748b" }}>{new Date(item.issue_date).toLocaleDateString('en-GB')}</td>
+                      <td style={{ padding: "16px" }}>
+                        <span style={{
+                          display: "inline-flex",
+                          padding: "4px 10px",
+                          borderRadius: "999px",
+                          fontSize: "12px",
+                          fontWeight: "700",
+                          background: status === "Accepted" ? "#dcfce7" : status === "Rejected" ? "#fee2e2" : "#e0f2fe",
+                          color: status === "Accepted" ? "#166534" : status === "Rejected" ? "#991b1b" : "#075985"
+                        }}>
+                          {status}
+                        </span>
+                      </td>
+                      <td style={{ padding: "16px", textAlign: "right" }}>
+                        <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", flexWrap: "wrap" }}>
+                          <button
+                            onClick={() => offerLetterPDFService.viewOfferLetter(item.form_data)}
+                            title="View"
+                            style={{ padding: "6px", background: "#f1f5f9", border: "none", borderRadius: "4px", cursor: "pointer", color: "#4f46e5" }}
+                          >
+                            <HiOutlineEye size={18} />
+                          </button>
+                          <button
+                            onClick={() => offerLetterPDFService.downloadOfferLetter(item.form_data)}
+                            title="Download"
+                            style={{ padding: "6px", background: "#f1f5f9", border: "none", borderRadius: "4px", cursor: "pointer", color: "#2ecc71" }}
+                          >
+                            <HiOutlineArrowDownTray size={18} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setFormData(item.form_data);
+                              setSelectedEmployee(item.employee_display_id);
+                              setSelectedUserId(item.employee_id);
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            title="Edit"
+                            style={{ padding: "6px", background: "#f1f5f9", border: "none", borderRadius: "4px", cursor: "pointer", color: "#64748b" }}
+                          >
+                            <HiOutlineArrowDownOnSquare size={18} />
+                          </button>
+                          {!isFinalStatus && (
+                            <>
+                              <button
+                                onClick={() => handleAcceptOffer(item)}
+                                disabled={isUpdating}
+                                title="Accept offer and create employee"
+                                style={{ padding: "6px 10px", background: "#dcfce7", border: "none", borderRadius: "4px", cursor: isUpdating ? "not-allowed" : "pointer", color: "#166534", fontWeight: "700" }}
+                              >
+                                Accept
+                              </button>
+                              <button
+                                onClick={() => handleRejectOffer(item)}
+                                disabled={isUpdating}
+                                title="Reject offer"
+                                style={{ padding: "6px 10px", background: "#fee2e2", border: "none", borderRadius: "4px", cursor: isUpdating ? "not-allowed" : "pointer", color: "#991b1b", fontWeight: "700" }}
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

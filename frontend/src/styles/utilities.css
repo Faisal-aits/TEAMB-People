@@ -1,0 +1,43 @@
+.u-grid {
+  display: grid;
+}
+
+.u-flex {
+  display: flex;
+}
+
+.u-items-center {
+  align-items: center;
+}
+
+.u-justify-between {
+  justify-content: space-between;
+}
+
+.u-gap-2 {
+  gap: var(--space-2);
+}
+
+.u-gap-3 {
+  gap: var(--space-3);
+}
+
+.u-gap-4 {
+  gap: var(--space-4);
+}
+
+.u-muted {
+  color: var(--theme-text-muted);
+}
+
+.u-text-strong {
+  color: var(--theme-text-strong);
+}
+
+.u-nowrap {
+  white-space: nowrap;
+}
+
+.u-break-word {
+  overflow-wrap: anywhere;
+}

@@ -1,0 +1,257 @@
+// backend/controllers/leaveController.js
+const Leave = require('./leaveModel');
+const { pool } = require('../../config/db'); 
+
+const leaveController = {
+    // Get all leave requests (admin)
+    getAllLeaves: async (req, res) => {
+        try {
+            const filters = {
+                status: req.query.status || 'all',
+                leave_type: req.query.leave_type || 'all'
+            };
+
+            const leaveData = await Leave.getAll(req.tenantId, filters);
+            const stats = await Leave.getStatistics(req.tenantId);
+
+            res.json({
+                leaves: leaveData,
+                statistics: stats
+            });
+        } catch (error) {
+            console.error('Get leaves error:', error);
+            res.status(500).json({ message: 'Server error while fetching leave data' });
+        }
+    },
+
+    // Get current user's leaves
+    getMyLeaves: async (req, res) => {
+        try {
+            const user_id = req.user.id;
+
+            // Find employee_id first
+            const [employeeRows] = await pool.execute(
+                `SELECT ed.id as employee_id 
+                FROM employee_details ed 
+                WHERE ed.employee_id = ?`,
+                [user_id]
+            );
+
+            if (employeeRows.length === 0) {
+                return res.status(400).json({ message: 'Employee record not found' });
+            }
+
+            const employee_id = employeeRows[0].employee_id;
+            const leaves = await Leave.getByEmployeeId(req.tenantId, employee_id);
+          
+            res.json({
+                leaves: leaves || [],
+                employee_id: employee_id
+            });
+        } catch (error) {
+            console.error('Get my leaves error:', error);
+            res.status(500).json({ message: 'Server error while fetching your leaves' });
+        }
+    },
+
+    // Create new leave request
+    createLeave: async (req, res) => {
+        try {
+            const { description, start_date, end_date, leave_type } = req.body;
+            const user_id = req.user.id;
+
+            const [employeeRows] = await pool.execute(
+                `SELECT ed.id as employee_id 
+                FROM employee_details ed 
+                WHERE ed.employee_id = ?`,
+                [user_id]
+            );
+
+            if (employeeRows.length === 0) {
+                return res.status(400).json({
+                    message: 'Employee record not found. Please contact administrator.'
+                });
+            }
+
+            const employee_id = employeeRows[0].employee_id;
+            
+            if (!description || !start_date || !end_date) {
+                return res.status(400).json({ message: 'Description, start date, and end date are required' });
+            }
+
+            if (new Date(start_date) > new Date(end_date)) {
+                return res.status(400).json({ message: 'End date cannot be before start date' });
+            }
+
+            const leaveId = await Leave.create(req.tenantId, {
+                employee_id,
+                leave_type: leave_type || 'Casual',
+                description,
+                start_date,
+                end_date
+            });
+
+            res.status(201).json({
+                message: 'Leave request submitted successfully!',
+                leave_id: leaveId
+            });
+        } catch (error) {
+            console.error('Create leave error:', error);
+            res.status(400).json({ message: error.message || 'Server error while creating leave request' });
+        }
+    },
+
+    // Get employee attendance history
+    getEmployeeAttendanceHistory: async (req, res) => {
+        try {
+            const { employeeId } = req.params;
+
+            const history = await Leave.getEmployeeAttendanceHistory(req.tenantId, employeeId);
+            const stats = await Leave.getEmployeeAttendanceStats(req.tenantId, employeeId);
+
+            res.json({
+                history: history,
+                statistics: stats
+            });
+        } catch (error) {
+            console.error('Get employee attendance history error:', error);
+            res.status(500).json({ message: 'Server error while fetching employee attendance history' });
+        }
+    },
+
+    // Approve leave request
+    approveLeave: async (req, res) => {
+        try {
+            const { leaveId } = req.params;
+            const user_id = req.user.id;
+
+            const [adminEmployeeRows] = await pool.execute(
+                `SELECT ed.id as employee_id 
+                 FROM employee_details ed 
+                 WHERE ed.employee_id = ?`,
+                [user_id]
+            );
+
+            const approved_by = adminEmployeeRows.length > 0
+                ? adminEmployeeRows[0].employee_id
+                : null;
+
+            await Leave.approve(req.tenantId, leaveId, approved_by);
+
+            res.json({ message: 'Leave approved successfully!' });
+        } catch (error) {
+            console.error('Approve leave error:', error);
+            res.status(500).json({ message: error.message || 'Server error while approving leave' });
+        }
+    },
+
+    // Reject leave request
+    rejectLeave: async (req, res) => {
+        try {
+            const { leaveId } = req.params;
+            const user_id = req.user.id;
+
+            const [adminEmployeeRows] = await pool.execute(
+                `SELECT ed.id as employee_id 
+                 FROM employee_details ed 
+                 WHERE ed.employee_id = ?`,
+                [user_id]
+            );
+
+            const approved_by = adminEmployeeRows.length > 0
+                ? adminEmployeeRows[0].employee_id
+                : null;
+
+            await Leave.reject(req.tenantId, leaveId, approved_by);
+
+            res.json({ message: 'Leave rejected successfully!' });
+        } catch (error) {
+            console.error('Reject leave error:', error);
+            res.status(500).json({ message: error.message || 'Server error while rejecting leave' });
+        }
+    },
+
+    // Delete leave request
+    deleteLeave: async (req, res) => {
+        try {
+            const { leaveId } = req.params;
+
+            await Leave.delete(req.tenantId, leaveId);
+
+            res.json({ message: 'Leave request deleted successfully!' });
+        } catch (error) {
+            console.error('Delete leave error:', error);
+            res.status(500).json({ message: error.message || 'Server error while deleting leave' });
+        }
+    },
+
+    // Get stats
+    getLeaveStats: async (req, res) => {
+        try {
+            const stats = await Leave.getStatistics(req.tenantId);
+            res.json({ 
+                statistics: {
+                    total: stats?.total || 0,
+                    pending: stats?.pending || 0,
+                    approved: stats?.approved || 0,
+                    rejected: stats?.rejected || 0
+                }
+            });
+        } catch (error) {
+            console.error('Get leave stats error:', error);
+            res.json({ statistics: { total: 0, pending: 0, approved: 0, rejected: 0 } });
+        }
+    },
+
+    // Get all leave types for settings/drop-downs
+    getLeaveTypes: async (req, res) => {
+        try {
+            const types = await Leave.getLeaveTypes(req.tenantId);
+            res.json({ success: true, leave_types: types });
+        } catch (error) {
+            console.error('Get leave types error:', error);
+            res.status(500).json({ message: 'Server error while fetching leave types' });
+        }
+    },
+
+    // Get leave balances for a specific employee (admin use)
+    getLeaveBalances: async (req, res) => {
+        try {
+            const { employeeId } = req.params;
+            const year = req.query.year || new Date().getFullYear();
+            const balances = await Leave.getBalances(req.tenantId, employeeId, year);
+            res.json({ success: true, balances });
+        } catch (error) {
+            console.error('Get leave balances error:', error);
+            res.status(500).json({ message: 'Server error while fetching leave balances' });
+        }
+    },
+
+    // Get leave balances for the logged-in employee (self use)
+    getMyBalances: async (req, res) => {
+        try {
+            const user_id = req.user.id;
+            const [employeeRows] = await pool.execute(
+                `SELECT ed.id as employee_id 
+                FROM employee_details ed 
+                WHERE ed.employee_id = ?`,
+                [user_id]
+            );
+
+            if (employeeRows.length === 0) {
+                return res.status(400).json({ message: 'Employee record not found' });
+            }
+
+            const employee_id = employeeRows[0].employee_id;
+            const year = req.query.year || new Date().getFullYear();
+            const balances = await Leave.getBalances(req.tenantId, employee_id, year);
+
+            res.json({ success: true, balances });
+        } catch (error) {
+            console.error('Get my balances error:', error);
+            res.status(500).json({ message: 'Server error while fetching your balances' });
+        }
+    }
+};
+
+module.exports = leaveController;

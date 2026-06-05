@@ -9,6 +9,9 @@ export const offerLetterAPI = {
 
   // HR: Get all saved offer letters for tracking
   getAll: () => api.get('/offer-letters/all'),
+
+  // HR: Update offer letter status
+  updateStatus: (id, data) => api.put(`/offer-letters/${id}/status`, data),
 };
 
 export default offerLetterAPI;

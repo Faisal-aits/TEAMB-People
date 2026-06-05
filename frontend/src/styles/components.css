@@ -1,0 +1,478 @@
+.app-page {
+  min-height: 100vh;
+  padding: var(--page-padding);
+  background: var(--theme-bg);
+  color: var(--theme-text);
+  overflow-x: hidden;
+}
+
+.app-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.app-page-title {
+  margin: 0;
+  color: var(--theme-text-strong);
+  font-size: var(--text-2xl);
+  font-weight: 700;
+}
+
+.app-page-subtitle {
+  margin: var(--space-2) 0 0;
+  color: var(--theme-text-muted);
+}
+
+.app-card {
+  background: var(--theme-surface);
+  border: 1px solid var(--theme-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.app-card-padded {
+  padding: var(--space-5);
+}
+
+.app-section-title {
+  margin: 0 0 var(--space-4);
+  color: var(--theme-text-strong);
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+
+.app-form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.app-form-group label {
+  display: block;
+  margin-bottom: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.app-input,
+.app-select,
+.app-textarea,
+.app-form-group input,
+.app-form-group select,
+.app-form-group textarea {
+  width: 100%;
+  min-height: var(--control-height);
+  border: 1px solid var(--theme-border);
+  border-radius: var(--radius-lg);
+  padding: 10px 12px;
+  background: var(--theme-surface);
+  color: var(--theme-text-strong);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.app-textarea,
+.app-form-group textarea {
+  resize: vertical;
+}
+
+.app-input:focus,
+.app-select:focus,
+.app-textarea:focus,
+.app-form-group input:focus,
+.app-form-group select:focus,
+.app-form-group textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(109, 106, 184, 0.12);
+}
+
+.app-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.app-button {
+  min-height: 36px;
+  max-width: 100%;
+  border: 0;
+  border-radius: var(--radius-lg);
+  padding: 8px 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+}
+
+.app-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.app-button-primary {
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+}
+
+.app-button-primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.app-button-secondary {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-text);
+}
+
+.app-button-success {
+  background: var(--color-success);
+  color: var(--color-text-inverse);
+}
+
+.app-button-danger {
+  background: var(--color-danger-soft);
+  color: var(--color-danger-text);
+}
+
+.app-button-danger:hover:not(:disabled) {
+  background: var(--color-danger);
+  color: var(--color-text-inverse);
+}
+
+.app-message {
+  padding: 12px 14px;
+  border-radius: var(--radius-lg);
+  border: 1px solid transparent;
+  margin-bottom: var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.app-message-success {
+  background: var(--color-success-soft);
+  color: var(--color-success-text);
+  border-color: var(--color-success);
+}
+
+.app-message-error {
+  background: var(--color-danger-soft);
+  color: var(--color-danger-text);
+  border-color: #fca5a5;
+}
+
+.app-table-wrap {
+  overflow-x: auto;
+  overflow-y: hidden;
+  width: 100%;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
+
+.app-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+
+.app-table th,
+.app-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--theme-border);
+  vertical-align: middle;
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}
+
+.app-table th {
+  background: var(--theme-bg-muted);
+  color: var(--theme-text-muted);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+}
+
+.app-table td:last-child,
+.app-table th:last-child {
+  white-space: nowrap;
+}
+
+.app-empty-state {
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--theme-text-muted);
+}
+
+/*
+  Compatibility polish for existing page-specific class names.
+  These are intentionally conservative: they stabilize overflow,
+  spacing, and action alignment without changing component logic.
+*/
+.table-container,
+.table-wrapper,
+.table-responsive,
+.table-scroll,
+.employee-table-container,
+.proj-table-container,
+.lm-table-container,
+.mm-table-wrap,
+.master-table-wrap,
+.salary-table-container,
+.quotation-table-container,
+.billing-table-container,
+.delivery-table-container,
+.expense-table-container,
+.client-table-container,
+.service-table-container {
+  max-width: 100%;
+}
+
+.table-wrapper,
+.table-responsive,
+.table-scroll,
+.app-table-wrap,
+.proj-table-wrapper,
+.lm-table-wrapper,
+.mm-table-wrap,
+.master-table-wrap,
+.bulk-preview-table-wrap,
+.proj-phases-table-container {
+  overflow-x: auto !important;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
+
+.table-wrapper > table,
+.table-responsive > table,
+.table-scroll > table,
+.proj-table-wrapper > table,
+.lm-table-wrapper > table,
+.mm-table-wrap > table,
+.master-table-wrap > table,
+.bulk-preview-table-wrap > table,
+.proj-phases-table-container > table,
+.employee-table,
+.proj-main-table,
+.proj-phases-table,
+.lm-data-table,
+.mm-table,
+.master-table,
+.bulk-preview-table {
+  width: 100%;
+  min-width: 760px;
+}
+
+.employee-table th,
+.employee-table td,
+.proj-main-table th,
+.proj-main-table td,
+.proj-phases-table th,
+.proj-phases-table td,
+.lm-data-table th,
+.lm-data-table td,
+.mm-table th,
+.mm-table td,
+.master-table th,
+.master-table td,
+.bulk-preview-table th,
+.bulk-preview-table td {
+  line-height: 1.4;
+  vertical-align: middle;
+}
+
+.employee-table th,
+.proj-main-table th,
+.proj-phases-table th,
+.lm-data-table th,
+.mm-table th,
+.master-table th,
+.bulk-preview-table th {
+  white-space: nowrap;
+}
+
+.table-header,
+.proj-table-header,
+.lm-table-header,
+.employee-management-header,
+.table-toolbar {
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.table-actions,
+.proj-table-actions,
+.lm-actions-group,
+.crm-actions,
+.form-actions,
+.proj-form-actions,
+.lm-form-actions,
+.modal-footer,
+.bulk-upload-footer,
+.smtp-actions,
+.master-actions,
+.action-buttons,
+.result-actions,
+.actions-cell,
+.action-btns {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.form-actions,
+.proj-form-actions,
+.lm-form-actions,
+.modal-footer,
+.bulk-upload-footer,
+.smtp-actions,
+.master-actions {
+  justify-content: flex-end;
+}
+
+.actions-cell,
+.action-btns {
+  white-space: nowrap;
+}
+
+.actions-cell,
+.action-btns {
+  justify-content: flex-start;
+}
+
+.filter-btn,
+.export-btn,
+.import-btn,
+.cancel-btn,
+.submit-btn,
+.edit-btn,
+.delete-btn,
+.add-first-btn,
+.add-employee-btn,
+.proj-add-btn,
+.proj-export-btn,
+.proj-submit-btn,
+.proj-cancel-btn,
+.proj-edit-btn,
+.proj-delete-btn,
+.lm-primary-btn,
+.lm-action-btn,
+.crm-btn,
+.mm-refresh-btn,
+.mm-manage-btn,
+.mm-save-btn,
+.branding-primary-btn,
+.branding-upload-btn {
+  max-width: 100%;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.search-box,
+.table-search-input,
+.search-input,
+.filter-btn {
+  min-width: 0;
+}
+
+.modal-content,
+.modal-content1,
+.proj-modal-content,
+.lm-modal-card,
+.mm-modal,
+.bulk-upload-modal,
+.bulk-info-modal {
+  max-width: min(96vw, 1100px);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+
+.modal-header,
+.proj-modal-header,
+.lm-modal-header,
+.mm-modal-header,
+.bulk-upload-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.modal-header h2,
+.proj-modal-header h2,
+.lm-modal-header h2,
+.mm-modal-header h3 {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 768px) {
+  .app-page {
+    padding: 16px;
+  }
+
+  .app-page-header,
+  .table-header,
+  .proj-table-header,
+  .lm-table-header,
+  .employee-management-header {
+    align-items: stretch;
+  }
+
+  .table-actions,
+  .proj-table-actions,
+  .crm-actions,
+  .form-actions,
+  .proj-form-actions,
+  .lm-form-actions,
+  .modal-footer,
+  .bulk-upload-footer,
+  .smtp-actions,
+  .master-actions,
+  .action-buttons {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .table-actions > *,
+  .proj-table-actions > *,
+  .crm-actions > *,
+  .form-actions > *,
+  .proj-form-actions > *,
+  .lm-form-actions > *,
+  .modal-footer > *,
+  .bulk-upload-footer > *,
+  .smtp-actions > *,
+  .master-actions > * {
+    flex: 1 1 180px;
+  }
+
+  .modal-content,
+  .modal-content1,
+  .proj-modal-content,
+  .lm-modal-card,
+  .mm-modal,
+  .bulk-upload-modal,
+  .bulk-info-modal {
+    width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
+  }
+}

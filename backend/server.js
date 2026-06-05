@@ -1,52 +1,56 @@
-const express = require('express');
-const multer = require('multer');
-const cors = require('cors');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 require('dotenv').config();
-const apiProtection = require('./middleware/apiProtection');
-
-const authRoutes = require('./routes/authRoutes');
-const expenseRoutes = require('./routes/expenseRoutes');
-const employeeRoutes = require('./routes/employeeRoutes');
-const dashboardRoutes = require('./routes/dashboardRoutes');
-const departmentRoutes = require('./routes/departmentRoutes');
-const projectRoutes = require('./routes/projectRoutes');
-const salaryRoutes = require('./routes/salaryRoutes');
-const clientRoutes = require('./routes/clientRoutes');
-const serviceRoutes = require('./routes/serviceRoute');
-const studentRoutes = require('./routes/studentRoutes');
-const courseRoutes = require('./routes/courseRoutes');
-const internshipRoutes = require('./routes/internshipRoutes');
-const attendanceRoutes = require('./routes/attendanceRoutes');
-const leaveRoutes = require('./routes/leaveRoutes');
-const attendanceEmployeeRoutes = require('./routes/attendanceEmployeeRoutes');
-const shiftRoutes = require('./routes/shiftRoutes');
-const reportRoutes = require('./routes/reportRoutes');
-const billingRoutes = require('./routes/billingRoutes');
-const quotationRoutes = require('./routes/quotationRoutes');
-const deliveryRoutes = require('./routes/deliveryRoutes');
-const serviceSettingRoutes = require('./routes/serviceSettingRoutes');
-const studentAttendanceRoutes = require('./routes/studentAttendanceRoutes');
-const offerLetterRoutes = require('./routes/offerLetterRoutes');
-
-const brandingRoutes = require('./routes/brandingRoutes');
-const resignationRoutes = require('./routes/resignationRoutes');
-const experienceLetterRoutes = require('./routes/experienceLetterRoutes');
-const incrementLetterRoutes = require('./routes/incrementLetterRoutes');
-const superAdminRoutes = require('./routes/superAdminRoutes');
-const { scheduleAutoAbsentCron } = require('./cron/attendanceCron');
-const teamRoutes = require('./routes/teamRoutes');
-const taskRoutes = require('./routes/taskRoutes');
-const dailyReportRoutes = require('./routes/dailyReportRoutes');
-const declarationFormRoutes = require('./routes/declarationFormRoutes');
-
-scheduleAutoAbsentCron();
-
+const multer = require('multer');
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+const userRoutes = require('./src/features/users/user.routes');
+const superAdminRoutes = require('./src/features/super-admin/superAdminRoutes');
+const errorHandler = require('./src/core/errorHandler');
+const sendResponse = require('./src/utils/response');
+const logger = require('./src/core/logger');
+const { pool } = require('./src/config/db');
+const authRoutes = require('./src/features/login/authRoutes');
+const employeeRoutes = require('./src/features/employee/employeeRoutes');
+const offerLetterRoutes = require('./src/features/employee/offerLetterRoutes');
+const brandingRoutes = require('./src/features/branding/brandingRoutes');
+const brandingModel = require('./src/features/branding/brandingModel');
+const salaryRoutes = require('./src/features/salary/salaryRoutes');
+const quotationRoutes = require('./src/features/quotation/quotationRoutes');
+const billingRoutes = require('./src/features/billing/billingRoutes');
+const deliveryRoutes = require('./src/features/deliverychallan/deliveryRoutes');
+const shiftRoutes = require('./src/features/shift/shiftRoutes');
+const incrementLetterRoutes = require('./src/features/employee/incrementLetterRoutes');
+const experienceLetterRoutes = require('./src/features/employee/experienceLetterRoutes');
+const declarationFormRoutes = require('./src/features/employee/declarationFormRoutes');
+const resignationRoutes = require('./src/features/employee/resignationRoutes');
+const expenseRoutes = require('./src/features/expense/expenseRoutes');
+const attendanceRoutes = require('./src/features/attendance/attendanceRoutes');
+const leaveRoutes = require('./src/features/leave/leaveRoutes');
+const clientRoutes = require('./src/features/clients/clientRoutes');
+const serviceRoutes = require('./src/features/services/serviceRoutes');
+const moduleAccessRoutes = require('./src/features/moduleAccess/moduleAccessRoutes');
+const pttmRoutes = require('./src/features/pttm/pttmRoutes');
+const serviceSettingRoutes = require('./src/features/servicesetting/serviceSettingRoutes');
+const dashboardRoutes = require('./src/features/dashboard/dashboardRoutes');
+const aiDocumentGeneratorRoutes = require('./src/features/aiDocumentGenerator/aiDocumentGeneratorRoutes');
+const { ensureServiceSettingSchema } = require('./src/features/servicesetting/serviceSettingSchema');
+const { ensureEmployeeSchema } = require('./src/features/employee/employeeSchema');
+const { ensureSalarySchema } = require('./src/features/salary/salarySchema');
+const { ensureLeaveSchema } = require('./src/features/leave/leaveSchema');
+const { ensureAttendanceSchema } = require('./src/features/attendance/attendanceSchema');
+const { ensurePasswordResetSchema } = require('./src/features/login/passwordResetSchema');
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT || 3000);
 
-// Configure multer for file uploads
+app.use(cors());
+app.use(express.json());
+
+app.get('/health', (req, res) => {
+  return sendResponse(res, 200, true, 'Server is healthy', {
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
+});
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
@@ -58,179 +62,91 @@ const upload = multer({
     }
   }
 });
-
-// =======================================================
-// SECURITY MIDDLEWARE - IN THIS ORDER:
-// =======================================================
-
-// 1. Serve uploaded files BEFORE CORS (img/static requests have no Origin header)
-const path = require('path');
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+app.use('/uploads', express.static(path.join(__dirname, 'src','features','uploads'), {
   setHeaders: (res) => {
     res.set('Cross-Origin-Resource-Policy', 'cross-origin');
     res.set('Access-Control-Allow-Origin', '*');
   }
 }));
 
-// 2. CORS - STRICT: Do NOT allow requests with no origin
-const allowedOrigins = [
-  'https://work-desk.tech',
-  'https://www.work-desk.tech',
-  'https://admin.work-desk.tech',
-  'https://api.work-desk.tech',
-  'http://localhost:5173',
-  'http://localhost:5174',
-];
-app.use(cors({
-  origin: function (origin, callback) {
-    // PRODUCTION: Always enforce strict CORS validation
-    // DEVELOPMENT: Allow localhost for testing, but still validate
-    if (process.env.NODE_ENV === 'development') {
-      // In development, allow localhost origins for easier testing
-      if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1')) {
-        return callback(null, true);
-      }
-    }
-
-    // In production, we allow no-origin through CORS, BUT they will be caught and blocked
-    // by apiProtection.js right after! We do this because browsers don't send Origin for same-site requests.
-    if (!origin) {
-      return callback(null, true);
-    }
-
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-
-    return callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant-Id'],
-}));
-
-// 3. Helmet - Set security-related HTTP headers
-app.use(helmet({
-  contentSecurityPolicy: false, // CSP handled separately if needed
-  crossOriginEmbedderPolicy: false,
-  crossOriginResourcePolicy: { policy: "cross-origin" },
-}));
-
-// 4. Rate limiting - Prevent brute force and scraping
-const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'development' ? 2000 : 200, // higher limit for dev HMR
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, message: 'Too many requests. Please try again later.' }
-});
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'development' ? 100 : 15,
-  message: { success: false, message: 'Too many login attempts. Please try again after 15 minutes.' }
-});
-
-app.use('/api/', generalLimiter);
-app.use('/api/auth/login', authLimiter);
-app.use('/api/super-admin/login', authLimiter);
-
-// 3. Body parsers
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Error logging
-const fs = require('fs');
-const errorLog = fs.createWriteStream(path.join(__dirname, 'error.log'), { flags: 'a' });
-const originalConsoleError = console.error;
-console.error = (...args) => {
-  errorLog.write(new Date().toISOString() + ' - ' + args.join(' ') + '\n');
-  originalConsoleError.apply(console, args);
-};
-
-// Log all requests
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-  next();
-});
-
-// ============================================================
-// SUPER ADMIN ROUTES (completely separate, no tenant context)
-// ============================================================
-app.use('/api/super-admin', superAdminRoutes);
-
-// ============================================================
-// TENANT ROUTES (all tenant-scoped)
-// Server-side origin validation: blocks Postman/curl/scripts
-// even if they send a valid JWT (stolen from browser)
-// ============================================================
-app.use('/api/', apiProtection.validateOrigin);
-
-app.use('/api/auth', authRoutes);
-app.use('/api/expenses', expenseRoutes);
 app.use('/api/employees', employeeRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/super-admin', superAdminRoutes);
 app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/departments', departmentRoutes);
-app.use('/api/projects', projectRoutes);
-app.use('/api/salary', salaryRoutes);
-app.use('/api/clients', clientRoutes);
-app.use('/api/services', serviceRoutes);
-app.use('/api/students', studentRoutes);
-app.use('/api/courses', courseRoutes);
-app.use('/api/internships', internshipRoutes);
-app.use('/api/attendance', attendanceRoutes);
-app.use('/api/leaves', leaveRoutes);
-app.use('/api/attendance/employee', attendanceEmployeeRoutes);
-app.use('/api/face', require('./routes/faceRoutes'));
-app.use('/api/shifts', shiftRoutes);
-app.use('/api/reports', reportRoutes);
-app.use('/api/billing', billingRoutes);
-app.use('/api/quotations', quotationRoutes);
-app.use('/api/delivery', deliveryRoutes);
-app.use('/api/service-settings', serviceSettingRoutes);
-app.use('/api/student-attendance', studentAttendanceRoutes);
 app.use('/api/offer-letters', offerLetterRoutes);
 app.use('/api/branding', brandingRoutes);
-app.use('/api/resignation-requests', resignationRoutes);
-app.use('/api/experience-letters', experienceLetterRoutes);
+app.use('/api/salary', salaryRoutes);
+app.use('/api/quotations', quotationRoutes);
+app.use('/api/billing', billingRoutes);
+app.use('/api/delivery', deliveryRoutes);
+app.use('/api/shifts', shiftRoutes);
+app.use('/api/expenses', expenseRoutes);
+app.use('/api/clients', require('./src/features/clients/clientRoutes'));
+app.use('/api/projects', require('./src/features/projects/projectRoutes'));
+app.use('/api/services', require('./src/features/services/serviceRoutes'));
+// app.use('/api/salary', require('./src/features/salary/salaryRoutes'));
+// app.use('/api/billing', require('./src/features/billing/billingRoutes'));
+// app.use('/api/delivery', require('./src/features/delivery/deliveryRoutes'));
+// app.use('/api/quotation', require('./src/features/quotation/quotationRoutes'));
+// app.use('/api/attendance', require('./src/features/attendance/attendanceRoutes'));
+// app.use('/api/leave', require('./src/features/leave/leaveRoutes'));
+// app.use('/api/shift', require('./src/features/shift/shiftRoutes'));
+
+
 app.use('/api/increment-letters', incrementLetterRoutes);
-app.use('/api/teams', teamRoutes);           // Add this
-app.use('/api/tasks', taskRoutes);           // Add this
-app.use('/api/daily-reports', dailyReportRoutes);
-
+app.use('/api/experience-letters', experienceLetterRoutes);
 app.use('/api/declaration-form', declarationFormRoutes);
-
-// Basic route
-app.get('/', (req, res) => {
-  res.json({ message: 'Work Desk Multi-Tenant API is running!' });
+app.use('/api/resignation-requests', resignationRoutes);
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/leaves', leaveRoutes);
+app.use('/api/module-access', moduleAccessRoutes);
+app.use('/api/clients', clientRoutes);
+app.use('/api/pttm', pttmRoutes);
+app.use('/api/service-settings', serviceSettingRoutes);
+app.use('/api/ai-document-generator', aiDocumentGeneratorRoutes);
+// app.use('/api/services', serviceRoutes);
+app.use((req, res) => {
+  return sendResponse(res, 404, false, 'Route not found', null);
 });
 
-// Health check route
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    service: 'Work Desk Multi-Tenant API',
-    version: '2.0.0'
-  });
-});
 
-// Global Error Handler
-app.use((err, req, res, next) => {
-  console.error('SERVER ERROR:', err.stack || err);
-  res.status(500).json({
-    success: false,
-    message: 'Internal Server Error',
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined
-  });
-});
+app.use(errorHandler);
 
-debugger
+const startServer = async () => {
+  try {
+    const connection = await pool.getConnection();
+    connection.release();
 
-// Start server
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server is running on port ${PORT}`);
-  console.log(`🌐 Access via: http://localhost:${PORT} or http://YOUR_IP:${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
-  console.log(`🔒 Super Admin API: http://localhost:${PORT}/api/super-admin`);
-});
+    if (moduleAccessRoutes.ensureSchema) {
+      await moduleAccessRoutes.ensureSchema();
+    }
+
+    if (pttmRoutes.ensureSchema) {
+      await pttmRoutes.ensureSchema();
+    }
+
+    await ensureEmployeeSchema();
+    await ensureAttendanceSchema();
+    await ensurePasswordResetSchema();
+    await ensureSalarySchema();
+    await ensureServiceSettingSchema();
+    await ensureLeaveSchema();
+    await brandingModel.ensureSchema();
+    if (aiDocumentGeneratorRoutes.ensureSchema) {
+      await aiDocumentGeneratorRoutes.ensureSchema();
+    }
+
+    app.listen(PORT, () => {
+      logger.info(`Server started on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error('Database connection error:', error);
+    logger.error('Failed to connect to database during startup', { error });
+    process.exit(1);
+  }
+};
+
+startServer();
+
+module.exports = app;
