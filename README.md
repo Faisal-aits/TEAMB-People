@@ -1,8 +1,16 @@
 # Work Desk - Arham IT Solutions
+
 A full-stack multi-tenant web application combining React frontend with Express.js backend for workforce management and face recognition capabilities.
 
 ## Project Overview
-Work Desk is a comprehensive application designed for managing workspace operations with integrated face recognition technology. The platform leverages modern technologies to provide a seamless user experience with advanced features including biometric authentication, document generation, and data analytics.
+
+Work Desk is a comprehensive application designed for managing workspace operations with integrated face recognition technology. The platform leverages modern technologies to provide a seamless user experience for employee management, attendance tracking, and HR operations.
+
+## Language Composition
+
+This project is built primarily with:
+- **JavaScript** - 80.5%
+- **CSS** - 19.5%
 
 ## Tech Stack
 
@@ -30,6 +38,7 @@ Work Desk is a comprehensive application designed for managing workspace operati
 - **Node Cron** - Scheduled tasks
 
 ## Prerequisites
+
 Before you begin, ensure you have the following installed:
 - **Node.js** (v16 or higher)
 - **npm** (v8 or higher)
@@ -45,12 +54,14 @@ cd work-desk
 ```
 
 ### 2. Database Setup
+
 Start MySQL and create the database:
 ```sql
 CREATE DATABASE aits;
 ```
 
 ### 3. Backend Setup
+
 ```bash
 cd backend
 npm install
@@ -76,6 +87,7 @@ npm run dev
 The backend will run on **http://localhost:5000**
 
 ### 4. Frontend Setup
+
 ```bash
 cd frontend
 npm install
@@ -100,6 +112,7 @@ npm run dev
 The frontend will run on **http://localhost:5173**
 
 ### 5. Super Admin Setup
+
 ```bash
 cd super-admin
 npm install
@@ -146,6 +159,7 @@ The super admin panel will run on **http://localhost:5174**
 | Super Admin | `https://admin.work-desk.tech` |
 
 ## Project Structure
+
 ```
 work-desk/
 ├── frontend/
@@ -228,6 +242,7 @@ npm run dev
 > ⚠️ **Important:** Change these credentials in production!
 
 ## Features
+
 - ✅ Multi-tenant architecture
 - ✅ User authentication with JWT
 - ✅ Face recognition and detection
@@ -246,24 +261,36 @@ npm run dev
 ## Troubleshooting
 
 ### Port Already in Use
+
 If port 5000 or 5173 is already in use:
 - **Backend:** Change `PORT` in `backend/.env`
 - **Frontend:** Run with custom port: `npm run dev -- --port 3001`
 - **Super Admin:** Change port in `super-admin/vite.config.js`
 
 ### MySQL Connection Error
+
 - Verify MySQL is running
 - Check `backend/.env` database credentials match exactly: `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_PORT`
 - Ensure the `aits` database exists
 
 ### API Not Connecting
+
 - Make sure the backend is running on port **5000**
 - For local dev, comment out or remove `VITE_API_BASE_URL` from `.env` so it falls back to `http://localhost:5000`
 - For production, ensure `VITE_API_BASE_URL=https://api.work-desk.tech` is set before building
 
 ### Module Not Found
+
 Clear `node_modules` and reinstall:
 ```bash
 rm -rf node_modules package-lock.json
 npm install
 ```
+
+## Contributing
+
+Contributions are welcome! Please follow the project structure and coding standards established in the repository.
+
+## License
+
+This project is proprietary and maintained by Arham IT Solutions.
