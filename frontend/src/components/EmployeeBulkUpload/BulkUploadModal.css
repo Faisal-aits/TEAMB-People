@@ -339,7 +339,6 @@
 .bulk-info-modal .modal-header {
   flex: 0 0 auto;
   padding: 18px 22px;
-  background: linear-gradient(135deg, #a7a1f0 0%, #e99ac7 58%, #ffd3e8 100%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.42);
 }
 
