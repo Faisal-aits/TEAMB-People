@@ -205,6 +205,7 @@ const BulkUploadModal = ({ isOpen, onClose, onUploadComplete }) => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadResult, setUploadResult] = useState(null);
+  const [toast, setToast] = useState(null);
 
   const invalidRows = useMemo(
     () => new Set(validationErrors.map((error) => error.row)),
@@ -221,6 +222,7 @@ const BulkUploadModal = ({ isOpen, onClose, onUploadComplete }) => {
     setFileErrors([]);
     setUploadProgress(0);
     setUploadResult(null);
+    setToast(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -283,6 +285,44 @@ const BulkUploadModal = ({ isOpen, onClose, onUploadComplete }) => {
     setValidationErrors(parsed.errors.length > 0 ? [] : validatePreviewRows(parsed.rows));
     setUploadProgress(0);
     setUploadResult(null);
+    setToast(null);
+  };
+
+  const showToast = (type, message) => {
+    setToast({ type, message });
+    window.setTimeout(() => {
+      setToast((current) => (current?.message === message ? null : current));
+    }, 6000);
+  };
+
+  const getUploadFailureMessage = (error) => {
+    const data = error.response?.data;
+    const firstError = data?.errors?.[0]?.message;
+    return data?.message || firstError || error.message || 'Upload failed. Please try again.';
+  };
+
+  const downloadDemoExcel = () => {
+    const headerRow = BULK_UPLOAD_COLUMNS.map((column) => column.label);
+    const sampleRow = BULK_UPLOAD_COLUMNS.map((column) => BULK_UPLOAD_SAMPLE_ROW[column.key] ?? '');
+    const instructionRows = [
+      ['Use the Employees sheet for upload data.'],
+      ['Do not remove required columns. Dates must be YYYY-MM-DD.'],
+      ['Create departments in the system first, or use a valid Department ID.'],
+      ['Complete SMTP configuration before uploading because credentials are emailed to employees.']
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    const employeeSheet = XLSX.utils.aoa_to_sheet([headerRow, sampleRow]);
+    employeeSheet['!cols'] = BULK_UPLOAD_COLUMNS.map((column) => ({
+      wch: Math.max(column.label.length + 4, 16)
+    }));
+
+    const instructionsSheet = XLSX.utils.aoa_to_sheet(instructionRows);
+    instructionsSheet['!cols'] = [{ wch: 96 }];
+
+    XLSX.utils.book_append_sheet(workbook, employeeSheet, 'Employees');
+    XLSX.utils.book_append_sheet(workbook, instructionsSheet, 'Instructions');
+    XLSX.writeFile(workbook, 'employee-bulk-upload-demo.xlsx');
   };
 
   const handleFileSelect = async (event) => {
@@ -312,16 +352,24 @@ const BulkUploadModal = ({ isOpen, onClose, onUploadComplete }) => {
 
       setUploadProgress(100);
       setUploadResult(response.data);
+      if (response.data?.failedRows > 0 || response.data?.errors?.length > 0) {
+        showToast('warning', response.data.message || 'Upload completed with some failed rows. Check the details below.');
+      } else {
+        showToast('success', response.data?.message || 'Employees uploaded successfully.');
+      }
       await onUploadComplete?.();
     } catch (error) {
       const data = error.response?.data;
+      const failureMessage = getUploadFailureMessage(error);
       setUploadResult(data || {
         success: false,
         totalRows: parsedRows.length,
         insertedRows: 0,
         failedRows: parsedRows.length,
-        errors: [{ row: null, message: error.response?.data?.message || 'Upload failed. Please try again.' }]
+        message: failureMessage,
+        errors: [{ row: null, message: failureMessage }]
       });
+      showToast('error', failureMessage);
     } finally {
       setUploading(false);
     }
@@ -361,6 +409,12 @@ const BulkUploadModal = ({ isOpen, onClose, onUploadComplete }) => {
   return (
     <div className="modal-overlay">
       <div className="modal-content1 bulk-upload-modal">
+        {toast && (
+          <div className={`bulk-toast bulk-toast-${toast.type}`}>
+            <i className={toast.type === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-circle'}></i>
+            <span>{toast.message}</span>
+          </div>
+        )}
         <div className="modal-header bulk-upload-header">
           <div>
             <h2><i className="fas fa-cloud-upload-alt"></i> Bulk Upload Employees</h2>
@@ -396,6 +450,9 @@ const BulkUploadModal = ({ isOpen, onClose, onUploadComplete }) => {
 
             <button type="button" className="bulk-info-btn" onClick={() => setShowInfo(true)}>
               <i className="fas fa-info-circle"></i> Info
+            </button>
+            <button type="button" className="bulk-info-btn bulk-template-btn" onClick={downloadDemoExcel}>
+              <i className="fas fa-download"></i> Demo Excel
             </button>
           </div>
 

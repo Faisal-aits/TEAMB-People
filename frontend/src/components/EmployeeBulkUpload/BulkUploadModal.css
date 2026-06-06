@@ -4,6 +4,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 .bulk-upload-header {
@@ -72,6 +73,48 @@
 .bulk-info-btn {
   color: var(--color-info);
   background: var(--color-info-soft);
+}
+
+.bulk-template-btn {
+  color: var(--color-success-text);
+  background: var(--color-success-soft);
+}
+
+.bulk-toast {
+  position: absolute;
+  top: 16px;
+  right: 56px;
+  z-index: 3;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: min(520px, calc(100% - 96px));
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.bulk-toast-success {
+  border-color: #bbf7d0;
+  color: var(--color-success-text);
+  background: #f0fdf4;
+}
+
+.bulk-toast-warning {
+  border-color: #fde68a;
+  color: var(--color-warning-text);
+  background: #fffbeb;
+}
+
+.bulk-toast-error {
+  border-color: #fecaca;
+  color: var(--color-danger-text);
+  background: #fef2f2;
 }
 
 .bulk-dropzone {
