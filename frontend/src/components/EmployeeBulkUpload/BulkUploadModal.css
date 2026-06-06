@@ -48,7 +48,7 @@
 .modal-header.bulk-upload-header .close-btn {
   flex: 0 0 auto;
   background: rgba(255, 255, 255, 0.18);
-  color: #ffffff;
+  color: #000000;
 }
 
 .bulk-upload-body {
