@@ -55,7 +55,6 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
   const [hrModuleOpen, setHrModuleOpen] = useState(false);
   const [accountModuleOpen, setAccountModuleOpen] = useState(false);
   const [payrollModuleOpen, setPayrollModuleOpen] = useState(false);
-  const [servicesModuleOpen, setServicesModuleOpen] = useState(false);
   const [settingsModuleOpen, setSettingsModuleOpen] = useState(false);
 
   const { user, logout } = useAuth();
@@ -63,7 +62,6 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
   const isAdmin = user?.position === 'admin';
   const canAccessHr = hasModuleAccess(user, 'hr');
   const canAccessAccounts = hasModuleAccess(user, 'accounts');
-  const canAccessServices = hasModuleAccess(user, 'services');
   const canAccessHrDashboard = hasModuleAccess(user, 'hr_dashboard');
   const canAccessEmployeeManagement = hasModuleAccess(user, 'employee_management');
   const canAccessAttendanceManagement = hasModuleAccess(user, 'attendance_management');
@@ -124,10 +122,6 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
   };
   const togglePayrollModule = () => {
     setPayrollModuleOpen(!payrollModuleOpen);
-  };
-
-  const toggleServicesModule = () => {
-    setServicesModuleOpen(!servicesModuleOpen);
   };
 
   const toggleSettingsModule = () => {
@@ -353,29 +347,13 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
               </li>
               )}
 
-              {/* Services Dropdown */}
-              {canAccessServices && (
-              <li className={`dropdown ${servicesModuleOpen ? 'open' : ''}`}>
-                <button className="dropdown-toggle" onClick={toggleServicesModule}>
+              {/* Services */}
+              {canAccessServiceManagement && (
+              <li className={activeTab === 'service' ? 'active' : ''}>
+                <button onClick={() => navigateToTab('service')}>
                   <span className="nav-icon"><MdMiscellaneousServices /></span>
-                  {sidebarOpen && (
-                    <>
-                      <span className="nav-text">Services</span>
-                      <span className="dropdown-arrow">
-                        {servicesModuleOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
-                      </span>
-                    </>
-                  )}
+                  {sidebarOpen && <span className="nav-text">Services</span>}
                 </button>
-                {sidebarOpen && servicesModuleOpen && (
-                  <ul className="dropdown-menu">
-                    {canAccessServiceManagement && <li className={activeTab === 'service' ? 'active' : ''}>
-                      <button onClick={() => navigateToTab('service')}>
-                        <span className="dropdown-text">Service Management</span>
-                      </button>
-                    </li>}
-                  </ul>
-                )}
               </li>
               )}
 

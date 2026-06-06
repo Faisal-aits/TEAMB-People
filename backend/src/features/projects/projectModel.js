@@ -1,6 +1,29 @@
 const { query } = require('../../config/db');
 const { ensureProjectSchema } = require('./projectSchema');
 
+const toMysqlDate = (value, fieldName) => {
+  if (value === null || value === undefined || value === '') return null;
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10);
+  }
+
+  const trimmed = String(value).trim();
+  if (!trimmed) return null;
+
+  const dateOnlyMatch = trimmed.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (dateOnlyMatch) return dateOnlyMatch[1];
+
+  const parsed = new Date(trimmed);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toISOString().slice(0, 10);
+  }
+
+  const error = new Error(`${fieldName} must be a valid date in YYYY-MM-DD format`);
+  error.statusCode = 400;
+  throw error;
+};
+
 const projectModel = {
   getAll: async (tenantId) => {
     await ensureProjectSchema();
@@ -142,8 +165,8 @@ const projectModel = {
         data.client_id || data.clientId || null,
         data.name || 'Unnamed Project',
         data.description || null,
-        data.start_date || data.startDate || null,
-        data.end_date || data.endDate || null,
+        toMysqlDate(data.start_date || data.startDate, 'start_date'),
+        toMysqlDate(data.end_date || data.endDate, 'end_date'),
         data.status || 'Active',
         data.department || data.assigned_department || null,
         data.manager || data.project_lead || data.project_lead_name || null,
@@ -163,8 +186,8 @@ const projectModel = {
         data.client_id || data.clientId || null,
         data.name || 'Unnamed Project',
         data.description || null,
-        data.start_date || data.startDate || null,
-        data.end_date || data.endDate || null,
+        toMysqlDate(data.start_date || data.startDate, 'start_date'),
+        toMysqlDate(data.end_date || data.endDate, 'end_date'),
         data.status || 'Active',
         data.department || data.assigned_department || null,
         data.manager || data.project_lead || data.project_lead_name || null,

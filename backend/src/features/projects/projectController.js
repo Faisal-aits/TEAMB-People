@@ -35,7 +35,7 @@ const projectController = {
       res.status(201).json({ success: true, message: 'Project created successfully', data: created, project: created });
     } catch (error) {
       console.error('Error creating project:', error);
-      res.status(500).json({ error: 'Failed to create project' });
+      res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : 'Failed to create project' });
     }
   },
 
@@ -50,7 +50,7 @@ const projectController = {
       res.json({ success: true, message: 'Project updated successfully', data: updated, project: updated });
     } catch (error) {
       console.error('Error updating project:', error);
-      res.status(500).json({ error: 'Failed to update project' });
+      res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : 'Failed to update project' });
     }
   },
 

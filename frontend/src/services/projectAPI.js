@@ -35,6 +35,20 @@ const normalizeProject = (project = {}) => ({
   team: project.team || [],
 });
 
+const toDateOnly = (value) => {
+  if (!value) return null;
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  const text = String(value).trim();
+  if (!text) return null;
+  return text.match(/^(\d{4}-\d{2}-\d{2})/)?.[1] || text;
+};
+
+const normalizeProjectPayload = (data = {}) => ({
+  ...data,
+  start_date: toDateOnly(data.start_date || data.startDate),
+  end_date: toDateOnly(data.end_date || data.endDate),
+});
+
 const normalizeProjectsResponse = (response) => {
   const normalized = normalizeListResponse(response, 'projects');
   const projects = (normalized.data.data || []).map(normalizeProject);
@@ -110,8 +124,8 @@ export const projectAPI = {
     remarks: data.remarks,
   }),
   getById: (id) => api.get(`/projects/${id}`),
-  create: (data) => api.post('/projects', data),
-  update: (id, data) => api.put(`/projects/${id}`, data),
+  create: (data) => api.post('/projects', normalizeProjectPayload(data)),
+  update: (id, data) => api.put(`/projects/${id}`, normalizeProjectPayload(data)),
   delete: (id) => api.delete(`/projects/${id}`),
   assignTeam: () => Promise.resolve({ data: { success: true, message: 'Team assignment saved locally.' } }),
   updatePhase: () => Promise.resolve({ data: { success: true, message: 'Phase updated.' } }),

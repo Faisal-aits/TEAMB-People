@@ -593,7 +593,7 @@ const BulkUploadModal = ({ isOpen, onClose, onUploadComplete }) => {
                     <h3>Accepted Formats</h3>
                     <p>.csv and .xlsx files up to {Math.floor(MAX_BULK_UPLOAD_FILE_SIZE / 1024 / 1024)}MB.</p>
                 </div>
-                <div>
+                <div style={{ marginTop: '1.5rem' }}>
                   <h3>Limits</h3>
                   <p>Maximum Rows: {MAX_BULK_UPLOAD_ROWS}</p>
                 </div>
