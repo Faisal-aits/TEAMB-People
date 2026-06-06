@@ -12,7 +12,10 @@ router.use(authMiddleware.verifyToken);
 // ==================== LEAVE ROUTES ====================
 
 // Specific routes first to prevent wildcard clashes
+router.get('/types/settings', requireModuleAccess('leave_management', 'read'), leaveController.getLeaveTypeSettings);
 router.get('/types', leaveController.getLeaveTypes);
+router.post('/types', requireModuleAccess('leave_management', 'write'), leaveController.createLeaveType);
+router.put('/types/:typeId', requireModuleAccess('leave_management', 'write'), leaveController.updateLeaveType);
 router.get('/balances/my', leaveController.getMyBalances);
 router.get('/balances/:employeeId', requireModuleAccess('leave_management', 'read'), leaveController.getLeaveBalances);
 router.get('/my', leaveController.getMyLeaves);

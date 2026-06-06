@@ -91,7 +91,7 @@ const Leave = {
             try {
                 await Leave.initLeaveTypes(connection, tenantId);
                 const [rows] = await connection.execute(
-                    'SELECT id, name, max_days, is_paid, is_active FROM leave_types WHERE tenant_id = ? AND is_active = 1',
+                    'SELECT id, name, max_days, is_paid, is_active FROM leave_types WHERE tenant_id = ? AND is_active = 1 ORDER BY name',
                     [tenantId]
                 );
                 return rows;
@@ -104,6 +104,123 @@ const Leave = {
         }
     },
 
+    getLeaveTypesForSettings: async (tenantId) => {
+        const connection = await pool.getConnection();
+        try {
+            await Leave.initLeaveTypes(connection, tenantId);
+            const [rows] = await connection.execute(
+                'SELECT id, name, max_days, is_paid, is_active FROM leave_types WHERE tenant_id = ? ORDER BY is_active DESC, name',
+                [tenantId]
+            );
+            return rows;
+        } finally {
+            connection.release();
+        }
+    },
+
+    createLeaveType: async (tenantId, leaveTypeData) => {
+        const connection = await pool.getConnection();
+        try {
+            await connection.beginTransaction();
+            await Leave.initLeaveTypes(connection, tenantId);
+
+            const name = String(leaveTypeData.name || '').trim();
+            const maxDays = Number.parseInt(leaveTypeData.max_days, 10);
+            const isPaid = leaveTypeData.is_paid ? 1 : 0;
+            const year = new Date().getFullYear();
+
+            if (!name) {
+                throw new Error('Leave type name is required');
+            }
+
+            if (!Number.isInteger(maxDays) || maxDays < 0 || maxDays > 365) {
+                throw new Error('Annual days must be between 0 and 365');
+            }
+
+            const [result] = await connection.execute(
+                'INSERT INTO leave_types (tenant_id, name, max_days, is_paid, is_active) VALUES (?, ?, ?, ?, 1)',
+                [tenantId, name, maxDays, isPaid]
+            );
+
+            await connection.execute(
+                `INSERT IGNORE INTO leave_balances (tenant_id, employee_id, leave_type, year, allocated, used, pending)
+                 SELECT ?, id, ?, ?, ?, 0, 0
+                 FROM employee_details
+                 WHERE tenant_id = ?`,
+                [tenantId, name, year, maxDays, tenantId]
+            );
+
+            await connection.commit();
+            return result.insertId;
+        } catch (error) {
+            await connection.rollback();
+            if (error.code === 'ER_DUP_ENTRY') {
+                throw new Error('A leave type with this name already exists');
+            }
+            throw error;
+        } finally {
+            connection.release();
+        }
+    },
+
+    updateLeaveType: async (tenantId, typeId, leaveTypeData) => {
+        const connection = await pool.getConnection();
+        try {
+            await connection.beginTransaction();
+            await Leave.initLeaveTypes(connection, tenantId);
+
+            const maxDays = Number.parseInt(leaveTypeData.max_days, 10);
+            const isPaid = leaveTypeData.is_paid ? 1 : 0;
+            const isActive = leaveTypeData.is_active ? 1 : 0;
+            const year = new Date().getFullYear();
+
+            if (!Number.isInteger(maxDays) || maxDays < 0 || maxDays > 365) {
+                throw new Error('Annual days must be between 0 and 365');
+            }
+
+            const [existingRows] = await connection.execute(
+                'SELECT name FROM leave_types WHERE tenant_id = ? AND id = ?',
+                [tenantId, typeId]
+            );
+
+            if (existingRows.length === 0) {
+                throw new Error('Leave type not found');
+            }
+
+            const leaveTypeName = existingRows[0].name;
+
+            await connection.execute(
+                'UPDATE leave_types SET max_days = ?, is_paid = ?, is_active = ? WHERE tenant_id = ? AND id = ?',
+                [maxDays, isPaid, isActive, tenantId, typeId]
+            );
+
+            if (isActive) {
+                await connection.execute(
+                    `INSERT IGNORE INTO leave_balances (tenant_id, employee_id, leave_type, year, allocated, used, pending)
+                     SELECT ?, id, ?, ?, ?, 0, 0
+                     FROM employee_details
+                     WHERE tenant_id = ?`,
+                    [tenantId, leaveTypeName, year, maxDays, tenantId]
+                );
+            }
+
+            await connection.execute(
+                `UPDATE leave_balances
+                 SET allocated = GREATEST(?, used + pending)
+                 WHERE tenant_id = ? AND leave_type = ? AND year = ?`,
+                [maxDays, tenantId, leaveTypeName, year]
+            );
+
+            await connection.commit();
+            return true;
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
+        }
+    },
+
     // Get balances for an employee
     getBalances: async (tenantId, employeeId, year) => {
         try {
@@ -111,9 +228,11 @@ const Leave = {
             try {
                 await Leave.initBalances(connection, tenantId, employeeId, year);
                 const [rows] = await connection.execute(
-                    `SELECT leave_type, allocated, used, pending, (allocated - used - pending) as remaining 
-                     FROM leave_balances 
-                     WHERE tenant_id = ? AND employee_id = ? AND year = ?`,
+                    `SELECT lb.leave_type, lb.allocated, lb.used, lb.pending, (lb.allocated - lb.used - lb.pending) as remaining
+                     FROM leave_balances lb
+                     JOIN leave_types lt ON lt.tenant_id = lb.tenant_id AND lt.name = lb.leave_type
+                     WHERE lb.tenant_id = ? AND lb.employee_id = ? AND lb.year = ? AND lt.is_active = 1
+                     ORDER BY lt.name`,
                     [tenantId, employeeId, year]
                 );
                 return rows;

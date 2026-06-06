@@ -214,6 +214,43 @@ const leaveController = {
         }
     },
 
+    // Get all leave types for HR policy settings
+    getLeaveTypeSettings: async (req, res) => {
+        try {
+            const types = await Leave.getLeaveTypesForSettings(req.tenantId);
+            res.json({ success: true, leave_types: types });
+        } catch (error) {
+            console.error('Get leave type settings error:', error);
+            res.status(500).json({ message: 'Server error while fetching leave type settings' });
+        }
+    },
+
+    // Create a leave type from HR policy settings
+    createLeaveType: async (req, res) => {
+        try {
+            const leaveTypeId = await Leave.createLeaveType(req.tenantId, req.body);
+            res.status(201).json({
+                success: true,
+                message: 'Leave type created successfully',
+                leave_type_id: leaveTypeId
+            });
+        } catch (error) {
+            console.error('Create leave type error:', error);
+            res.status(400).json({ message: error.message || 'Server error while creating leave type' });
+        }
+    },
+
+    // Update HR-configurable leave type values
+    updateLeaveType: async (req, res) => {
+        try {
+            await Leave.updateLeaveType(req.tenantId, req.params.typeId, req.body);
+            res.json({ success: true, message: 'Leave type updated successfully' });
+        } catch (error) {
+            console.error('Update leave type error:', error);
+            res.status(400).json({ message: error.message || 'Server error while updating leave type' });
+        }
+    },
+
     // Get leave balances for a specific employee (admin use)
     getLeaveBalances: async (req, res) => {
         try {

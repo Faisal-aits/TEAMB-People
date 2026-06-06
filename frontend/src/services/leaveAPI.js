@@ -28,6 +28,15 @@ export const leaveAPI = {
   getBalances: (employeeId, year = new Date().getFullYear()) => 
     api.get(`/leaves/balances/${employeeId}?year=${year}`),
 
+  // Get all leave types for HR settings
+  getLeaveTypeSettings: () => api.get('/leaves/types/settings'),
+
+  // Create a leave type (HR settings)
+  createLeaveType: (leaveTypeData) => api.post('/leaves/types', leaveTypeData),
+
+  // Update leave type settings
+  updateLeaveType: (typeId, leaveTypeData) => api.put(`/leaves/types/${typeId}`, leaveTypeData),
+
   // ==================== EMPLOYEE ENDPOINTS ====================
   
   // Get current user's leaves (employee)

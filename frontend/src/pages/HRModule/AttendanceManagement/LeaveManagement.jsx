@@ -21,6 +21,13 @@ const LeaveManagement = () => {
     status: 'all',
     leave_type: 'all'
   });
+  const [leaveTypes, setLeaveTypes] = useState([]);
+  const [leaveTypeForm, setLeaveTypeForm] = useState({
+    name: '',
+    max_days: '',
+    is_paid: true
+  });
+  const [policySaving, setPolicySaving] = useState(false);
 
   // Expandable row state for balances drawer
   const [expandedRows, setExpandedRows] = useState(new Set());
@@ -55,6 +62,10 @@ const LeaveManagement = () => {
     loadLeaveData();
   }, [filters]);
 
+  useEffect(() => {
+    loadLeaveTypes();
+  }, []);
+
   const loadLeaveData = async () => {
     try {
         setLoading(true);
@@ -88,6 +99,89 @@ const LeaveManagement = () => {
         });
     } finally {
         setLoading(false);
+    }
+  };
+
+  const loadLeaveTypes = async () => {
+    try {
+      const response = await leaveAPI.getLeaveTypeSettings();
+      const types = response.data?.leave_types || [];
+      setLeaveTypes(types);
+
+      const activeTypeNames = new Set(types.filter(type => type.is_active).map(type => type.name));
+      if (filters.leave_type !== 'all' && !activeTypeNames.has(filters.leave_type)) {
+        setFilters(prev => ({ ...prev, leave_type: 'all' }));
+      }
+    } catch (error) {
+      console.error('Error loading leave type settings:', error);
+      showToast('Error loading leave policy settings.', 'danger');
+    }
+  };
+
+  const handleLeaveTypeDraftChange = (typeId, key, value) => {
+    setLeaveTypes(prev => prev.map(type => (
+      type.id === typeId ? { ...type, [key]: value } : type
+    )));
+  };
+
+  const handleSaveLeaveType = async (type) => {
+    const maxDays = Number.parseInt(type.max_days, 10);
+    if (!Number.isInteger(maxDays) || maxDays < 0 || maxDays > 365) {
+      showToast('Annual days must be between 0 and 365.', 'danger');
+      return;
+    }
+
+    try {
+      setPolicySaving(true);
+      await leaveAPI.updateLeaveType(type.id, {
+        max_days: maxDays,
+        is_paid: Boolean(type.is_paid),
+        is_active: Boolean(type.is_active)
+      });
+      showToast('Leave policy updated.', 'success');
+      await loadLeaveTypes();
+      setEmployeeBalances({});
+    } catch (error) {
+      console.error('Error saving leave type:', error);
+      const errorMessage = error.response?.data?.message || 'Error saving leave type.';
+      showToast(errorMessage, 'danger');
+    } finally {
+      setPolicySaving(false);
+    }
+  };
+
+  const handleCreateLeaveType = async (event) => {
+    event.preventDefault();
+    const name = leaveTypeForm.name.trim();
+    const maxDays = Number.parseInt(leaveTypeForm.max_days, 10);
+
+    if (!name) {
+      showToast('Leave type name is required.', 'danger');
+      return;
+    }
+
+    if (!Number.isInteger(maxDays) || maxDays < 0 || maxDays > 365) {
+      showToast('Annual days must be between 0 and 365.', 'danger');
+      return;
+    }
+
+    try {
+      setPolicySaving(true);
+      await leaveAPI.createLeaveType({
+        name,
+        max_days: maxDays,
+        is_paid: leaveTypeForm.is_paid
+      });
+      setLeaveTypeForm({ name: '', max_days: '', is_paid: true });
+      showToast('Leave type added.', 'success');
+      await loadLeaveTypes();
+      setEmployeeBalances({});
+    } catch (error) {
+      console.error('Error creating leave type:', error);
+      const errorMessage = error.response?.data?.message || 'Error creating leave type.';
+      showToast(errorMessage, 'danger');
+    } finally {
+      setPolicySaving(false);
     }
   };
 
@@ -306,11 +400,9 @@ const LeaveManagement = () => {
             className="filter-select"
           >
             <option value="all">All Leave Types</option>
-            <option value="Casual">Casual</option>
-            <option value="Sick">Sick</option>
-            <option value="Earned">Earned</option>
-            <option value="Maternity">Maternity</option>
-            <option value="Unpaid">Unpaid</option>
+            {leaveTypes.filter(type => type.is_active).map(type => (
+              <option key={type.id} value={type.name}>{type.name}</option>
+            ))}
           </select>
         </div>
       </div>
@@ -351,6 +443,117 @@ const LeaveManagement = () => {
           <div className="leave-stat-info">
             <div className="leave-stat-number">{leaveStats.approvedDays}</div>
             <div className="leave-stat-label">Approved Days</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="leave-table-container leave-glass-form">
+        <div className="leave-table-header">
+          <h3>Leave Policy Settings</h3>
+        </div>
+        <div className="leave-details-content">
+          <form style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center', marginBottom: '12px' }} onSubmit={handleCreateLeaveType}>
+            <input
+              type="text"
+              value={leaveTypeForm.name}
+              onChange={(event) => setLeaveTypeForm(prev => ({ ...prev, name: event.target.value }))}
+              placeholder="Leave type"
+              className="leave-filter-input"
+              disabled={policySaving}
+            />
+            <input
+              type="number"
+              min="0"
+              max="365"
+              value={leaveTypeForm.max_days}
+              onChange={(event) => setLeaveTypeForm(prev => ({ ...prev, max_days: event.target.value }))}
+              placeholder="Annual days"
+              className="leave-filter-input"
+              style={{ width: '120px' }}
+              disabled={policySaving}
+            />
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600 }}>
+              <input
+                type="checkbox"
+                checked={leaveTypeForm.is_paid}
+                onChange={(event) => setLeaveTypeForm(prev => ({ ...prev, is_paid: event.target.checked }))}
+                disabled={policySaving}
+              />
+              Paid
+            </label>
+            <button type="submit" className="leave-submit-btn" disabled={policySaving}>
+              Add Type
+            </button>
+          </form>
+
+          <div className="leave-table-wrapper">
+            <table className="leave-main-table">
+              <thead>
+                <tr>
+                  <th>Leave Type</th>
+                  <th>Annual Days</th>
+                  <th>Paid</th>
+                  <th>Active</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {leaveTypes.map(type => (
+                  <tr key={type.id}>
+                    <td>
+                      <span className={`leave-type-badge leave-type-${type.name?.toLowerCase() || 'custom'}`}>
+                        {type.name}
+                      </span>
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        min="0"
+                        max="365"
+                        value={type.max_days}
+                        onChange={(event) => handleLeaveTypeDraftChange(type.id, 'max_days', event.target.value)}
+                        className="leave-filter-input"
+                        style={{ width: '120px' }}
+                        disabled={policySaving}
+                      />
+                    </td>
+                    <td>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600 }}>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(type.is_paid)}
+                          onChange={(event) => handleLeaveTypeDraftChange(type.id, 'is_paid', event.target.checked ? 1 : 0)}
+                          disabled={policySaving}
+                        />
+                        Paid
+                      </label>
+                    </td>
+                    <td>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600 }}>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(type.is_active)}
+                          onChange={(event) => handleLeaveTypeDraftChange(type.id, 'is_active', event.target.checked ? 1 : 0)}
+                          disabled={policySaving}
+                        />
+                        Active
+                      </label>
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="leave-edit-btn"
+                        style={{ padding: '0.45rem 0.9rem', borderRadius: '6px' }}
+                        onClick={() => handleSaveLeaveType(type)}
+                        disabled={policySaving}
+                      >
+                        Save
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

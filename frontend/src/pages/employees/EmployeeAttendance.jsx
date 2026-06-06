@@ -31,6 +31,7 @@ const EmployeeAttendance = () => {
   const [leaveFilterStatus, setLeaveFilterStatus] = useState('All');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [myBalances, setMyBalances] = useState([]);
+  const [leaveTypes, setLeaveTypes] = useState([]);
 
   const [leaveFormData, setLeaveFormData] = useState({
     description: '',
@@ -126,6 +127,22 @@ const EmployeeAttendance = () => {
   };
 
   // ==================== LEAVE FUNCTIONS ====================
+  const getDefaultLeaveType = (types = leaveTypes) => types[0]?.name || 'Casual';
+
+  const loadLeaveTypes = async () => {
+    try {
+      const response = await leaveAPI.getLeaveTypes();
+      const types = response.data?.leave_types || [];
+      setLeaveTypes(types);
+      setLeaveFormData(prev => {
+        const hasCurrentType = types.some(type => type.name === prev.leave_type);
+        return hasCurrentType ? prev : { ...prev, leave_type: getDefaultLeaveType(types) };
+      });
+    } catch (error) {
+      console.error('Error loading leave types:', error);
+    }
+  };
+
   const loadCurrentEmployeeData = async () => {
     try {
       const userData = localStorage.getItem('user');
@@ -211,7 +228,7 @@ const EmployeeAttendance = () => {
         description: '',
         start_date: '',
         end_date: '',
-        leave_type: 'Casual'
+        leave_type: getDefaultLeaveType()
       });
 
       setIsLeaveModalOpen(false);
@@ -358,6 +375,7 @@ const EmployeeAttendance = () => {
   useEffect(() => {
     fetchAttendanceHistory();
     fetchTodayAttendance();
+    loadLeaveTypes();
   }, []);
 
   // ==================== RENDER ATTENDANCE VIEW ====================
@@ -706,11 +724,13 @@ const EmployeeAttendance = () => {
                     required
                     className="leave-form-select"
                   >
-                    <option value="Casual">Casual Leave</option>
-                    <option value="Sick">Sick Leave</option>
-                    <option value="Earned">Earned Leave</option>
-                    <option value="Maternity">Maternity Leave</option>
-                    <option value="Unpaid">Unpaid Leave</option>
+                    {leaveTypes.length > 0 ? (
+                      leaveTypes.map(type => (
+                        <option key={type.id} value={type.name}>{type.name} Leave</option>
+                      ))
+                    ) : (
+                      <option value="Casual">Casual Leave</option>
+                    )}
                   </select>
                 </div>
 
