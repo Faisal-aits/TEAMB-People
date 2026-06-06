@@ -3,6 +3,7 @@ const { verifyToken } = require('../../middleware/auth.middleware');
 const requireAdmin = require('../../middleware/requireAdmin');
 const { pool } = require('../../config/db');
 const { tableExists } = require('../../utils/schemaHelpers');
+const Attendance = require('../attendance/attendanceModel');
 
 const router = express.Router();
 
@@ -104,15 +105,7 @@ router.get('/overview', async (req, res) => {
              OR bank_account_number IS NULL OR bank_account_number = '')`,
         [tenantId]
       ),
-      firstRow(
-        `SELECT
-           SUM(CASE WHEN status IN ('Present', 'Delayed') THEN 1 ELSE 0 END) as present,
-           SUM(CASE WHEN status = 'Delayed' THEN 1 ELSE 0 END) as delayed,
-           SUM(CASE WHEN is_half_day = 1 THEN 1 ELSE 0 END) as half_day
-         FROM tb_attendance
-         WHERE tenant_id = ? AND date = ?`,
-        [tenantId, today]
-      ),
+      Attendance.getStatistics(tenantId, today),
       countRows(
         `SELECT COUNT(*) as total
          FROM leave_requests
@@ -149,10 +142,18 @@ router.get('/overview', async (req, res) => {
       firstRow("SELECT smtp_host, smtp_user, smtp_from_email, smtp_password FROM service_settings WHERE tenant_id = ? AND setting_type = 'smtp' LIMIT 1", [tenantId]),
     ]);
 
-    const presentToday = Number(attendanceToday.present || 0);
+    const presentToday = Number(
+      attendanceToday.present_like ?? (
+        Number(attendanceToday.present || 0) +
+        Number(attendanceToday.delayed || 0) +
+        Number(attendanceToday.half_day || 0)
+      )
+    );
     const delayedToday = Number(attendanceToday.delayed || 0);
     const halfDayToday = Number(attendanceToday.half_day || 0);
-    const absentToday = Math.max(0, Number(activeEmployees || 0) - presentToday - Number(leaveToday || 0));
+    const absentToday = Number(attendanceToday.absent || 0);
+    const attendanceLeaveToday = Number(attendanceToday.on_leave || 0);
+    const approvedLeaveToday = Number(leaveToday || 0);
 
     const isComplete = (record, fields) => fields.every((field) => String(record?.[field] || '').trim());
     const setupHealth = [
@@ -240,7 +241,7 @@ router.get('/overview', async (req, res) => {
         kpis: {
           totalEmployees,
           presentToday,
-          leaveToday,
+          leaveToday: attendanceLeaveToday,
           pendingLeaves,
           invoiceRevenue: formatCurrency(invoiceRevenue),
           pendingInvoices,
@@ -251,7 +252,8 @@ router.get('/overview', async (req, res) => {
           absentToday,
           delayedToday,
           halfDayToday,
-          leaveToday,
+          leaveToday: attendanceLeaveToday,
+          approvedLeaveToday,
           pendingLeaves,
           missingEmployeeProfiles,
         },

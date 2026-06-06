@@ -205,27 +205,27 @@ getStatistics: async (tenantId, date = null) => {
     try {
         const targetDate = date || getIndiaDate();
         
-        // Use double quotes for string literals in CASE statements to avoid SQL parsing issues
         const query = `
             SELECT 
                 COUNT(*) as total,
-                COALESCE(SUM(CASE WHEN a.status = 'Present' THEN 1 ELSE 0 END), 0) as present,
-                COALESCE(SUM(CASE WHEN a.status = 'Delayed' THEN 1 ELSE 0 END), 0) as \`delayed\`,
-                COALESCE(SUM(CASE WHEN a.status = 'Half Day' THEN 1 ELSE 0 END), 0) as half_day,
-                COALESCE(SUM(CASE WHEN a.status = 'On Leave' THEN 1 ELSE 0 END), 0) as on_leave,
-                COALESCE(SUM(CASE WHEN a.status = 'Absent' THEN 1 ELSE 0 END), 0) as absent,
-                COALESCE(SUM(CASE WHEN a.status = 'Pending' THEN 1 ELSE 0 END), 0) as pending
+                COALESCE(SUM(CASE WHEN LOWER(TRIM(a.status)) = 'present' THEN 1 ELSE 0 END), 0) as present,
+                COALESCE(SUM(CASE WHEN LOWER(TRIM(a.status)) IN ('delayed', 'late') THEN 1 ELSE 0 END), 0) as \`delayed\`,
+                COALESCE(SUM(CASE WHEN LOWER(TRIM(a.status)) IN ('half day', 'half-day') OR a.is_half_day = 1 THEN 1 ELSE 0 END), 0) as half_day,
+                COALESCE(SUM(CASE WHEN LOWER(TRIM(a.status)) IN ('present', 'delayed', 'late', 'half day', 'half-day') OR a.is_half_day = 1 THEN 1 ELSE 0 END), 0) as present_like,
+                COALESCE(SUM(CASE WHEN LOWER(TRIM(a.status)) IN ('on leave', 'leave') THEN 1 ELSE 0 END), 0) as on_leave,
+                COALESCE(SUM(CASE WHEN LOWER(TRIM(a.status)) = 'absent' THEN 1 ELSE 0 END), 0) as absent,
+                COALESCE(SUM(CASE WHEN LOWER(TRIM(a.status)) = 'pending' THEN 1 ELSE 0 END), 0) as pending
             FROM tb_attendance a
-            JOIN employee_details ed ON a.employee_id = ed.id
-            WHERE a.date = ? AND ed.tenant_id = ?
+            LEFT JOIN employee_details ed ON a.employee_id = ed.id
+            WHERE a.date = ? AND (a.tenant_id = ? OR ed.tenant_id = ?)
         `;
         
-        const [rows] = await pool.execute(query, [targetDate, tenantId]);
-        return rows[0] || { total: 0, present: 0, delayed: 0, half_day: 0, on_leave: 0, absent: 0, pending: 0 };
+        const [rows] = await pool.execute(query, [targetDate, tenantId, tenantId]);
+        return rows[0] || { total: 0, present: 0, delayed: 0, half_day: 0, present_like: 0, on_leave: 0, absent: 0, pending: 0 };
     } catch (error) {
         console.error('Error in Attendance.getStatistics:', error);
         // Return default values instead of throwing
-        return { total: 0, present: 0, delayed: 0, half_day: 0, on_leave: 0, absent: 0, pending: 0 };
+        return { total: 0, present: 0, delayed: 0, half_day: 0, present_like: 0, on_leave: 0, absent: 0, pending: 0 };
     }
 },
 
