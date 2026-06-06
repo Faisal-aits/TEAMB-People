@@ -6,7 +6,7 @@ import { useTableControls } from '../../hooks/useTableControls';
 import '../../styles/tableControls.css';
 import './EmployeeLeave.css';
 
-const LEAVE_SEARCH_FIELDS = ['created_at', 'description', 'start_date', 'end_date', 'total_days', 'status', 'leave_id'];
+const LEAVE_SEARCH_FIELDS = ['created_at', 'leave_type', 'description', 'start_date', 'end_date', 'total_days', 'status', 'leave_id'];
 
 const EmployeeLeave = () => {
   const [leaves, setLeaves] = useState([]);
@@ -15,11 +15,13 @@ const EmployeeLeave = () => {
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
   const [leaveFilterStatus, setLeaveFilterStatus] = useState('All');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [myBalances, setMyBalances] = useState([]);
   
   const [leaveFormData, setLeaveFormData] = useState({
     description: '',
     start_date: '',
     end_date: '',
+    leave_type: 'Casual',
   });
 
   // ==================== LEAVE FUNCTIONS ====================
@@ -49,6 +51,14 @@ const EmployeeLeave = () => {
           ...prev,
           employee_id: response.data.employee_id
         }));
+
+        try {
+          const balRes = await leaveAPI.getMyBalances();
+          setMyBalances(balRes.data?.balances || []);
+        } catch (balErr) {
+          console.error('Error fetching my balances:', balErr);
+          setMyBalances([]);
+        }
       }
     } catch (error) {
       console.error('Error loading my leaves:', error);
@@ -90,7 +100,8 @@ const EmployeeLeave = () => {
       const leaveData = {
         description: leaveFormData.description,
         start_date: leaveFormData.start_date,
-        end_date: leaveFormData.end_date
+        end_date: leaveFormData.end_date,
+        leave_type: leaveFormData.leave_type || 'Casual',
       };
       
       await leaveAPI.create(leaveData);
@@ -99,6 +110,7 @@ const EmployeeLeave = () => {
         description: '',
         start_date: '',
         end_date: '',
+        leave_type: 'Casual',
       });
       
       setIsLeaveModalOpen(false);
@@ -130,6 +142,7 @@ const EmployeeLeave = () => {
     try {
       const exportData = visibleLeaves.map(leave => ({
         'Applied Date': formatDate(leave.created_at),
+        'Type': leave.leave_type || 'Casual',
         'Description': leave.description,
         'From Date': formatDate(leave.start_date),
         'To Date': formatDate(leave.end_date),
@@ -210,7 +223,7 @@ const EmployeeLeave = () => {
   return (
     <div className="leave-management-section">
       <div className="leave-management-header">
-        <h2 className="leave-management-title">My Leave</h2>
+        <h2 className="leave-management-title">Leave Management</h2>
         <button 
           className="leave-add-btn"
           onClick={() => setIsLeaveModalOpen(true)}
@@ -220,6 +233,24 @@ const EmployeeLeave = () => {
           Apply for Leave
         </button>
       </div>
+
+      {currentUser && myBalances.length > 0 && (
+        <div className="leave-balances-grid">
+          {myBalances.map((bal) => (
+            <div key={bal.leave_type} className="leave-balance-card">
+              <div className="leave-balance-type">{bal.leave_type}</div>
+              <div className="leave-balance-value">
+                <span className="balance-remaining">{bal.allocated - bal.used - bal.pending}</span>
+                <span className="balance-divider">/</span>
+                <span className="balance-allocated">{bal.allocated}</span>
+              </div>
+              <div className="leave-balance-usage">
+                Used: {bal.used} | Pending: {bal.pending}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {!currentUser && (
         <div className="error-message">
@@ -231,6 +262,13 @@ const EmployeeLeave = () => {
         <div className="leave-table-header">
           <h3 className="leave-table-title">My Leave Requests</h3>
           <div className="leave-table-actions">
+            <input
+              type="search"
+              className="table-search-input"
+              placeholder="Search leaves..."
+              value={leaveSearch}
+              onChange={(event) => setLeaveSearch(event.target.value)}
+            />
             <select 
               className="leave-filter-select"
               value={leaveFilterStatus}
@@ -250,17 +288,19 @@ const EmployeeLeave = () => {
             </button>
           </div>
         </div>
+        <div className="table-count-label">{visibleLeaves.length} of {filteredLeaves.length}</div>
         
         <div className="table-wrapper">
           <table className="leave-records-table">
             <thead>
               <tr>
-                <th className="leave-th-date">Applied Date</th>
-                <th className="leave-th-description">Description</th>
-                <th className="leave-th-from">From Date</th>
-                <th className="leave-th-to">To Date</th>
-                <th className="leave-th-days">Total Days</th>
-                <th className="leave-th-status">Status</th>
+                <th className="leave-th-date sortable-th" onClick={() => requestLeaveSort('created_at', 'created_at')}>Applied Date{leaveSortLabel('created_at')}</th>
+                <th className="sortable-th" onClick={() => requestLeaveSort('leave_type', 'leave_type')}>Type{leaveSortLabel('leave_type')}</th>
+                <th className="leave-th-description sortable-th" onClick={() => requestLeaveSort('description', 'description')}>Description{leaveSortLabel('description')}</th>
+                <th className="leave-th-from sortable-th" onClick={() => requestLeaveSort('start_date', 'start_date')}>From Date{leaveSortLabel('start_date')}</th>
+                <th className="leave-th-to sortable-th" onClick={() => requestLeaveSort('end_date', 'end_date')}>To Date{leaveSortLabel('end_date')}</th>
+                <th className="leave-th-days sortable-th" onClick={() => requestLeaveSort('total_days', 'total_days')}>Total Days{leaveSortLabel('total_days')}</th>
+                <th className="leave-th-status sortable-th" onClick={() => requestLeaveSort('status', 'status')}>Status{leaveSortLabel('status')}</th>
                 <th className="leave-th-actions">Actions</th>
               </tr>
             </thead>
@@ -269,6 +309,11 @@ const EmployeeLeave = () => {
                 <tr key={leave.leave_id} className="leave-table-row">
                   <td className="leave-td-date">
                     <div className="leave-date-cell">{formatDate(leave.created_at)}</div>
+                  </td>
+                  <td>
+                    <span className={`leave-type-badge leave-type-${leave.leave_type?.toLowerCase() || 'casual'}`}>
+                      {leave.leave_type || 'Casual'}
+                    </span>
                   </td>
                   <td className="leave-td-description">
                     <div className="leave-description-cell">{leave.description}</div>
@@ -333,7 +378,7 @@ const EmployeeLeave = () => {
                 className="leave-modal-close"
                 onClick={() => setIsLeaveModalOpen(false)}
               >
-                ?
+                x
               </button>
             </div>
 
@@ -359,6 +404,23 @@ const EmployeeLeave = () => {
                 <small className="leave-helper-text">
                   Your employee ID will be automatically retrieved by the system
                 </small>
+              </div>
+
+              <div className="leave-form-group">
+                <label className="leave-form-label">Leave Type *</label>
+                <select
+                  name="leave_type"
+                  value={leaveFormData.leave_type}
+                  onChange={handleLeaveInputChange}
+                  required
+                  className="leave-form-select"
+                >
+                  <option value="Casual">Casual Leave</option>
+                  <option value="Sick">Sick Leave</option>
+                  <option value="Earned">Earned Leave</option>
+                  <option value="Maternity">Maternity Leave</option>
+                  <option value="Unpaid">Unpaid Leave</option>
+                </select>
               </div>
 
               <div className="leave-form-group">

@@ -11,8 +11,6 @@ const ATTENDANCE_SEARCH_FIELDS = ['date', 'checkIn', 'checkOut', 'status', 'rema
 const LEAVE_SEARCH_FIELDS = ['created_at', 'description', 'start_date', 'end_date', 'total_days', 'status', 'leave_id'];
 
 const EmployeeAttendance = () => {
-  const [activeTab, setActiveTab] = useState('attendance');
-
   // ==================== ATTENDANCE STATES ====================
   const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -358,14 +356,9 @@ const EmployeeAttendance = () => {
   } = useTableControls(filteredLeaves, LEAVE_SEARCH_FIELDS, { key: 'created_at', accessor: 'created_at', direction: 'desc' });
 
   useEffect(() => {
-    if (activeTab === 'attendance') {
-      fetchAttendanceHistory();
-      fetchTodayAttendance();
-    } else {
-      loadCurrentEmployeeData();
-      loadMyLeaves();
-    }
-  }, [activeTab]);
+    fetchAttendanceHistory();
+    fetchTodayAttendance();
+  }, []);
 
   // ==================== RENDER ATTENDANCE VIEW ====================
   const renderAttendanceView = () => {
@@ -806,49 +799,7 @@ const EmployeeAttendance = () => {
 
   return (
     <div className="dashboard-main employee-attendance-main">
-      {/* Tab Buttons */}
-      <div className="view-tabs">
-        <button
-          onClick={() => setActiveTab('attendance')}
-          style={{
-            padding: '12px 28px',
-            background: activeTab === 'attendance'
-              ? '#3b82f6'
-              : 'linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%)',
-            border: 'none',
-            fontSize: '15px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            color: 'white',
-            borderRadius: '12px',
-            opacity: activeTab === 'attendance' ? 1 : 0.7,
-            transition: 'all 0.3s ease'
-          }}
-        >
-          Attendance
-        </button>
-        <button
-          onClick={() => setActiveTab('leave')}
-          style={{
-            padding: '12px 28px',
-            background: activeTab === 'leave'
-              ? '#3b82f6'
-              : 'linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%)',
-            border: 'none',
-            fontSize: '15px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            color: 'white',
-            borderRadius: '12px',
-            opacity: activeTab === 'leave' ? 1 : 0.7,
-            transition: 'all 0.3s ease'
-          }}
-        >
-          Leave
-        </button>
-      </div>
-      {/* Content based on active tab */}
-      {activeTab === 'attendance' ? renderAttendanceView() : renderLeaveView()}
+      {renderAttendanceView()}
     </div>
   );
 };
