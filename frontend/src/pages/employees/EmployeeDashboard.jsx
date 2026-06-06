@@ -22,6 +22,7 @@ import experienceLetterAPI from '../../services/experienceLetterAPI';
 import incrementLetterAPI from '../../services/incrementLetterAPI';
 import { leaveAPI } from '../../services/leaveAPI';
 import offerLetterAPI from '../../services/offerLetterAPI';
+import { projectAPI } from '../../services/projectAPI';
 import { reportAPI } from '../../services/reportAPI';
 import resignationAPI from '../../services/resignationAPI';
 import './EmployeeLayout.css';
@@ -216,6 +217,8 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
       incrementLetters: 0,
       resignations: 0,
     },
+    projects: [],
+    tasks: [],
     reports: [],
   });
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -245,6 +248,8 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
         experienceResult,
         incrementResult,
         resignationResult,
+        projectsResult,
+        tasksResult,
         reportResult,
       ] = await Promise.allSettled([
         employeeAPI.getMyProfile(),
@@ -256,6 +261,8 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
         experienceLetterAPI.getMyLetters(),
         incrementLetterAPI.getMyLetters(),
         resignationAPI.getMyRequests(),
+        projectAPI.getMyProjects(),
+        projectAPI.getMyTasks(),
         reportAPI.getMyReports(),
       ]);
 
@@ -268,6 +275,8 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
       const experienceResponse = getSafeValue(experienceResult);
       const incrementResponse = getSafeValue(incrementResult);
       const resignationResponse = getSafeValue(resignationResult);
+      const projectsResponse = getSafeValue(projectsResult);
+      const tasksResponse = getSafeValue(tasksResult);
       const reportResponse = getSafeValue(reportResult);
 
       setDashboardData({
@@ -282,6 +291,8 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
           incrementLetters: getArray(incrementResponse, ['data', 'letters']).length,
           resignations: getArray(resignationResponse, ['data', 'requests']).length,
         },
+        projects: getArray(projectsResponse, ['projects']),
+        tasks: getArray(tasksResponse, ['tasks']),
         reports: getArray(reportResponse, ['reports']),
       });
     } catch (err) {
@@ -409,11 +420,36 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
     };
   }, [dashboardData.expenses]);
 
+  const projectSummary = useMemo(() => {
+    const activeTasks = dashboardData.tasks.filter((task) => String(task.status || '').toLowerCase() !== 'completed');
+    const overdueTasks = activeTasks.filter((task) => {
+      const dueValue = task.due_date || task.date;
+      if (!dueValue) return false;
+      const dueDate = new Date(dueValue);
+      if (Number.isNaN(dueDate.getTime())) return false;
+      dueDate.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return dueDate < today;
+    });
+
+    return {
+      projectCount: dashboardData.projects.length,
+      activeTasks: activeTasks.length,
+      overdueTasks: overdueTasks.length,
+    };
+  }, [dashboardData.projects, dashboardData.tasks]);
+
   const profile = dashboardData.profile || {};
   const todayAttendance = dashboardData.todayAttendance || {};
   const isCheckedIn = Boolean(todayAttendance.check_in_time);
   const isCheckedOut = Boolean(todayAttendance.check_out_time);
   const totalDocuments = Object.values(dashboardData.documents).reduce((sum, value) => sum + Number(value || 0), 0);
+  const moduleDescriptions = {
+    employee_attendance: `${todayAttendance.status || 'Not checked in'} today, ${formatNumber(attendanceSummary.total)} records this month`,
+    employee_expense: `${formatNumber(expenseSummary.pendingCount)} pending, ${formatCurrency(expenseSummary.pendingAmount)}`,
+    employee_projects: `${formatNumber(projectSummary.projectCount)} projects, ${formatNumber(projectSummary.activeTasks)} active tasks`,
+  };
 
   const summaryCards = [
     {
@@ -618,7 +654,7 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
                     {meta.icon}
                     <span>
                       <strong>{meta.title}</strong>
-                      <small>{meta.description}</small>
+                      <small>{moduleDescriptions[mod.module_key] || meta.description}</small>
                     </span>
                   </button>
                 );
