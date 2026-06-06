@@ -342,7 +342,6 @@ const ExpenseTable = () => {
             >
               Export to Excel
             </button>
-            <span className="table-count-label">{visibleExpenses.length} of {expenses.length}</span>
           </div>
         </div>
         

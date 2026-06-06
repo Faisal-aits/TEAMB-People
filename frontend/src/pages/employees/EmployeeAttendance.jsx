@@ -395,14 +395,14 @@ const EmployeeAttendance = () => {
               className="check-in-btn"
               onClick={() => handleQuickCheckIn('check_in')}
             >
-              Quick Check In
+              Check In
             </button>
             <button
               className="check-out-btn"
               onClick={() => handleQuickCheckIn('check_out')}
               disabled={!todayStatus.isCheckedIn}
             >
-              Quick Check Out
+              Check Out
             </button>
           </div>
         </div>
@@ -442,7 +442,6 @@ const EmployeeAttendance = () => {
               </button>
             </div>
           </div>
-          <div className="table-count-label">{visibleAttendance.length} of {uniqueAttendance.length}</div>
 
           {visibleAttendance.length === 0 ? (
             <div className="no-data">
@@ -581,7 +580,6 @@ const EmployeeAttendance = () => {
               </button>
             </div>
           </div>
-          <div className="table-count-label">{visibleLeaves.length} of {filteredLeaves.length}</div>
 
           <div className="table-wrapper">
             <table className="leave-records-table">

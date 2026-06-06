@@ -369,7 +369,6 @@ const LeaveManagement = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <span className="table-count-label">{visibleLeaves.length} of {leaveData.length} requests</span>
         </div>
 
         {/* Leave Table - Spread to full width */}

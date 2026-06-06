@@ -520,7 +520,7 @@ const AttendanceTable = () => {
             className="check-in-btn"
             onClick={() => handleQuickCheckIn('check_in')}
           >
-            📍 Quick Check In
+            📍 Check In
           </button>
           <button
             className="check-out-btn"

@@ -288,7 +288,6 @@ const EmployeeLeave = () => {
             </button>
           </div>
         </div>
-        <div className="table-count-label">{visibleLeaves.length} of {filteredLeaves.length}</div>
         
         <div className="table-wrapper">
           <table className="leave-records-table">

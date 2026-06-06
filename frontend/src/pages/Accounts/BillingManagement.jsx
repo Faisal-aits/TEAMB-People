@@ -643,8 +643,7 @@ const BillingManagement = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <span className="table-count-label">{visibleInvoices.length} of {invoices.length}</span>
-          
+                    
           {/* Service Settings Indicator */}
           <div style={{
             display: 'flex',
