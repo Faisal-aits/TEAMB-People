@@ -22,6 +22,7 @@ import ModuleManagement from '../Settings/ModuleManagement.jsx';
 import BrandingSettings from '../Settings/BrandingSettings.jsx';
 import MasterSettings from '../Settings/MasterSettings.jsx';
 import SmtpConfig from '../Settings/SmtpConfig.jsx';
+import LeavePolicySettings from '../Settings/LeavePolicySettings.jsx';
 import PTTMContainer from '../PTTM/PTTMContainer.jsx';
 import OfferLetter from '../HRModule/EmployeeManagement/OfferLetter.jsx';
 import DeclarationForm from '../HRModule/EmployeeManagement/DeclarationForm.jsx';
@@ -422,6 +423,11 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
                         <span className="dropdown-text">SMTP Config</span>
                       </button>
                     </li>
+                    {canAccessLeaveManagement && <li className={activeTab === 'leavepolicysettings' ? 'active' : ''}>
+                      <button onClick={() => navigateToTab('leavepolicysettings')}>
+                        <span className="dropdown-text">Leave Policy Settings</span>
+                      </button>
+                    </li>}
                   </ul>
                 )}
               </li>
@@ -477,6 +483,7 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
           {activeTab === 'branding' && isAdmin && <BrandingSettings />}
           {activeTab === 'master' && isAdmin && <MasterSettings />}
           {activeTab === 'smtpconfig' && isAdmin && <SmtpConfig />}
+          {activeTab === 'leavepolicysettings' && isAdmin && canAccessLeaveManagement && <LeavePolicySettings />}
           {activeTab === 'pttm' && <PTTMContainer />}
           {activeTab === 'offerletter' && canAccessOfferLetters && (
             <OfferLetter initialEmployee={navigationState?.employee} />
