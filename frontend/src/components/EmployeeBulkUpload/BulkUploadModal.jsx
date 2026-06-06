@@ -448,12 +448,14 @@ const BulkUploadModal = ({ isOpen, onClose, onUploadComplete }) => {
               </button>
             </div>
 
-            <button type="button" className="bulk-info-btn" onClick={() => setShowInfo(true)}>
-              <i className="fas fa-info-circle"></i> Info
-            </button>
-            <button type="button" className="bulk-info-btn bulk-template-btn" onClick={downloadDemoExcel}>
-              <i className="fas fa-download"></i> Demo Excel
-            </button>
+            <div className="bulk-upload-actions">
+              <button type="button" className="bulk-info-btn" onClick={() => setShowInfo(true)}>
+                <i className="fas fa-info-circle"></i> Info
+              </button>
+              <button type="button" className="bulk-info-btn bulk-template-btn" onClick={downloadDemoExcel}>
+                <i className="fas fa-download"></i> Demo Excel
+              </button>
+            </div>
           </div>
 
           <div
