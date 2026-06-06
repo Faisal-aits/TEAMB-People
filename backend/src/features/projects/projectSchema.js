@@ -33,6 +33,9 @@ const ensureProjectSchema = () => {
       await addColumnIfMissing('projects', 'start_date', 'start_date DATE NULL');
       await addColumnIfMissing('projects', 'end_date', 'end_date DATE NULL');
       await addColumnIfMissing('projects', 'status', "status VARCHAR(50) NOT NULL DEFAULT 'Active'");
+      await addColumnIfMissing('projects', 'department', 'department VARCHAR(255) NULL');
+      await addColumnIfMissing('projects', 'manager', 'manager VARCHAR(255) NULL');
+      await addColumnIfMissing('projects', 'current_phase', 'current_phase VARCHAR(255) NULL');
       await addColumnIfMissing('projects', 'updated_at', 'updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
 
       await modifyColumnIfExists('projects', 'client_id', 'client_id INT NULL');
