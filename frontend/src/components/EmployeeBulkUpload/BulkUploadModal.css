@@ -469,16 +469,6 @@
   line-height: 1.25;
 }
 
-.bulk-info-content h3::before {
-  content: "";
-  width: 9px;
-  height: 9px;
-  flex: 0 0 auto;
-  border-radius: 50%;
-  background: #8b5cf6;
-  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.12);
-}
-
 .bulk-info-content p,
 .bulk-info-content li {
   color: var(--theme-text-muted);
