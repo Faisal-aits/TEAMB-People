@@ -2,13 +2,13 @@
 const express = require('express');
 const shiftController = require('./shiftController');
 const authMiddleware = require('../../middleware/auth.middleware');
-const requireAdmin = require('../../middleware/requireAdmin');
+const requireModuleAccess = require('../../middleware/requireModuleAccess');
 
 const router = express.Router();
 
 // All routes require authentication
 router.use(authMiddleware.verifyToken);
-router.use(requireAdmin);
+router.use(requireModuleAccess('shift_management', 'read'));
 
 // GET /api/shifts - Get all shifts
 router.get('/', shiftController.getAllShifts);
@@ -41,15 +41,15 @@ router.get('/:shiftId', shiftController.getShiftById);
 router.get('/:shiftId/employees', shiftController.getShiftEmployees);
 
 // POST /api/shifts - Create new shift
-router.post('/', shiftController.createShift);
+router.post('/', requireModuleAccess('shift_management', 'write'), shiftController.createShift);
 
 // PUT /api/shifts/:shiftId - Update shift
-router.put('/:shiftId', shiftController.updateShift);
+router.put('/:shiftId', requireModuleAccess('shift_management', 'write'), shiftController.updateShift);
 
 // POST /api/shifts/:shiftId/set-default - Set shift as default
-router.post('/:shiftId/set-default', shiftController.setShiftAsDefault);
+router.post('/:shiftId/set-default', requireModuleAccess('shift_management', 'write'), shiftController.setShiftAsDefault);
 
 // DELETE /api/shifts/:shiftId - Delete shift
-router.delete('/:shiftId', shiftController.deleteShift);
+router.delete('/:shiftId', requireModuleAccess('shift_management', 'write'), shiftController.deleteShift);
 
 module.exports = router;

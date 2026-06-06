@@ -4,7 +4,7 @@ const router = express.Router();
 const incrementLetterController = require('./incrementLetterController');
 const authMiddleware = require('../../middleware/auth.middleware');
 const tenantMiddleware = require('../../middleware/tenantMiddleware');
-const requireAdmin = require('../../middleware/requireAdmin');
+const requireModuleAccess = require('../../middleware/requireModuleAccess');
 
 router.use(authMiddleware.verifyToken);
 router.use(tenantMiddleware.extractTenantId);
@@ -15,15 +15,15 @@ router.use(tenantMiddleware.extractTenantId);
 router.get('/my', incrementLetterController.getMyLetters);
 
 // POST /api/increment-letters - HR generates letter (ADMIN/HR ONLY)
-router.post('/', requireAdmin, incrementLetterController.uploadPDFMiddleware, incrementLetterController.generateLetter);
+router.post('/', requireModuleAccess('increment_letters', 'write'), incrementLetterController.uploadPDFMiddleware, incrementLetterController.generateLetter);
 
 // GET /api/increment-letters - HR views all letters (ADMIN/HR ONLY)
-router.get('/', requireAdmin, incrementLetterController.getAllLetters);
+router.get('/', requireModuleAccess('increment_letters', 'read'), incrementLetterController.getAllLetters);
 
 // GET /api/increment-letters/:id - View specific letter (ADMIN/HR)
-router.get('/:id', requireAdmin, incrementLetterController.getLetterById);
+router.get('/:id', requireModuleAccess('increment_letters', 'read'), incrementLetterController.getLetterById);
 
 // DELETE /api/increment-letters/:id - Delete letter (ADMIN/HR ONLY)
-router.delete('/:id', requireAdmin, incrementLetterController.deleteLetter);
+router.delete('/:id', requireModuleAccess('increment_letters', 'write'), incrementLetterController.deleteLetter);
 
 module.exports = router;

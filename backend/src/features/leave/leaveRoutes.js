@@ -2,7 +2,7 @@
 const express = require('express');
 const leaveController = require('./leaveController');
 const authMiddleware = require('../../middleware/auth.middleware');
-const requireAdmin = require('../../middleware/requireAdmin');
+const requireModuleAccess = require('../../middleware/requireModuleAccess');
 
 const router = express.Router();
 
@@ -14,22 +14,22 @@ router.use(authMiddleware.verifyToken);
 // Specific routes first to prevent wildcard clashes
 router.get('/types', leaveController.getLeaveTypes);
 router.get('/balances/my', leaveController.getMyBalances);
-router.get('/balances/:employeeId', requireAdmin, leaveController.getLeaveBalances);
+router.get('/balances/:employeeId', requireModuleAccess('leave_management', 'read'), leaveController.getLeaveBalances);
 router.get('/my', leaveController.getMyLeaves);
-router.get('/stats', requireAdmin, leaveController.getLeaveStats);
-router.get('/history/:employeeId', requireAdmin, leaveController.getEmployeeAttendanceHistory);
-router.get('/', requireAdmin, leaveController.getAllLeaves);
+router.get('/stats', requireModuleAccess('leave_management', 'read'), leaveController.getLeaveStats);
+router.get('/history/:employeeId', requireModuleAccess('leave_management', 'read'), leaveController.getEmployeeAttendanceHistory);
+router.get('/', requireModuleAccess('leave_management', 'read'), leaveController.getAllLeaves);
 
 // POST /api/leaves - Create new leave request (employee)
 router.post('/', leaveController.createLeave);
 
 // POST /api/leaves/:leaveId/approve - Approve leave request (admin)
-router.post('/:leaveId/approve', requireAdmin, leaveController.approveLeave);
+router.post('/:leaveId/approve', requireModuleAccess('leave_management', 'write'), leaveController.approveLeave);
 
 // POST /api/leaves/:leaveId/reject - Reject leave request (admin)
-router.post('/:leaveId/reject', requireAdmin, leaveController.rejectLeave);
+router.post('/:leaveId/reject', requireModuleAccess('leave_management', 'write'), leaveController.rejectLeave);
 
 // DELETE /api/leaves/:leaveId - Delete leave request
-router.delete('/:leaveId', requireAdmin, leaveController.deleteLeave);
+router.delete('/:leaveId', requireModuleAccess('leave_management', 'write'), leaveController.deleteLeave);
 
 module.exports = router;

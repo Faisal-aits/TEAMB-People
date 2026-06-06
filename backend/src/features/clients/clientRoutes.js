@@ -2,11 +2,11 @@ const express = require('express');
 const router = express.Router();
 const clientController = require('./clientController');
 const { verifyToken } = require('../../middleware/auth.middleware');
-const requireAdmin = require('../../middleware/requireAdmin');
+const requireModuleAccess = require('../../middleware/requireModuleAccess');
 
 // All routes require authentication
 router.use(verifyToken);
-router.use(requireAdmin);
+router.use(requireModuleAccess('service_management', 'read'));
 
 // GET /api/clients
 router.get('/', clientController.getAllClients);
@@ -18,21 +18,21 @@ router.get('/managers', clientController.getManagers);
 router.get('/industries', clientController.getIndustries);
 
 // POST /api/clients/industries
-router.post('/industries', clientController.addIndustry);
+router.post('/industries', requireModuleAccess('service_management', 'write'), clientController.addIndustry);
 
 // GET /api/clients/:id
 router.get('/:id', clientController.getClientById);
 
 // POST /api/clients
-router.post('/', clientController.createClient);
+router.post('/', requireModuleAccess('service_management', 'write'), clientController.createClient);
 
 // PUT /api/clients/:id
-router.put('/:id', clientController.updateClient);
+router.put('/:id', requireModuleAccess('service_management', 'write'), clientController.updateClient);
 
 // DELETE /api/clients/:id
-router.delete('/:id', clientController.deleteClient);
+router.delete('/:id', requireModuleAccess('service_management', 'write'), clientController.deleteClient);
 
 // POST /api/clients/:id/interactions
-router.post('/:id/interactions', clientController.addInteraction);
+router.post('/:id/interactions', requireModuleAccess('service_management', 'write'), clientController.addInteraction);
 
 module.exports = router;

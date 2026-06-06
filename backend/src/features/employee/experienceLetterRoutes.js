@@ -4,7 +4,7 @@ const router = express.Router();
 const experienceLetterController = require('./experienceLetterController');
 const authMiddleware = require('../../middleware/auth.middleware');
 const tenantMiddleware = require('../../middleware/tenantMiddleware');
-const requireAdmin = require('../../middleware/requireAdmin');
+const requireModuleAccess = require('../../middleware/requireModuleAccess');
 
 router.use(authMiddleware.verifyToken);
 router.use(tenantMiddleware.extractTenantId);
@@ -15,15 +15,15 @@ router.use(tenantMiddleware.extractTenantId);
 router.get('/my', experienceLetterController.getMyLetters);
 
 // POST /api/experience-letters - HR generates letter (ADMIN/HR ONLY)
-router.post('/', requireAdmin, experienceLetterController.uploadPDFMiddleware, experienceLetterController.generateLetter);
+router.post('/', requireModuleAccess('experience_letters', 'write'), experienceLetterController.uploadPDFMiddleware, experienceLetterController.generateLetter);
 
 // GET /api/experience-letters - HR views all letters (ADMIN/HR ONLY)
-router.get('/', requireAdmin, experienceLetterController.getAllLetters);
+router.get('/', requireModuleAccess('experience_letters', 'read'), experienceLetterController.getAllLetters);
 
 // GET /api/experience-letters/:id - View specific letter (ADMIN/HR)
-router.get('/:id', requireAdmin, experienceLetterController.getLetterById);
+router.get('/:id', requireModuleAccess('experience_letters', 'read'), experienceLetterController.getLetterById);
 
 // DELETE /api/experience-letters/:id - Delete letter (ADMIN/HR ONLY)
-router.delete('/:id', requireAdmin, experienceLetterController.deleteLetter);
+router.delete('/:id', requireModuleAccess('experience_letters', 'write'), experienceLetterController.deleteLetter);
 
 module.exports = router;

@@ -2,10 +2,10 @@ const express = require('express');
 const router = express.Router();
 const serviceController = require('./serviceController');
 const { verifyToken } = require('../../middleware/auth.middleware');
-const requireAdmin = require('../../middleware/requireAdmin');
+const requireModuleAccess = require('../../middleware/requireModuleAccess');
 
 router.use(verifyToken);
-router.use(requireAdmin);
+router.use(requireModuleAccess('service_management', 'read'));
 
 // GET /api/services
 router.get('/', serviceController.getAllServices);
@@ -20,15 +20,15 @@ router.get('/status', serviceController.getStatusTypes);
 router.get('/:id', serviceController.getServiceById);
 
 // POST /api/services
-router.post('/', serviceController.createService);
+router.post('/', requireModuleAccess('service_management', 'write'), serviceController.createService);
 
 // PUT /api/services/:id
-router.put('/:id', serviceController.updateService);
+router.put('/:id', requireModuleAccess('service_management', 'write'), serviceController.updateService);
 
 // DELETE /api/services/:id
-router.delete('/:id', serviceController.deleteService);
+router.delete('/:id', requireModuleAccess('service_management', 'write'), serviceController.deleteService);
 
 // POST /api/services/:id/assign
-router.post('/:id/assign', serviceController.assignTeam);
+router.post('/:id/assign', requireModuleAccess('service_management', 'write'), serviceController.assignTeam);
 
 module.exports = router;
