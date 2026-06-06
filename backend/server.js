@@ -33,6 +33,7 @@ const pttmRoutes = require('./src/features/pttm/pttmRoutes');
 const serviceSettingRoutes = require('./src/features/servicesetting/serviceSettingRoutes');
 const dashboardRoutes = require('./src/features/dashboard/dashboardRoutes');
 const aiDocumentGeneratorRoutes = require('./src/features/aiDocumentGenerator/aiDocumentGeneratorRoutes');
+const reportRoutes = require('./src/features/reports/reportRoutes');
 const { ensureServiceSettingSchema } = require('./src/features/servicesetting/serviceSettingSchema');
 const { ensureEmployeeSchema } = require('./src/features/employee/employeeSchema');
 const { ensureSalarySchema } = require('./src/features/salary/salarySchema');
@@ -105,6 +106,7 @@ app.use('/api/clients', clientRoutes);
 app.use('/api/pttm', pttmRoutes);
 app.use('/api/service-settings', serviceSettingRoutes);
 app.use('/api/ai-document-generator', aiDocumentGeneratorRoutes);
+app.use('/api/reports', reportRoutes);
 // app.use('/api/services', serviceRoutes);
 app.use((req, res) => {
   return sendResponse(res, 404, false, 'Route not found', null);
@@ -135,6 +137,9 @@ const startServer = async () => {
     await brandingModel.ensureSchema();
     if (aiDocumentGeneratorRoutes.ensureSchema) {
       await aiDocumentGeneratorRoutes.ensureSchema();
+    }
+    if (reportRoutes.ensureSchema) {
+      await reportRoutes.ensureSchema();
     }
 
     app.listen(PORT, () => {

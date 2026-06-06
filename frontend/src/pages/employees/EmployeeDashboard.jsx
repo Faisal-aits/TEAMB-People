@@ -9,6 +9,7 @@ import {
   HiOutlineClock,
   HiOutlineDocumentText,
   HiOutlineExclamationTriangle,
+  HiOutlinePencilSquare,
   HiOutlineReceiptPercent,
   HiOutlineUserCircle,
   HiOutlineUsers
@@ -21,6 +22,7 @@ import experienceLetterAPI from '../../services/experienceLetterAPI';
 import incrementLetterAPI from '../../services/incrementLetterAPI';
 import { leaveAPI } from '../../services/leaveAPI';
 import offerLetterAPI from '../../services/offerLetterAPI';
+import { reportAPI } from '../../services/reportAPI';
 import resignationAPI from '../../services/resignationAPI';
 import './EmployeeLayout.css';
 
@@ -214,7 +216,11 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
       incrementLetters: 0,
       resignations: 0,
     },
+    reports: [],
   });
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportText, setReportText] = useState('');
+  const [reportSubmitting, setReportSubmitting] = useState(false);
 
   const assignedModules = (currentUser.modules || []).filter((mod) => mod.access !== 'none');
   const assignedModuleKeys = new Set(assignedModules.map((mod) => mod.module_key));
@@ -239,6 +245,7 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
         experienceResult,
         incrementResult,
         resignationResult,
+        reportResult,
       ] = await Promise.allSettled([
         employeeAPI.getMyProfile(),
         attendanceAPI.getMyTodayAttendance(),
@@ -249,6 +256,7 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
         experienceLetterAPI.getMyLetters(),
         incrementLetterAPI.getMyLetters(),
         resignationAPI.getMyRequests(),
+        reportAPI.getMyReports(),
       ]);
 
       const profileResponse = getSafeValue(profileResult);
@@ -260,6 +268,7 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
       const experienceResponse = getSafeValue(experienceResult);
       const incrementResponse = getSafeValue(incrementResult);
       const resignationResponse = getSafeValue(resignationResult);
+      const reportResponse = getSafeValue(reportResult);
 
       setDashboardData({
         profile: profileResponse?.data?.employee || null,
@@ -273,6 +282,7 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
           incrementLetters: getArray(incrementResponse, ['data', 'letters']).length,
           resignations: getArray(resignationResponse, ['data', 'requests']).length,
         },
+        reports: getArray(reportResponse, ['reports']),
       });
     } catch (err) {
       console.error('Failed to load employee dashboard:', err);
@@ -280,6 +290,32 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  };
+
+  const handleSubmitReport = async (event) => {
+    event.preventDefault();
+    const text = reportText.trim();
+    if (!text) {
+      setError('Please enter your report before submitting.');
+      return;
+    }
+
+    try {
+      setReportSubmitting(true);
+      setError('');
+      await reportAPI.createMyReport({
+        report_date: getIndiaDate(),
+        report_text: text,
+      });
+      setReportText('');
+      setReportModalOpen(false);
+      await loadDashboard(true);
+    } catch (err) {
+      console.error('Failed to submit report:', err);
+      setError(err.response?.data?.message || 'Unable to submit report.');
+    } finally {
+      setReportSubmitting(false);
     }
   };
 
@@ -434,6 +470,10 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
           <HiOutlineArrowPath />
           {refreshing ? 'Refreshing' : 'Refresh'}
         </button>
+        <button type="button" className="employee-report-btn" onClick={() => setReportModalOpen(true)}>
+          <HiOutlinePencilSquare />
+          Report
+        </button>
       </header>
 
       {error && <div className="employee-dashboard-alert">{error}</div>}
@@ -587,6 +627,61 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
           </div>
         </aside>
       </section>
+
+      {reportModalOpen && (
+        <div className="employee-report-modal-overlay" onClick={() => setReportModalOpen(false)} role="presentation">
+          <div className="employee-report-modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="employee-report-title">
+            <div className="employee-report-modal-header">
+              <div>
+                <h2 id="employee-report-title">Submit Report</h2>
+                <p>{formatDate(getIndiaDate())}</p>
+              </div>
+              <button type="button" onClick={() => setReportModalOpen(false)}>Close</button>
+            </div>
+
+            <form className="employee-report-form" onSubmit={handleSubmitReport}>
+              <textarea
+                value={reportText}
+                onChange={(event) => setReportText(event.target.value)}
+                placeholder="Write today's work, blockers, or casual update..."
+                rows={5}
+                maxLength={3000}
+                required
+              />
+              <div className="employee-report-form-actions">
+                <span>{reportText.length}/3000</span>
+                <button type="submit" disabled={reportSubmitting}>
+                  {reportSubmitting ? 'Submitting...' : 'Submit Report'}
+                </button>
+              </div>
+            </form>
+
+            <div className="employee-report-history">
+              <h3>Recent Reports</h3>
+              {(dashboardData.reports || []).slice(0, 5).length === 0 ? (
+                <p className="employee-report-empty">No reports submitted yet.</p>
+              ) : (
+                <div className="employee-report-history-list">
+                  {(dashboardData.reports || []).slice(0, 5).map((report) => (
+                    <article key={report.id} className="employee-report-history-item">
+                      <div>
+                        <strong>{formatDate(report.report_date)}</strong>
+                        <p>{report.report_text}</p>
+                      </div>
+                      {report.admin_remark && (
+                        <div className="employee-report-remark">
+                          <span>Admin Remark</span>
+                          <p>{report.admin_remark}</p>
+                        </div>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -45,6 +45,7 @@
 }
 
 .employee-refresh-btn,
+.employee-report-btn,
 .employee-overview-card,
 .employee-panel-title button,
 .employee-attendance-actions button,
@@ -68,12 +69,26 @@
   font-weight: 800;
 }
 
+.employee-report-btn {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 1px solid #2563eb;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 800;
+}
+
 .employee-refresh-btn:disabled {
   opacity: 0.65;
   cursor: not-allowed;
 }
 
-.employee-refresh-btn svg {
+.employee-refresh-btn svg,
+.employee-report-btn svg {
   width: 18px;
   height: 18px;
 }
@@ -459,6 +474,174 @@
 
 .employee-no-modules p + p {
   margin-top: 8px;
+}
+
+.employee-report-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(15, 23, 42, 0.48);
+}
+
+.employee-report-modal {
+  width: min(720px, 100%);
+  max-height: min(760px, 92vh);
+  overflow: auto;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.24);
+}
+
+.employee-report-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.employee-report-modal-header h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 1.1rem;
+  font-weight: 900;
+}
+
+.employee-report-modal-header p {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.employee-report-modal-header button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
+  background: #fff;
+  color: #334155;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.employee-report-form {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.employee-report-form textarea {
+  width: 100%;
+  min-height: 136px;
+  resize: vertical;
+  padding: 12px;
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
+  color: #1f2937;
+  font: inherit;
+  line-height: 1.5;
+  outline: 0;
+}
+
+.employee-report-form textarea:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.employee-report-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.employee-report-form-actions span {
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.employee-report-form-actions button {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid #2563eb;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.employee-report-form-actions button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.employee-report-history {
+  padding: 18px;
+}
+
+.employee-report-history h3 {
+  margin: 0 0 12px;
+  color: #111827;
+  font-size: 0.98rem;
+  font-weight: 900;
+}
+
+.employee-report-history-list {
+  display: grid;
+  gap: 10px;
+}
+
+.employee-report-history-item {
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.employee-report-history-item strong {
+  color: #111827;
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.employee-report-history-item p {
+  margin: 6px 0 0;
+  color: #334155;
+  font-size: 0.84rem;
+  font-weight: 650;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.employee-report-remark {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
+}
+
+.employee-report-remark span {
+  color: #1d4ed8;
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.employee-report-empty {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.86rem;
+  font-weight: 750;
 }
 
 .user-role-label {
