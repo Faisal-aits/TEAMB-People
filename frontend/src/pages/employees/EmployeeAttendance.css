@@ -1,7 +1,7 @@
 /* Attendance.css - Complete version matching Employee.css design system */
 .attendance-section {
   background: #f8f9fa;
-  padding: 1rem;
+  padding: 0.5rem 1rem 1rem;
   min-height: 100vh;
   font-family: 'Inter', sans-serif;
 }
@@ -11,7 +11,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
   padding: 0 1rem;
 }
 
@@ -136,13 +136,14 @@
   color: #1a202c;
 }
 
-.table-header {
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(0, 680px);
+.attendance-table-container .table-header {
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 1.5rem;
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
   gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .table-header h3 {
@@ -152,14 +153,13 @@
   font-weight: 600;
 }
 
-.table-actions {
-  display: grid;
-  grid-template-columns: minmax(240px, 1fr) minmax(180px, 220px) auto;
+.attendance-table-container .table-actions {
+  display: flex;
   gap: 0.5rem;
   align-items: center;
   justify-content: flex-end;
   margin-left: auto;
-  width: 100%;
+  width: min(760px, 100%);
 }
 
 .filter-btn,
@@ -178,15 +178,19 @@
 }
 
 .attendance-table-container .table-search-input {
-  width: 100%;
+  width: min(50%, 420px);
   flex: initial;
-  min-width: 260px;
+  min-width: 280px;
   max-width: none;
 }
 
 .attendance-table-container .filter-btn {
-  width: 100%;
-  min-width: 220px;
+  width: 220px;
+  min-width: 180px;
+}
+
+.attendance-table-container .refresh-btn {
+  flex: 0 0 auto;
 }
 
 .attendance-table-container .table-count-label {
@@ -1434,7 +1438,7 @@ select.filter-btn {
 }
 
 .employee-attendance-main {
-  padding-top: 18px;
+  padding-top: 0;
 }
 
 .employee-attendance-main .view-tabs {
