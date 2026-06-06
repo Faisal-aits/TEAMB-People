@@ -7,15 +7,6 @@ const roundToTwo = (num) => {
     return Math.round((num || 0) * 100) / 100;
 };
 
-const formatDateKey = (value) => {
-    if (!value) return null;
-    if (typeof value === 'string') return value.slice(0, 10);
-    const year = value.getFullYear();
-    const month = String(value.getMonth() + 1).padStart(2, '0');
-    const day = String(value.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-};
-
 const salaryController = {
     // Get all salary records for a month
     getSalaryRecords: async (req, res) => {
@@ -82,124 +73,15 @@ const salaryController = {
             const employee = employees[0];
             const annualSalary = Math.round(parseFloat(employee.annual_salary) || 0);
             const monthlySalary = Math.round(annualSalary / 12);
-            
-            // Get attendance for the month
-            const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-            const daysInMonth = new Date(year, month, 0).getDate();
-            const endDate = `${year}-${String(month).padStart(2, '0')}-${daysInMonth}`;
-            
-            const [attendanceRecords] = await pool.execute(
-                `SELECT a.date, a.status, a.check_in, a.check_out
-                 FROM tb_attendance a
-                 JOIN employee_details ed ON a.employee_id = ed.id
-                 WHERE ed.id = ? AND ed.tenant_id = ? AND a.date BETWEEN ? AND ?
-                 ORDER BY a.date`,
-                [employeeId, tenantId, startDate, endDate]
+
+            const salaryCalculation = await Salary.calculateSalary(
+                tenantId,
+                employeeId,
+                parseInt(month),
+                parseInt(year),
+                annualSalary
             );
-            
-            // Get holidays
-            const [holidays] = await pool.execute(
-                `SELECT date FROM tb_holidays 
-                 WHERE tenant_id = ? AND date BETWEEN ? AND ? AND is_active = 1`,
-                [tenantId, startDate, endDate]
-            );
-            
-            const holidayDates = new Set(holidays.map(h => formatDateKey(h.date)));
-            
-            // Calculate attendance summary
-            let presentDays = 0, halfDays = 0, lateDays = 0, absentDays = 0, effectiveDays = 0;
-            const attendanceMap = new Map();
-            attendanceRecords.forEach(record => {
-                attendanceMap.set(formatDateKey(record.date), record);
-            });
-            
-            // Calculate for each day
-            let totalWorkingDays = 0;
-            for (let day = 1; day <= daysInMonth; day++) {
-                const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                const date = new Date(year, month - 1, day);
-                const isSunday = date.getDay() === 0;
-                const isHoliday = holidayDates.has(dateStr);
-                const attendance = attendanceMap.get(dateStr);
-                
-                // Skip Sundays
-                if (isSunday) {
-                    continue;
-                }
-                
-                totalWorkingDays++;
-                
-                if (isHoliday) {
-                    presentDays++;
-                    effectiveDays += 1;
-                } 
-                else if (attendance) {
-                    const status = attendance.status?.toLowerCase() || '';
-                    if (status === 'present') {
-                        presentDays++;
-                        effectiveDays += 1;
-                    } else if (status === 'delayed' || status === 'late') {
-                        lateDays++;
-                        effectiveDays += 0.75;
-                    } else if (status === 'half day') {
-                        halfDays++;
-                        effectiveDays += 0.5;
-                    } else {
-                        absentDays++;
-                    }
-                } 
-                else {
-                    // NO ATTENDANCE RECORD - Count as ABSENT
-                    absentDays++;
-                }
-            }
-            
-            // Calculate daily rate based on 30 days
-            const dailyRate = Math.round(monthlySalary / 30);
-            const netSalary = Math.round(dailyRate * effectiveDays);
-            
-            // Daily breakdown for the modal
-            const dailyBreakdown = [];
-            for (let day = 1; day <= daysInMonth; day++) {
-                const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                const date = new Date(year, month - 1, day);
-                const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
-                const isSunday = date.getDay() === 0;
-                const isHoliday = holidayDates.has(dateStr);
-                const attendance = attendanceMap.get(dateStr);
-                
-                let status = 'Absent';
-                let shortStatus = 'A';
-                
-                if (isSunday) {
-                    status = 'Sunday Off';
-                    shortStatus = 'S';
-                } else if (isHoliday) {
-                    status = 'Holiday';
-                    shortStatus = 'HD';
-                } else if (attendance) {
-                    const attStatus = attendance.status?.toLowerCase() || '';
-                    if (attStatus === 'present') {
-                        status = 'Present';
-                        shortStatus = 'P';
-                    } else if (attStatus === 'delayed' || attStatus === 'late') {
-                        status = 'Late';
-                        shortStatus = 'L';
-                    } else if (attStatus === 'half day') {
-                        status = 'Half Day';
-                        shortStatus = 'H';
-                    }
-                }
-                
-                dailyBreakdown.push({
-                    date: dateStr,
-                    day: dayName,
-                    status: status,
-                    shortStatus: shortStatus,
-                    check_in: attendance?.check_in || '-',
-                    check_out: attendance?.check_out || '-'
-                });
-            }
+            const details = salaryCalculation.details || {};
             
             res.json({
                 success: true,
@@ -208,23 +90,35 @@ const salaryController = {
                     first_name: employee.first_name,
                     last_name: employee.last_name,
                     department: employee.department,
+                    position: employee.position,
                     annual_salary: annualSalary,
                     monthly_salary: monthlySalary
                 },
                 calculation: {
-                    total_days: daysInMonth,
-                    total_working_days: totalWorkingDays,
-                    present_days: presentDays,
-                    half_days: halfDays,
-                    late_days: lateDays,
-                    absent_days: absentDays,
-                    effective_days: Math.round(effectiveDays * 10) / 10,
-                    daily_rate: dailyRate,
+                    total_days: details.total_days || 0,
+                    total_working_days: details.total_working_days || 0,
+                    present_days: salaryCalculation.present_days || 0,
+                    half_days: salaryCalculation.half_days || 0,
+                    late_days: salaryCalculation.late_days || 0,
+                    absent_days: salaryCalculation.absent_days || 0,
+                    paid_leave_days: salaryCalculation.paid_leave_days || 0,
+                    unpaid_leave_days: salaryCalculation.unpaid_leave_days || 0,
+                    holiday_days: salaryCalculation.holiday_days || 0,
+                    weekly_off_days: salaryCalculation.weekly_off_days || 0,
+                    effective_days: salaryCalculation.effective_days || 0,
+                    paid_days: salaryCalculation.paid_days || 0,
+                    deduction_days: salaryCalculation.deduction_days || 0,
+                    daily_rate: salaryCalculation.daily_rate || 0,
                     monthly_salary: monthlySalary,
-                    net_salary: netSalary,
-                    has_attendance: attendanceRecords.length > 0
+                    gross_salary: salaryCalculation.gross_salary || monthlySalary,
+                    deduction_amount: salaryCalculation.deduction_amount || 0,
+                    net_salary: salaryCalculation.net_salary || 0,
+                    calculated_net_salary: salaryCalculation.net_salary || 0,
+                    leave_policy_applied: Boolean(details.leave_policy_applied),
+                    paid_leave_rule: details.paid_leave_rule,
+                    has_attendance: Boolean(details.has_attendance_data)
                 },
-                daily_breakdown: dailyBreakdown
+                daily_breakdown: salaryCalculation.daily_breakdown || []
             });
             
         } catch (error) {

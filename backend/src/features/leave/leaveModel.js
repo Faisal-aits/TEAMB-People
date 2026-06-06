@@ -118,6 +118,42 @@ const Leave = {
         }
     },
 
+    getLeaveTypePolicy: async (connection, tenantId, leaveType) => {
+        await Leave.initLeaveTypes(connection, tenantId);
+        const [rows] = await connection.execute(
+            'SELECT name, max_days, is_paid, is_active FROM leave_types WHERE tenant_id = ? AND name = ?',
+            [tenantId, leaveType]
+        );
+
+        if (rows.length === 0) {
+            throw new Error('Selected leave type is not configured');
+        }
+
+        return {
+            name: rows[0].name,
+            max_days: Number(rows[0].max_days) || 0,
+            is_paid: Number(rows[0].is_paid) === 1,
+            is_active: Number(rows[0].is_active) === 1
+        };
+    },
+
+    resolveLeavePaidFlag: async (connection, tenantId, leaveType, storedIsPaid = null) => {
+        if (storedIsPaid !== null && storedIsPaid !== undefined) {
+            return Number(storedIsPaid) === 1;
+        }
+
+        const [rows] = await connection.execute(
+            'SELECT is_paid FROM leave_types WHERE tenant_id = ? AND name = ?',
+            [tenantId, leaveType]
+        );
+
+        if (rows.length > 0) {
+            return Number(rows[0].is_paid) === 1;
+        }
+
+        return String(leaveType || '').trim().toLowerCase() !== 'unpaid';
+    },
+
     createLeaveType: async (tenantId, leaveTypeData) => {
         const connection = await pool.getConnection();
         try {
@@ -291,6 +327,11 @@ const Leave = {
 
             // 2. Initialize and verify leave balances
             await Leave.initBalances(connection, tenantId, employee_id, year);
+            const leavePolicy = await Leave.getLeaveTypePolicy(connection, tenantId, leave_type);
+
+            if (!leavePolicy.is_active) {
+                throw new Error('Selected leave type is inactive');
+            }
 
             // Fetch current balance for the selected type
             const [balanceRows] = await connection.execute(
@@ -300,7 +341,10 @@ const Leave = {
                 [tenantId, employee_id, leave_type, year]
             );
 
-            if (balanceRows.length > 0 && leave_type !== 'Unpaid') {
+            if (leavePolicy.is_paid) {
+                if (balanceRows.length === 0) {
+                    throw new Error('Leave balance not found for selected leave type');
+                }
                 const balance = balanceRows[0];
                 const remaining = balance.allocated - balance.used - balance.pending;
                 if (remaining < total_days) {
@@ -310,13 +354,13 @@ const Leave = {
 
             // 3. Insert leave request
             const [result] = await connection.execute(
-                `INSERT INTO leave_requests (tenant_id, employee_id, leave_type, description, start_date, end_date, status) 
-                 VALUES (?, ?, ?, ?, ?, ?, 'Pending')`,
-                [tenantId, employee_id, leave_type, description, start_date, end_date]
+                `INSERT INTO leave_requests (tenant_id, employee_id, leave_type, is_paid, description, start_date, end_date, status)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, 'Pending')`,
+                [tenantId, employee_id, leave_type, leavePolicy.is_paid ? 1 : 0, description, start_date, end_date]
             );
 
             // 4. Update pending balance
-            if (leave_type !== 'Unpaid') {
+            if (leavePolicy.is_paid) {
                 await connection.execute(
                     `UPDATE leave_balances 
                      SET pending = pending + ? 
@@ -488,8 +532,8 @@ const Leave = {
 
             // Fetch the leave request details first
             const [leave] = await connection.execute(
-                `SELECT employee_id, leave_type, start_date, end_date, description, status 
-                 FROM leave_requests 
+                `SELECT employee_id, leave_type, is_paid, start_date, end_date, description, status
+                 FROM leave_requests
                  WHERE leave_id = ? AND tenant_id = ?`,
                 [leaveId, tenantId]
             );
@@ -498,7 +542,8 @@ const Leave = {
                 throw new Error('Leave request not found');
             }
 
-            const { employee_id, leave_type, start_date, end_date, description, status } = leave[0];
+            const { employee_id, leave_type, is_paid, start_date, end_date, description, status } = leave[0];
+            const isPaidLeave = await Leave.resolveLeavePaidFlag(connection, tenantId, leave_type, is_paid);
 
             if (status !== 'Pending') {
                 throw new Error('Leave request is already processed');
@@ -519,7 +564,7 @@ const Leave = {
             const year = start.getFullYear();
 
             // Update balances: subtract from pending and add to used
-            if (leave_type !== 'Unpaid') {
+            if (isPaidLeave) {
                 await connection.execute(
                     `UPDATE leave_balances 
                      SET pending = pending - ?, used = used + ? 
@@ -572,8 +617,8 @@ const Leave = {
             await connection.beginTransaction();
 
             const [leave] = await connection.execute(
-                `SELECT employee_id, leave_type, start_date, end_date, status 
-                 FROM leave_requests 
+                `SELECT employee_id, leave_type, is_paid, start_date, end_date, status
+                 FROM leave_requests
                  WHERE leave_id = ? AND tenant_id = ?`,
                 [leaveId, tenantId]
             );
@@ -582,7 +627,8 @@ const Leave = {
                 throw new Error('Leave request not found');
             }
 
-            const { employee_id, leave_type, start_date, end_date, status } = leave[0];
+            const { employee_id, leave_type, is_paid, start_date, end_date, status } = leave[0];
+            const isPaidLeave = await Leave.resolveLeavePaidFlag(connection, tenantId, leave_type, is_paid);
 
             if (status !== 'Pending') {
                 throw new Error('Leave request is already processed');
@@ -603,7 +649,7 @@ const Leave = {
             const year = start.getFullYear();
 
             // Release pending balance
-            if (leave_type !== 'Unpaid') {
+            if (isPaidLeave) {
                 await connection.execute(
                     `UPDATE leave_balances 
                      SET pending = pending - ? 
@@ -630,8 +676,8 @@ const Leave = {
             await connection.beginTransaction();
 
             const [leave] = await connection.execute(
-                `SELECT employee_id, leave_type, start_date, end_date, status 
-                 FROM leave_requests 
+                `SELECT employee_id, leave_type, is_paid, start_date, end_date, status
+                 FROM leave_requests
                  WHERE leave_id = ? AND tenant_id = ?`,
                 [leaveId, tenantId]
             );
@@ -640,7 +686,8 @@ const Leave = {
                 throw new Error('Leave request not found');
             }
 
-            const { employee_id, leave_type, start_date, end_date, status } = leave[0];
+            const { employee_id, leave_type, is_paid, start_date, end_date, status } = leave[0];
+            const isPaidLeave = await Leave.resolveLeavePaidFlag(connection, tenantId, leave_type, is_paid);
 
             const start = new Date(start_date);
             const end = new Date(end_date);
@@ -648,7 +695,7 @@ const Leave = {
             const year = start.getFullYear();
 
             // Restore balance depending on current status
-            if (leave_type !== 'Unpaid') {
+            if (isPaidLeave) {
                 if (status === 'Pending') {
                     await connection.execute(
                         `UPDATE leave_balances 

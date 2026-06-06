@@ -8,6 +8,7 @@ const ensureLeaveSchema = () => {
     schemaReady = (async () => {
       // 1. Add leave_type to leave_requests table if missing
       await addColumnIfMissing('leave_requests', 'leave_type', "leave_type VARCHAR(50) NOT NULL DEFAULT 'Casual' AFTER employee_id");
+      await addColumnIfMissing('leave_requests', 'is_paid', 'is_paid TINYINT(1) NULL AFTER leave_type');
 
       // 2. Create leave_types table
       await pool.execute(`

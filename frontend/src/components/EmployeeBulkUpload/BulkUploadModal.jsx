@@ -589,13 +589,16 @@ const BulkUploadModal = ({ isOpen, onClose, onUploadComplete }) => {
                 </ul>
               </section>
               <section>
-                <h3>Accepted Formats</h3>
-                <p>.csv and .xlsx files up to {Math.floor(MAX_BULK_UPLOAD_FILE_SIZE / 1024 / 1024)}MB.</p>
+                <div>
+                    <h3>Accepted Formats</h3>
+                    <p>.csv and .xlsx files up to {Math.floor(MAX_BULK_UPLOAD_FILE_SIZE / 1024 / 1024)}MB.</p>
+                </div>
+                <div>
+                  <h3>Limits</h3>
+                  <p>Maximum Rows: {MAX_BULK_UPLOAD_ROWS}</p>
+                </div>
               </section>
-              <section>
-                <h3>Limits</h3>
-                <p>Maximum Rows: {MAX_BULK_UPLOAD_ROWS}</p>
-              </section>
+
               <section>
                 <h3>Validation Rules</h3>
                 <ul>
