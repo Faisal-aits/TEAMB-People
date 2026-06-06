@@ -85,7 +85,7 @@ export const projectAPI = {
   getAllTeams: () => api.get('/pttm/teams').then((response) => normalizeListResponse(response, 'teams')),
   getMyTeams: () => api.get('/pttm/teams').then((response) => normalizeListResponse(response, 'teams')),
   getAllTasks: () => api.get('/pttm/tasks').then((response) => normalizeListResponse(response, 'tasks')),
-  getMyTasks: () => api.get('/pttm/tasks').then((response) => normalizeListResponse(response, 'tasks')),
+  getMyTasks: () => api.get('/projects/my-tasks').then((response) => normalizeListResponse(response, 'tasks')),
   getTeamMembers: () => Promise.resolve({ data: { success: true, data: [] } }),
   createTeam: (data) => api.post('/pttm/teams', data),
   deleteTeam: (id) => api.delete(`/pttm/teams/${id}`),

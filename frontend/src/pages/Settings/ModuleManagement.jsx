@@ -42,7 +42,7 @@ const MODULE_GROUPS = [
   },
   { title: 'Services', keys: ['services', 'service_management'] },
   { title: 'Planning & Tasks', keys: ['pttm'] },
-  { title: 'Employee Self Service', keys: ['employee_attendance', 'employee_expense'] },
+  { title: 'Employee Self Service', keys: ['employee_attendance', 'employee_expense', 'employee_projects'] },
 ];
 
 const formatLastActive = (value) => {

@@ -83,6 +83,16 @@ const projectController = {
       console.error('Error fetching my projects:', error);
       res.status(500).json({ success: false, error: 'Failed to fetch my projects' });
     }
+  },
+
+  getMyTasks: async (req, res) => {
+    try {
+      const tasks = await projectModel.getMyTasks(req.tenantId, req.user.id);
+      res.json({ success: true, data: tasks, tasks });
+    } catch (error) {
+      console.error('Error fetching my tasks:', error);
+      res.status(500).json({ success: false, error: 'Failed to fetch my tasks' });
+    }
   }
 };
 

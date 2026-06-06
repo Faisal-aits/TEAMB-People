@@ -155,11 +155,17 @@ const MODULE_META = {
     description: 'Submit expenses and track reimbursement requests.',
     icon: <HiOutlineReceiptPercent />,
   },
+  employee_projects: {
+    title: 'My Projects & Tasks',
+    description: 'Assigned projects, tasks, deadlines, and status.',
+    icon: <HiOutlineBriefcase />,
+  },
 };
 
 const DEFAULT_EMPLOYEE_MODULES = [
   { module_key: 'employee_attendance', name: 'My Attendance', access: 'write' },
   { module_key: 'employee_expense', name: 'My Expense', access: 'write' },
+  { module_key: 'employee_projects', name: 'My Projects & Tasks', access: 'write' },
 ];
 
 const numberFormat = new Intl.NumberFormat('en-IN');
@@ -288,6 +294,7 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
       services: 'service',
       employee_attendance: 'employee-attendance',
       employee_expense: 'employee-expense',
+      employee_projects: 'employee-projects',
     };
     const defaultTab = moduleDefaults[mod.module_key] || MODULE_DEFAULT_TAB[mod.module_key];
 

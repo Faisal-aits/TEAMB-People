@@ -28,6 +28,7 @@ const MODULE_DEFINITIONS = [
   ['pttm', 'PTTM', 80],
   ['employee_attendance', 'My Attendance & Leave', 100],
   ['employee_expense', 'My Expense', 101],
+  ['employee_projects', 'My Projects & Tasks', 102],
 ];
 
 const MANAGEABLE_MODULES = MODULE_DEFINITIONS.map(([moduleKey]) => moduleKey);

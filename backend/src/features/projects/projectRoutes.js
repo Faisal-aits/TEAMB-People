@@ -7,6 +7,7 @@ const requireAdmin = require('../../middleware/requireAdmin');
 router.use(verifyToken);
 
 router.get('/my', projectController.getMyProjects);
+router.get('/my-tasks', projectController.getMyTasks);
 
 router.use(requireAdmin);
 

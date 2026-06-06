@@ -64,6 +64,68 @@ const projectModel = {
     }
   },
 
+  getMyTasks: async (tenantId, userId) => {
+    await ensureProjectSchema();
+    const sql = `
+      SELECT t.id,
+             t.project_id,
+             t.phase_id,
+             t.team_id,
+             t.assigned_user_id,
+             t.date,
+             t.task_title,
+             t.description,
+             t.status,
+             t.remarks,
+             t.sort_order,
+             t.created_at,
+             t.updated_at,
+             p.name AS project_name,
+             p.status AS project_status,
+             p.start_date AS project_start_date,
+             p.end_date AS project_end_date,
+             p.manager AS project_manager,
+             ph.name AS phase_name,
+             tm.name AS team_name
+      FROM pttm_tasks t
+      LEFT JOIN projects p ON p.id = t.project_id AND p.tenant_id = t.tenant_id
+      LEFT JOIN pttm_phases ph ON ph.id = t.phase_id AND ph.tenant_id = t.tenant_id
+      LEFT JOIN pttm_teams tm ON tm.id = t.team_id AND tm.tenant_id = t.tenant_id
+      WHERE t.tenant_id = ?
+        AND t.assigned_user_id = ?
+      ORDER BY
+        CASE WHEN LOWER(COALESCE(t.status, '')) = 'completed' THEN 1 ELSE 0 END,
+        CASE WHEN t.date IS NULL OR t.date = '' THEN 1 ELSE 0 END,
+        t.date ASC,
+        t.sort_order ASC,
+        t.created_at ASC
+    `;
+
+    try {
+      const rows = await query(sql, [tenantId, userId]);
+      return rows.map((task) => ({
+        ...task,
+        project_id: task.project_id != null ? String(task.project_id) : '',
+        assigned_user_id: task.assigned_user_id != null ? String(task.assigned_user_id) : '',
+        title: task.task_title || 'Untitled Task',
+        due_date: task.date,
+        project: task.project_id ? {
+          id: String(task.project_id),
+          name: task.project_name,
+          status: task.project_status,
+          start_date: task.project_start_date,
+          end_date: task.project_end_date,
+          manager: task.project_manager,
+        } : null,
+        phase: task.phase_id ? { id: task.phase_id, name: task.phase_name } : null,
+        team: task.team_id ? { id: task.team_id, name: task.team_name } : null,
+      }));
+    } catch (error) {
+      if (error.code !== 'ER_NO_SUCH_TABLE' && error.code !== 'ER_BAD_FIELD_ERROR') throw error;
+      return [];
+    }
+  },
+
   getById: async (tenantId, id) => {
     await ensureProjectSchema();
     const projects = await query('SELECT * FROM projects WHERE id = ? AND tenant_id = ?', [id, tenantId]);
