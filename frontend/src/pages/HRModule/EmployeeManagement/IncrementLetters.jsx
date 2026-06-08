@@ -22,6 +22,13 @@ const getEmployeeDepartment = (employee) => (
   ""
 );
 
+const isEmployeeActive = (employee) => {
+  const status = String(employee?.status || "").toLowerCase();
+  const isActiveValue = employee?.is_active;
+  const isActive = isActiveValue === true || isActiveValue === 1 || isActiveValue === "1";
+  return isActive && status !== "inactive";
+};
+
 const IncrementLetters  = ({ initialEmployee = null }) => {
     const location = useLocation();
       const routedEmployee = initialEmployee || location.state?.employee || null;
@@ -54,7 +61,7 @@ const IncrementLetters  = ({ initialEmployee = null }) => {
     try {
       const [lettersResult, employeesResult] = await Promise.allSettled([
         incrementLetterAPI.getAllLetters(),
-        employeeAPI.getAll()
+        employeeAPI.getAll({ is_active: true })
       ]);
 
       if (lettersResult.status === "fulfilled") {
@@ -67,7 +74,7 @@ const IncrementLetters  = ({ initialEmployee = null }) => {
       if (employeesResult.status === "fulfilled") {
         const employeesPayload = employeesResult.value.data;
         const employeesList = employeesPayload?.employees || employeesPayload?.data || [];
-        setEmployees(Array.isArray(employeesList) ? employeesList : []);
+        setEmployees(Array.isArray(employeesList) ? employeesList.filter(isEmployeeActive) : []);
       } else {
         console.error("Error fetching employees:", employeesResult.reason);
         setEmployees([]);
