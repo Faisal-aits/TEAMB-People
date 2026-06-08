@@ -121,28 +121,56 @@ const leaveController = {
 
     // Approve leave request
     approveLeave: async (req, res) => {
+      try {
+        const { leaveId } = req.params;
+        const user_id = req.user.id;
+        const { category } = req.body;
+
+        const [adminEmployeeRows] = await pool.execute(
+          `SELECT ed.id as employee_id 
+               FROM employee_details ed 
+               WHERE ed.employee_id = ?`,
+          [user_id]
+        );
+
+        const approved_by = adminEmployeeRows.length > 0
+          ? adminEmployeeRows[0].employee_id
+          : null;
+
+        const connection = await pool.getConnection();
         try {
-            const { leaveId } = req.params;
-            const user_id = req.user.id;
+          await connection.beginTransaction();
 
-            const [adminEmployeeRows] = await pool.execute(
-                `SELECT ed.id as employee_id 
-                 FROM employee_details ed 
-                 WHERE ed.employee_id = ?`,
-                [user_id]
+          // Fetch current leave data
+          const [leaveRows] = await connection.execute(
+            `SELECT leave_type FROM leave_requests WHERE leave_id = ? AND tenant_id = ?`,
+            [leaveId, req.tenantId]
+          );
+          if (leaveRows.length === 0) {
+            throw new Error('Leave request not found');
+          }
+          // Update leave_type if category provided and differs
+          if (category && category !== leaveRows[0].leave_type) {
+            await connection.execute(
+              `UPDATE leave_requests SET leave_type = ? WHERE leave_id = ? AND tenant_id = ?`,
+              [category, leaveId, req.tenantId]
             );
+          }
 
-            const approved_by = adminEmployeeRows.length > 0
-                ? adminEmployeeRows[0].employee_id
-                : null;
+          await Leave.approve(req.tenantId, leaveId, approved_by);
 
-            await Leave.approve(req.tenantId, leaveId, approved_by);
-
-            res.json({ message: 'Leave approved successfully!' });
-        } catch (error) {
-            console.error('Approve leave error:', error);
-            res.status(500).json({ message: error.message || 'Server error while approving leave' });
+          await connection.commit();
+          res.json({ message: 'Leave approved successfully!' });
+        } catch (err) {
+          await connection.rollback();
+          throw err;
+        } finally {
+          connection.release();
         }
+      } catch (error) {
+        console.error('Approve leave error:', error);
+        res.status(500).json({ message: error.message || 'Server error while approving leave' });
+      }
     },
 
     // Reject leave request

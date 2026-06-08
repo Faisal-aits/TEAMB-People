@@ -12,8 +12,9 @@ export const leaveAPI = {
     return api.get(`/leaves?${params.toString()}`);
   },
 
-  // Approve leave request (admin)
-  approve: (leaveId) => api.post(`/leaves/${leaveId}/approve`),
+  // Approve leave request (admin) with optional category
+  approve: (leaveId, data = {}) => api.post(`/leaves/${leaveId}/approve`, data),
+
 
   // Reject leave request (admin)
   reject: (leaveId) => api.post(`/leaves/${leaveId}/reject`),
