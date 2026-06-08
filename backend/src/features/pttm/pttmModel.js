@@ -434,7 +434,7 @@ const pttmModel = {
               u.created_at
        FROM employee_details ed
        JOIN users u ON u.id = ed.employee_id AND u.tenant_id = ed.tenant_id
-       WHERE u.tenant_id = ? AND u.is_active = 1
+       WHERE u.tenant_id = ? AND u.is_active = 1 AND ed.status = 'active'
        ORDER BY u.first_name, u.last_name`,
       [tenantId]
     );
