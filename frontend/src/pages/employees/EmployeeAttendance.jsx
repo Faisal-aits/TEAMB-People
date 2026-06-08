@@ -22,6 +22,11 @@ const EmployeeAttendance = () => {
     checkInTime: null,
     checkOutTime: null
   });
+  const [autoCheckout, setAutoCheckout] = useState({
+    enabled: false,
+    shift: null,
+    saving: false
+  });
 
   // ==================== LEAVE STATES ====================
   const [leaves, setLeaves] = useState([]);
@@ -79,9 +84,49 @@ const EmployeeAttendance = () => {
           checkInTime: data.check_in_time,
           checkOutTime: data.check_out_time
         });
+        if (typeof response.data.auto_checkout_enabled === 'boolean') {
+          setAutoCheckout(prev => ({
+            ...prev,
+            enabled: response.data.auto_checkout_enabled,
+            shift: response.data.shift || prev.shift
+          }));
+        }
       }
     } catch (err) {
       console.error('Error fetching today attendance:', err);
+    }
+  };
+
+  const fetchAutoCheckoutSetting = async () => {
+    try {
+      const response = await attendanceAPI.getMyAutoCheckoutSetting();
+      if (response.data?.success) {
+        setAutoCheckout(prev => ({
+          ...prev,
+          enabled: Boolean(response.data.auto_checkout_enabled),
+          shift: response.data.shift || null
+        }));
+      }
+    } catch (err) {
+      console.error('Error fetching auto check-out setting:', err);
+    }
+  };
+
+  const handleAutoCheckoutToggle = async (event) => {
+    const enabled = event.target.checked;
+    setAutoCheckout(prev => ({ ...prev, enabled, saving: true }));
+
+    try {
+      const response = await attendanceAPI.updateMyAutoCheckoutSetting(enabled);
+      setAutoCheckout(prev => ({
+        ...prev,
+        enabled: Boolean(response.data?.auto_checkout_enabled),
+        saving: false
+      }));
+    } catch (err) {
+      console.error('Error updating auto check-out setting:', err);
+      setAutoCheckout(prev => ({ ...prev, enabled: !enabled, saving: false }));
+      alert(err.response?.data?.message || 'Could not update auto check-out setting');
     }
   };
 
@@ -375,6 +420,7 @@ const EmployeeAttendance = () => {
   useEffect(() => {
     fetchAttendanceHistory();
     fetchTodayAttendance();
+    fetchAutoCheckoutSetting();
     loadLeaveTypes();
   }, []);
 
@@ -409,6 +455,18 @@ const EmployeeAttendance = () => {
         <div className="attendance-header">
           <h2>My Attendance</h2>
           <div className="attendance-actions">
+            <label className="auto-checkout-toggle">
+              <input
+                type="checkbox"
+                checked={autoCheckout.enabled}
+                onChange={handleAutoCheckoutToggle}
+                disabled={autoCheckout.saving}
+              />
+              <span>Auto Check Out</span>
+              {autoCheckout.shift?.check_out_time && (
+                <small>{autoCheckout.shift.shift_name || 'Shift'} ends {autoCheckout.shift.check_out_time}</small>
+              )}
+            </label>
             <button
               className="check-in-btn"
               onClick={() => handleQuickCheckIn('check_in')}

@@ -37,6 +37,9 @@ router.get('/shifts', requireModuleAccess('attendance_management', 'read'), atte
 // GET /api/attendance/stats - Get attendance statistics
 router.get('/stats', requireModuleAccess('attendance_management', 'read'), attendanceController.getAttendanceStats);
 
+// POST /api/attendance/auto-checkout/run - Manually run auto check-out sweep
+router.post('/auto-checkout/run', requireModuleAccess('attendance_management', 'write'), attendanceController.runAutoCheckout);
+
 // GET /api/attendance/history/:employeeId - Get employee attendance history
 router.get('/history/:employeeId', requireModuleAccess('attendance_management', 'read'), attendanceController.getEmployeeHistory);
 
@@ -53,6 +56,12 @@ router.post('/mark', requireModuleAccess('attendance_management', 'write'), atte
 
 // GET /api/attendance/my/today - Get current user's today attendance
 router.get('/my/today', attendanceController.getMyTodayAttendance);
+
+// GET /api/attendance/my/auto-checkout - Get current user's auto check-out preference
+router.get('/my/auto-checkout', attendanceController.getMyAutoCheckoutSetting);
+
+// PUT /api/attendance/my/auto-checkout - Update current user's auto check-out preference
+router.put('/my/auto-checkout', attendanceController.updateMyAutoCheckoutSetting);
 
 // GET /api/attendance/my/history - Get current user's attendance history
 router.get('/my/history', attendanceController.getMyHistory);

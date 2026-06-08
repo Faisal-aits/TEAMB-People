@@ -63,6 +63,36 @@
   align-items: center;
 }
 
+.auto-checkout-toggle {
+  min-height: 42px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+  color: #2d3748;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.15rem 0.5rem;
+  align-items: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auto-checkout-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: #6d6ab8;
+}
+
+.auto-checkout-toggle small {
+  grid-column: 2;
+  color: #718096;
+  font-size: 0.7rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
 /* .quick-actions {
   display: flex;
   gap: 0.5rem;

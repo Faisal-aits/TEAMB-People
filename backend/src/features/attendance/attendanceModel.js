@@ -559,7 +559,7 @@ create: async (tenantId, attendanceData) => {
 
       // backend/models/attendanceModel.js
 
-updateCheckOut: async (tenantId, employeeId, date, checkOutTime, latitude = null, longitude = null) => {
+updateCheckOut: async (tenantId, employeeId, date, checkOutTime, latitude = null, longitude = null, remarks = null) => {
     const connection = await pool.getConnection();
     
     try {
@@ -611,13 +611,17 @@ updateCheckOut: async (tenantId, employeeId, date, checkOutTime, latitude = null
             }
         }
         
+        const nextRemarks = remarks
+            ? [record.remarks, remarks].filter(Boolean).join(' | ')
+            : record.remarks;
+
         // Update attendance
         await connection.execute(
             `UPDATE tb_attendance 
             SET check_out = ?, status = ?, is_half_day = ?, worked_hours = ?, updated_at = ?,
-                check_out_latitude = ?, check_out_longitude = ?
+                check_out_latitude = ?, check_out_longitude = ?, remarks = ?
             WHERE employee_id = ? AND date = ? AND tenant_id = ?`,
-            [checkOutTime, status, isHalfDay ? 1 : 0, workedHours, getIndiaDateTime(), latitude, longitude, employeeId, date, tenantId]
+            [checkOutTime, status, isHalfDay ? 1 : 0, workedHours, getIndiaDateTime(), latitude, longitude, nextRemarks, employeeId, date, tenantId]
         );
         
         await connection.commit();

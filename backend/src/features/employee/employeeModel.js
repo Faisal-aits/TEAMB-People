@@ -22,6 +22,7 @@ const employeeDetailSelectColumns = `
           ed.salary_net,
           ed.employer_pf,
           ed.employer_esic,
+          ed.auto_checkout_enabled,
           DATE_FORMAT(ed.joining_date, '%Y-%m-%d') as joining_date,
           DATE_FORMAT(ed.last_working_date, '%Y-%m-%d') as last_working_date,
           DATE_FORMAT(ed.date_of_birth, '%Y-%m-%d') as date_of_birth,

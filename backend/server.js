@@ -40,6 +40,7 @@ const { ensureSalarySchema } = require('./src/features/salary/salarySchema');
 const { ensureLeaveSchema } = require('./src/features/leave/leaveSchema');
 const { ensureAttendanceSchema } = require('./src/features/attendance/attendanceSchema');
 const { ensurePasswordResetSchema } = require('./src/features/login/passwordResetSchema');
+const { startAutoCheckoutScheduler } = require('./src/features/attendance/autoCheckoutService');
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 
@@ -144,6 +145,7 @@ const startServer = async () => {
 
     app.listen(PORT, () => {
       logger.info(`Server started on port ${PORT}`);
+      startAutoCheckoutScheduler(logger);
     });
   } catch (error) {
     console.error('Database connection error:', error);

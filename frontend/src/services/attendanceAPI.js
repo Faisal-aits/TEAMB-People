@@ -41,6 +41,14 @@ export const attendanceAPI = {
     return api.get('/attendance/my/today');
   },
 
+  getMyAutoCheckoutSetting: () => {
+    return api.get('/attendance/my/auto-checkout');
+  },
+
+  updateMyAutoCheckoutSetting: (enabled) => {
+    return api.put('/attendance/my/auto-checkout', { enabled });
+  },
+
   getAllWithFilters: (filters = {}) => {
     const params = new URLSearchParams();
     if (filters.start_date) params.append('start_date', filters.start_date);
