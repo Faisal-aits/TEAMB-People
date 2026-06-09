@@ -18,6 +18,7 @@ import ExpenseManagement from '../Accounts/ExpenseManagement.jsx';
 import QuotationManagement from '../Accounts/QuotationManagement.jsx';
 import ServiceManagement from '../services/ServiceManagement.jsx';
 import ReportsManagement from './ReportsManagement.jsx';
+import TicketManagement from './TicketManagement.jsx';
 import ModuleManagement from '../Settings/ModuleManagement.jsx';
 import BrandingSettings from '../Settings/BrandingSettings.jsx';
 import MasterSettings from '../Settings/MasterSettings.jsx';
@@ -82,6 +83,7 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
   const canAccessExpenseManagement = hasModuleAccess(user, 'expense_management');
   const canAccessQuotationManagement = hasModuleAccess(user, 'quotation_management');
   const canAccessServiceManagement = hasModuleAccess(user, 'service_management');
+  const canAccessTicketManagement = hasModuleAccess(user, 'ticket_management') || isAdmin;
 
   useEffect(() => {
     localStorage.setItem("activeTab", activeTab);
@@ -357,6 +359,20 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
               </li>
               )}
 
+              {/* Tickets */}
+              {canAccessTicketManagement && (
+              <li className={activeTab === 'ticket-management' ? 'active' : ''}>
+                <button onClick={() => navigateToTab('ticket-management')}>
+                  <span className="nav-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M22 10V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v4a3 3 0 0 1 0 6v4a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-4a3 3 0 0 1 0-6zM4 6h16v2.42c-1.39.81-2 2.3-2 3.58s.61 2.77 2 3.58V18H4v-2.42c1.39-.81 2-2.3 2-3.58s-.61-2.77-2-3.58V6z" fill="currentColor" />
+                    </svg>
+                  </span>
+                  {sidebarOpen && <span className="nav-text">Ticket Management</span>}
+                </button>
+              </li>
+              )}
+
               {/* Task Manager (PTTM) */}
               <li className={activeTab === 'pttm' ? 'active' : ''}>
                 <button onClick={() => navigateToTab('pttm')}>
@@ -457,6 +473,7 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
           {activeTab === 'holiday' && canAccessHolidayManagement && <HolidayManagement />}
           {activeTab === 'aiDocumentGenerator' && canAccessAiDocumentGenerator && <AiDocumentGenerator />}
           {activeTab === 'service' && canAccessServiceManagement && <ServiceManagement initialTab="services" />}
+          {activeTab === 'ticket-management' && canAccessTicketManagement && <TicketManagement />}
           {activeTab === 'modulemanagement' && isAdmin && <ModuleManagement />}
           {activeTab === 'branding' && isAdmin && <BrandingSettings />}
           {activeTab === 'master' && isAdmin && <MasterSettings />}
