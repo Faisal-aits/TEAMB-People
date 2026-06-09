@@ -274,7 +274,12 @@ const pttmModel = {
         date VARCHAR(20) DEFAULT NULL,
         task_title VARCHAR(500) DEFAULT NULL,
         description TEXT,
-        status ENUM('Pending', 'In Progress', 'Completed', 'Not Started', 'On Going') DEFAULT 'Pending',
+        status ENUM('Pending', 'In Progress', 'Completed', 'Not Started', 'On Going', 'Under Review') DEFAULT 'Pending',
+        review_status ENUM('Not Submitted', 'Pending Review', 'Approved', 'Rejected') DEFAULT 'Not Submitted',
+        review_notes TEXT NULL,
+        reviewed_by INT NULL,
+        submitted_at DATETIME NULL,
+        reviewed_at DATETIME NULL,
         remarks TEXT,
         sort_order INT DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -282,12 +287,54 @@ const pttmModel = {
         PRIMARY KEY (id),
         INDEX idx_pttm_tasks_tenant (tenant_id),
         INDEX idx_pttm_tasks_project (project_id),
-        INDEX idx_pttm_tasks_assigned_user (assigned_user_id)
+        INDEX idx_pttm_tasks_assigned_user (assigned_user_id),
+        INDEX idx_pttm_tasks_review_status (review_status)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
     if (!(await columnExists('pttm_tasks', 'team_leader_id'))) {
       await query('ALTER TABLE pttm_tasks ADD COLUMN team_leader_id INT DEFAULT NULL AFTER assigned_user_id');
+    }
+
+    // Add review columns to existing tables (safe ALTER TABLE IF NOT EXISTS column)
+    if (!(await columnExists('pttm_tasks', 'review_status'))) {
+      await query("ALTER TABLE pttm_tasks ADD COLUMN review_status ENUM('Not Submitted', 'Pending Review', 'Approved', 'Rejected') DEFAULT 'Not Submitted' AFTER status");
+    }
+    if (!(await columnExists('pttm_tasks', 'review_notes'))) {
+      await query('ALTER TABLE pttm_tasks ADD COLUMN review_notes TEXT NULL AFTER review_status');
+    }
+    if (!(await columnExists('pttm_tasks', 'reviewed_by'))) {
+      await query('ALTER TABLE pttm_tasks ADD COLUMN reviewed_by INT NULL AFTER review_notes');
+    }
+    if (!(await columnExists('pttm_tasks', 'submitted_at'))) {
+      await query('ALTER TABLE pttm_tasks ADD COLUMN submitted_at DATETIME NULL AFTER reviewed_by');
+    }
+    if (!(await columnExists('pttm_tasks', 'reviewed_at'))) {
+      await query('ALTER TABLE pttm_tasks ADD COLUMN reviewed_at DATETIME NULL AFTER submitted_at');
+    }
+
+    // Alter status ENUM to include 'Under Review' on existing tables
+    await query("ALTER TABLE pttm_tasks MODIFY COLUMN status ENUM('Pending', 'In Progress', 'Completed', 'Not Started', 'On Going', 'Under Review') DEFAULT 'Pending'");
+
+    // ─── Modules ───────────────────────────────────────────────────────────────
+    await query(`
+      CREATE TABLE IF NOT EXISTS pttm_modules (
+        id CHAR(36) NOT NULL,
+        tenant_id INT DEFAULT 1,
+        project_id INT DEFAULT NULL,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        order_num INT DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        INDEX idx_pttm_modules_tenant  (tenant_id),
+        INDEX idx_pttm_modules_project (project_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    if (!(await columnExists('pttm_tasks', 'module_id'))) {
+      await query('ALTER TABLE pttm_tasks ADD COLUMN module_id CHAR(36) DEFAULT NULL AFTER phase_id');
     }
 
     await query(`
@@ -506,6 +553,56 @@ const pttmModel = {
     return true;
   },
 
+  // ─── Modules CRUD ──────────────────────────────────────────────────────────
+
+  async getModules(tenantId) {
+    const rows = await query(
+      'SELECT * FROM pttm_modules WHERE tenant_id = ? ORDER BY project_id ASC, order_num ASC, name ASC',
+      [tenantId]
+    );
+    return rows.map(r => ({ ...r, id: r.id, project_id: toStringId(r.project_id) }));
+  },
+
+  async getModuleById(id, tenantId) {
+    const rows = await query('SELECT * FROM pttm_modules WHERE id = ? AND tenant_id = ?', [id, tenantId]);
+    if (!rows[0]) return null;
+    const r = rows[0];
+    return { ...r, id: r.id, project_id: toStringId(r.project_id) };
+  },
+
+  async createModule(module, tenantId) {
+    const id = randomUUID();
+    await query(
+      `INSERT INTO pttm_modules (id, tenant_id, project_id, name, description, order_num)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [id, tenantId, module.project_id || null, module.name, module.description || null, module.order_num || 1]
+    );
+    return this.getModuleById(id, tenantId);
+  },
+
+  async updateModule(id, data, tenantId) {
+    const allowed = ['project_id', 'name', 'description', 'order_num'];
+    const updates = [];
+    const params = [];
+    for (const key of allowed) {
+      if (Object.prototype.hasOwnProperty.call(data, key)) {
+        updates.push(`${key} = ?`);
+        params.push(data[key] ?? null);
+      }
+    }
+    if (updates.length === 0) return this.getModuleById(id, tenantId);
+    params.push(id, tenantId);
+    await query(`UPDATE pttm_modules SET ${updates.join(', ')} WHERE id = ? AND tenant_id = ?`, params);
+    return this.getModuleById(id, tenantId);
+  },
+
+  async deleteModule(id, tenantId) {
+    // Nullify tasks referencing this module before deleting
+    await query('UPDATE pttm_tasks SET module_id = NULL WHERE module_id = ? AND tenant_id = ?', [id, tenantId]);
+    await query('DELETE FROM pttm_modules WHERE id = ? AND tenant_id = ?', [id, tenantId]);
+    return true;
+  },
+
   async reindexTasks(tenantId) {
     const rows = await query(
       'SELECT id FROM pttm_tasks WHERE tenant_id = ? ORDER BY sort_order ASC, created_at ASC',
@@ -521,6 +618,7 @@ const pttmModel = {
       SELECT t.*,
              p.name AS project_name,
              ph.name AS phase_name, ph.order_num AS phase_order_num,
+             md.name AS module_name,
              tm.name AS team_name,
              TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS assigned_user_name,
              COALESCE(eu.position, u.position, 'Developer') AS assigned_user_role,
@@ -529,6 +627,7 @@ const pttmModel = {
       FROM pttm_tasks t
       LEFT JOIN projects p ON t.project_id = p.id AND p.tenant_id = t.tenant_id
       LEFT JOIN pttm_phases ph ON t.phase_id = ph.id AND ph.tenant_id = t.tenant_id
+      LEFT JOIN pttm_modules md ON t.module_id = md.id AND md.tenant_id = t.tenant_id
       LEFT JOIN pttm_teams tm ON t.team_id = tm.id AND tm.tenant_id = t.tenant_id
       LEFT JOIN users u ON t.assigned_user_id = u.id AND u.tenant_id = t.tenant_id
       LEFT JOIN employee_details eu ON eu.employee_id = u.id AND eu.tenant_id = t.tenant_id
@@ -538,7 +637,7 @@ const pttmModel = {
     `;
     const params = [tenantId];
 
-    const filterFields = ['id', 'project_id', 'phase_id', 'team_id', 'assigned_user_id', 'team_leader_id', 'status'];
+    const filterFields = ['id', 'project_id', 'phase_id', 'module_id', 'team_id', 'assigned_user_id', 'team_leader_id', 'status'];
     filterFields.forEach((field) => {
       if (filters[field]) {
         sql += ` AND t.${field} = ?`;
@@ -580,6 +679,7 @@ const pttmModel = {
       tenant_id: r.tenant_id,
       project_id: toStringId(r.project_id),
       phase_id: r.phase_id,
+      module_id: r.module_id || null,
       team_id: r.team_id,
       assigned_user_id: toStringId(r.assigned_user_id),
       team_leader_id: toStringId(r.team_leader_id),
@@ -587,12 +687,18 @@ const pttmModel = {
       task_title: r.task_title,
       description: r.description,
       status: r.status,
+      review_status: r.review_status || 'Not Submitted',
+      review_notes: r.review_notes || null,
+      reviewed_by: toStringId(r.reviewed_by),
+      submitted_at: r.submitted_at || null,
+      reviewed_at: r.reviewed_at || null,
       remarks: r.remarks,
       sort_order: r.sort_order,
       created_at: r.created_at,
       updated_at: r.updated_at,
       Project: r.project_id ? { id: toStringId(r.project_id), name: r.project_name } : null,
       Phase: r.phase_id ? { id: r.phase_id, name: r.phase_name, order_num: r.phase_order_num } : null,
+      Module: r.module_id ? { id: r.module_id, name: r.module_name } : null,
       Team: r.team_id ? { id: r.team_id, name: r.team_name } : null,
       assignedUser: r.assigned_user_id ? { id: toStringId(r.assigned_user_id), name: r.assigned_user_name, role: r.assigned_user_role } : null,
       teamLeader: r.team_leader_id ? { id: toStringId(r.team_leader_id), name: r.team_leader_name, role: r.team_leader_role } : null,
@@ -611,13 +717,14 @@ const pttmModel = {
 
     await query(
       `INSERT INTO pttm_tasks
-       (id, tenant_id, project_id, phase_id, team_id, assigned_user_id, team_leader_id, date, task_title, description, status, remarks, sort_order)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, tenant_id, project_id, phase_id, module_id, team_id, assigned_user_id, team_leader_id, date, task_title, description, status, remarks, sort_order)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         tenantId,
         task.project_id || null,
         task.phase_id || null,
+        task.module_id || null,
         task.team_id || null,
         task.assigned_user_id || null,
         task.team_leader_id || null,
@@ -634,7 +741,7 @@ const pttmModel = {
   },
 
   async updateTask(id, payload, tenantId) {
-    const allowed = ['project_id', 'phase_id', 'team_id', 'assigned_user_id', 'team_leader_id', 'date', 'task_title', 'description', 'status', 'remarks', 'sort_order'];
+    const allowed = ['project_id', 'phase_id', 'module_id', 'team_id', 'assigned_user_id', 'team_leader_id', 'date', 'task_title', 'description', 'status', 'review_status', 'review_notes', 'reviewed_by', 'submitted_at', 'reviewed_at', 'remarks', 'sort_order'];
     const updates = [];
     const params = [];
 
@@ -783,6 +890,125 @@ const pttmModel = {
   async deleteDocflowFile(id, tenantId) {
     await query('DELETE FROM pttm_docflow_files WHERE id = ? AND tenant_id = ?', [id, tenantId]);
     return true;
+  },
+
+  // ─── Review Workflow ───────────────────────────────────────────────────────
+
+  /**
+   * Employee submits a task for team leader review.
+   * Sets status → 'Under Review', review_status → 'Pending Review'.
+   */
+  async submitForReview(id, tenantId) {
+    const rows = await query('SELECT id FROM pttm_tasks WHERE id = ? AND tenant_id = ?', [id, tenantId]);
+    if (rows.length === 0) return null;
+
+    await query(
+      `UPDATE pttm_tasks
+       SET status = 'Under Review',
+           review_status = 'Pending Review',
+           submitted_at = NOW(),
+           review_notes = NULL,
+           reviewed_by = NULL,
+           reviewed_at = NULL
+       WHERE id = ? AND tenant_id = ?`,
+      [id, tenantId]
+    );
+    return this.getTaskById(id, tenantId);
+  },
+
+  /**
+   * Team leader approves or rejects a task.
+   * action: 'approve' → status 'Completed', review_status 'Approved'
+   * action: 'reject'  → status 'In Progress', review_status 'Rejected'
+   */
+  async reviewTask(id, tenantId, reviewerId, action, notes) {
+    const rows = await query('SELECT id FROM pttm_tasks WHERE id = ? AND tenant_id = ?', [id, tenantId]);
+    if (rows.length === 0) return null;
+
+    const isApprove = action === 'approve';
+    await query(
+      `UPDATE pttm_tasks
+       SET status = ?,
+           review_status = ?,
+           review_notes = ?,
+           reviewed_by = ?,
+           reviewed_at = NOW()
+       WHERE id = ? AND tenant_id = ?`,
+      [
+        isApprove ? 'Completed' : 'In Progress',
+        isApprove ? 'Approved' : 'Rejected',
+        notes || null,
+        reviewerId || null,
+        id,
+        tenantId,
+      ]
+    );
+    return this.getTaskById(id, tenantId);
+  },
+
+  /**
+   * Get all tasks pending review for a given team leader.
+   * Optionally filter by team_leader_id (defaults to all pending-review tasks for the tenant).
+   */
+  async getPendingReviewTasks(tenantId, teamLeaderId) {
+    const filters = { review_status_exact: 'Pending Review' };
+    // We'll build the query inline here for clarity
+    let sql = `
+      SELECT t.*,
+             p.name AS project_name,
+             ph.name AS phase_name, ph.order_num AS phase_order_num,
+             tm.name AS team_name,
+             TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS assigned_user_name,
+             COALESCE(eu.position, u.position, 'Developer') AS assigned_user_role,
+             TRIM(CONCAT(COALESCE(l.first_name, ''), ' ', COALESCE(l.last_name, ''))) AS team_leader_name,
+             COALESCE(el.position, l.position, 'Developer') AS team_leader_role
+      FROM pttm_tasks t
+      LEFT JOIN projects p ON t.project_id = p.id AND p.tenant_id = t.tenant_id
+      LEFT JOIN pttm_phases ph ON t.phase_id = ph.id AND ph.tenant_id = t.tenant_id
+      LEFT JOIN pttm_teams tm ON t.team_id = tm.id AND tm.tenant_id = t.tenant_id
+      LEFT JOIN users u ON t.assigned_user_id = u.id AND u.tenant_id = t.tenant_id
+      LEFT JOIN employee_details eu ON eu.employee_id = u.id AND eu.tenant_id = t.tenant_id
+      LEFT JOIN users l ON t.team_leader_id = l.id AND l.tenant_id = t.tenant_id
+      LEFT JOIN employee_details el ON el.employee_id = l.id AND el.tenant_id = t.tenant_id
+      WHERE t.tenant_id = ? AND t.review_status = 'Pending Review'
+    `;
+    const params = [tenantId];
+
+    if (teamLeaderId) {
+      sql += ' AND t.team_leader_id = ?';
+      params.push(teamLeaderId);
+    }
+
+    sql += ' ORDER BY t.submitted_at ASC, t.sort_order ASC';
+    const rows = await query(sql, params);
+
+    return rows.map((r) => ({
+      id: r.id,
+      tenant_id: r.tenant_id,
+      project_id: toStringId(r.project_id),
+      phase_id: r.phase_id,
+      team_id: r.team_id,
+      assigned_user_id: toStringId(r.assigned_user_id),
+      team_leader_id: toStringId(r.team_leader_id),
+      date: r.date,
+      task_title: r.task_title,
+      description: r.description,
+      status: r.status,
+      review_status: r.review_status,
+      review_notes: r.review_notes,
+      reviewed_by: toStringId(r.reviewed_by),
+      submitted_at: r.submitted_at,
+      reviewed_at: r.reviewed_at,
+      remarks: r.remarks,
+      sort_order: r.sort_order,
+      created_at: r.created_at,
+      updated_at: r.updated_at,
+      Project: r.project_id ? { id: toStringId(r.project_id), name: r.project_name } : null,
+      Phase: r.phase_id ? { id: r.phase_id, name: r.phase_name, order_num: r.phase_order_num } : null,
+      Team: r.team_id ? { id: r.team_id, name: r.team_name } : null,
+      assignedUser: r.assigned_user_id ? { id: toStringId(r.assigned_user_id), name: r.assigned_user_name, role: r.assigned_user_role } : null,
+      teamLeader: r.team_leader_id ? { id: toStringId(r.team_leader_id), name: r.team_leader_name, role: r.team_leader_role } : null,
+    }));
   },
 };
 

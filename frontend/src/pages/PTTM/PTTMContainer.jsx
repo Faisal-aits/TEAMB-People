@@ -17,10 +17,11 @@ import WorkloadView from './views/WorkloadView';
 import DailyLog from './views/DailyLog';
 import DocFlow from './views/DocFlow';
 import Dashboard from './views/Dashboard';
+import ReviewPanel from './views/ReviewPanel';
 import { parseCSV, exportCSV } from './utils/exportCsv';
 import './PTTM.css';
 
-const emptyFilters = { project_id: '', phase_id: '', team_id: '', assigned_user_id: '', status: '', date_from: '', date_to: '', search: '' };
+const emptyFilters = { project_id: '', phase_id: '', module_id: '', team_id: '', assigned_user_id: '', status: '', date_from: '', date_to: '', search: '' };
 
 function PTTMApp() {
   const app = useApp();
@@ -34,6 +35,12 @@ function PTTMApp() {
   const [cell, setCell] = useState({ r: 0, c: 0 });
   const [menu, setMenu] = useState(null);
   const [docProject, setDocProject] = useState('');
+
+  // Count tasks pending review for the badge on the Review tab
+  const pendingReviewCount = useMemo(
+    () => app.tasks.filter(t => t.review_status === 'Pending Review').length,
+    [app.tasks]
+  );
 
   // Premium Custom Sheet Height Resizer logic
   const containerRef = useRef(null);
@@ -68,10 +75,11 @@ function PTTMApp() {
   };
 
   const filteredRows = useMemo(() => app.tasks.filter(task => {
-    if (filters.project_id && task.project_id !== filters.project_id) return false;
-    if (filters.phase_id && task.phase_id !== filters.phase_id) return false;
-    if (filters.team_id && task.team_id !== filters.team_id) return false;
-    if (filters.assigned_user_id && task.assigned_user_id !== filters.assigned_user_id) return false;
+    if (filters.project_id && String(task.project_id) !== String(filters.project_id)) return false;
+    if (filters.phase_id && String(task.phase_id) !== String(filters.phase_id)) return false;
+    if (filters.module_id && String(task.module_id) !== String(filters.module_id)) return false;
+    if (filters.team_id && String(task.team_id) !== String(filters.team_id)) return false;
+    if (filters.assigned_user_id && String(task.assigned_user_id) !== String(filters.assigned_user_id)) return false;
     if (filters.status && task.status !== filters.status) return false;
     if (filters.date_from && (task.date || '') < filters.date_from) return false;
     if (filters.date_to && (task.date || '') > filters.date_to) return false;
@@ -83,13 +91,14 @@ function PTTMApp() {
         task.remarks,
         app.projectName(task.project_id),
         app.phaseName(task.phase_id),
+        app.moduleName(task.module_id),
         app.teamName(task.team_id),
         app.userName(task.assigned_user_id)
       ].join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
-  }), [app.tasks, filters, app.projects, app.phases, app.teams, app.users]);
+  }), [app.tasks, filters, app.projects, app.phases, app.modules, app.teams, app.users]);
 
   const openPanel = (tab, options = {}) => {
     setPanelTab(tab);
@@ -197,6 +206,7 @@ function PTTMApp() {
 
   const mainView = () => {
     if (view === 'grid') return <TaskGrid ref={gridRef} rows={filteredRows} cell={cell} setCell={setCell} onMenu={(x, y, row) => setMenu({ x, y, row })} />;
+    if (view === 'review') return <ReviewPanel />;
     return (
       <div id="panel-views" className="on">
         <div className={`vp ${view === 'dashboard' ? 'on' : ''}`}><Dashboard switchGrid={() => setView('grid')} /></div>
@@ -219,7 +229,7 @@ function PTTMApp() {
       <div className="app-shell">
         <AppBar onOpenPanel={openPanel} />
         <Ribbon cellAddr={cellAddr} onAddRow={() => gridRef.current?.addRow()} onDuplicate={() => gridRef.current?.duplicate()} onDelete={() => gridRef.current?.remove()} onOpenPanel={openPanel} onExport={exportCsv} onImport={() => importRef.current?.click()} onSeed={onSeed} />
-        <ViewTabs view={view} onChange={setView} />
+        <ViewTabs view={view} onChange={setView} pendingReviewCount={pendingReviewCount} />
         {view !== 'docflow' && view !== 'dashboard' && <FilterBar filters={filters} setFilters={setFilters} rowCount={filteredRows.length} />}
         <div id="main">{mainView()}</div>
         <StatusBar onResizeStart={startContainerResize} />
