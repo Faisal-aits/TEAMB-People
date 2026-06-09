@@ -2,13 +2,13 @@
 const express = require('express');
 const billingController = require('./billingController');
 const authMiddleware = require('../../middleware/auth.middleware');
-const requireAdmin = require('../../middleware/requireAdmin');
+const requireModuleAccess = require('../../middleware/requireModuleAccess');
 
 const router = express.Router();
 
 // All routes are protected
 router.use(authMiddleware.verifyToken);
-router.use(requireAdmin);
+router.use(requireModuleAccess('billing_management', 'read'));
 
 // GET /api/billing/invoices - Get all invoices
 router.get('/invoices', billingController.getAllInvoices);
@@ -17,18 +17,18 @@ router.get('/invoices', billingController.getAllInvoices);
 router.get('/invoices/:id', billingController.getInvoice);
 
 // POST /api/billing/invoices - Create new invoice
-router.post('/invoices', billingController.createInvoice);
+router.post('/invoices', requireModuleAccess('billing_management', 'write'), billingController.createInvoice);
 
 // PUT /api/billing/invoices/:id - Update invoice
-router.put('/invoices/:id', billingController.updateInvoice);
+router.put('/invoices/:id', requireModuleAccess('billing_management', 'write'), billingController.updateInvoice);
 
 // DELETE /api/billing/invoices/:id - Delete invoice
-router.delete('/invoices/:id', billingController.deleteInvoice);
+router.delete('/invoices/:id', requireModuleAccess('billing_management', 'write'), billingController.deleteInvoice);
 
 // PUT /api/billing/invoices/:id/status - Update invoice status
-router.put('/invoices/:id/status', billingController.updateInvoiceStatus);
+router.put('/invoices/:id/status', requireModuleAccess('billing_management', 'write'), billingController.updateInvoiceStatus);
 
 // POST /api/billing/invoices/:id/follow-up - Add follow-up note
-router.post('/invoices/:id/follow-up', billingController.addFollowUp);
+router.post('/invoices/:id/follow-up', requireModuleAccess('billing_management', 'write'), billingController.addFollowUp);
 
 module.exports = router;

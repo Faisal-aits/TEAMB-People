@@ -5,6 +5,7 @@ const Employee = require('../employee/employeeModel');
 const Shift = require('../shift/shiftModel');
 const {pool} = require('../../config/db');
 const { getIndiaDate, getIndiaDateTime } = require('../../utils/indiaTime');
+const { runAutoCheckout } = require('./autoCheckoutService');
 
 
 const attendanceController = {
@@ -202,7 +203,7 @@ const attendanceController = {
         try {
             const userId = req.user.id;
             const [employees] = await pool.execute(
-                'SELECT id FROM employee_details WHERE employee_id = ? AND tenant_id = ?',
+                'SELECT id, auto_checkout_enabled FROM employee_details WHERE employee_id = ? AND tenant_id = ?',
                 [userId, req.tenantId]
             );
 
@@ -212,6 +213,7 @@ const attendanceController = {
 
             const employeeId = employees[0].id;
             const today = getIndiaDate();
+            const currentShift = await Shift.getEmployeeShiftForDate(req.tenantId, employeeId, today);
 
             const [attendance] = await pool.execute(
                 `SELECT a.*, DATE_FORMAT(a.check_in, '%h:%i %p') as check_in_time,
@@ -223,6 +225,8 @@ const attendanceController = {
 
             res.json({
                 success: true,
+                auto_checkout_enabled: Boolean(employees[0].auto_checkout_enabled),
+                shift: currentShift,
                 attendance: attendance[0] || {
                     employee_id: employeeId,
                     check_in_time: null,
@@ -233,6 +237,60 @@ const attendanceController = {
             });
         } catch (error) {
             console.error('Get my today attendance error:', error);
+            res.status(500).json({ success: false, message: error.message });
+        }
+    },
+
+    getMyAutoCheckoutSetting: async (req, res) => {
+        try {
+            const userId = req.user.id;
+            const [employees] = await pool.execute(
+                'SELECT id, auto_checkout_enabled FROM employee_details WHERE employee_id = ? AND tenant_id = ?',
+                [userId, req.tenantId]
+            );
+
+            if (employees.length === 0) {
+                return res.status(404).json({ success: false, message: 'Employee record not found' });
+            }
+
+            const today = getIndiaDate();
+            const shift = await Shift.getEmployeeShiftForDate(req.tenantId, employees[0].id, today);
+
+            res.json({
+                success: true,
+                auto_checkout_enabled: Boolean(employees[0].auto_checkout_enabled),
+                shift
+            });
+        } catch (error) {
+            console.error('Get auto checkout setting error:', error);
+            res.status(500).json({ success: false, message: error.message });
+        }
+    },
+
+    updateMyAutoCheckoutSetting: async (req, res) => {
+        try {
+            const userId = req.user.id;
+            const enabled = req.body.enabled ?? req.body.auto_checkout_enabled;
+            const normalizedEnabled = enabled === true || enabled === 1 || enabled === '1' || enabled === 'true';
+
+            const [result] = await pool.execute(
+                `UPDATE employee_details
+                 SET auto_checkout_enabled = ?, updated_at = NOW()
+                 WHERE employee_id = ? AND tenant_id = ?`,
+                [normalizedEnabled ? 1 : 0, userId, req.tenantId]
+            );
+
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ success: false, message: 'Employee record not found' });
+            }
+
+            res.json({
+                success: true,
+                auto_checkout_enabled: normalizedEnabled,
+                message: normalizedEnabled ? 'Auto check-out enabled' : 'Auto check-out disabled'
+            });
+        } catch (error) {
+            console.error('Update auto checkout setting error:', error);
             res.status(500).json({ success: false, message: error.message });
         }
     },
@@ -516,6 +574,20 @@ const attendanceController = {
             res.json({ success: true, message: 'Check-out successful', attendance: result });
         } catch (error) {
             console.error('❌ Check-out error:', error);
+            res.status(500).json({ success: false, message: error.message });
+        }
+    },
+
+    runAutoCheckout: async (req, res) => {
+        try {
+            const result = await runAutoCheckout();
+            res.json({
+                success: true,
+                message: `Auto check-out completed for ${result.checkedOutCount} employee(s).`,
+                ...result
+            });
+        } catch (error) {
+            console.error('Run auto checkout error:', error);
             res.status(500).json({ success: false, message: error.message });
         }
     }

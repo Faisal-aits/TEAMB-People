@@ -628,7 +628,6 @@ const ExpenseManagement = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <span className="table-count-label">{visibleExpenses.length} of {expenses.length}</span>
           </div>
         </div>
 

@@ -48,7 +48,7 @@ const HRDashboard = ({ navigateToTab }) => {
       else setLoading(true);
       setError('');
 
-      const response = await dashboardAPI.getOverview();
+      const response = await dashboardAPI.getHrOverview();
       setOverview(response.data?.overview || emptyOverview);
     } catch (err) {
       console.error('Failed to load HR dashboard:', err);

@@ -4,7 +4,7 @@ const { pool } = require('../../config/db');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { processEmployeeBulkUpload } = require('./employeeBulkUploadService');
-const { sendEmployeeCredentials } = require('../../services/mailService');
+const { assertSmtpConfigured, sendEmployeeCredentials } = require('../../services/mailService');
 const { parseMoney } = require('./employeePayroll');
 // const { sendEmployeeCredentials } = require('../utils/emailService');
 
@@ -405,6 +405,22 @@ const employeeController = {
           insertedRows: 0,
           failedRows: 0,
           errors: [{ row: null, message: 'CSV or XLSX file is required' }]
+        });
+      }
+
+      try {
+        await assertSmtpConfigured(req.tenantId);
+      } catch (smtpError) {
+        return res.status(400).json({
+          success: false,
+          totalRows: 0,
+          insertedRows: 0,
+          failedRows: 0,
+          message: 'Please complete SMTP configuration before bulk uploading employees. Employee login credentials are sent by email after upload.',
+          errors: [{
+            row: null,
+            message: `SMTP is not ready: ${smtpError.message}. Please configure SMTP first.`
+          }]
         });
       }
 

@@ -6,7 +6,7 @@ import { useTableControls } from '../../hooks/useTableControls';
 import '../../styles/tableControls.css';
 import './EmployeeLeave.css';
 
-const LEAVE_SEARCH_FIELDS = ['created_at', 'description', 'start_date', 'end_date', 'total_days', 'status', 'leave_id'];
+const LEAVE_SEARCH_FIELDS = ['created_at', 'leave_type', 'description', 'start_date', 'end_date', 'total_days', 'status', 'leave_id'];
 
 // Leave types that require/recommend a medical certificate
 const MEDICAL_LEAVE_TYPES = ['Sick', 'Maternity'];
@@ -28,12 +28,15 @@ const EmployeeLeave = () => {
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
   const [leaveFilterStatus, setLeaveFilterStatus] = useState('All');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [myBalances, setMyBalances] = useState([]);
+  const [leaveTypes, setLeaveTypes] = useState([]);
   
   const [leaveFormData, setLeaveFormData] = useState({
     leave_type: 'Casual',
     description: '',
     start_date: '',
     end_date: '',
+    leave_type: 'Casual',
   });
 
   // For file upload
@@ -41,6 +44,22 @@ const EmployeeLeave = () => {
   const [fileError, setFileError] = useState('');
 
   // ==================== LEAVE FUNCTIONS ====================
+  const getDefaultLeaveType = (types = leaveTypes) => types[0]?.name || 'Casual';
+
+  const loadLeaveTypes = async () => {
+    try {
+      const response = await leaveAPI.getLeaveTypes();
+      const types = response.data?.leave_types || [];
+      setLeaveTypes(types);
+      setLeaveFormData(prev => {
+        const hasCurrentType = types.some(type => type.name === prev.leave_type);
+        return hasCurrentType ? prev : { ...prev, leave_type: getDefaultLeaveType(types) };
+      });
+    } catch (error) {
+      console.error('Error loading leave types:', error);
+    }
+  };
+
   const loadCurrentEmployeeData = async () => {
     try {
       const userData = localStorage.getItem('user');
@@ -70,6 +89,14 @@ const EmployeeLeave = () => {
             ...prev,
             employee_id: response.data.employee_id
           }));
+
+          try {
+            const balRes = await leaveAPI.getMyBalances();
+            setMyBalances(balRes.data?.balances || []);
+          } catch (balErr) {
+            console.error('Error fetching my balances:', balErr);
+            setMyBalances([]);
+          }
         }
       } catch (err) {
         console.error('Error loading leaves:', err);
@@ -171,7 +198,7 @@ const EmployeeLeave = () => {
         payload.append('medical_document', selectedFile);
       } else {
         payload = {
-          leave_type: leaveFormData.leave_type,
+          leave_type: leaveFormData.leave_type || 'Casual',
           description: leaveFormData.description,
           start_date: leaveFormData.start_date,
           end_date: leaveFormData.end_date
@@ -185,6 +212,7 @@ const EmployeeLeave = () => {
         description: '',
         start_date: '',
         end_date: '',
+        leave_type: getDefaultLeaveType(),
       });
       setSelectedFile(null);
       setFileError('');
@@ -218,6 +246,7 @@ const EmployeeLeave = () => {
     try {
       const exportData = visibleLeaves.map(leave => ({
         'Applied Date': formatDate(leave.created_at),
+        'Type': leave.leave_type || 'Casual',
         'Description': leave.description,
         'From Date': formatDate(leave.start_date),
         'To Date': formatDate(leave.end_date),
@@ -280,6 +309,7 @@ const EmployeeLeave = () => {
 
   useEffect(() => {
     loadCurrentEmployeeData();
+    loadLeaveTypes();
     loadMyLeaves();
   }, []);
 
@@ -298,7 +328,7 @@ const EmployeeLeave = () => {
   return (
     <div className="leave-management-section">
       <div className="leave-management-header">
-        <h2 className="leave-management-title">My Leave</h2>
+        <h2 className="leave-management-title">Leave Management</h2>
         <button 
           className="leave-add-btn"
           onClick={() => setIsLeaveModalOpen(true)}
@@ -308,6 +338,24 @@ const EmployeeLeave = () => {
           Apply for Leave
         </button>
       </div>
+
+      {currentUser && myBalances.length > 0 && (
+        <div className="leave-balances-grid">
+          {myBalances.map((bal) => (
+            <div key={bal.leave_type} className="leave-balance-card">
+              <div className="leave-balance-type">{bal.leave_type}</div>
+              <div className="leave-balance-value">
+                <span className="balance-remaining">{bal.allocated - bal.used - bal.pending}</span>
+                <span className="balance-divider">/</span>
+                <span className="balance-allocated">{bal.allocated}</span>
+              </div>
+              <div className="leave-balance-usage">
+                Used: {bal.used} | Pending: {bal.pending}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {!currentUser && (
         <div className="error-message">
@@ -366,6 +414,13 @@ const EmployeeLeave = () => {
         <div className="leave-table-header">
           <h3 className="leave-table-title">My Leave Requests</h3>
           <div className="leave-table-actions">
+            <input
+              type="search"
+              className="table-search-input"
+              placeholder="Search leaves..."
+              value={leaveSearch}
+              onChange={(event) => setLeaveSearch(event.target.value)}
+            />
             <select 
               className="leave-filter-select"
               value={leaveFilterStatus}
@@ -390,13 +445,13 @@ const EmployeeLeave = () => {
           <table className="leave-records-table">
             <thead>
               <tr>
-                <th className="leave-th-date">Applied Date</th>
-                <th className="leave-th-type">Leave Type</th>
-                <th className="leave-th-description">Description</th>
-                <th className="leave-th-from">From Date</th>
-                <th className="leave-th-to">To Date</th>
-                <th className="leave-th-days">Total Days</th>
-                <th className="leave-th-status">Status</th>
+                <th className="leave-th-date sortable-th" onClick={() => requestLeaveSort('created_at', 'created_at')}>Applied Date{leaveSortLabel('created_at')}</th>
+                <th className="leave-th-type sortable-th" onClick={() => requestLeaveSort('leave_type', 'leave_type')}>Leave Type{leaveSortLabel('leave_type')}</th>
+                <th className="leave-th-description sortable-th" onClick={() => requestLeaveSort('description', 'description')}>Description{leaveSortLabel('description')}</th>
+                <th className="leave-th-from sortable-th" onClick={() => requestLeaveSort('start_date', 'start_date')}>From Date{leaveSortLabel('start_date')}</th>
+                <th className="leave-th-to sortable-th" onClick={() => requestLeaveSort('end_date', 'end_date')}>To Date{leaveSortLabel('end_date')}</th>
+                <th className="leave-th-days sortable-th" onClick={() => requestLeaveSort('total_days', 'total_days')}>Total Days{leaveSortLabel('total_days')}</th>
+                <th className="leave-th-status sortable-th" onClick={() => requestLeaveSort('status', 'status')}>Status{leaveSortLabel('status')}</th>
                 <th className="leave-th-actions">Actions</th>
               </tr>
             </thead>
@@ -407,12 +462,12 @@ const EmployeeLeave = () => {
                     <div className="leave-date-cell">{formatDate(leave.created_at)}</div>
                   </td>
                   <td className="leave-td-type">
-                    <div className="leave-type-cell">
+                    <span className={`leave-type-badge leave-type-${leave.leave_type?.toLowerCase() || 'casual'}`}>
                       {leave.leave_type || 'Casual'}
-                      {leave.has_document ? (
-                        <span className="leave-doc-badge" title="Medical document attached" style={{ marginLeft: '6px' }}>📎</span>
-                      ) : null}
-                    </div>
+                    </span>
+                    {leave.has_document ? (
+                      <span className="leave-doc-badge" title="Medical document attached" style={{ marginLeft: '6px' }}>📎</span>
+                    ) : null}
                   </td>
                   <td className="leave-td-description">
                     <div className="leave-description-cell">{leave.description}</div>
@@ -477,7 +532,7 @@ const EmployeeLeave = () => {
                 className="leave-modal-close"
                 onClick={() => setIsLeaveModalOpen(false)}
               >
-                ?
+                x
               </button>
             </div>
 
@@ -519,6 +574,25 @@ const EmployeeLeave = () => {
                   {LEAVE_TYPES.map(lt => (
                     <option key={lt.value} value={lt.value}>{lt.label}</option>
                   ))}
+                </select>
+              </div>
+
+              <div className="leave-form-group">
+                <label className="leave-form-label">Leave Type *</label>
+                <select
+                  name="leave_type"
+                  value={leaveFormData.leave_type}
+                  onChange={handleLeaveInputChange}
+                  required
+                  className="leave-form-select"
+                >
+                  {leaveTypes.length > 0 ? (
+                    leaveTypes.map(type => (
+                      <option key={type.id} value={type.name}>{type.name} Leave</option>
+                    ))
+                  ) : (
+                    <option value="Casual">Casual Leave</option>
+                  )}
                 </select>
               </div>
 

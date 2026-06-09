@@ -574,7 +574,7 @@ const DeliveryChallanManagement = () => {
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
                 />
-                <span className="table-count-label">{visibleChallans.length} of {challans.length}</span>
+                
               </div>
               <div className="quotation-table-container" id="history-table-container">
                 <table className="quotation-history-table" id="quotation-history-table">

@@ -11,8 +11,6 @@ const ATTENDANCE_SEARCH_FIELDS = ['date', 'checkIn', 'checkOut', 'status', 'rema
 const LEAVE_SEARCH_FIELDS = ['created_at', 'description', 'start_date', 'end_date', 'total_days', 'status', 'leave_id'];
 
 const EmployeeAttendance = () => {
-  const [activeTab, setActiveTab] = useState('attendance');
-
   // ==================== ATTENDANCE STATES ====================
   const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,6 +22,11 @@ const EmployeeAttendance = () => {
     checkInTime: null,
     checkOutTime: null
   });
+  const [autoCheckout, setAutoCheckout] = useState({
+    enabled: false,
+    shift: null,
+    saving: false
+  });
 
   // ==================== LEAVE STATES ====================
   const [leaves, setLeaves] = useState([]);
@@ -33,6 +36,7 @@ const EmployeeAttendance = () => {
   const [leaveFilterStatus, setLeaveFilterStatus] = useState('All');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [myBalances, setMyBalances] = useState([]);
+  const [leaveTypes, setLeaveTypes] = useState([]);
 
   const [leaveFormData, setLeaveFormData] = useState({
     description: '',
@@ -80,9 +84,49 @@ const EmployeeAttendance = () => {
           checkInTime: data.check_in_time,
           checkOutTime: data.check_out_time
         });
+        if (typeof response.data.auto_checkout_enabled === 'boolean') {
+          setAutoCheckout(prev => ({
+            ...prev,
+            enabled: response.data.auto_checkout_enabled,
+            shift: response.data.shift || prev.shift
+          }));
+        }
       }
     } catch (err) {
       console.error('Error fetching today attendance:', err);
+    }
+  };
+
+  const fetchAutoCheckoutSetting = async () => {
+    try {
+      const response = await attendanceAPI.getMyAutoCheckoutSetting();
+      if (response.data?.success) {
+        setAutoCheckout(prev => ({
+          ...prev,
+          enabled: Boolean(response.data.auto_checkout_enabled),
+          shift: response.data.shift || null
+        }));
+      }
+    } catch (err) {
+      console.error('Error fetching auto check-out setting:', err);
+    }
+  };
+
+  const handleAutoCheckoutToggle = async (event) => {
+    const enabled = event.target.checked;
+    setAutoCheckout(prev => ({ ...prev, enabled, saving: true }));
+
+    try {
+      const response = await attendanceAPI.updateMyAutoCheckoutSetting(enabled);
+      setAutoCheckout(prev => ({
+        ...prev,
+        enabled: Boolean(response.data?.auto_checkout_enabled),
+        saving: false
+      }));
+    } catch (err) {
+      console.error('Error updating auto check-out setting:', err);
+      setAutoCheckout(prev => ({ ...prev, enabled: !enabled, saving: false }));
+      alert(err.response?.data?.message || 'Could not update auto check-out setting');
     }
   };
 
@@ -128,6 +172,22 @@ const EmployeeAttendance = () => {
   };
 
   // ==================== LEAVE FUNCTIONS ====================
+  const getDefaultLeaveType = (types = leaveTypes) => types[0]?.name || 'Casual';
+
+  const loadLeaveTypes = async () => {
+    try {
+      const response = await leaveAPI.getLeaveTypes();
+      const types = response.data?.leave_types || [];
+      setLeaveTypes(types);
+      setLeaveFormData(prev => {
+        const hasCurrentType = types.some(type => type.name === prev.leave_type);
+        return hasCurrentType ? prev : { ...prev, leave_type: getDefaultLeaveType(types) };
+      });
+    } catch (error) {
+      console.error('Error loading leave types:', error);
+    }
+  };
+
   const loadCurrentEmployeeData = async () => {
     try {
       const userData = localStorage.getItem('user');
@@ -213,7 +273,7 @@ const EmployeeAttendance = () => {
         description: '',
         start_date: '',
         end_date: '',
-        leave_type: 'Casual'
+        leave_type: getDefaultLeaveType()
       });
 
       setIsLeaveModalOpen(false);
@@ -358,14 +418,11 @@ const EmployeeAttendance = () => {
   } = useTableControls(filteredLeaves, LEAVE_SEARCH_FIELDS, { key: 'created_at', accessor: 'created_at', direction: 'desc' });
 
   useEffect(() => {
-    if (activeTab === 'attendance') {
-      fetchAttendanceHistory();
-      fetchTodayAttendance();
-    } else {
-      loadCurrentEmployeeData();
-      loadMyLeaves();
-    }
-  }, [activeTab]);
+    fetchAttendanceHistory();
+    fetchTodayAttendance();
+    fetchAutoCheckoutSetting();
+    loadLeaveTypes();
+  }, []);
 
   // ==================== RENDER ATTENDANCE VIEW ====================
   const renderAttendanceView = () => {
@@ -398,18 +455,30 @@ const EmployeeAttendance = () => {
         <div className="attendance-header">
           <h2>My Attendance</h2>
           <div className="attendance-actions">
+            <label className="auto-checkout-toggle">
+              <input
+                type="checkbox"
+                checked={autoCheckout.enabled}
+                onChange={handleAutoCheckoutToggle}
+                disabled={autoCheckout.saving}
+              />
+              <span>Auto Check Out</span>
+              {autoCheckout.shift?.check_out_time && (
+                <small>{autoCheckout.shift.shift_name || 'Shift'} ends {autoCheckout.shift.check_out_time}</small>
+              )}
+            </label>
             <button
               className="check-in-btn"
               onClick={() => handleQuickCheckIn('check_in')}
             >
-              Quick Check In
+              Check In
             </button>
             <button
               className="check-out-btn"
               onClick={() => handleQuickCheckIn('check_out')}
               disabled={!todayStatus.isCheckedIn}
             >
-              Quick Check Out
+              Check Out
             </button>
           </div>
         </div>
@@ -449,7 +518,6 @@ const EmployeeAttendance = () => {
               </button>
             </div>
           </div>
-          <div className="table-count-label">{visibleAttendance.length} of {uniqueAttendance.length}</div>
 
           {visibleAttendance.length === 0 ? (
             <div className="no-data">
@@ -588,7 +656,6 @@ const EmployeeAttendance = () => {
               </button>
             </div>
           </div>
-          <div className="table-count-label">{visibleLeaves.length} of {filteredLeaves.length}</div>
 
           <div className="table-wrapper">
             <table className="leave-records-table">
@@ -715,11 +782,13 @@ const EmployeeAttendance = () => {
                     required
                     className="leave-form-select"
                   >
-                    <option value="Casual">Casual Leave</option>
-                    <option value="Sick">Sick Leave</option>
-                    <option value="Earned">Earned Leave</option>
-                    <option value="Maternity">Maternity Leave</option>
-                    <option value="Unpaid">Unpaid Leave</option>
+                    {leaveTypes.length > 0 ? (
+                      leaveTypes.map(type => (
+                        <option key={type.id} value={type.name}>{type.name} Leave</option>
+                      ))
+                    ) : (
+                      <option value="Casual">Casual Leave</option>
+                    )}
                   </select>
                 </div>
 
@@ -806,49 +875,7 @@ const EmployeeAttendance = () => {
 
   return (
     <div className="dashboard-main employee-attendance-main">
-      {/* Tab Buttons */}
-      <div className="view-tabs">
-        <button
-          onClick={() => setActiveTab('attendance')}
-          style={{
-            padding: '12px 28px',
-            background: activeTab === 'attendance'
-              ? '#3b82f6'
-              : 'linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%)',
-            border: 'none',
-            fontSize: '15px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            color: 'white',
-            borderRadius: '12px',
-            opacity: activeTab === 'attendance' ? 1 : 0.7,
-            transition: 'all 0.3s ease'
-          }}
-        >
-          Attendance
-        </button>
-        <button
-          onClick={() => setActiveTab('leave')}
-          style={{
-            padding: '12px 28px',
-            background: activeTab === 'leave'
-              ? '#3b82f6'
-              : 'linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%)',
-            border: 'none',
-            fontSize: '15px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            color: 'white',
-            borderRadius: '12px',
-            opacity: activeTab === 'leave' ? 1 : 0.7,
-            transition: 'all 0.3s ease'
-          }}
-        >
-          Leave
-        </button>
-      </div>
-      {/* Content based on active tab */}
-      {activeTab === 'attendance' ? renderAttendanceView() : renderLeaveView()}
+      {renderAttendanceView()}
     </div>
   );
 };

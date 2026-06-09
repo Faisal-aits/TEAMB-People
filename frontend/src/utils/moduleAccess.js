@@ -25,6 +25,7 @@ export const MODULE_KEYS = {
   PTTM: 'pttm',
   EMPLOYEE_ATTENDANCE: 'employee_attendance',
   EMPLOYEE_EXPENSE: 'employee_expense',
+  EMPLOYEE_PROJECTS: 'employee_projects',
 };
 
 export const MODULE_PARENT_KEYS = {
@@ -85,6 +86,7 @@ export const MODULE_GROUPS = {
 const DEFAULT_EMPLOYEE_MODULES = [
   MODULE_KEYS.EMPLOYEE_ATTENDANCE,
   MODULE_KEYS.EMPLOYEE_EXPENSE,
+  MODULE_KEYS.EMPLOYEE_PROJECTS,
 ];
 
 const accessMeetsLevel = (access, minLevel) => {

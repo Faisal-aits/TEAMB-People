@@ -5,6 +5,9 @@ export const dashboardAPI = {
   // Get admin cockpit overview
   getOverview: () => api.get('/dashboard/overview'),
 
+  // Get HR dashboard overview
+  getHrOverview: () => api.get('/dashboard/hr-overview'),
+
   // Get dashboard statistics
   getStats: () => api.get('/dashboard/stats'),
 

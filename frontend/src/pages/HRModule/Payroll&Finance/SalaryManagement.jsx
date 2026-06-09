@@ -79,12 +79,6 @@ const SalaryManagement = () => {
         return count;
     };
 
-    // Calculate net salary based on attendance
-    const calculateNetSalary = (monthlySalary, presentDays, halfDays, lateDays, absentDays, holidayDays) => {
-        const dailyRate = monthlySalary / 30;
-        const effectiveDays = presentDays + (halfDays * 0.5) + (lateDays * 0.75) + holidayDays;
-        return Math.round(dailyRate * effectiveDays);
-    };
     const loadSalaries = useCallback(async () => {
         try {
             setLoading(true);
@@ -204,26 +198,17 @@ const SalaryManagement = () => {
             });
 
             if (response.data.success) {
-                const sundays = getSundaysCount(month, year);
-                const totalHolidays = sundays + customHolidays.length;
-                const monthlySalary = response.data.employee?.monthly_salary || 0;
-                const presentDays = response.data.calculation?.present_days || 0;
-                const halfDays = response.data.calculation?.half_days || 0;
-                const lateDays = response.data.calculation?.late_days || 0;
-                const absentDays = response.data.calculation?.absent_days || 0;
-
-                const calculatedNetSalary = calculateNetSalary(
-                    monthlySalary, presentDays, halfDays, lateDays, absentDays, totalHolidays
-                );
+                const calculation = response.data.calculation || {};
+                const totalHolidays = (calculation.weekly_off_days || 0) + (calculation.holiday_days || 0);
 
                 const enhancedData = {
                     ...response.data,
                     calculation: {
-                        ...response.data.calculation,
-                        sundays_count: sundays,
-                        custom_holidays_count: customHolidays.length,
+                        ...calculation,
+                        sundays_count: calculation.weekly_off_days || 0,
+                        custom_holidays_count: calculation.holiday_days || 0,
                         total_holidays: totalHolidays,
-                        calculated_net_salary: calculatedNetSalary
+                        calculated_net_salary: calculation.calculated_net_salary || calculation.net_salary || 0
                     }
                 };
                 setSelectedAttendanceData(enhancedData);
@@ -458,6 +443,8 @@ const SalaryManagement = () => {
     const currentMonthName = getMonthName(selectedMonth);
     const sundaysCount = getSundaysCount(selectedMonth, selectedYear);
     const totalHolidayCount = sundaysCount + customHolidays.length;
+    const selectedCalculation = selectedAttendanceData?.calculation || {};
+    const selectedTotalHolidayCount = selectedCalculation.total_holidays ?? totalHolidayCount;
 
     return (
         <div className="salary-management">
@@ -743,9 +730,21 @@ const SalaryManagement = () => {
                                                 <span className="attendance-value">{selectedAttendanceData.calculation?.absent_days || 0}</span>
                                             </div>
                                             <div className="attendance-item" style={{ backgroundColor: '#FFF3E0' }}>
-                                                <span className="attendance-label">Total Paid Holidays</span>
+                                                <span className="attendance-label">Weekly Off + Holidays</span>
                                                 <span className="attendance-value" style={{ color: '#ff9800', fontWeight: 'bold' }}>
-                                                    {totalHolidayCount}
+                                                    {selectedTotalHolidayCount}
+                                                </span>
+                                            </div>
+                                            <div className="attendance-item" style={{ backgroundColor: '#ECFDF5' }}>
+                                                <span className="attendance-label">Paid Leave</span>
+                                                <span className="attendance-value" style={{ color: '#047857', fontWeight: 'bold' }}>
+                                                    {selectedAttendanceData.calculation?.paid_leave_days || 0}
+                                                </span>
+                                            </div>
+                                            <div className="attendance-item" style={{ backgroundColor: '#FEF2F2' }}>
+                                                <span className="attendance-label">Unpaid Leave</span>
+                                                <span className="attendance-value" style={{ color: '#dc2626', fontWeight: 'bold' }}>
+                                                    {selectedAttendanceData.calculation?.unpaid_leave_days || 0}
                                                 </span>
                                             </div>
                                         </div>
@@ -767,21 +766,32 @@ const SalaryManagement = () => {
                                                 <span>{((selectedAttendanceData.calculation?.half_days || 0) * 0.5)} days</span>
                                             </div>
                                             <div className="calc-row">
-                                                <span>Late Days :</span>
-                                                <span>{((selectedAttendanceData.calculation?.late_days || 0) * 0.75)} days</span>
+                                                <span>Late Days:</span>
+                                                <span>{selectedAttendanceData.calculation?.late_days || 0} days</span>
                                             </div>
                                             <div className="calc-row">
-                                                <span>Paid Holidays:</span>
-                                                <span>{totalHolidayCount} days</span>
+                                                <span>Weekly Off + Holidays:</span>
+                                                <span>{selectedTotalHolidayCount} days</span>
+                                            </div>
+                                            <div className="calc-row">
+                                                <span>Paid Leave:</span>
+                                                <span>{selectedAttendanceData.calculation?.paid_leave_days || 0} days</span>
+                                            </div>
+                                            <div className="calc-row">
+                                                <span>Unpaid Leave:</span>
+                                                <span>{selectedAttendanceData.calculation?.unpaid_leave_days || 0} days</span>
+                                            </div>
+                                            <div className="calc-row">
+                                                <span>Deduction Days:</span>
+                                                <span>{selectedAttendanceData.calculation?.deduction_days || 0} days</span>
                                             </div>
                                             <div className="calc-row total">
-                                                <span>Effective Days:</span>
-                                                <span>
-                                                    {(selectedAttendanceData.calculation?.present_days || 0) +
-                                                        ((selectedAttendanceData.calculation?.half_days || 0) * 0.5) +
-                                                        ((selectedAttendanceData.calculation?.late_days || 0) * 0.75) +
-                                                        totalHolidayCount} days
-                                                </span>
+                                                <span>Paid Days:</span>
+                                                <span>{selectedAttendanceData.calculation?.paid_days ?? selectedAttendanceData.calculation?.effective_days ?? 0} days</span>
+                                            </div>
+                                            <div className="calc-row">
+                                                <span>Total Deduction:</span>
+                                                <span>{formatCurrency(selectedAttendanceData.calculation?.deduction_amount || 0)}</span>
                                             </div>
                                             <div className="calc-row grand-total">
                                                 <span>Calculated Net Salary:</span>

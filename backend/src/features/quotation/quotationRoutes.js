@@ -2,13 +2,13 @@
 const express = require('express');
 const quotationController = require('./quotationController');
 const authMiddleware = require('../../middleware/auth.middleware');
-const requireAdmin = require('../../middleware/requireAdmin');
+const requireModuleAccess = require('../../middleware/requireModuleAccess');
 
 const router = express.Router();
 
 // All routes are protected
 router.use(authMiddleware.verifyToken);
-router.use(requireAdmin);
+router.use(requireModuleAccess('quotation_management', 'read'));
 
 // GET /api/quotations - Get all quotations
 router.get('/', quotationController.getAllQuotations);
@@ -17,18 +17,18 @@ router.get('/', quotationController.getAllQuotations);
 router.get('/:id', quotationController.getQuotation);
 
 // POST /api/quotations - Create new quotation
-router.post('/', quotationController.createQuotation);
+router.post('/', requireModuleAccess('quotation_management', 'write'), quotationController.createQuotation);
 
 // PUT /api/quotations/:id - Update quotation
-router.put('/:id', quotationController.updateQuotation);
+router.put('/:id', requireModuleAccess('quotation_management', 'write'), quotationController.updateQuotation);
 
 // DELETE /api/quotations/:id - Delete quotation
-router.delete('/:id', quotationController.deleteQuotation);
+router.delete('/:id', requireModuleAccess('quotation_management', 'write'), quotationController.deleteQuotation);
 
 // PUT /api/quotations/:id/status - Update quotation status
-router.put('/:id/status', quotationController.updateQuotationStatus);
+router.put('/:id/status', requireModuleAccess('quotation_management', 'write'), quotationController.updateQuotationStatus);
 
 // POST /api/quotations/:id/follow-up - Add follow-up note
-router.post('/:id/follow-up', quotationController.addFollowUp);
+router.post('/:id/follow-up', requireModuleAccess('quotation_management', 'write'), quotationController.addFollowUp);
 
 module.exports = router;

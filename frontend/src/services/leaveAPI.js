@@ -37,6 +37,15 @@ export const leaveAPI = {
     return URL.createObjectURL(response.data);
   },
 
+  // Get all leave types for HR settings
+  getLeaveTypeSettings: () => api.get('/leaves/types/settings'),
+
+  // Create a leave type (HR settings)
+  createLeaveType: (leaveTypeData) => api.post('/leaves/types', leaveTypeData),
+
+  // Update leave type settings
+  updateLeaveType: (typeId, leaveTypeData) => api.put(`/leaves/types/${typeId}`, leaveTypeData),
+
   // ==================== EMPLOYEE ENDPOINTS ====================
 
   // Get current user's leaves (employee)

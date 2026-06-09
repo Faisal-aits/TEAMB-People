@@ -21,6 +21,7 @@ const LeaveManagement = () => {
     status: 'all',
     leave_type: 'all'
   });
+  const [leaveTypes, setLeaveTypes] = useState([]);
 
   // Expandable row state for balances drawer
   const [expandedRows, setExpandedRows] = useState(new Set());
@@ -55,6 +56,10 @@ const LeaveManagement = () => {
     loadLeaveData();
   }, [filters]);
 
+  useEffect(() => {
+    loadLeaveTypes();
+  }, []);
+
   const loadLeaveData = async () => {
     try {
         setLoading(true);
@@ -88,6 +93,21 @@ const LeaveManagement = () => {
         });
     } finally {
         setLoading(false);
+    }
+  };
+
+  const loadLeaveTypes = async () => {
+    try {
+      const response = await leaveAPI.getLeaveTypes();
+      const types = response.data?.leave_types || [];
+      setLeaveTypes(types);
+
+      const activeTypeNames = new Set(types.filter(type => type.is_active).map(type => type.name));
+      if (filters.leave_type !== 'all' && !activeTypeNames.has(filters.leave_type)) {
+        setFilters(prev => ({ ...prev, leave_type: 'all' }));
+      }
+    } catch (error) {
+      console.error('Error loading leave types:', error);
     }
   };
 
@@ -306,11 +326,9 @@ const LeaveManagement = () => {
             className="filter-select"
           >
             <option value="all">All Leave Types</option>
-            <option value="Casual">Casual</option>
-            <option value="Sick">Sick</option>
-            <option value="Earned">Earned</option>
-            <option value="Maternity">Maternity</option>
-            <option value="Unpaid">Unpaid</option>
+            {leaveTypes.filter(type => type.is_active).map(type => (
+              <option key={type.id} value={type.name}>{type.name}</option>
+            ))}
           </select>
         </div>
       </div>
@@ -369,7 +387,6 @@ const LeaveManagement = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <span className="table-count-label">{visibleLeaves.length} of {leaveData.length} requests</span>
         </div>
 
         {/* Leave Table - Spread to full width */}

@@ -2,20 +2,22 @@ const express = require('express');
 const router = express.Router();
 const controller = require('./aiDocumentGeneratorController');
 const { verifyToken } = require('../../middleware/auth.middleware');
-const requireAdmin = require('../../middleware/requireAdmin');
+const requireModuleAccess = require('../../middleware/requireModuleAccess');
 const model = require('./aiDocumentGeneratorModel');
 
 router.use(verifyToken);
-router.use(requireAdmin);
 
-router.post('/templates/analyze', controller.upload.single('file'), controller.analyzeUpload);
-router.get('/templates', controller.listTemplates);
-router.post('/templates', controller.createTemplate);
-router.get('/templates/:id', controller.getTemplate);
-router.put('/templates/:id', controller.updateTemplate);
-router.delete('/templates/:id', controller.deleteTemplate);
-router.post('/templates/:id/generate', controller.createGeneratedDocument);
-router.get('/generated', controller.listGeneratedDocuments);
+const canReadDocuments = requireModuleAccess('ai_document_generator', 'read');
+const canWriteDocuments = requireModuleAccess('ai_document_generator', 'write');
+
+router.post('/templates/analyze', canWriteDocuments, controller.upload.single('file'), controller.analyzeUpload);
+router.get('/templates', canReadDocuments, controller.listTemplates);
+router.post('/templates', canWriteDocuments, controller.createTemplate);
+router.get('/templates/:id', canReadDocuments, controller.getTemplate);
+router.put('/templates/:id', canWriteDocuments, controller.updateTemplate);
+router.delete('/templates/:id', canWriteDocuments, controller.deleteTemplate);
+router.post('/templates/:id/generate', canWriteDocuments, controller.createGeneratedDocument);
+router.get('/generated', canReadDocuments, controller.listGeneratedDocuments);
 
 module.exports = router;
 module.exports.ensureSchema = () => model.ensureSchema();

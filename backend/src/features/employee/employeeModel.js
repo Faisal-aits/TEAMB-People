@@ -22,6 +22,7 @@ const employeeDetailSelectColumns = `
           ed.salary_net,
           ed.employer_pf,
           ed.employer_esic,
+          ed.auto_checkout_enabled,
           DATE_FORMAT(ed.joining_date, '%Y-%m-%d') as joining_date,
           DATE_FORMAT(ed.last_working_date, '%Y-%m-%d') as last_working_date,
           DATE_FORMAT(ed.date_of_birth, '%Y-%m-%d') as date_of_birth,
@@ -380,16 +381,47 @@ ${employeeDetailSelectColumns},
 
   // Delete employee (soft delete)
   delete: async (tenantId, id) => {
+    const connection = await pool.getConnection();
+
     try {
-      const [result] = await pool.execute(
+      await connection.beginTransaction();
+
+      const [employeeRows] = await connection.execute(
+        'SELECT employee_id FROM employee_details WHERE id = ? AND tenant_id = ?',
+        [id, tenantId]
+      );
+
+      if (employeeRows.length === 0) {
+        await connection.rollback();
+        return 0;
+      }
+
+      const userId = employeeRows[0].employee_id;
+
+      const [result] = await connection.execute(
         `UPDATE employee_details SET status = 'inactive', updated_at = NOW() 
          WHERE id = ? AND tenant_id = ?`,
         [id, tenantId]
       );
+
+      await connection.execute(
+        'UPDATE users SET is_active = 0, updated_at = NOW() WHERE id = ? AND tenant_id = ?',
+        [userId, tenantId]
+      );
+
+      await connection.execute(
+        'DELETE FROM user_module_access WHERE user_id = ? AND tenant_id = ?',
+        [userId, tenantId]
+      );
+
+      await connection.commit();
       return result.affectedRows;
     } catch (error) {
+      await connection.rollback();
       console.error('Error in Employee.delete:', error);
       throw error;
+    } finally {
+      connection.release();
     }
   },
 

@@ -8,6 +8,34 @@ const accessMeetsLevel = (access, minLevel) => {
   return false;
 };
 
+const MODULE_PARENT_KEYS = {
+  hr_dashboard: 'hr',
+  employee_management: 'hr',
+  attendance_management: 'hr',
+  leave_management: 'hr',
+  shift_management: 'hr',
+  salary_management: 'hr',
+  holiday_management: 'hr',
+  ai_document_generator: 'hr',
+  offer_letters: 'hr',
+  declarations: 'hr',
+  resignations: 'hr',
+  salary_slips: 'hr',
+  experience_letters: 'hr',
+  increment_letters: 'hr',
+  billing_management: 'accounts',
+  delivery_management: 'accounts',
+  expense_management: 'accounts',
+  billing_settings: 'accounts',
+  quotation_management: 'accounts',
+  service_management: 'services',
+};
+
+const getModuleKeysToCheck = (moduleKey) => {
+  const keys = Array.isArray(moduleKey) ? moduleKey : [moduleKey];
+  return [...new Set(keys.flatMap((key) => [key, MODULE_PARENT_KEYS[key]].filter(Boolean)))];
+};
+
 const requireModuleAccess = (moduleKey, minLevel = 'read') => async (req, res, next) => {
   try {
     const role = req.user?.role || req.user?.position || req.user?.role_name;
@@ -20,18 +48,19 @@ const requireModuleAccess = (moduleKey, minLevel = 'read') => async (req, res, n
       return sendResponse(res, 401, false, 'Unauthorized', null);
     }
 
+    const moduleKeys = getModuleKeysToCheck(moduleKey);
+    const placeholders = moduleKeys.map(() => '?').join(', ');
     const rows = await query(
       `SELECT access_level
        FROM user_module_access
-       WHERE user_id = ? AND tenant_id = ? AND module_key = ?
-       LIMIT 1`,
-      [userId, tenantId, moduleKey]
+       WHERE user_id = ? AND tenant_id = ? AND module_key IN (${placeholders})`,
+      [userId, tenantId, ...moduleKeys]
     );
 
-    const access = rows[0]?.access_level || 'none';
-    if (!accessMeetsLevel(access, minLevel)) {
+    const hasAccess = rows.some((row) => accessMeetsLevel(row.access_level, minLevel));
+    if (!hasAccess) {
       return sendResponse(res, 403, false, 'Module access required', {
-        module_key: moduleKey,
+        module_key: Array.isArray(moduleKey) ? moduleKey.join(',') : moduleKey,
         required_access: minLevel,
       });
     }

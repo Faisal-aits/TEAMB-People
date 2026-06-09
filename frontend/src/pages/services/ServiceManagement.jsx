@@ -33,7 +33,7 @@ const ServiceManagement = () => {
       ]);
       
       const clientsData = clientsRes.data?.clients || clientsRes.data || [];
-      const projectsData = projectsRes.data?.projects || projectsRes.data || [];
+      const projectsData = projectsRes.data?.data || projectsRes.data?.projects || projectsRes.data || [];
       const servicesData = servicesRes.data?.services || servicesRes.data || [];
 
       setClients(Array.isArray(clientsData) ? clientsData : []);

@@ -63,6 +63,12 @@ const ChevronRightIcon2 = () => (
     </svg>
   );
 
+ const ProjectsIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6H12L10 4ZM4 8H20V18H4V8ZM7 11H17V13H7V11ZM7 15H14V17H7V15Z" fill="currentColor" />
+    </svg>
+  );
+
 
 const EmployeeLayout = () => {
   const [activeTab, setActiveTab] = useState(() => {
@@ -83,6 +89,7 @@ const [showAttendanceMenu, setShowAttendanceMenu] = useState(false);
   const canAccessServices = hasModuleAccess(user, 'services');
   const canAccessPttm = hasModuleAccess(user, 'pttm');
   const canAccessEmployeeAttendance = hasModuleAccess(user, 'employee_attendance');
+  const canAccessEmployeeProjects = hasModuleAccess(user, 'employee_projects');
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, activeTab);
@@ -129,6 +136,10 @@ useEffect(() => {
   if (moduleKey === 'employee_expense') {
     setEmployeeExpenseModuleOpen(true);
     navigateToTab('employee-expense');
+    return;
+  }
+  if (moduleKey === 'employee_projects') {
+    navigateToTab('employee-projects');
     return;
   }
     navigateToTab(tabName || MODULE_DEFAULT_TAB[moduleKey] || 'dashboard');
@@ -213,6 +224,15 @@ useEffect(() => {
                     {sidebarOpen && <span className="nav-text">Leave</span>}
                   </button>
                 </li>
+
+                {canAccessEmployeeProjects && (
+                  <li className={activeTab === 'employee-projects' ? 'active' : ''}>
+                    <button type="button" onClick={() => navigateToTab('employee-projects')}>
+                      <span className="nav-icon"><ProjectsIcon /></span>
+                      {sidebarOpen && <span className="nav-text">Projects & Tasks</span>}
+                    </button>
+                  </li>
+                )}
 
                 {canAccessHr && (
                   <li className={`dropdown ${hrModuleOpen ? 'open' : ''}`}>

@@ -34,6 +34,7 @@ export const TAB_TO_MODULE = {
   'employee-attendance': 'employee_attendance',
   'employee-leave': 'employee_attendance',
   'employee-expense': 'employee_expense',
+  'employee-projects': 'employee_projects',
 };
 
 export const MODULE_DEFAULT_TAB = {
@@ -63,6 +64,7 @@ export const MODULE_DEFAULT_TAB = {
   pttm: 'pttm',
   employee_attendance: 'employee-attendance',
   employee_expense: 'employee-expense',
+  employee_projects: 'employee-projects',
 };
 
 export const ModuleAccessProvider = ({ activeTab, children }) => {

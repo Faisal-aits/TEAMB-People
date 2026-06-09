@@ -47,6 +47,7 @@ const ensureEmployeeSchema = () => {
       await addColumnIfMissing('employee_details', "salary_net DECIMAL(12,2) NOT NULL DEFAULT 0");
       await addColumnIfMissing('employee_details', "employer_pf DECIMAL(12,2) NOT NULL DEFAULT 0");
       await addColumnIfMissing('employee_details', "employer_esic DECIMAL(12,2) NOT NULL DEFAULT 0");
+      await addColumnIfMissing('employee_details', "auto_checkout_enabled BOOLEAN NOT NULL DEFAULT FALSE");
       await createEmployeeDepartmentsIfMissing();
     })();
   }

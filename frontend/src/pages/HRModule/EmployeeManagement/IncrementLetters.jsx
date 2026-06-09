@@ -6,6 +6,29 @@ import { API_BASE_URL } from "../../../services/api";
 import { useLocation } from "react-router-dom";
 import { HiOutlineDocumentText, HiOutlineEye, HiOutlinePlus, HiOutlineTrash } from "react-icons/hi2";
 
+const getEmployeeSelectId = (employee) => employee?.employee_id || employee?.id || employee?.user_id || "";
+
+const getEmployeeCode = (employee) => employee?.employee_code || employee?.employee_id || employee?.id || "";
+
+const getEmployeeName = (employee) => {
+  const fullName = `${employee?.first_name || ""} ${employee?.last_name || ""}`.trim();
+  return fullName || employee?.name || employee?.employee_name || employee?.email || "Unnamed Employee";
+};
+
+const getEmployeeDepartment = (employee) => (
+  employee?.department_names?.join(", ") ||
+  employee?.department_name ||
+  employee?.department ||
+  ""
+);
+
+const isEmployeeActive = (employee) => {
+  const status = String(employee?.status || "").toLowerCase();
+  const isActiveValue = employee?.is_active;
+  const isActive = isActiveValue === true || isActiveValue === 1 || isActiveValue === "1";
+  return isActive && status !== "inactive";
+};
+
 const IncrementLetters  = ({ initialEmployee = null }) => {
     const location = useLocation();
       const routedEmployee = initialEmployee || location.state?.employee || null;
@@ -36,12 +59,26 @@ const IncrementLetters  = ({ initialEmployee = null }) => {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [letRes, empRes] = await Promise.all([
+      const [lettersResult, employeesResult] = await Promise.allSettled([
         incrementLetterAPI.getAllLetters(),
-        employeeAPI.getAll()
+        employeeAPI.getAll({ is_active: true })
       ]);
-      setLetters(letRes.data?.data || []);
-      setEmployees(empRes.data?.employees || empRes.data?.data || []);
+
+      if (lettersResult.status === "fulfilled") {
+        setLetters(lettersResult.value.data?.data || []);
+      } else {
+        console.error("Error fetching increment letters:", lettersResult.reason);
+        setLetters([]);
+      }
+
+      if (employeesResult.status === "fulfilled") {
+        const employeesPayload = employeesResult.value.data;
+        const employeesList = employeesPayload?.employees || employeesPayload?.data || [];
+        setEmployees(Array.isArray(employeesList) ? employeesList.filter(isEmployeeActive) : []);
+      } else {
+        console.error("Error fetching employees:", employeesResult.reason);
+        setEmployees([]);
+      }
     } catch (err) {
       console.error("Error fetching data:", err);
     } finally {
@@ -51,14 +88,14 @@ const IncrementLetters  = ({ initialEmployee = null }) => {
 
   const handleEmployeeSelect = (e) => {
     const empId = e.target.value;
-    const emp = employees.find(x => String(x.employee_id) === String(empId) || String(x.employee_id) === String(empId));
+    const emp = employees.find(x => String(getEmployeeSelectId(x)) === String(empId));
     if (emp) {
       setFormData({
         ...formData,
-        employee_id: emp.employee_id || emp.employee_id,
-        employee_code: emp.employee_code || emp.employee_id || "",
+        employee_id: getEmployeeSelectId(emp),
+        employee_code: getEmployeeCode(emp),
         designation: emp.designation || emp.position || "",
-        department: emp.department || "",
+        department: getEmployeeDepartment(emp),
         previous_ctc: emp.ctc || emp.salary || ""
       });
     } else {
@@ -81,11 +118,11 @@ const IncrementLetters  = ({ initialEmployee = null }) => {
       return;
     }
     
-    const emp = employees.find(x => String(x.employee_id) === String(formData.employee_id) || String(x.employee_id) === String(formData.employee_id));
+    const emp = employees.find(x => String(getEmployeeSelectId(x)) === String(formData.employee_id));
     
     const pdfData = {
-      employeeName: `${emp?.first_name || ''} ${emp?.last_name || ''}`.trim(),
-      employeeCode: formData.employee_code || emp?.employee_code || emp?.employee_id,
+      employeeName: getEmployeeName(emp),
+      employeeCode: formData.employee_code || getEmployeeCode(emp),
       designation: formData.designation,
       department: formData.department,
       dateOfIssue: formData.date_of_issue,
@@ -113,7 +150,7 @@ const IncrementLetters  = ({ initialEmployee = null }) => {
     e.preventDefault();
     setIsProcessing(true);
     try {
-      const emp = employees.find(x => String(x.employee_id) === String(formData.employee_id) || String(x.employee_id) === String(formData.employee_id));
+      const emp = employees.find(x => String(getEmployeeSelectId(x)) === String(formData.employee_id));
       
       if (!emp) {
         alert("Employee not found");
@@ -122,8 +159,8 @@ const IncrementLetters  = ({ initialEmployee = null }) => {
       }
       
       const pdfData = {
-        employeeName: `${emp.first_name} ${emp.last_name}`.trim(),
-        employeeCode: formData.employee_code || emp.employee_code || emp.employee_id,
+        employeeName: getEmployeeName(emp),
+        employeeCode: formData.employee_code || getEmployeeCode(emp),
         designation: formData.designation,
         department: formData.department,
         dateOfIssue: formData.date_of_issue,
@@ -264,8 +301,8 @@ const IncrementLetters  = ({ initialEmployee = null }) => {
                   <select required style={{ width: "100%", padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1" }} value={formData.employee_id} onChange={handleEmployeeSelect}>
                     <option value="">-- Select Employee --</option>
                     {employees.map(emp => (
-                      <option key={emp.employee_id || emp.employee_id} value={emp.employee_id || emp.employee_id}>
-                        {emp.first_name} {emp.last_name} - {emp.designation || 'No Designation'} ({emp.employee_code || emp.employee_id})
+                      <option key={getEmployeeSelectId(emp)} value={getEmployeeSelectId(emp)}>
+                        {getEmployeeName(emp)} - {emp.designation || emp.position || 'No Designation'} ({getEmployeeCode(emp)})
                       </option>
                     ))}
                   </select>

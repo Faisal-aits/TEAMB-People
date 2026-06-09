@@ -6,7 +6,7 @@ const router = express.Router();
 const salaryController = require('./salaryController');
 const holidayController = require('./holidayController');
 const authMiddleware = require('../../middleware/auth.middleware');
-const requireAdmin = require('../../middleware/requireAdmin');
+const requireModuleAccess = require('../../middleware/requireModuleAccess');
 
 const setTenantId = (req, res, next) => {
     req.tenantId = req.user?.tenant_id || req.headers['x-tenant-id'] || 1;
@@ -14,34 +14,38 @@ const setTenantId = (req, res, next) => {
 };
 
 router.use(authMiddleware.verifyToken);
-router.use(requireAdmin);
 router.use(setTenantId);
 
+const canReadSalary = requireModuleAccess('salary_management', 'read');
+const canWriteSalary = requireModuleAccess('salary_management', 'write');
+const canReadHoliday = requireModuleAccess('holiday_management', 'read');
+const canWriteHoliday = requireModuleAccess('holiday_management', 'write');
+
 // ==================== HOLIDAY ROUTES ====================
-router.post('/holidays', holidayController.createHoliday);
-router.get('/holidays', holidayController.getHolidays);
+router.post('/holidays', canWriteHoliday, holidayController.createHoliday);
+router.get('/holidays', canReadHoliday, holidayController.getHolidays);
 // Specific routes MUST come before /:id wildcard to avoid route shadowing
-router.get('/holidays/year/:year/month/:month', holidayController.getHolidaysByYearMonth);
-router.get('/holidays/month/:month/:year', holidayController.getHolidaysByMonth);
-router.post('/holidays/bulk-delete', holidayController.bulkDeleteHolidays);
-router.get('/holidays/:id', holidayController.getHolidayById);
-router.put('/holidays/:id', holidayController.updateHoliday);
-router.delete('/holidays/:id', holidayController.deleteHoliday);
+router.get('/holidays/year/:year/month/:month', canReadHoliday, holidayController.getHolidaysByYearMonth);
+router.get('/holidays/month/:month/:year', canReadHoliday, holidayController.getHolidaysByMonth);
+router.post('/holidays/bulk-delete', canWriteHoliday, holidayController.bulkDeleteHolidays);
+router.get('/holidays/:id', canReadHoliday, holidayController.getHolidayById);
+router.put('/holidays/:id', canWriteHoliday, holidayController.updateHoliday);
+router.delete('/holidays/:id', canWriteHoliday, holidayController.deleteHoliday);
 // ==================== SALARY ROUTES ====================
-router.get('/records', salaryController.getSalaryRecords);
-router.get('/months', salaryController.getAvailableMonths);
-router.get('/stats', salaryController.getSalaryStats);
-router.post('/generate/:employeeId', salaryController.generateEmployeeSalary);
-router.post('/generate-all', salaryController.generateAllSalaries);
-router.put('/update/:salaryRecordId', salaryController.updateSalaryRecord);
-router.post('/payment/:salaryRecordId', salaryController.recordSalaryPayment);
-router.post('/mark-paid/:salaryRecordId', salaryController.markSalaryPaid);
-router.post('/mark-pending/:salaryRecordId', salaryController.markSalaryPending);
-router.get('/history/:employeeId', salaryController.getEmployeeSalaryHistory);
-router.get('/slip/:salaryRecordId', salaryController.getSalarySlip);
-router.get('/calculation/:employeeId', salaryController.getSalaryCalculation);
+router.get('/records', canReadSalary, salaryController.getSalaryRecords);
+router.get('/months', canReadSalary, salaryController.getAvailableMonths);
+router.get('/stats', canReadSalary, salaryController.getSalaryStats);
+router.post('/generate/:employeeId', canWriteSalary, salaryController.generateEmployeeSalary);
+router.post('/generate-all', canWriteSalary, salaryController.generateAllSalaries);
+router.put('/update/:salaryRecordId', canWriteSalary, salaryController.updateSalaryRecord);
+router.post('/payment/:salaryRecordId', canWriteSalary, salaryController.recordSalaryPayment);
+router.post('/mark-paid/:salaryRecordId', canWriteSalary, salaryController.markSalaryPaid);
+router.post('/mark-pending/:salaryRecordId', canWriteSalary, salaryController.markSalaryPending);
+router.get('/history/:employeeId', canReadSalary, salaryController.getEmployeeSalaryHistory);
+router.get('/slip/:salaryRecordId', canReadSalary, salaryController.getSalarySlip);
+router.get('/calculation/:employeeId', canReadSalary, salaryController.getSalaryCalculation);
 // Test route
-router.get('/test', (req, res) => {
+router.get('/test', canReadSalary, (req, res) => {
     res.json({ success: true, message: 'Salary routes working!', tenantId: req.tenantId });
 });
 

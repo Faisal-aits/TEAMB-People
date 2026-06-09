@@ -28,6 +28,7 @@ const MODULE_DEFINITIONS = [
   ['pttm', 'PTTM', 80],
   ['employee_attendance', 'My Attendance & Leave', 100],
   ['employee_expense', 'My Expense', 101],
+  ['employee_projects', 'My Projects & Tasks', 102],
 ];
 
 const MANAGEABLE_MODULES = MODULE_DEFINITIONS.map(([moduleKey]) => moduleKey);
@@ -161,10 +162,13 @@ const moduleAccessModel = {
     const users = await query(
       `SELECT u.id, u.first_name, u.last_name, u.email, u.position AS system_role,
               u.last_active_at, u.is_active,
-              ed.position AS job_position
+              ed.position AS job_position,
+              ed.status AS employee_status
        FROM users u
        LEFT JOIN employee_details ed ON ed.employee_id = u.id
        WHERE u.tenant_id = ?
+         AND COALESCE(u.is_active, 1) = 1
+         AND (ed.id IS NULL OR COALESCE(ed.status, 'active') <> 'inactive')
        ORDER BY u.first_name, u.last_name`,
       [tenantId]
     );
@@ -197,7 +201,13 @@ const moduleAccessModel = {
 
   async getUserModuleAccess(userId, tenantId) {
     const userRows = await query(
-      'SELECT id, position FROM users WHERE id = ? AND tenant_id = ?',
+      `SELECT u.id, u.position
+       FROM users u
+       LEFT JOIN employee_details ed ON ed.employee_id = u.id
+       WHERE u.id = ?
+         AND u.tenant_id = ?
+         AND COALESCE(u.is_active, 1) = 1
+         AND (ed.id IS NULL OR COALESCE(ed.status, 'active') <> 'inactive')`,
       [userId, tenantId]
     );
     if (userRows.length === 0) return null;

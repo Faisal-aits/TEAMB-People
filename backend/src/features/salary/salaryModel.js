@@ -72,14 +72,22 @@ const Salary = {
         const endDate = `${year}-${String(month).padStart(2, '0')}-${daysInMonth}`;
 
         const [leaves] = await pool.execute(
-            `SELECT start_date, end_date
-             FROM leave_requests
-             WHERE tenant_id = ?
-             AND employee_id = ?
-             AND status = 'Approved'
-             AND start_date <= ?
-             AND end_date >= ?
-             ORDER BY start_date ASC`,
+            `SELECT lr.leave_id, lr.leave_type, lr.start_date, lr.end_date,
+                    COALESCE(
+                        lr.is_paid,
+                        lt.is_paid,
+                        CASE WHEN LOWER(TRIM(lr.leave_type)) = 'unpaid' THEN 0 ELSE 1 END
+                    ) as is_paid
+             FROM leave_requests lr
+             LEFT JOIN leave_types lt
+               ON lt.tenant_id = lr.tenant_id
+              AND lt.name = lr.leave_type
+             WHERE lr.tenant_id = ?
+             AND lr.employee_id = ?
+             AND lr.status = 'Approved'
+             AND lr.start_date <= ?
+             AND lr.end_date >= ?
+             ORDER BY lr.start_date ASC`,
             [tenantId, employeeDetailId, endDate, startDate]
         );
 
@@ -94,12 +102,24 @@ const Salary = {
             const finalDate = leaveEnd < monthEnd ? leaveEnd : monthEnd;
 
             while (currentDate <= finalDate) {
-                leaveDates.push(formatDate(currentDate));
+                leaveDates.push({
+                    date: formatDate(currentDate),
+                    leave_id: leave.leave_id,
+                    leave_type: leave.leave_type,
+                    is_paid: Number(leave.is_paid) === 1
+                });
                 currentDate = addDays(currentDate, 1);
             }
         });
 
-        return [...new Set(leaveDates)].sort();
+        const uniqueByDate = new Map();
+        leaveDates.forEach((leaveDate) => {
+            if (!uniqueByDate.has(leaveDate.date)) {
+                uniqueByDate.set(leaveDate.date, leaveDate);
+            }
+        });
+
+        return [...uniqueByDate.values()].sort((a, b) => a.date.localeCompare(b.date));
     },
 
     calculateSalary: async (tenantId, employeeDetailId, month, year, annualSalary) => {
@@ -111,8 +131,8 @@ const Salary = {
         const holidays = await Salary.getHolidays(tenantId, month, year);
         const holidayDates = new Set(holidays.map((holiday) => formatDate(holiday.date)));
         const attendanceRecords = await Salary.getAttendanceForSalary(tenantId, employeeDetailId, month, year);
-        const leaveDateSet = new Set(await Salary.getApprovedLeaveDates(tenantId, employeeDetailId, month, year));
-        const paidLeaveLimit = 2;
+        const approvedLeaveDates = await Salary.getApprovedLeaveDates(tenantId, employeeDetailId, month, year);
+        const leaveByDate = new Map(approvedLeaveDates.map((leaveDate) => [leaveDate.date, leaveDate]));
 
         let presentDays = 0;
         let halfDays = 0;
@@ -138,11 +158,12 @@ const Salary = {
             const attendance = attendanceMap.get(dateKey);
             const weeklyOff = isSunday(currentDate);
             const holiday = holidayDates.has(dateKey);
-            const approvedLeave = leaveDateSet.has(dateKey);
+            const approvedLeave = leaveByDate.get(dateKey);
             let status = 'Absent';
             let shortStatus = 'A';
             let paidValue = 0;
             let deductionValue = 1;
+            let leaveType = null;
 
             if (weeklyOff) {
                 weeklyOffDays++;
@@ -159,18 +180,20 @@ const Salary = {
                 paidValue = 1;
                 deductionValue = 0;
             } else if (approvedLeave || normalizeStatus(attendance?.status) === 'on leave') {
-                const leaveDayNumber = paidLeaveDays + unpaidLeaveDays + 1;
-                if (leaveDayNumber <= paidLeaveLimit) {
+                const isPaidLeave = approvedLeave ? approvedLeave.is_paid : true;
+                leaveType = approvedLeave?.leave_type || null;
+
+                if (isPaidLeave) {
                     paidLeaveDays++;
                     paidDays += 1;
-                    status = 'Paid Leave';
+                    status = leaveType ? `Paid Leave (${leaveType})` : 'Paid Leave';
                     shortStatus = 'PL';
                     paidValue = 1;
                     deductionValue = 0;
                 } else {
                     unpaidLeaveDays++;
                     deductionDays += 1;
-                    status = 'Unpaid Leave';
+                    status = leaveType ? `Unpaid Leave (${leaveType})` : 'Unpaid Leave';
                     shortStatus = 'UL';
                 }
             } else if (attendance) {
@@ -217,6 +240,8 @@ const Salary = {
                 shortStatus,
                 paid_value: paidValue,
                 deduction_value: deductionValue,
+                leave_type: leaveType,
+                leave_is_paid: approvedLeave ? approvedLeave.is_paid : null,
                 check_in: attendance?.check_in || '-',
                 check_out: attendance?.check_out || '-'
             });
@@ -224,7 +249,7 @@ const Salary = {
             currentDate = addDays(currentDate, 1);
         }
 
-        if (attendanceRecords.length === 0 && leaveDateSet.size === 0) {
+        if (attendanceRecords.length === 0 && leaveByDate.size === 0) {
             paidDays = 0;
             deductionDays = daysInMonth;
         }
@@ -256,7 +281,8 @@ const Salary = {
             leave_and_absence_deduction: leaveAndAbsenceDeduction,
             attendance_deductions: Math.round(attendanceDeductions),
             total_deduction: totalDeduction,
-            paid_leave_limit: paidLeaveLimit,
+            leave_policy_applied: true,
+            paid_leave_rule: 'Paid/unpaid is determined by Leave Policy Settings for each approved leave request.',
             has_attendance_data: attendanceRecords.length > 0,
             calculation_summary: {
                 monthly_salary: monthlySalary,

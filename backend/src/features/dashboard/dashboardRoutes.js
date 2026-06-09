@@ -56,10 +56,151 @@ const getIndiaMonthStart = (date = new Date()) => {
   return `${year}-${month}-01`;
 };
 
-router.use(verifyToken);
-router.use(requireAdmin);
+const normalizeAttendanceStatus = (status) => {
+  const value = String(status || '').trim().toLowerCase();
+  if (value === 'present') return 'Present';
+  if (value === 'delayed' || value === 'late') return 'Delayed';
+  if (value === 'half day' || value === 'half-day') return 'Half Day';
+  if (value === 'on leave' || value === 'leave') return 'On Leave';
+  if (value === 'absent') return 'Absent';
+  return status || 'Absent';
+};
 
-router.get('/overview', async (req, res) => {
+const canAccessHrDashboard = async (req, res, next) => {
+  const role = req.user?.role || req.user?.position || req.user?.role_name;
+  if (role === 'admin' || role === 'hr') {
+    return next();
+  }
+
+  const rows = await runRows(
+    `SELECT access_level
+     FROM user_module_access
+     WHERE tenant_id = ?
+       AND user_id = ?
+       AND module_key IN ('hr', 'hr_dashboard')
+       AND access_level <> 'none'
+     LIMIT 1`,
+    [req.tenantId, req.user?.id]
+  );
+
+  if (rows.length > 0) {
+    return next();
+  }
+
+  return res.status(403).json({ success: false, message: 'Dashboard access required' });
+};
+
+const getDashboardAttendanceSummary = async (tenantId, date) => {
+  const [employees, attendanceRows, leaveRows] = await Promise.all([
+    runRows(
+      `SELECT ed.id AS employee_id, ed.employee_id AS user_id, u.id AS id
+       FROM employee_details ed
+       JOIN users u ON u.id = ed.employee_id AND u.tenant_id = ed.tenant_id
+       WHERE ed.tenant_id = ?
+         AND COALESCE(u.is_active, 1) = 1
+         AND LOWER(COALESCE(ed.status, 'active')) NOT IN ('inactive', 'deleted')`,
+      [tenantId]
+    ),
+    runRows(
+      `SELECT a.employee_id, ed.id AS hr_employee_code, ed.employee_id AS user_id,
+              a.status, a.is_half_day
+       FROM tb_attendance a
+       LEFT JOIN employee_details ed ON a.employee_id = ed.id
+       WHERE a.date = ? AND (a.tenant_id = ? OR ed.tenant_id = ?)`,
+      [date, tenantId, tenantId]
+    ),
+    runRows(
+      `SELECT lr.employee_id AS hr_employee_code, ed.employee_id AS user_id
+       FROM leave_requests lr
+       JOIN employee_details ed ON ed.id = lr.employee_id AND ed.tenant_id = lr.tenant_id
+       JOIN users u ON u.id = ed.employee_id AND u.tenant_id = ed.tenant_id
+       WHERE lr.tenant_id = ?
+         AND LOWER(lr.status) = 'approved'
+         AND ? BETWEEN lr.start_date AND lr.end_date
+         AND COALESCE(u.is_active, 1) = 1
+         AND LOWER(COALESCE(ed.status, 'active')) NOT IN ('inactive', 'deleted')`,
+      [tenantId, date]
+    ),
+  ]);
+
+  const attendanceByKey = new Map();
+  attendanceRows.forEach((record) => {
+    [record.hr_employee_code, record.employee_id, record.user_id]
+      .filter(Boolean)
+      .forEach((key) => attendanceByKey.set(String(key).trim(), record));
+  });
+
+  const leaveByKey = new Set();
+  leaveRows.forEach((record) => {
+    [record.hr_employee_code, record.user_id]
+      .filter(Boolean)
+      .forEach((key) => leaveByKey.add(String(key).trim()));
+  });
+
+  const summary = {
+    totalUsers: employees.length,
+    presentToday: 0,
+    delayedToday: 0,
+    absentToday: 0,
+    leaveToday: 0,
+    halfDayToday: 0,
+    pendingToday: 0,
+  };
+
+  employees.forEach((employee) => {
+    const record = [employee.employee_id, employee.user_id, employee.id]
+      .filter(Boolean)
+      .map((key) => attendanceByKey.get(String(key).trim()))
+      .find(Boolean);
+    const isOnApprovedLeave = [employee.employee_id, employee.user_id, employee.id]
+      .filter(Boolean)
+      .some((key) => leaveByKey.has(String(key).trim()));
+
+    if (!record && isOnApprovedLeave) {
+      summary.leaveToday += 1;
+      return;
+    }
+
+    const status = normalizeAttendanceStatus(record?.status || (record ? 'Present' : 'Absent'));
+    const isHalfDay = status === 'Half Day';
+
+    if (isOnApprovedLeave && status === 'Absent') {
+      summary.leaveToday += 1;
+      return;
+    }
+
+    if (isHalfDay) {
+      summary.halfDayToday += 1;
+      summary.presentToday += 1;
+      summary.delayedToday += 1;
+      return;
+    }
+
+    if (status === 'Present' || status === 'Delayed') {
+      summary.presentToday += 1;
+      if (status === 'Delayed') summary.delayedToday += 1;
+      return;
+    }
+
+    if (status === 'On Leave') {
+      summary.leaveToday += 1;
+      return;
+    }
+
+    if (status === 'Absent') {
+      summary.absentToday += 1;
+      return;
+    }
+
+    summary.pendingToday += 1;
+  });
+
+  return summary;
+};
+
+router.use(verifyToken);
+
+const getOverview = async (req, res) => {
   try {
     const tenantId = req.tenantId;
     const today = getIndiaDate();
@@ -94,49 +235,80 @@ router.get('/overview', async (req, res) => {
       gstStatus,
       smtpStatus,
     ] = await Promise.all([
-      countRows('SELECT COUNT(*) as total FROM employee_details WHERE tenant_id = ?', [tenantId]),
-      countRows('SELECT COUNT(*) as total FROM employee_details WHERE tenant_id = ? AND COALESCE(is_active, 1) = 1', [tenantId]),
       countRows(
         `SELECT COUNT(*) as total
-         FROM employee_details
-         WHERE tenant_id = ?
-           AND (position IS NULL OR position = '' OR salary IS NULL OR salary <= 0
-             OR bank_account_number IS NULL OR bank_account_number = '')`,
+         FROM employee_details ed
+         JOIN users u ON u.id = ed.employee_id AND u.tenant_id = ed.tenant_id
+         WHERE ed.tenant_id = ?
+           AND COALESCE(u.is_active, 1) = 1
+           AND LOWER(COALESCE(ed.status, 'active')) NOT IN ('inactive', 'deleted')`,
         [tenantId]
       ),
-      firstRow(
-        `SELECT
-           SUM(CASE WHEN status IN ('Present', 'Delayed') THEN 1 ELSE 0 END) as present,
-           SUM(CASE WHEN status = 'Delayed' THEN 1 ELSE 0 END) as delayed,
-           SUM(CASE WHEN is_half_day = 1 THEN 1 ELSE 0 END) as half_day
-         FROM tb_attendance
-         WHERE tenant_id = ? AND date = ?`,
-        [tenantId, today]
+      countRows(
+        `SELECT COUNT(*) as total
+         FROM employee_details ed
+         JOIN users u ON u.id = ed.employee_id AND u.tenant_id = ed.tenant_id
+         WHERE ed.tenant_id = ?
+           AND COALESCE(u.is_active, 1) = 1
+           AND LOWER(COALESCE(ed.status, 'active')) NOT IN ('inactive', 'deleted')`,
+        [tenantId]
       ),
+      countRows(
+        `SELECT COUNT(*) as total
+         FROM employee_details ed
+         JOIN users u ON u.id = ed.employee_id AND u.tenant_id = ed.tenant_id
+         WHERE ed.tenant_id = ?
+           AND COALESCE(u.is_active, 1) = 1
+           AND LOWER(COALESCE(ed.status, 'active')) NOT IN ('inactive', 'deleted')
+           AND (ed.position IS NULL OR ed.position = '' OR ed.salary IS NULL OR ed.salary <= 0
+             OR ed.bank_account_number IS NULL OR ed.bank_account_number = '')`,
+        [tenantId]
+      ),
+      getDashboardAttendanceSummary(tenantId, today),
       countRows(
         `SELECT COUNT(*) as total
          FROM leave_requests
-         WHERE tenant_id = ? AND status = 'Approved' AND ? BETWEEN start_date AND end_date`,
+         WHERE tenant_id = ? AND LOWER(status) = 'approved' AND ? BETWEEN start_date AND end_date`,
         [tenantId, today]
       ),
-      countRows("SELECT COUNT(*) as total FROM leave_requests WHERE tenant_id = ? AND status = 'Pending'", [tenantId]),
+      countRows("SELECT COUNT(*) as total FROM leave_requests WHERE tenant_id = ? AND LOWER(status) = 'pending'", [tenantId]),
       countRows('SELECT COUNT(*) as total FROM invoices WHERE tenant_id = ? AND invoice_date >= ?', [tenantId, monthStartDate]),
       sumRows('SELECT SUM(total_after_tax) as total FROM invoices WHERE tenant_id = ? AND invoice_date >= ?', [tenantId, monthStartDate]),
       countRows("SELECT COUNT(*) as total FROM invoices WHERE tenant_id = ? AND LOWER(status) NOT IN ('paid', 'cancelled')", [tenantId]),
       countRows("SELECT COUNT(*) as total FROM quotations WHERE tenant_id = ? AND LOWER(status) NOT IN ('approved', 'accepted', 'converted', 'rejected', 'cancelled')", [tenantId]),
       sumRows('SELECT SUM(amount) as total FROM expenses WHERE tenant_id = ? AND submitted_at >= ?', [tenantId, monthStartDate]),
-      countRows("SELECT COUNT(*) as total FROM expenses WHERE tenant_id = ? AND status = 'pending'", [tenantId]),
+      countRows("SELECT COUNT(*) as total FROM expenses WHERE tenant_id = ? AND LOWER(COALESCE(payment_status, status, 'pending')) = 'pending'", [tenantId]),
       countRows('SELECT COUNT(*) as total FROM clients WHERE tenant_id = ?', [tenantId]),
       countRows("SELECT COUNT(*) as total FROM services WHERE tenant_id = ? AND LOWER(status) IN ('active', 'in progress', 'ongoing', 'on going')", [tenantId]),
-      countRows("SELECT COUNT(*) as total FROM pttm_tasks WHERE tenant_id = ? AND status NOT IN ('Completed')", [tenantId]),
-      countRows("SELECT COUNT(*) as total FROM pttm_tasks WHERE tenant_id = ? AND status NOT IN ('Completed') AND date < ?", [tenantId, today]),
-      countRows("SELECT COUNT(DISTINCT user_id) as total FROM user_module_access WHERE tenant_id = ? AND access_level <> 'none'", [tenantId]),
-      countRows("SELECT COUNT(DISTINCT user_id) as total FROM user_module_access WHERE tenant_id = ? AND access_level = 'read'", [tenantId]),
+      countRows("SELECT COUNT(*) as total FROM pttm_tasks WHERE tenant_id = ? AND LOWER(COALESCE(status, '')) <> 'completed'", [tenantId]),
+      countRows("SELECT COUNT(*) as total FROM pttm_tasks WHERE tenant_id = ? AND LOWER(COALESCE(status, '')) <> 'completed' AND date IS NOT NULL AND date <> '' AND date < ?", [tenantId, today]),
+      countRows(
+        `SELECT COUNT(DISTINCT uma.user_id) as total
+         FROM user_module_access uma
+         JOIN users u ON u.id = uma.user_id AND u.tenant_id = uma.tenant_id
+         LEFT JOIN employee_details ed ON ed.employee_id = u.id AND ed.tenant_id = u.tenant_id
+         WHERE uma.tenant_id = ?
+           AND uma.access_level <> 'none'
+           AND COALESCE(u.is_active, 1) = 1
+           AND (ed.id IS NULL OR LOWER(COALESCE(ed.status, 'active')) NOT IN ('inactive', 'deleted'))`,
+        [tenantId]
+      ),
+      countRows(
+        `SELECT COUNT(DISTINCT uma.user_id) as total
+         FROM user_module_access uma
+         JOIN users u ON u.id = uma.user_id AND u.tenant_id = uma.tenant_id
+         LEFT JOIN employee_details ed ON ed.employee_id = u.id AND ed.tenant_id = u.tenant_id
+         WHERE uma.tenant_id = ?
+           AND uma.access_level = 'read'
+           AND COALESCE(u.is_active, 1) = 1
+           AND (ed.id IS NULL OR LOWER(COALESCE(ed.status, 'active')) NOT IN ('inactive', 'deleted'))`,
+        [tenantId]
+      ),
       countRows('SELECT COUNT(*) as total FROM offer_letters WHERE tenant_id = ?', [tenantId]),
       countRows('SELECT COUNT(*) as total FROM tb_salary_records WHERE tenant_id = ?', [tenantId]),
       countRows('SELECT COUNT(*) as total FROM experience_letters WHERE tenant_id = ?', [tenantId]),
       countRows('SELECT COUNT(*) as total FROM increment_letters WHERE tenant_id = ?', [tenantId]),
-      countRows("SELECT COUNT(*) as total FROM resignation_requests WHERE tenant_id = ? AND status = 'pending'", [tenantId]),
+      countRows("SELECT COUNT(*) as total FROM resignation_requests WHERE tenant_id = ? AND LOWER(status) = 'pending'", [tenantId]),
       firstRow(
         `SELECT
            company_name, company_email, company_phone, company_address,
@@ -149,10 +321,14 @@ router.get('/overview', async (req, res) => {
       firstRow("SELECT smtp_host, smtp_user, smtp_from_email, smtp_password FROM service_settings WHERE tenant_id = ? AND setting_type = 'smtp' LIMIT 1", [tenantId]),
     ]);
 
-    const presentToday = Number(attendanceToday.present || 0);
-    const delayedToday = Number(attendanceToday.delayed || 0);
-    const halfDayToday = Number(attendanceToday.half_day || 0);
-    const absentToday = Math.max(0, Number(activeEmployees || 0) - presentToday - Number(leaveToday || 0));
+    const dashboardActiveEmployees = Number(attendanceToday.totalUsers ?? activeEmployees ?? 0);
+    const presentToday = Number(attendanceToday.presentToday || 0);
+    const delayedToday = Number(attendanceToday.delayedToday || 0);
+    const halfDayToday = Number(attendanceToday.halfDayToday || 0);
+    const absentToday = Number(attendanceToday.absentToday || 0);
+    const attendanceLeaveToday = Number(attendanceToday.leaveToday || 0);
+    const approvedLeaveToday = Number(leaveToday || 0);
+    const leaveTodayTotal = Math.max(attendanceLeaveToday, approvedLeaveToday);
 
     const isComplete = (record, fields) => fields.every((field) => String(record?.[field] || '').trim());
     const setupHealth = [
@@ -240,18 +416,20 @@ router.get('/overview', async (req, res) => {
         kpis: {
           totalEmployees,
           presentToday,
-          leaveToday,
+          leaveToday: leaveTodayTotal,
           pendingLeaves,
           invoiceRevenue: formatCurrency(invoiceRevenue),
           pendingInvoices,
         },
         hr: {
-          activeEmployees,
+          activeEmployees: dashboardActiveEmployees,
           presentToday,
           absentToday,
           delayedToday,
           halfDayToday,
-          leaveToday,
+          pendingAttendanceToday: Number(attendanceToday.pendingToday || 0),
+          leaveToday: leaveTodayTotal,
+          approvedLeaveToday,
           pendingLeaves,
           missingEmployeeProfiles,
         },
@@ -291,7 +469,11 @@ router.get('/overview', async (req, res) => {
     console.error('Get dashboard overview error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch dashboard overview' });
   }
-});
+};
+
+router.get('/hr-overview', canAccessHrDashboard, getOverview);
+router.use(requireAdmin);
+router.get('/overview', getOverview);
 
 const percentSegments = (rows, fallbackColors) => {
   const total = rows.reduce((sum, row) => sum + Number(row.count || 0), 0);
@@ -317,7 +499,15 @@ router.get('/stats', async (req, res) => {
   try {
     const tenantId = req.tenantId;
     const [employees, offersSent, projects, services] = await Promise.all([
-      countRows('SELECT COUNT(*) as total FROM employee_details WHERE tenant_id = ?', [tenantId]),
+      countRows(
+        `SELECT COUNT(*) as total
+         FROM employee_details ed
+         JOIN users u ON u.id = ed.employee_id AND u.tenant_id = ed.tenant_id
+         WHERE ed.tenant_id = ?
+           AND COALESCE(u.is_active, 1) = 1
+           AND LOWER(COALESCE(ed.status, 'active')) NOT IN ('inactive', 'deleted')`,
+        [tenantId]
+      ),
       countRows(
         `SELECT COUNT(*) as total
          FROM offer_letters ol

@@ -1,12 +1,15 @@
 const express = require('express');
 const { verifyToken } = require('../../middleware/auth.middleware');
-const requireAdmin = require('../../middleware/requireAdmin');
+const requireModuleAccess = require('../../middleware/requireModuleAccess');
 const ServiceSetting = require('./serviceSettingModel');
 const { sendTestEmail } = require('../../services/mailService');
 
 const router = express.Router();
 
 router.use(verifyToken);
+
+const canReadBillingSettings = requireModuleAccess('billing_settings', 'read');
+const canWriteBillingSettings = requireModuleAccess('billing_settings', 'write');
 
 const validateSmtpConfig = (data, requirePassword = false) => {
   const errors = [];
@@ -25,7 +28,7 @@ const validateSmtpConfig = (data, requirePassword = false) => {
   return errors;
 };
 
-router.get('/bank', requireAdmin, async (req, res) => {
+router.get('/bank', canReadBillingSettings, async (req, res) => {
   try {
     const bank = await ServiceSetting.getBankDetails(req.tenantId);
     res.json({ success: true, bank });
@@ -35,7 +38,7 @@ router.get('/bank', requireAdmin, async (req, res) => {
   }
 });
 
-router.put('/bank', requireAdmin, async (req, res) => {
+router.put('/bank', canWriteBillingSettings, async (req, res) => {
   try {
     await ServiceSetting.updateBankDetails(req.tenantId, req.body);
     const bank = await ServiceSetting.getBankDetails(req.tenantId);
@@ -46,7 +49,7 @@ router.put('/bank', requireAdmin, async (req, res) => {
   }
 });
 
-router.get('/gst', requireAdmin, async (req, res) => {
+router.get('/gst', canReadBillingSettings, async (req, res) => {
   try {
     const gst = await ServiceSetting.getGstDetails(req.tenantId);
     res.json({ success: true, gst });
@@ -56,7 +59,7 @@ router.get('/gst', requireAdmin, async (req, res) => {
   }
 });
 
-router.put('/gst', requireAdmin, async (req, res) => {
+router.put('/gst', canWriteBillingSettings, async (req, res) => {
   try {
     await ServiceSetting.updateGstDetails(req.tenantId, req.body);
     const gst = await ServiceSetting.getGstDetails(req.tenantId);
@@ -67,7 +70,7 @@ router.put('/gst', requireAdmin, async (req, res) => {
   }
 });
 
-router.get('/quotation', requireAdmin, async (req, res) => {
+router.get('/quotation', canReadBillingSettings, async (req, res) => {
   try {
     const settings = await ServiceSetting.getQuotationSettings(req.tenantId);
     res.json({ success: true, settings });
@@ -77,7 +80,7 @@ router.get('/quotation', requireAdmin, async (req, res) => {
   }
 });
 
-router.get('/smtp', requireAdmin, async (req, res) => {
+router.get('/smtp', canReadBillingSettings, async (req, res) => {
   try {
     const smtp = await ServiceSetting.getSmtpConfig(req.tenantId);
     res.json({ success: true, smtp });
@@ -87,7 +90,7 @@ router.get('/smtp', requireAdmin, async (req, res) => {
   }
 });
 
-router.put('/smtp', requireAdmin, async (req, res) => {
+router.put('/smtp', canWriteBillingSettings, async (req, res) => {
   try {
     const current = await ServiceSetting.getSmtpConfig(req.tenantId);
     const errors = validateSmtpConfig(req.body, !current?.has_password);
@@ -103,7 +106,7 @@ router.put('/smtp', requireAdmin, async (req, res) => {
   }
 });
 
-router.post('/smtp/test', requireAdmin, async (req, res) => {
+router.post('/smtp/test', canWriteBillingSettings, async (req, res) => {
   try {
     const to = String(req.body.to || '').trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {

@@ -30,6 +30,20 @@ const createTransportForTenant = async (tenantId) => {
   return { transporter, config };
 };
 
+const assertSmtpConfigured = async (tenantId) => {
+  const config = await ServiceSetting.getPrivateSmtpConfig(tenantId);
+  if (!config) {
+    throw new Error('SMTP configuration not found');
+  }
+
+  if (!config.from_email || !config.from_name) {
+    throw new Error('SMTP configuration is incomplete');
+  }
+
+  buildTransportOptions(config);
+  return true;
+};
+
 const escapeHtml = (value) => String(value ?? '')
   .replace(/&/g, '&amp;')
   .replace(/</g, '&lt;')
@@ -193,6 +207,7 @@ const sendOfferLetter = async (tenantId, offer) => sendMail(tenantId, {
 });
 
 module.exports = {
+  assertSmtpConfigured,
   sendEmployeeCredentials,
   sendOfferLetter,
   sendPasswordResetEmail,

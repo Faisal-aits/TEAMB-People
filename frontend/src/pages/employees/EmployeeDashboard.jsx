@@ -9,6 +9,7 @@ import {
   HiOutlineClock,
   HiOutlineDocumentText,
   HiOutlineExclamationTriangle,
+  HiOutlinePencilSquare,
   HiOutlineReceiptPercent,
   HiOutlineUserCircle,
   HiOutlineUsers
@@ -21,6 +22,8 @@ import experienceLetterAPI from '../../services/experienceLetterAPI';
 import incrementLetterAPI from '../../services/incrementLetterAPI';
 import { leaveAPI } from '../../services/leaveAPI';
 import offerLetterAPI from '../../services/offerLetterAPI';
+import { projectAPI } from '../../services/projectAPI';
+import { reportAPI } from '../../services/reportAPI';
 import resignationAPI from '../../services/resignationAPI';
 import './EmployeeLayout.css';
 
@@ -155,11 +158,17 @@ const MODULE_META = {
     description: 'Submit expenses and track reimbursement requests.',
     icon: <HiOutlineReceiptPercent />,
   },
+  employee_projects: {
+    title: 'My Projects & Tasks',
+    description: 'Assigned projects, tasks, deadlines, and status.',
+    icon: <HiOutlineBriefcase />,
+  },
 };
 
 const DEFAULT_EMPLOYEE_MODULES = [
   { module_key: 'employee_attendance', name: 'My Attendance', access: 'write' },
   { module_key: 'employee_expense', name: 'My Expense', access: 'write' },
+  { module_key: 'employee_projects', name: 'My Projects & Tasks', access: 'write' },
 ];
 
 const numberFormat = new Intl.NumberFormat('en-IN');
@@ -208,7 +217,13 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
       incrementLetters: 0,
       resignations: 0,
     },
+    projects: [],
+    tasks: [],
+    reports: [],
   });
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportText, setReportText] = useState('');
+  const [reportSubmitting, setReportSubmitting] = useState(false);
 
   const assignedModules = (currentUser.modules || []).filter((mod) => mod.access !== 'none');
   const assignedModuleKeys = new Set(assignedModules.map((mod) => mod.module_key));
@@ -233,6 +248,9 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
         experienceResult,
         incrementResult,
         resignationResult,
+        projectsResult,
+        tasksResult,
+        reportResult,
       ] = await Promise.allSettled([
         employeeAPI.getMyProfile(),
         attendanceAPI.getMyTodayAttendance(),
@@ -243,6 +261,9 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
         experienceLetterAPI.getMyLetters(),
         incrementLetterAPI.getMyLetters(),
         resignationAPI.getMyRequests(),
+        projectAPI.getMyProjects(),
+        projectAPI.getMyTasks(),
+        reportAPI.getMyReports(),
       ]);
 
       const profileResponse = getSafeValue(profileResult);
@@ -254,6 +275,9 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
       const experienceResponse = getSafeValue(experienceResult);
       const incrementResponse = getSafeValue(incrementResult);
       const resignationResponse = getSafeValue(resignationResult);
+      const projectsResponse = getSafeValue(projectsResult);
+      const tasksResponse = getSafeValue(tasksResult);
+      const reportResponse = getSafeValue(reportResult);
 
       setDashboardData({
         profile: profileResponse?.data?.employee || null,
@@ -267,6 +291,9 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
           incrementLetters: getArray(incrementResponse, ['data', 'letters']).length,
           resignations: getArray(resignationResponse, ['data', 'requests']).length,
         },
+        projects: getArray(projectsResponse, ['projects']),
+        tasks: getArray(tasksResponse, ['tasks']),
+        reports: getArray(reportResponse, ['reports']),
       });
     } catch (err) {
       console.error('Failed to load employee dashboard:', err);
@@ -274,6 +301,32 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  };
+
+  const handleSubmitReport = async (event) => {
+    event.preventDefault();
+    const text = reportText.trim();
+    if (!text) {
+      setError('Please enter your report before submitting.');
+      return;
+    }
+
+    try {
+      setReportSubmitting(true);
+      setError('');
+      await reportAPI.createMyReport({
+        report_date: getIndiaDate(),
+        report_text: text,
+      });
+      setReportText('');
+      setReportModalOpen(false);
+      await loadDashboard(true);
+    } catch (err) {
+      console.error('Failed to submit report:', err);
+      setError(err.response?.data?.message || 'Unable to submit report.');
+    } finally {
+      setReportSubmitting(false);
     }
   };
 
@@ -288,6 +341,7 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
       services: 'service',
       employee_attendance: 'employee-attendance',
       employee_expense: 'employee-expense',
+      employee_projects: 'employee-projects',
     };
     const defaultTab = moduleDefaults[mod.module_key] || MODULE_DEFAULT_TAB[mod.module_key];
 
@@ -366,11 +420,36 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
     };
   }, [dashboardData.expenses]);
 
+  const projectSummary = useMemo(() => {
+    const activeTasks = dashboardData.tasks.filter((task) => String(task.status || '').toLowerCase() !== 'completed');
+    const overdueTasks = activeTasks.filter((task) => {
+      const dueValue = task.due_date || task.date;
+      if (!dueValue) return false;
+      const dueDate = new Date(dueValue);
+      if (Number.isNaN(dueDate.getTime())) return false;
+      dueDate.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return dueDate < today;
+    });
+
+    return {
+      projectCount: dashboardData.projects.length,
+      activeTasks: activeTasks.length,
+      overdueTasks: overdueTasks.length,
+    };
+  }, [dashboardData.projects, dashboardData.tasks]);
+
   const profile = dashboardData.profile || {};
   const todayAttendance = dashboardData.todayAttendance || {};
   const isCheckedIn = Boolean(todayAttendance.check_in_time);
   const isCheckedOut = Boolean(todayAttendance.check_out_time);
   const totalDocuments = Object.values(dashboardData.documents).reduce((sum, value) => sum + Number(value || 0), 0);
+  const moduleDescriptions = {
+    employee_attendance: `${todayAttendance.status || 'Not checked in'} today, ${formatNumber(attendanceSummary.total)} records this month`,
+    employee_expense: `${formatNumber(expenseSummary.pendingCount)} pending, ${formatCurrency(expenseSummary.pendingAmount)}`,
+    employee_projects: `${formatNumber(projectSummary.projectCount)} projects, ${formatNumber(projectSummary.activeTasks)} active tasks`,
+  };
 
   const summaryCards = [
     {
@@ -426,6 +505,10 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
         <button type="button" className="employee-refresh-btn" onClick={() => loadDashboard(true)} disabled={refreshing}>
           <HiOutlineArrowPath />
           {refreshing ? 'Refreshing' : 'Refresh'}
+        </button>
+        <button type="button" className="employee-report-btn" onClick={() => setReportModalOpen(true)}>
+          <HiOutlinePencilSquare />
+          Report
         </button>
       </header>
 
@@ -571,7 +654,7 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
                     {meta.icon}
                     <span>
                       <strong>{meta.title}</strong>
-                      <small>{meta.description}</small>
+                      <small>{moduleDescriptions[mod.module_key] || meta.description}</small>
                     </span>
                   </button>
                 );
@@ -580,6 +663,61 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
           </div>
         </aside>
       </section>
+
+      {reportModalOpen && (
+        <div className="employee-report-modal-overlay" onClick={() => setReportModalOpen(false)} role="presentation">
+          <div className="employee-report-modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="employee-report-title">
+            <div className="employee-report-modal-header">
+              <div>
+                <h2 id="employee-report-title">Submit Report</h2>
+                <p>{formatDate(getIndiaDate())}</p>
+              </div>
+              <button type="button" onClick={() => setReportModalOpen(false)}>Close</button>
+            </div>
+
+            <form className="employee-report-form" onSubmit={handleSubmitReport}>
+              <textarea
+                value={reportText}
+                onChange={(event) => setReportText(event.target.value)}
+                placeholder="Write today's work, blockers, or casual update..."
+                rows={5}
+                maxLength={3000}
+                required
+              />
+              <div className="employee-report-form-actions">
+                <span>{reportText.length}/3000</span>
+                <button type="submit" disabled={reportSubmitting}>
+                  {reportSubmitting ? 'Submitting...' : 'Submit Report'}
+                </button>
+              </div>
+            </form>
+
+            <div className="employee-report-history">
+              <h3>Recent Reports</h3>
+              {(dashboardData.reports || []).slice(0, 5).length === 0 ? (
+                <p className="employee-report-empty">No reports submitted yet.</p>
+              ) : (
+                <div className="employee-report-history-list">
+                  {(dashboardData.reports || []).slice(0, 5).map((report) => (
+                    <article key={report.id} className="employee-report-history-item">
+                      <div>
+                        <strong>{formatDate(report.report_date)}</strong>
+                        <p>{report.report_text}</p>
+                      </div>
+                      {report.admin_remark && (
+                        <div className="employee-report-remark">
+                          <span>Admin Remark</span>
+                          <p>{report.admin_remark}</p>
+                        </div>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

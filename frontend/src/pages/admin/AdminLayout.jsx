@@ -17,10 +17,12 @@ import DeliveryManagement from '../Accounts/DeliveryChallan.jsx';
 import ExpenseManagement from '../Accounts/ExpenseManagement.jsx';
 import QuotationManagement from '../Accounts/QuotationManagement.jsx';
 import ServiceManagement from '../services/ServiceManagement.jsx';
+import ReportsManagement from './ReportsManagement.jsx';
 import ModuleManagement from '../Settings/ModuleManagement.jsx';
 import BrandingSettings from '../Settings/BrandingSettings.jsx';
 import MasterSettings from '../Settings/MasterSettings.jsx';
 import SmtpConfig from '../Settings/SmtpConfig.jsx';
+import LeavePolicySettings from '../Settings/LeavePolicySettings.jsx';
 import PTTMContainer from '../PTTM/PTTMContainer.jsx';
 import OfferLetter from '../HRModule/EmployeeManagement/OfferLetter.jsx';
 import DeclarationForm from '../HRModule/EmployeeManagement/DeclarationForm.jsx';
@@ -53,7 +55,6 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
   const [hrModuleOpen, setHrModuleOpen] = useState(false);
   const [accountModuleOpen, setAccountModuleOpen] = useState(false);
   const [payrollModuleOpen, setPayrollModuleOpen] = useState(false);
-  const [servicesModuleOpen, setServicesModuleOpen] = useState(false);
   const [settingsModuleOpen, setSettingsModuleOpen] = useState(false);
 
   const { user, logout } = useAuth();
@@ -61,7 +62,6 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
   const isAdmin = user?.position === 'admin';
   const canAccessHr = hasModuleAccess(user, 'hr');
   const canAccessAccounts = hasModuleAccess(user, 'accounts');
-  const canAccessServices = hasModuleAccess(user, 'services');
   const canAccessHrDashboard = hasModuleAccess(user, 'hr_dashboard');
   const canAccessEmployeeManagement = hasModuleAccess(user, 'employee_management');
   const canAccessAttendanceManagement = hasModuleAccess(user, 'attendance_management');
@@ -124,10 +124,6 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
     setPayrollModuleOpen(!payrollModuleOpen);
   };
 
-  const toggleServicesModule = () => {
-    setServicesModuleOpen(!servicesModuleOpen);
-  };
-
   const toggleSettingsModule = () => {
     setSettingsModuleOpen(!settingsModuleOpen);
   };
@@ -152,6 +148,12 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
   const DashboardIcon = () => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M3 13H11V3H3V13ZM3 21H11V15H3V21ZM13 21H21V11H13V21ZM13 3V9H21V3H13Z" fill="currentColor" />
+    </svg>
+  );
+
+  const ReportIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2ZM13 9V3.5L18.5 9H13ZM8 13H16V15H8V13ZM8 17H16V19H8V17ZM8 9H11V11H8V9Z" fill="currentColor" />
     </svg>
   );
 
@@ -216,6 +218,15 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
                   {sidebarOpen && <span className="nav-text">Dashboard</span>}
                 </button>
               </li>
+
+              {isAdmin && (
+                <li className={activeTab === 'reports' ? 'active' : ''}>
+                  <button onClick={() => navigateToTab('reports')}>
+                    <span className="nav-icon"><ReportIcon /></span>
+                    {sidebarOpen && <span className="nav-text">Reports</span>}
+                  </button>
+                </li>
+              )}
 
              
 
@@ -336,29 +347,13 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
               </li>
               )}
 
-              {/* Services Dropdown */}
-              {canAccessServices && (
-              <li className={`dropdown ${servicesModuleOpen ? 'open' : ''}`}>
-                <button className="dropdown-toggle" onClick={toggleServicesModule}>
+              {/* Services */}
+              {canAccessServiceManagement && (
+              <li className={activeTab === 'service' ? 'active' : ''}>
+                <button onClick={() => navigateToTab('service')}>
                   <span className="nav-icon"><MdMiscellaneousServices /></span>
-                  {sidebarOpen && (
-                    <>
-                      <span className="nav-text">Services</span>
-                      <span className="dropdown-arrow">
-                        {servicesModuleOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
-                      </span>
-                    </>
-                  )}
+                  {sidebarOpen && <span className="nav-text">Services</span>}
                 </button>
-                {sidebarOpen && servicesModuleOpen && (
-                  <ul className="dropdown-menu">
-                    {canAccessServiceManagement && <li className={activeTab === 'service' ? 'active' : ''}>
-                      <button onClick={() => navigateToTab('service')}>
-                        <span className="dropdown-text">Service Management</span>
-                      </button>
-                    </li>}
-                  </ul>
-                )}
               </li>
               )}
 
@@ -406,6 +401,11 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
                         <span className="dropdown-text">SMTP Config</span>
                       </button>
                     </li>
+                    {canAccessLeaveManagement && <li className={activeTab === 'leavepolicysettings' ? 'active' : ''}>
+                      <button onClick={() => navigateToTab('leavepolicysettings')}>
+                        <span className="dropdown-text">Leave Policy Settings</span>
+                      </button>
+                    </li>}
                   </ul>
                 )}
               </li>
@@ -441,6 +441,7 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
         {/* Main Content - ADD THE EMPLOYEE CASE HERE */}
         <main className="dashboard-main">
           {activeTab === 'dashboard' && <Dashboard user={user} navigateToTab={navigateToTab} />}
+          {activeTab === 'reports' && isAdmin && <ReportsManagement />}
           {activeTab === 'employee' && canAccessEmployeeManagement && <EmployeeManagement />}
           {activeTab === 'attendance' && canAccessAttendanceManagement && <AttendanceManagement />}
           {activeTab === 'leave' && canAccessLeaveManagement && <LeaveManagement />}
@@ -460,6 +461,7 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
           {activeTab === 'branding' && isAdmin && <BrandingSettings />}
           {activeTab === 'master' && isAdmin && <MasterSettings />}
           {activeTab === 'smtpconfig' && isAdmin && <SmtpConfig />}
+          {activeTab === 'leavepolicysettings' && isAdmin && canAccessLeaveManagement && <LeavePolicySettings />}
           {activeTab === 'pttm' && <PTTMContainer />}
           {activeTab === 'offerletter' && canAccessOfferLetters && (
             <OfferLetter initialEmployee={navigationState?.employee} />

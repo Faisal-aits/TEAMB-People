@@ -41,6 +41,14 @@ export const attendanceAPI = {
     return api.get('/attendance/my/today');
   },
 
+  getMyAutoCheckoutSetting: () => {
+    return api.get('/attendance/my/auto-checkout');
+  },
+
+  updateMyAutoCheckoutSetting: (enabled) => {
+    return api.put('/attendance/my/auto-checkout', { enabled });
+  },
+
   getAllWithFilters: (filters = {}) => {
     const params = new URLSearchParams();
     if (filters.start_date) params.append('start_date', filters.start_date);
@@ -75,6 +83,23 @@ export const attendanceAPI = {
   // FIXED: Get my history - use correct path
   getMyHistory: () => {
     return api.get('/attendance/my/history');
+  },
+
+  getMyAttendancePercentage: async () => {
+    const response = await api.get('/attendance/my/history');
+    const records = response.data?.history || response.data?.attendance || [];
+    const attendance = Array.isArray(records) ? records : [];
+    const counted = attendance.filter(record => !['Pending', 'On Leave'].includes(record.status));
+    const present = counted.filter(record => ['Present', 'Delayed', 'Half Day'].includes(record.status)).length;
+    const attendancePercentage = counted.length ? Math.round((present / counted.length) * 100) : 0;
+
+    return {
+      ...response,
+      data: {
+        ...response.data,
+        attendance_percentage: attendancePercentage,
+      },
+    };
   },
 
   markAbsent: () => api.post('/attendance/mark-absent'),

@@ -1033,7 +1033,6 @@ const getUserAttendance = (user) => {
           setCurrentPage(1);
         }}
       />
-      <span className="table-count-label">{filteredUsers.length} of {users.length} employees</span>
      
     </div>
   

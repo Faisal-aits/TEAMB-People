@@ -3,7 +3,7 @@ const express = require('express');
 const multer = require('multer');
 const expenseController = require('./expenseController');
 const authMiddleware = require('../../middleware/auth.middleware');
-const requireAdmin = require('../../middleware/requireAdmin');
+const requireModuleAccess = require('../../middleware/requireModuleAccess');
 
 const router = express.Router();
 
@@ -23,13 +23,13 @@ const upload = multer({
 router.use(authMiddleware.verifyToken);
 
 // GET /api/expenses - Get all expenses (role-based)
-router.get('/', requireAdmin, expenseController.getAllExpenses);
+router.get('/', requireModuleAccess('expense_management', 'read'), expenseController.getAllExpenses);
 
 // GET /api/expenses/categories - Get expense categories
 router.get('/categories', expenseController.getCategories);
 
 // POST /api/expenses/categories - Create new category (ADD THIS)
-router.post('/categories', requireAdmin, expenseController.createCategory);
+router.post('/categories', requireModuleAccess('expense_management', 'write'), expenseController.createCategory);
 
 // GET /api/expenses/my - Get current user's expenses
 router.get('/my', expenseController.getMyExpenses);
@@ -41,9 +41,9 @@ router.get('/:id', expenseController.getExpense);
 router.post('/', upload.single('image'), expenseController.submitExpense);
 
 // PUT /api/expenses/:id/status - Approve/Reject expense
-router.put('/:id/status', requireAdmin, expenseController.updateExpenseStatus);
+router.put('/:id/status', requireModuleAccess('expense_management', 'write'), expenseController.updateExpenseStatus);
 
 // PUT /api/expenses/:id/payment-status - Update payment status
-router.put('/:id/payment-status', requireAdmin, expenseController.updatePaymentStatus);
+router.put('/:id/payment-status', requireModuleAccess('expense_management', 'write'), expenseController.updatePaymentStatus);
 
 module.exports = router;
