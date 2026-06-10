@@ -5,7 +5,7 @@ const ticketIdSchema = Joi.object({
 });
 
 const createTicketSchema = Joi.object({
-  title: Joi.string().trim().min(3).max(50).required(),
+  title: Joi.string().trim().min(3).max(150).required(),
   description: Joi.string().trim().min(5).required(),
   project_id: Joi.number().integer().positive().optional().allow(null),
   priority: Joi.string().valid('Low', 'Medium', 'High', 'Urgent').default('Medium'),
