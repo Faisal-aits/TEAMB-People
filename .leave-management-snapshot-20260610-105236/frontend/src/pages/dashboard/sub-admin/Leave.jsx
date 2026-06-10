@@ -22,14 +22,14 @@ const LeaveManagement = () => {
     try {
       const userData = localStorage.getItem('user');
       if (!userData) {
-  
+      
         return;
       }
 
       const user = JSON.parse(userData);
     
       if (user.id) {
-      
+   
         setCurrentUser({
           ...user,
           display_name: `${user.first_name} ${user.last_name}`
@@ -44,7 +44,7 @@ const LeaveManagement = () => {
     try {
       setLoading(true);
       const response = await leaveAPI.getMyLeaves();
-  
+    
       setLeaves(response.data.leaves || []);
       
       // Add this to get employee_id:
@@ -107,7 +107,7 @@ const LeaveManagement = () => {
 
       // Export to Excel
       XLSX.writeFile(workbook, fileName);
-
+   
     } catch (error) {
       console.error('❌ Error exporting data:', error);
       alert('Error exporting data. Please try again.');
@@ -154,9 +154,12 @@ const LeaveManagement = () => {
         end_date: formData.end_date
       };
 
+    
       
       const response = await leaveAPI.create(leaveData);
      
+      
+      // Reset form
       setFormData({
         description: '',
         start_date: '',
