@@ -4,10 +4,9 @@ import { incrementPDFService } from "../../../services/incrementPDFService";
 import { employeeAPI } from "../../../services/employeeAPI";
 import { API_BASE_URL } from "../../../services/api";
 import { useLocation } from "react-router-dom";
-import { HiOutlineDocumentText, HiOutlineEye, HiOutlinePlus, HiOutlineTrash } from "react-icons/hi2";
+import { HiOutlineArrowLeft, HiOutlineDocumentText, HiOutlineEye, HiOutlinePlus, HiOutlineTrash } from "react-icons/hi2";
 
 const getEmployeeSelectId = (employee) => employee?.employee_id || employee?.id || employee?.user_id || "";
-
 const getEmployeeCode = (employee) => employee?.employee_code || employee?.employee_id || employee?.id || "";
 
 const getEmployeeName = (employee) => {
@@ -29,13 +28,12 @@ const isEmployeeActive = (employee) => {
   return isActive && status !== "inactive";
 };
 
-const IncrementLetters  = ({ initialEmployee = null }) => {
-    const location = useLocation();
-      const routedEmployee = initialEmployee || location.state?.employee || null;
+const IncrementLetters = ({ initialEmployee = null, onBack = null }) => {
+  const location = useLocation();
+  const routedEmployee = initialEmployee || location.state?.employee || null;
   const [letters, setLetters] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   
@@ -51,6 +49,37 @@ const IncrementLetters  = ({ initialEmployee = null }) => {
     department: "",
     performance_note: ""
   });
+  
+  const currentEmployeeName = routedEmployee ? getEmployeeName(routedEmployee) : null;
+
+  // Auto-populate form when routedEmployee is available
+  useEffect(() => {
+    if (routedEmployee && routedEmployee.employee_id) {
+      
+      setFormData(prev => ({
+        ...prev,
+        employee_id: getEmployeeSelectId(routedEmployee),
+        employee_code: getEmployeeCode(routedEmployee),
+        designation: routedEmployee.designation || routedEmployee.position || "",
+        department: getEmployeeDepartment(routedEmployee),
+        previous_ctc: routedEmployee.ctc || routedEmployee.salary || ""
+      }));
+    }
+  }, [routedEmployee]);
+
+  // When modal opens, ensure form is populated with routed employee
+  useEffect(() => {
+    if (showGenerateModal && routedEmployee && routedEmployee.employee_id) {
+      setFormData(prev => ({
+        ...prev,
+        employee_id: getEmployeeSelectId(routedEmployee),
+        employee_code: getEmployeeCode(routedEmployee),
+        designation: routedEmployee.designation || routedEmployee.position || "",
+        department: getEmployeeDepartment(routedEmployee),
+        previous_ctc: routedEmployee.ctc || routedEmployee.salary || ""
+      }));
+    }
+  }, [showGenerateModal, routedEmployee]);
 
   useEffect(() => {
     fetchData();
@@ -67,7 +96,7 @@ const IncrementLetters  = ({ initialEmployee = null }) => {
       if (lettersResult.status === "fulfilled") {
         setLetters(lettersResult.value.data?.data || []);
       } else {
-        console.error("Error fetching increment letters:", lettersResult.reason);
+      
         setLetters([]);
       }
 
@@ -76,7 +105,7 @@ const IncrementLetters  = ({ initialEmployee = null }) => {
         const employeesList = employeesPayload?.employees || employeesPayload?.data || [];
         setEmployees(Array.isArray(employeesList) ? employeesList.filter(isEmployeeActive) : []);
       } else {
-        console.error("Error fetching employees:", employeesResult.reason);
+       
         setEmployees([]);
       }
     } catch (err) {
@@ -203,15 +232,15 @@ const IncrementLetters  = ({ initialEmployee = null }) => {
 
   const resetForm = () => {
     setFormData({
-      employee_id: "",
-      employee_code: "",
+      employee_id: routedEmployee?.employee_id || "",
+      employee_code: routedEmployee?.employee_code || routedEmployee?.employee_id || "",
       date_of_issue: new Date().toISOString().split('T')[0],
       effective_date: "",
-      previous_ctc: "",
+      previous_ctc: routedEmployee?.ctc || routedEmployee?.salary || "",
       revised_ctc: "",
       currency: "INR",
-      designation: "",
-      department: "",
+      designation: routedEmployee?.designation || routedEmployee?.position || "",
+      department: routedEmployee ? getEmployeeDepartment(routedEmployee) : "",
       performance_note: ""
     });
   };
@@ -232,14 +261,61 @@ const IncrementLetters  = ({ initialEmployee = null }) => {
     }
   };
 
+  // ✅ FIXED: Use filteredLetters instead of letters
+  const filteredLetters = routedEmployee && routedEmployee.employee_id
+    ? letters.filter(letter => 
+        String(letter.employee_id) === String(routedEmployee.employee_id) ||
+        String(letter.user_id) === String(routedEmployee.user_id)
+      )
+    : letters;
+
   return (
     <div style={{ padding: "30px", background: "#f8fafc", minHeight: "100vh" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-        <h2 style={{ fontSize: "24px", fontWeight: "bold", color: "#1e293b", display: "flex", alignItems: "center", gap: "10px", margin: 0 }}>
-          <HiOutlineDocumentText size={28} color="#4f46e5" />
-          Increment Letters
-        </h2>
-        <button onClick={() => setShowGenerateModal(true)} style={{ background: "#4f46e5", color: "white", border: "none", padding: "10px 20px", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "10px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
+          {onBack && (
+            <button 
+              onClick={onBack}
+              style={{ 
+                background: "#f1f5f9", 
+                border: "none", 
+                borderRadius: "8px", 
+                padding: "8px", 
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "5px"
+              }}
+            >
+              <HiOutlineArrowLeft size={20} />
+            </button>
+          )}
+          <h2 style={{ fontSize: "24px", fontWeight: "bold", color: "#1e293b", display: "flex", alignItems: "center", gap: "10px", margin: 0 }}>
+            <HiOutlineDocumentText size={28} color="#4f46e5" />
+            Increment Letters
+            {currentEmployeeName && (
+              <span style={{ fontSize: "18px", color: "#64748b", fontWeight: "normal" }}>
+                - {currentEmployeeName}
+              </span>
+            )}
+          </h2>
+        </div>
+        <button 
+          onClick={() => {
+            if (routedEmployee && routedEmployee.employee_id) {
+              setFormData({
+                ...formData,
+                employee_id: getEmployeeSelectId(routedEmployee),
+                employee_code: getEmployeeCode(routedEmployee),
+                designation: routedEmployee.designation || routedEmployee.position || "",
+                department: getEmployeeDepartment(routedEmployee),
+                previous_ctc: routedEmployee.ctc || routedEmployee.salary || ""
+              });
+            }
+            setShowGenerateModal(true);
+          }} 
+          style={{ background: "#4f46e5", color: "white", border: "none", padding: "10px 20px", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}
+        >
           <HiOutlinePlus size={20} /> Generate Letter
         </button>
       </div>
@@ -256,13 +332,13 @@ const IncrementLetters  = ({ initialEmployee = null }) => {
               <th style={{ padding: "16px", borderBottom: "1px solid #e2e8f0" }}>Revised CTC</th>
               <th style={{ padding: "16px", borderBottom: "1px solid #e2e8f0" }}>Increment %</th>
               <th style={{ padding: "16px", borderBottom: "1px solid #e2e8f0", textAlign: "center" }}>Actions</th>
-            </tr>
+             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               <tr><td colSpan="8" style={{ textAlign: "center", padding: "40px", color: "#64748b" }}>Loading...</td></tr>
-            ) : letters.length > 0 ? (
-              letters.map(letter => (
+            ) : filteredLetters.length > 0 ? (  // ✅ FIXED: Use filteredLetters
+              filteredLetters.map(letter => (
                 <tr key={letter.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                   <td style={{ padding: "16px", fontWeight: "bold", color: "#334155" }}>{letter.ref_number}</td>
                   <td style={{ padding: "16px", color: "#334155" }}>{letter.first_name} {letter.last_name}</td>
@@ -284,21 +360,81 @@ const IncrementLetters  = ({ initialEmployee = null }) => {
                 </tr>
               ))
             ) : (
-              <tr><td colSpan="8" style={{ textAlign: "center", padding: "40px", color: "#64748b" }}>No increment letters issued yet.</td></tr>
+              <tr>
+                <td colSpan="8" style={{ textAlign: "center", padding: "40px", color: "#64748b" }}>
+                  {routedEmployee 
+                    ? `No increment letters issued for ${currentEmployeeName} yet.` 
+                    : "No increment letters issued yet."}
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
       </div>
 
+      {/* Generate Modal with improved styling */}
       {showGenerateModal && (
-        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999 }}>
-          <div style={{ background: "white", padding: "24px", borderRadius: "12px", width: "650px", maxWidth: "90%", maxHeight: "90vh", overflowY: "auto" }}>
-            <h3 style={{ margin: "0 0 20px 0", color: "#1e293b", borderBottom: "1px solid #e2e8f0", paddingBottom: "10px" }}>Generate Increment Letter</h3>
+        <div style={{ 
+          position: "fixed", 
+          top: 0, 
+          left: 0, 
+          right: 0, 
+          bottom: 0, 
+          background: "rgba(0,0,0,0.5)", 
+          display: "flex", 
+          justifyContent: "center", 
+          alignItems: "center", 
+          zIndex: 9999,
+          backdropFilter: "blur(4px)"
+        }}>
+          <div style={{ 
+            background: "white", 
+            padding: "32px", 
+            borderRadius: "16px", 
+            width: "700px", 
+            maxWidth: "90%", 
+            maxHeight: "90vh", 
+            overflowY: "auto",
+            boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)"
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", borderBottom: "2px solid #e2e8f0", paddingBottom: "15px" }}>
+              <h3 style={{ margin: 0, color: "#1e293b", fontSize: "22px", fontWeight: "bold" }}>
+                Generate Increment Letter
+              </h3>
+              <button
+                onClick={() => setShowGenerateModal(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  fontSize: "24px",
+                  cursor: "pointer",
+                  color: "#64748b",
+                  padding: "0 8px"
+                }}
+              >
+                ×
+              </button>
+            </div>
+           
+            
             <form onSubmit={handleGenerateSubmit}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
                 <div style={{ gridColumn: "span 2" }}>
-                  <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", fontSize: "14px" }}>Select Employee *</label>
-                  <select required style={{ width: "100%", padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1" }} value={formData.employee_id} onChange={handleEmployeeSelect}>
+                  <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", fontSize: "14px", color: "#334155" }}>Select Employee *</label>
+                  <select 
+                    required 
+                    style={{ 
+                      width: "100%", 
+                      padding: "10px 12px", 
+                      borderRadius: "8px", 
+                      border: "1px solid #cbd5e1",
+                      backgroundColor: routedEmployee ? "#f1f5f9" : "white",
+                      fontSize: "14px"
+                    }} 
+                    value={formData.employee_id} 
+                    onChange={handleEmployeeSelect}
+                    disabled={!!routedEmployee}
+                  >
                     <option value="">-- Select Employee --</option>
                     {employees.map(emp => (
                       <option key={getEmployeeSelectId(emp)} value={getEmployeeSelectId(emp)}>
@@ -306,66 +442,178 @@ const IncrementLetters  = ({ initialEmployee = null }) => {
                       </option>
                     ))}
                   </select>
+                 
                 </div>
+                
                 <div>
-                  <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", fontSize: "14px" }}>Employee Code *</label>
-                  <input type="text" required style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #cbd5e1" }} value={formData.employee_code} onChange={e => setFormData({...formData, employee_code: e.target.value})} />
+                  <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", fontSize: "14px", color: "#334155" }}>Employee Code *</label>
+                  <input 
+                    type="text" 
+                    required 
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "14px" }} 
+                    value={formData.employee_code} 
+                    onChange={e => setFormData({...formData, employee_code: e.target.value})} 
+                  />
                 </div>
+                
                 <div>
-                  <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", fontSize: "14px" }}>Date of Issue *</label>
-                  <input type="date" required style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #cbd5e1" }} value={formData.date_of_issue} onChange={e => setFormData({...formData, date_of_issue: e.target.value})} />
+                  <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", fontSize: "14px", color: "#334155" }}>Date of Issue *</label>
+                  <input 
+                    type="date" 
+                    required 
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "14px" }} 
+                    value={formData.date_of_issue} 
+                    onChange={e => setFormData({...formData, date_of_issue: e.target.value})} 
+                  />
                 </div>
+                
                 <div>
-                  <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", fontSize: "14px" }}>Effective Date *</label>
-                  <input type="date" required style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #cbd5e1" }} value={formData.effective_date} onChange={e => setFormData({...formData, effective_date: e.target.value})} />
+                  <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", fontSize: "14px", color: "#334155" }}>Effective Date *</label>
+                  <input 
+                    type="date" 
+                    required 
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "14px" }} 
+                    value={formData.effective_date} 
+                    onChange={e => setFormData({...formData, effective_date: e.target.value})} 
+                  />
                 </div>
+                
                 <div>
-                  <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", fontSize: "14px" }}>Previous CTC *</label>
-                  <input type="number" step="0.01" required style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #cbd5e1" }} value={formData.previous_ctc} onChange={e => setFormData({...formData, previous_ctc: e.target.value})} />
+                  <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", fontSize: "14px", color: "#334155" }}>Previous CTC *</label>
+                  <input 
+                    type="number" 
+                    step="0.01" 
+                    required 
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "14px" }} 
+                    value={formData.previous_ctc} 
+                    onChange={e => setFormData({...formData, previous_ctc: e.target.value})} 
+                  />
                 </div>
+                
                 <div>
-                  <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", fontSize: "14px" }}>Revised CTC *</label>
-                  <input type="number" step="0.01" required style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #cbd5e1" }} value={formData.revised_ctc} onChange={e => setFormData({...formData, revised_ctc: e.target.value})} />
+                  <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", fontSize: "14px", color: "#334155" }}>Revised CTC *</label>
+                  <input 
+                    type="number" 
+                    step="0.01" 
+                    required 
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "14px" }} 
+                    value={formData.revised_ctc} 
+                    onChange={e => setFormData({...formData, revised_ctc: e.target.value})} 
+                  />
                 </div>
+                
                 <div>
-                  <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", fontSize: "14px" }}>Currency</label>
-                  <select style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #cbd5e1" }} value={formData.currency} onChange={e => setFormData({...formData, currency: e.target.value})}>
+                  <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", fontSize: "14px", color: "#334155" }}>Currency</label>
+                  <select 
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "14px" }} 
+                    value={formData.currency} 
+                    onChange={e => setFormData({...formData, currency: e.target.value})}
+                  >
                     <option>INR</option>
                     <option>USD</option>
                     <option>EUR</option>
                   </select>
                 </div>
+                
                 <div>
-                  <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", fontSize: "14px" }}>Increment %</label>
-                  <div style={{ padding: "10px", background: "#e8f4f8", borderRadius: "6px", textAlign: "center", color: "#15803d", fontWeight: "bold", fontSize: "16px" }}>
+                  <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", fontSize: "14px", color: "#334155" }}>Increment %</label>
+                  <div style={{ 
+                    padding: "10px", 
+                    background: "#dcfce7", 
+                    borderRadius: "8px", 
+                    textAlign: "center", 
+                    color: "#15803d", 
+                    fontWeight: "bold", 
+                    fontSize: "16px" 
+                  }}>
                     {calculatePercentage()}%
                   </div>
                 </div>
+                
                 <div>
-                  <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", fontSize: "14px" }}>Designation *</label>
-                  <input type="text" required style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #cbd5e1" }} value={formData.designation} onChange={e => setFormData({...formData, designation: e.target.value})} />
+                  <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", fontSize: "14px", color: "#334155" }}>Designation *</label>
+                  <input 
+                    type="text" 
+                    required 
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "14px" }} 
+                    value={formData.designation} 
+                    onChange={e => setFormData({...formData, designation: e.target.value})} 
+                  />
                 </div>
+                
                 <div>
-                  <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", fontSize: "14px" }}>Department *</label>
-                  <input type="text" required style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #cbd5e1" }} value={formData.department} onChange={e => setFormData({...formData, department: e.target.value})} />
+                  <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", fontSize: "14px", color: "#334155" }}>Department *</label>
+                  <input 
+                    type="text" 
+                    required 
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "14px" }} 
+                    value={formData.department} 
+                    onChange={e => setFormData({...formData, department: e.target.value})} 
+                  />
                 </div>
+                
                 <div style={{ gridColumn: "span 2" }}>
-                  <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", fontSize: "14px" }}>Performance Note (Optional)</label>
-                  <textarea rows="3" placeholder="We extend our warm congratulations to you for your outstanding contributions..." style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #cbd5e1" }} value={formData.performance_note} onChange={e => setFormData({...formData, performance_note: e.target.value})} />
+                  <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", fontSize: "14px", color: "#334155" }}>Performance Note (Optional)</label>
+                  <textarea 
+                    rows="3" 
+                    placeholder="We extend our warm congratulations to you for your outstanding contributions..." 
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "14px", fontFamily: "inherit" }} 
+                    value={formData.performance_note} 
+                    onChange={e => setFormData({...formData, performance_note: e.target.value})} 
+                  />
                 </div>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", marginTop: "20px" }}>
-                <button type="button" onClick={() => setShowGenerateModal(false)} style={{ padding: "8px 16px", background: "#f1f5f9", color: "#475569", border: "none", borderRadius: "6px", cursor: "pointer" }}>
+              
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "24px", paddingTop: "16px", borderTop: "1px solid #e2e8f0" }}>
+                <button 
+                  type="button" 
+                  onClick={() => setShowGenerateModal(false)} 
+                  style={{ 
+                    padding: "10px 20px", 
+                    background: "#f1f5f9", 
+                    color: "#475569", 
+                    border: "none", 
+                    borderRadius: "8px", 
+                    cursor: "pointer",
+                    fontWeight: "500",
+                    fontSize: "14px"
+                  }}
+                >
                   Cancel
                 </button>
-                <div style={{ display: "flex", gap: "10px" }}>
-                  <button type="button" onClick={handlePreview} style={{ padding: "8px 16px", background: "#10b981", color: "white", border: "none", borderRadius: "6px", cursor: "pointer" }}>
-                    Preview
-                  </button>
-                  <button type="submit" disabled={isProcessing} style={{ padding: "8px 16px", background: "#4f46e5", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", opacity: isProcessing ? 0.7 : 1 }}>
-                    {isProcessing ? 'Generating...' : 'Generate & Save'}
-                  </button>
-                </div>
+                <button 
+                  type="button" 
+                  onClick={handlePreview} 
+                  style={{ 
+                    padding: "10px 20px", 
+                    background: "#10b981", 
+                    color: "white", 
+                    border: "none", 
+                    borderRadius: "8px", 
+                    cursor: "pointer",
+                    fontWeight: "500",
+                    fontSize: "14px"
+                  }}
+                >
+                  Preview
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={isProcessing} 
+                  style={{ 
+                    padding: "10px 20px", 
+                    background: "#4f46e5", 
+                    color: "white", 
+                    border: "none", 
+                    borderRadius: "8px", 
+                    cursor: "pointer", 
+                    opacity: isProcessing ? 0.7 : 1,
+                    fontWeight: "500",
+                    fontSize: "14px"
+                  }}
+                >
+                  {isProcessing ? 'Generating...' : 'Generate & Save'}
+                </button>
               </div>
             </form>
           </div>
