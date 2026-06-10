@@ -19,6 +19,13 @@
   margin-bottom: 18px;
 }
 
+.employee-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .employee-home-header span {
   display: block;
   color: #2563eb;
