@@ -1,4 +1,6 @@
-// backend/controllers/leaveController.js
+// backend/src/features/leave/leaveController.js
+const fs = require('fs');
+const path = require('path');
 const Leave = require('./leaveModel');
 const { pool } = require('../../config/db'); 
 
@@ -83,12 +85,27 @@ const leaveController = {
                 return res.status(400).json({ message: 'End date cannot be before start date' });
             }
 
+            // Handle optional medical document upload
+            let documentPath = null;
+            if (req.file) {
+                const ext = path.extname(req.file.originalname).toLowerCase();
+                const fileName = `leave_${Date.now()}_${employee_id}${ext}`;
+                const uploadDir = path.join(__dirname, '../../../uploads/leave-documents');
+                if (!fs.existsSync(uploadDir)) {
+                    fs.mkdirSync(uploadDir, { recursive: true });
+                }
+                const filePath = path.join(uploadDir, fileName);
+                fs.writeFileSync(filePath, req.file.buffer);
+                documentPath = `uploads/leave-documents/${fileName}`;
+            }
+
             const leaveId = await Leave.create(req.tenantId, {
                 employee_id,
                 leave_type: leave_type || 'Casual',
                 description,
                 start_date,
-                end_date
+                end_date,
+                medical_document: documentPath
             });
 
             res.status(201).json({
@@ -100,6 +117,41 @@ const leaveController = {
             res.status(400).json({ message: error.message || 'Server error while creating leave request' });
         }
     },
+
+    // Stream / view medical document (admin only)
+    getDocument: async (req, res) => {
+        try {
+            const { leaveId } = req.params;
+            const [rows] = await pool.execute(
+                'SELECT medical_document FROM leave_requests WHERE leave_id = ? AND tenant_id = ?',
+                [leaveId, req.tenantId]
+            );
+
+            if (rows.length === 0) {
+                return res.status(404).json({ message: 'Leave request not found' });
+            }
+
+            const docPath = rows[0].medical_document;
+            if (!docPath) {
+                return res.status(404).json({ message: 'No document attached to this leave request' });
+            }
+
+            const absolutePath = path.join(__dirname, '../../../', docPath);
+            if (!fs.existsSync(absolutePath)) {
+                return res.status(404).json({ message: 'Document file not found on server' });
+            }
+
+            const ext = path.extname(absolutePath).toLowerCase();
+            const mimeMap = { '.pdf': 'application/pdf', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif', '.webp': 'image/webp' };
+            res.setHeader('Content-Type', mimeMap[ext] || 'application/octet-stream');
+            res.setHeader('Content-Disposition', `inline; filename="medical_doc_leave${leaveId}${ext}"`);
+            fs.createReadStream(absolutePath).pipe(res);
+        } catch (error) {
+            console.error('Get document error:', error);
+            res.status(500).json({ message: 'Server error while fetching document' });
+        }
+    },
+
 
     // Get employee attendance history
     getEmployeeAttendanceHistory: async (req, res) => {

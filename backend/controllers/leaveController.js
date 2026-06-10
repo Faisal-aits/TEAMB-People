@@ -1,6 +1,8 @@
 // backend/controllers/leaveController.js
 const Leave = require('../models/leaveModel');
-const pool = require('../config/database'); // Add this import
+const pool = require('../config/database');
+const fs = require('fs');
+const path = require('path');
 
 const leaveController = {
     // Get all leave requests
@@ -34,7 +36,7 @@ const leaveController = {
             const [employeeRows] = await pool.execute(
                 `SELECT ed.id as employee_id 
                 FROM employee_details ed 
-                WHERE ed.user_id = ?`,
+                WHERE ed.employee_id = ?`,
                 [user_id]
             );
 
@@ -50,7 +52,7 @@ const leaveController = {
 
             res.json({
                 leaves: leaves || [],
-                employee_id: employee_id  // Add this line
+                employee_id: employee_id
             });
         } catch (error) {
             console.error('Get my leaves error:', error);
@@ -59,15 +61,15 @@ const leaveController = {
     },
 
     // Create new leave request
-
     createLeave: async (req, res) => {
         try {
             console.log('=== LEAVE CREATE REQUEST START ===');
             console.log('Request body:', req.body);
+            console.log('Request file:', req.file ? req.file.originalname : 'none');
             console.log('User data from auth:', req.user);
 
-            const { description, start_date, end_date } = req.body;
-            const user_id = req.user.id; // This is the numeric users.id from auth
+            const { description, start_date, end_date, leave_type } = req.body;
+            const user_id = req.user.id;
 
             console.log('Authenticated user_id:', user_id);
 
@@ -75,7 +77,7 @@ const leaveController = {
             const [employeeRows] = await pool.execute(
                 `SELECT ed.id as employee_id 
                 FROM employee_details ed 
-                WHERE ed.user_id = ?`,
+                WHERE ed.employee_id = ?`,
                 [user_id]
             );
 
@@ -100,12 +102,37 @@ const leaveController = {
                 return res.status(400).json({ message: 'End date cannot be before start date' });
             }
 
-            console.log('Calling Leave.create with:', { employee_id, description, start_date, end_date });
+            // Handle medical document upload for Sick / Maternity leaves
+            let documentPath = null;
+            const requiresDocument = ['Sick', 'Medical', 'Maternity'].includes(leave_type);
+
+            if (req.file) {
+                // Save file to disk
+                const ext = path.extname(req.file.originalname).toLowerCase() || '.bin';
+                const fileName = `leave_${Date.now()}_${employee_id}${ext}`;
+                const uploadDir = path.join(__dirname, '../uploads/leave-documents');
+
+                if (!fs.existsSync(uploadDir)) {
+                    fs.mkdirSync(uploadDir, { recursive: true });
+                }
+
+                const filePath = path.join(uploadDir, fileName);
+                fs.writeFileSync(filePath, req.file.buffer);
+
+                documentPath = `/uploads/leave-documents/${fileName}`;
+                console.log('✅ Medical document saved to:', documentPath);
+            } else if (requiresDocument) {
+                console.log('⚠️  No document uploaded for leave type:', leave_type, '(optional but recommended)');
+            }
+
+            console.log('Calling Leave.create with:', { employee_id, leave_type, description, start_date, end_date, documentPath });
             const leaveId = await Leave.create(req.tenantId, {
                 employee_id,
+                leave_type: leave_type || 'Casual',
                 description,
                 start_date,
-                end_date
+                end_date,
+                medical_document: documentPath
             });
 
             console.log('✅ Leave created successfully with ID:', leaveId);
@@ -113,12 +140,65 @@ const leaveController = {
 
             res.status(201).json({
                 message: 'Leave request submitted successfully!',
-                leave_id: leaveId
+                leave_id: leaveId,
+                has_document: !!documentPath
             });
         } catch (error) {
             console.error('Create leave error:', error);
             console.error('Error stack:', error.stack);
             res.status(500).json({ message: 'Server error while creating leave request: ' + error.message });
+        }
+    },
+
+    // Stream / serve medical document (ADMIN ONLY)
+    getDocument: async (req, res) => {
+        try {
+            const { leaveId } = req.params;
+
+            // Fetch only the document path for this leave
+            const [rows] = await pool.execute(
+                `SELECT medical_document, employee_id FROM leave_requests WHERE leave_id = ? AND tenant_id = ?`,
+                [leaveId, req.tenantId]
+            );
+
+            if (rows.length === 0) {
+                return res.status(404).json({ message: 'Leave request not found' });
+            }
+
+            const { medical_document } = rows[0];
+
+            if (!medical_document) {
+                return res.status(404).json({ message: 'No document attached to this leave request' });
+            }
+
+            // Build absolute file path
+            const absolutePath = path.join(__dirname, '..', medical_document);
+
+            if (!fs.existsSync(absolutePath)) {
+                console.error('Document file missing on disk:', absolutePath);
+                return res.status(404).json({ message: 'Document file not found on server' });
+            }
+
+            // Determine content type from file extension
+            const ext = path.extname(absolutePath).toLowerCase();
+            const mimeTypes = {
+                '.pdf': 'application/pdf',
+                '.jpg': 'image/jpeg',
+                '.jpeg': 'image/jpeg',
+                '.png': 'image/png',
+                '.gif': 'image/gif',
+                '.webp': 'image/webp'
+            };
+            const contentType = mimeTypes[ext] || 'application/octet-stream';
+
+            res.setHeader('Content-Type', contentType);
+            res.setHeader('Content-Disposition', `inline; filename="leave_document_${leaveId}${ext}"`);
+
+            const fileStream = fs.createReadStream(absolutePath);
+            fileStream.pipe(res);
+        } catch (error) {
+            console.error('Get document error:', error);
+            res.status(500).json({ message: 'Server error while fetching document' });
         }
     },
 
@@ -151,7 +231,7 @@ const leaveController = {
             const [adminEmployeeRows] = await pool.execute(
                 `SELECT ed.id as employee_id 
              FROM employee_details ed 
-             WHERE ed.user_id = ?`,
+             WHERE ed.employee_id = ?`,
                 [user_id]
             );
 
@@ -185,7 +265,7 @@ const leaveController = {
             const [adminEmployeeRows] = await pool.execute(
                 `SELECT ed.id as employee_id 
              FROM employee_details ed 
-             WHERE ed.user_id = ?`,
+             WHERE ed.employee_id = ?`,
                 [user_id]
             );
 
@@ -213,7 +293,22 @@ const leaveController = {
         try {
             const { leaveId } = req.params;
 
+            // Fetch document path before deleting so we can clean up the file
+            const [rows] = await pool.execute(
+                'SELECT medical_document FROM leave_requests WHERE leave_id = ? AND tenant_id = ?',
+                [leaveId, req.tenantId]
+            );
+
             await Leave.delete(req.tenantId, leaveId);
+
+            // Delete file from disk if present
+            if (rows.length > 0 && rows[0].medical_document) {
+                const absolutePath = path.join(__dirname, '..', rows[0].medical_document);
+                if (fs.existsSync(absolutePath)) {
+                    fs.unlinkSync(absolutePath);
+                    console.log('Deleted medical document file:', absolutePath);
+                }
+            }
 
             res.json({ message: 'Leave request deleted successfully!' });
         } catch (error) {

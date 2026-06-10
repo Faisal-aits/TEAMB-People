@@ -595,3 +595,244 @@
     width: 100%;
   }
 }
+
+/* ============================================================
+   MEDICAL DOCUMENT UPLOAD STYLES
+   ============================================================ */
+
+/* Leave type cell in table */
+.leave-type-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-weight: 600;
+  color: #4a5568;
+  font-size: 0.8rem;
+}
+
+/* 📎 badge shown next to leave type when a document is attached */
+.leave-doc-badge {
+  font-size: 0.85rem;
+  cursor: default;
+  flex-shrink: 0;
+}
+
+/* File upload wrapper */
+.leave-file-upload-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/* Native file input — styled minimally */
+.leave-file-input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1.5px dashed #cbd5e0;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  background: #f7fafc;
+  cursor: pointer;
+  transition: border-color 0.25s ease;
+}
+
+.leave-file-input:hover {
+  border-color: #8a87c9;
+  background: rgba(138, 135, 201, 0.04);
+}
+
+/* Row shown after a file is selected */
+.leave-file-selected {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  background: rgba(72, 187, 120, 0.08);
+  border: 1px solid rgba(72, 187, 120, 0.3);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: #2f855a;
+  font-weight: 500;
+}
+
+.leave-file-size {
+  color: #718096;
+  font-size: 0.75rem;
+}
+
+/* Remove-file button */
+.leave-file-remove-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #e53e3e;
+  font-size: 0.85rem;
+  padding: 0 0.25rem;
+  line-height: 1;
+  border-radius: 50%;
+  transition: background 0.2s ease;
+}
+
+.leave-file-remove-btn:hover {
+  background: rgba(229, 62, 62, 0.1);
+}
+
+/* Validation error */
+.leave-file-error {
+  color: #e53e3e;
+  font-size: 0.78rem;
+  margin: 0;
+}
+
+/* ============================================================
+   MINIMIZED LEAVE BALANCES WIDGET STYLES
+   ============================================================ */
+
+.leave-balances-container {
+  margin-bottom: 1.5rem;
+  padding: 0 1rem;
+}
+
+.leave-balances-header-compact {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.leave-balances-title-compact {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #718096;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.leave-balances-grid-compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.leave-balance-card-compact {
+  background: white;
+  border-radius: 8px;
+  padding: 0.75rem 1rem 0.9rem 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+  min-width: 160px;
+  max-width: 240px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: help;
+}
+
+.leave-balance-card-compact:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.06);
+  border-color: #cbd5e0;
+}
+
+.leave-balance-card-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.leave-balance-type-compact {
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: #2d3748;
+}
+
+.leave-balance-progress-text-compact {
+  font-size: 0.68rem;
+  color: #718096;
+}
+
+.leave-balance-card-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.1;
+}
+
+.leave-balance-remaining-num-compact {
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: #1a202c;
+}
+
+.leave-balance-remaining-label-compact {
+  font-size: 0.6rem;
+  color: #718096;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* Thin Progress Bar at bottom */
+.leave-balance-progress-bar-compact {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #edf2f7;
+}
+
+.leave-balance-progress-fill-compact {
+  height: 100%;
+  transition: width 0.4s ease-out;
+}
+
+/* Compact Themes */
+.theme-casual .leave-balance-progress-fill-compact {
+  background: linear-gradient(to right, #8a87c9, #d4a3d2);
+}
+.theme-casual:hover {
+  border-left: 3px solid #8a87c9;
+}
+
+.theme-sick .leave-balance-progress-fill-compact {
+  background: linear-gradient(to right, #e53e3e, #f56565);
+}
+.theme-sick:hover {
+  border-left: 3px solid #e53e3e;
+}
+
+.theme-maternity .leave-balance-progress-fill-compact {
+  background: linear-gradient(to right, #d53f8c, #ed64a6);
+}
+.theme-maternity:hover {
+  border-left: 3px solid #d53f8c;
+}
+
+.theme-earned .leave-balance-progress-fill-compact {
+  background: linear-gradient(to right, #319795, #4fd1c5);
+}
+.theme-earned:hover {
+  border-left: 3px solid #319795;
+}
+
+.theme-unpaid .leave-balance-progress-fill-compact {
+  background: linear-gradient(to right, #dd6b20, #f6ad55);
+}
+.theme-unpaid:hover {
+  border-left: 3px solid #dd6b20;
+}
+
+.theme-compensatory .leave-balance-progress-fill-compact {
+  background: linear-gradient(to right, #3182ce, #63b3ed);
+}
+.theme-compensatory:hover {
+  border-left: 3px solid #3182ce;
+}
+
