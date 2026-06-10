@@ -69,6 +69,12 @@ const ChevronRightIcon2 = () => (
     </svg>
   );
 
+ const TicketsIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M22 10V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v4a3 3 0 0 1 0 6v4a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-4a3 3 0 0 1 0-6zM4 6h16v2.42c-1.39.81-2 2.3-2 3.58s.61 2.77 2 3.58V18H4v-2.42c1.39-.81 2-2.3 2-3.58s-.61-2.77-2-3.58V6z" fill="currentColor" />
+    </svg>
+  );
+
 
 const EmployeeLayout = () => {
   const [activeTab, setActiveTab] = useState(() => {
@@ -90,6 +96,7 @@ const [showAttendanceMenu, setShowAttendanceMenu] = useState(false);
   const canAccessPttm = hasModuleAccess(user, 'pttm');
   const canAccessEmployeeAttendance = hasModuleAccess(user, 'employee_attendance');
   const canAccessEmployeeProjects = hasModuleAccess(user, 'employee_projects');
+  const canAccessEmployeeTickets = hasModuleAccess(user, 'employee_tickets');
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, activeTab);

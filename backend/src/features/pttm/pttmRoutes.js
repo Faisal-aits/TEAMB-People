@@ -30,10 +30,22 @@ router.get('/phases', pttmController.getPhases);
 router.post('/phases', requireModuleAccess('pttm', 'write'), pttmController.createPhase);
 router.delete('/phases/:id', requireModuleAccess('pttm', 'write'), pttmController.deletePhase);
 
+// Modules
+router.get('/modules', pttmController.getModules);
+router.post('/modules', requireModuleAccess('pttm', 'write'), pttmController.createModule);
+router.put('/modules/:id', requireModuleAccess('pttm', 'write'), pttmController.updateModule);
+router.delete('/modules/:id', requireModuleAccess('pttm', 'write'), pttmController.deleteModule);
+
 // Tasks
 router.get('/tasks', pttmController.getTasks);
 router.post('/tasks', requireModuleAccess('pttm', 'write'), pttmController.createTask);
 router.post('/tasks/insert', requireModuleAccess('pttm', 'write'), pttmController.insertTask);
+
+// Review workflow — named routes MUST come before /:id param routes
+router.get('/tasks/pending-review', pttmController.getPendingReviewTasks);
+router.post('/tasks/:id/submit-review', requireModuleAccess('pttm', 'write'), pttmController.submitForReview);
+router.post('/tasks/:id/review', requireModuleAccess('pttm', 'write'), pttmController.reviewTask);
+
 router.put('/tasks/:id', requireModuleAccess('pttm', 'write'), pttmController.updateTask);
 router.patch('/tasks/:id', requireModuleAccess('pttm', 'write'), pttmController.patchTaskField);
 router.delete('/tasks/:id', requireModuleAccess('pttm', 'write'), pttmController.deleteTask);

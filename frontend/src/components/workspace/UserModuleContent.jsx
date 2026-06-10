@@ -24,6 +24,7 @@ import EmployeePersonalInfo from '../../pages/employees/EmployeePersonalInfo';
 import EmployeeLeave from '../../pages/employees/EmployeeLeave';
 import EmployeeExpense from '../../pages/employees/EmployeeExpense';
 import EmployeeProjects from '../../pages/employees/EmployeeProjects';
+import EmployeeTickets from '../../pages/employees/EmployeeTickets';
 const UserModuleContent = ({ activeTab, navigateToTab, DashboardComponent }) => {
   const { user } = useAuth();
   const { isReadOnly } = useModuleAccess();
@@ -50,6 +51,7 @@ const UserModuleContent = ({ activeTab, navigateToTab, DashboardComponent }) => 
   const canAccessEmployeeLeave = hasModuleAccess(user, 'employee_attendance');
   const canAccessEmployeeExpense = hasModuleAccess(user, 'employee_expense');
   const canAccessEmployeeProjects = hasModuleAccess(user, 'employee_projects');
+  const canAccessEmployeeTickets = hasModuleAccess(user, 'employee_tickets');
 
   const mainClass = `dashboard-main${isReadOnly ? ' module-readonly' : ''}`;
 
@@ -90,6 +92,9 @@ const UserModuleContent = ({ activeTab, navigateToTab, DashboardComponent }) => 
       )}
       {activeTab === 'employee-projects' && canAccessEmployeeProjects && (
         <EmployeeProjects />
+      )}
+      {activeTab === 'employee-tickets' && canAccessEmployeeTickets && (
+        <EmployeeTickets />
       )}
     </main>
   );

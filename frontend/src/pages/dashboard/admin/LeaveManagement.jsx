@@ -1,6 +1,6 @@
 // src/pages/dashboard/admin/LeaveManagement.jsx
 import React, { useState, useEffect } from 'react';
-import { FaExclamationTriangle, FaCheck, FaTimes } from 'react-icons/fa';
+import { FaExclamationTriangle, FaPaperclip } from 'react-icons/fa';
 import { leaveAPI } from '../../../services/leaveAPI';
 import './Leave.css';
 
@@ -41,7 +41,7 @@ const LeaveManagement = () => {
       setLoading(true);
       const response = await leaveAPI.getAll(filters);
       const { leaves, statistics } = response.data;
-      
+
       setLeaveData(leaves || []);
       setLeaveStats({
         totalPending: statistics.pending || 0,
@@ -53,6 +53,18 @@ const LeaveManagement = () => {
       alert('Error loading leave data. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Open medical document in a new tab
+  const handleViewDocument = async (leaveId) => {
+    try {
+      const blobUrl = await leaveAPI.getDocument(leaveId);
+      window.open(blobUrl, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      console.error('Error fetching document:', error);
+      const msg = error.response?.data?.message || 'Could not load document. Please try again.';
+      alert(msg);
     }
   };
 
@@ -289,20 +301,21 @@ const LeaveManagement = () => {
           <table className="leave-main-table" style={{ width: '100%'}}>
             <thead>
               <tr>
-                <th style={{width: '20%'}}>Employee Name</th>
-                <th style={{width: '25%'}}>Description</th>
-                <th style={{width: '15%'}}>From - To</th>
-                <th style={{width: '10%'}}>Duration</th>
-                <th style={{width: '10%'}}>Status</th>
-                <th style={{width: '20%'}}>Actions</th>
+                <th style={{width: '18%'}}>Employee Name</th>
+                <th style={{width: '12%'}}>Leave Type</th>
+                <th style={{width: '22%'}}>Description</th>
+                <th style={{width: '14%'}}>From - To</th>
+                <th style={{width: '8%'}}>Duration</th>
+                <th style={{width: '8%'}}>Status</th>
+                <th style={{width: '18%'}}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {leaveData.map(leave => (
                 <tr key={leave.leave_id}>
-                  <td style={{width: '20%'}}>
+                  <td style={{width: '18%'}}>
                     <div className="leave-name-cell">
-                      <div 
+                      <div
                         className="leave-name-text leave-clickable"
                         onClick={() => handleViewAttendanceHistory(leave)}
                       >
@@ -313,26 +326,42 @@ const LeaveManagement = () => {
                       </div>
                     </div>
                   </td>
-                  <td style={{width: '25%'}}>
+                  <td style={{width: '12%'}}>
+                    <div className="leave-type-cell">
+                      {leave.leave_type || 'Casual'}
+                    </div>
+                  </td>
+                  <td style={{width: '22%'}}>
                     <div className="leave-description-cell">
                       {leave.description || '-'}
                     </div>
                   </td>
-                  <td style={{width: '15%'}}>
+                  <td style={{width: '14%'}}>
                     <div className="leave-duration-cell">
                       {formatDate(leave.start_date)} - {formatDate(leave.end_date)}
                     </div>
                   </td>
-                  <td style={{width: '10%'}}>
+                  <td style={{width: '8%'}}>
                     <div className="leave-days-cell">
                       {leave.total_days || calculateDuration(leave.start_date, leave.end_date)}
                     </div>
                   </td>
-                  <td style={{width: '10%'}}>
+                  <td style={{width: '8%'}}>
                     {getStatusBadgeClass(leave.status)}
                   </td>
-                  <td style={{width: '20%'}}>
+                  <td style={{width: '18%'}}>
                     <div className="leave-actions-container">
+                      {/* View Attachment button — shown whenever a document is attached */}
+                      {leave.has_document ? (
+                        <button
+                          onClick={() => handleViewDocument(leave.leave_id)}
+                          className="leave-action-btn leave-doc-btn"
+                          title="View Medical Document"
+                        >
+                          <FaPaperclip style={{ marginRight: '4px' }} />
+                          Attachment
+                        </button>
+                      ) : null}
                       {leave.status === 'Pending' && (
                         <>
                           <button

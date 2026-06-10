@@ -6,18 +6,12 @@ const Leave = {
    // Create new leave request
     create: async (tenantId, leaveData) => {
         try {
-            const { employee_id, description, start_date, end_date } = leaveData;
-            
-            // Calculate total days
-            const start = new Date(start_date);
-            const end = new Date(end_date);
-            const diffTime = Math.abs(end - start);
-            const total_days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+            const { employee_id, leave_type, description, start_date, end_date, medical_document } = leaveData;
 
             const [result] = await pool.execute(
-                `INSERT INTO leave_requests (tenant_id, employee_id, description, start_date, end_date, status) 
-                 VALUES (?, ?, ?, ?, ?, 'Pending')`,
-                [tenantId, employee_id, description, start_date, end_date]
+                `INSERT INTO leave_requests (tenant_id, employee_id, leave_type, description, start_date, end_date, medical_document, status) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, 'Pending')`,
+                [tenantId, employee_id, leave_type || 'Casual', description, start_date, end_date, medical_document || null]
             );
 
             return result.insertId;
@@ -34,6 +28,7 @@ const Leave = {
                 SELECT 
                     lr.leave_id,
                     lr.employee_id,
+                    lr.leave_type,
                     lr.description,
                     lr.start_date,
                     lr.end_date,
@@ -42,7 +37,8 @@ const Leave = {
                     lr.approved_by,
                     lr.approved_at,
                     lr.created_at,
-                    lr.updated_at
+                    lr.updated_at,
+                    CASE WHEN lr.medical_document IS NOT NULL THEN 1 ELSE 0 END as has_document
                 FROM leave_requests lr
                 WHERE lr.employee_id = ? AND lr.tenant_id = ?
                 ORDER BY lr.created_at DESC
@@ -65,6 +61,7 @@ const Leave = {
                     lr.employee_id,
                     ed.id as employee_code,
                     CONCAT(u.first_name, ' ', u.last_name) as employee_name,
+                    lr.leave_type,
                     lr.description,
                     lr.start_date,
                     lr.end_date,
@@ -72,10 +69,11 @@ const Leave = {
                     lr.status,
                     lr.approved_by,
                     DATE_FORMAT(lr.approved_at, '%Y-%m-%d %h:%i %p') as approved_at,
-                    lr.created_at
+                    lr.created_at,
+                    CASE WHEN lr.medical_document IS NOT NULL THEN 1 ELSE 0 END as has_document
                 FROM leave_requests lr
                 JOIN employee_details ed ON lr.employee_id = ed.id
-                JOIN users u ON ed.user_id = u.id
+                JOIN users u ON ed.employee_id = u.id
                 WHERE 1=1 AND lr.tenant_id = ?
             `;
             
@@ -299,7 +297,7 @@ const Leave = {
                     lr.created_at
                 FROM leave_requests lr
                 JOIN employee_details ed ON lr.employee_id = ed.id
-                JOIN users u ON ed.user_id = u.id
+                JOIN users u ON ed.employee_id = u.id
                 WHERE lr.leave_id = ? AND lr.tenant_id = ?
             `;
             

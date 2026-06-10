@@ -136,12 +136,55 @@ const pttmController = {
     }
   },
 
+  // 5b. Modules
+  async getModules(req, res, next) {
+    try {
+      const tenantId = getTenantId(req);
+      const modules = await pttmModel.getModules(tenantId);
+      return res.json(modules);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async createModule(req, res, next) {
+    try {
+      const tenantId = getTenantId(req);
+      if (!req.body.name) return res.status(400).json({ error: 'Module name is required' });
+      const module = await pttmModel.createModule(req.body, tenantId);
+      return res.status(201).json(module);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async updateModule(req, res, next) {
+    try {
+      const tenantId = getTenantId(req);
+      const module = await pttmModel.updateModule(req.params.id, req.body, tenantId);
+      if (!module) return res.status(404).json({ error: 'Module not found' });
+      return res.json(module);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async deleteModule(req, res, next) {
+    try {
+      const tenantId = getTenantId(req);
+      await pttmModel.deleteModule(req.params.id, tenantId);
+      return res.json({ ok: true });
+    } catch (err) {
+      next(err);
+    }
+  },
+
   // 6. Tasks
   async getTasks(req, res, next) {
     try {
       const tenantId = getTenantId(req);
       const filters = {};
-      const fields = ['project_id', 'phase_id', 'team_id', 'assigned_user_id', 'team_leader_id', 'status', 'search', 'date_from', 'date_to'];
+      const fields = ['project_id', 'phase_id', 'module_id', 'team_id', 'assigned_user_id', 'team_leader_id', 'status', 'search', 'date_from', 'date_to'];
       fields.forEach(field => {
         if (req.query[field]) {
           filters[field] = req.query[field];
@@ -215,6 +258,60 @@ const pttmController = {
       const { task = {}, after_id = null, before_id = null } = req.body;
       const inserted = await pttmModel.insertTask(task, after_id, before_id, tenantId);
       return res.status(201).json(inserted);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  // 6b. Review Workflow
+
+  /**
+   * GET /pttm/tasks/pending-review
+   * Returns tasks with review_status='Pending Review'.
+   * Optional query param: ?team_leader_id=xxx to filter by leader.
+   */
+  async getPendingReviewTasks(req, res, next) {
+    try {
+      const tenantId = getTenantId(req);
+      const teamLeaderId = req.query.team_leader_id || null;
+      const tasks = await pttmModel.getPendingReviewTasks(tenantId, teamLeaderId);
+      return res.json(tasks);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  /**
+   * POST /pttm/tasks/:id/submit-review
+   * Employee marks task as submitted for team leader review.
+   */
+  async submitForReview(req, res, next) {
+    try {
+      const tenantId = getTenantId(req);
+      const task = await pttmModel.submitForReview(req.params.id, tenantId);
+      if (!task) return res.status(404).json({ error: 'Task not found' });
+      return res.json(task);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  /**
+   * POST /pttm/tasks/:id/review
+   * Team leader approves or rejects a task.
+   * Body: { action: 'approve' | 'reject', notes?: string }
+   */
+  async reviewTask(req, res, next) {
+    try {
+      const tenantId = getTenantId(req);
+      const { action, notes } = req.body;
+      if (!action || !['approve', 'reject'].includes(action)) {
+        return res.status(400).json({ error: 'action must be "approve" or "reject"' });
+      }
+      const reviewerId = req.user?.id || null;
+      const task = await pttmModel.reviewTask(req.params.id, tenantId, reviewerId, action, notes || '');
+      if (!task) return res.status(404).json({ error: 'Task not found' });
+      return res.json(task);
     } catch (err) {
       next(err);
     }

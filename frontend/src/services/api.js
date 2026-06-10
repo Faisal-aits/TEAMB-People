@@ -17,11 +17,11 @@ api.interceptors.request.use(
     }
 
     if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
-      if (typeof config.headers.delete === 'function') {
-        config.headers.delete('Content-Type');
+      if (typeof config.headers.set === 'function') {
+        config.headers.set('Content-Type', undefined);
       } else {
-        delete config.headers['Content-Type'];
-        delete config.headers['content-type'];
+        config.headers['Content-Type'] = undefined;
+        config.headers['content-type'] = undefined;
       }
     }
     

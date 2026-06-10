@@ -26,6 +26,8 @@ export const MODULE_KEYS = {
   EMPLOYEE_ATTENDANCE: 'employee_attendance',
   EMPLOYEE_EXPENSE: 'employee_expense',
   EMPLOYEE_PROJECTS: 'employee_projects',
+  TICKET_MANAGEMENT: 'ticket_management',
+  EMPLOYEE_TICKETS: 'employee_tickets',
 };
 
 export const MODULE_PARENT_KEYS = {
@@ -87,6 +89,7 @@ const DEFAULT_EMPLOYEE_MODULES = [
   MODULE_KEYS.EMPLOYEE_ATTENDANCE,
   MODULE_KEYS.EMPLOYEE_EXPENSE,
   MODULE_KEYS.EMPLOYEE_PROJECTS,
+  MODULE_KEYS.EMPLOYEE_TICKETS,
 ];
 
 const accessMeetsLevel = (access, minLevel) => {

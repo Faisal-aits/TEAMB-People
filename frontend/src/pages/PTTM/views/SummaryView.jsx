@@ -23,7 +23,7 @@ export default function SummaryView({ openDocFlow, openProjectTeams, openProject
 
   const handleExport = () => {
     const rows = projects.map(p => {
-      const pt = tasks.filter(t => t.project_id === p.id);
+      const pt = tasks.filter(t => String(t.project_id) === String(p.id));
       const pc = pt.filter(t => t.status === 'Completed').length;
       const ip = pt.filter(t => t.status === 'In Progress').length;
       const pending = pt.filter(t => t.status === 'Pending').length;
@@ -81,26 +81,28 @@ export default function SummaryView({ openDocFlow, openProjectTeams, openProject
       <div className="sgrid">
         <div className="scard" style={{ gridColumn: '1/-1', background: '#f0f8f3', borderColor: 'var(--xl-green)' }}>
           <h3 style={{ color: 'var(--xl-green)', borderColor: 'var(--xl-green-h)' }}>🏢 Overall Overview</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 8, textAlign: 'center', margin: '8px 0' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 8, textAlign: 'center', margin: '8px 0' }}>
             <Stat n={tasks.length} label="📋 Total Tasks" color="#217346" />
+            <Stat n={phases.length} label="📍 Total Phases" color="#3d0c91" />
             <Stat n={completed} label="✅ Completed" color="#0a3622" />
             <Stat n={tasks.filter(t => t.status === 'In Progress').length} label="🔄 In Progress" color="#084298" />
             <Stat n={tasks.filter(t => t.status === 'Pending').length} label="⏳ Pending" color="#856404" />
-            <Stat n={projects.length} label="📁 Projects" color="#555" />
+            <Stat n={projects.filter(p => p.status !== 'Completed').length} label="🚀 Active Projects" color="#e67e22" />
+            <Stat n={projects.length} label="📁 Total Projects" color="#555" />
           </div>
           <div className="pbar"><div className="pfill" style={{ width: `${progress}%` }} /></div>
           <div style={{ fontSize: 11, color: '#666', textAlign: 'right', marginTop: 3 }}>{progress}% Overall Completion</div>
         </div>
         {projects.map(p => {
-          const pt = tasks.filter(t => t.project_id === p.id);
+          const pt = tasks.filter(t => String(t.project_id) === String(p.id));
           const pc = pt.filter(t => t.status === 'Completed').length;
           const pct = pt.length ? Math.round((pc / pt.length) * 100) : 0;
-          const projectPhases = phases.filter(ph => ph.project_id === p.id);
+          const projectPhases = phases.filter(ph => String(ph.project_id) === String(p.id));
           return (
             <div className="scard" key={p.id}>
               <h3>{p.name}</h3>
               <div className="sstat"><span>Status</span><span style={{ color: statusColor(p.status), fontWeight: 600, fontSize: 12 }}>{p.status}</span></div>
-              <div className="sstat"><span>Teams</span><span>{teams.filter(t => t.project_id === p.id).length}</span></div>
+              <div className="sstat"><span>Teams</span><span>{teams.filter(t => String(t.project_id) === String(p.id)).length}</span></div>
               <div className="sstat"><span>Phases</span><span>{projectPhases.length}</span></div>
               <div className="sstat"><span>Total Tasks</span><span><b>{pt.length}</b></span></div>
               <div className="sstat" style={{ color: 'var(--status-ct)' }}><span>✅ Completed</span><span>{pc}</span></div>

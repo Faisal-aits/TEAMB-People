@@ -388,3 +388,116 @@
     width: 100%;
   }
 }
+
+/* ============================================================
+   MEDICAL DOCUMENT UPLOAD STYLES
+   ============================================================ */
+
+/* Leave type cell in table */
+.leave-type-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-weight: 600;
+  color: #4a5568;
+  font-size: 0.8rem;
+}
+
+/* 📎 badge shown next to leave type when a document is attached */
+.leave-doc-badge {
+  font-size: 0.85rem;
+  cursor: default;
+  flex-shrink: 0;
+}
+
+/* File upload wrapper */
+.leave-file-upload-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/* Native file input — styled minimally */
+.leave-file-input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1.5px dashed #cbd5e0;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  background: #f7fafc;
+  cursor: pointer;
+  transition: border-color 0.25s ease;
+}
+
+.leave-file-input:hover {
+  border-color: #8a87c9;
+  background: rgba(138, 135, 201, 0.04);
+}
+
+/* Row shown after a file is selected */
+.leave-file-selected {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  background: rgba(72, 187, 120, 0.08);
+  border: 1px solid rgba(72, 187, 120, 0.3);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: #2f855a;
+  font-weight: 500;
+}
+
+.leave-file-size {
+  color: #718096;
+  font-size: 0.75rem;
+}
+
+/* Remove-file button */
+.leave-file-remove-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #e53e3e;
+  font-size: 0.85rem;
+  padding: 0 0.25rem;
+  line-height: 1;
+  border-radius: 50%;
+  transition: background 0.2s ease;
+}
+
+.leave-file-remove-btn:hover {
+  background: rgba(229, 62, 62, 0.1);
+}
+
+/* Validation error */
+.leave-file-error {
+  color: #e53e3e;
+  font-size: 0.78rem;
+  margin: 0;
+}
+
+/* ============================================================
+   ADMIN LEAVE TABLE: leave-doc-btn (View Attachment)
+   ============================================================ */
+.leave-doc-btn {
+  background: rgba(99, 102, 241, 0.12);
+  color: #4f46e5;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: all 0.2s ease;
+}
+
+.leave-doc-btn:hover {
+  background: rgba(99, 102, 241, 0.22);
+  border-color: rgba(99, 102, 241, 0.5);
+  transform: translateY(-1px);
+}
