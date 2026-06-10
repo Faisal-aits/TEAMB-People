@@ -24,7 +24,7 @@ const LeaveManagement = () => {
   const [leaveTypes, setLeaveTypes] = useState([]);
 
   // Expandable row state for balances drawer
-  const [expandedRows, setExpandedRows] = useState(new Set());
+  const [expandedLeaveId, setExpandedLeaveId] = useState(null);
   const [employeeBalances, setEmployeeBalances] = useState({});
   const [balancesLoading, setBalancesLoading] = useState({});
 
@@ -62,37 +62,37 @@ const LeaveManagement = () => {
 
   const loadLeaveData = async () => {
     try {
-        setLoading(true);
-        const response = await leaveAPI.getAll(filters);
-        
-        // Safely extract data with fallbacks
-        const leaves = response.data?.leaves || [];
-        const statistics = response.data?.statistics || {};
-        
-        // Calculate approved days
-        const approvedDays = leaves
-            .filter(l => l.status === 'Approved')
-            .reduce((sum, l) => sum + (l.total_days || 0), 0);
+      setLoading(true);
+      const response = await leaveAPI.getAll(filters);
 
-        setLeaveData(leaves);
-        setLeaveStats({
-            totalPending: statistics.pending || 0,
-            totalApproved: statistics.approved || 0,
-            totalRejected: statistics.rejected || 0,
-            approvedDays: approvedDays
-        });
+      // Safely extract data with fallbacks
+      const leaves = response.data?.leaves || [];
+      const statistics = response.data?.statistics || {};
+
+      // Calculate approved days
+      const approvedDays = leaves
+        .filter(l => l.status === 'Approved')
+        .reduce((sum, l) => sum + (l.total_days || 0), 0);
+
+      setLeaveData(leaves);
+      setLeaveStats({
+        totalPending: statistics.pending || 0,
+        totalApproved: statistics.approved || 0,
+        totalRejected: statistics.rejected || 0,
+        approvedDays: approvedDays
+      });
     } catch (error) {
-        console.error('Error loading leave data:', error);
-        
-        setLeaveData([]);
-        setLeaveStats({
-            totalPending: 0,
-            totalApproved: 0,
-            totalRejected: 0,
-            approvedDays: 0
-        });
+      console.error('Error loading leave data:', error);
+
+      setLeaveData([]);
+      setLeaveStats({
+        totalPending: 0,
+        totalApproved: 0,
+        totalRejected: 0,
+        approvedDays: 0
+      });
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -112,29 +112,29 @@ const LeaveManagement = () => {
   };
 
 
- const loadEmployeeAttendanceHistory = async (employeeId) => {
+  const loadEmployeeAttendanceHistory = async (employeeId) => {
     try {
-        const response = await leaveAPI.getEmployeeAttendanceHistory(employeeId);
-        const history = response.data?.history || [];
-        const statistics = response.data?.statistics || {};
-        
-        setAttendanceHistory(history);
-        setAttendanceHistoryStats({
-            totalPresent: statistics.present || 0,
-            totalDelayed: statistics.delayed || 0,
-            totalLeaves: statistics.on_leave || 0
-        });
+      const response = await leaveAPI.getEmployeeAttendanceHistory(employeeId);
+      const history = response.data?.history || [];
+      const statistics = response.data?.statistics || {};
+
+      setAttendanceHistory(history);
+      setAttendanceHistoryStats({
+        totalPresent: statistics.present || 0,
+        totalDelayed: statistics.delayed || 0,
+        totalLeaves: statistics.on_leave || 0
+      });
     } catch (error) {
-        console.error('Error loading employee attendance history:', error);
-  
-        setAttendanceHistory([]);
-        setAttendanceHistoryStats({
-            totalPresent: 0,
-            totalDelayed: 0,
-            totalLeaves: 0
-        });
+      console.error('Error loading employee attendance history:', error);
+
+      setAttendanceHistory([]);
+      setAttendanceHistoryStats({
+        totalPresent: 0,
+        totalDelayed: 0,
+        totalLeaves: 0
+      });
     }
-};
+  };
 
   // Leave Functions
   const handleApproveLeave = async (leaveId) => {
@@ -142,7 +142,7 @@ const LeaveManagement = () => {
       await leaveAPI.approve(leaveId);
       showToast('Leave approved successfully!', 'success');
       loadLeaveData();
-      
+
       // Update balance drawer for this employee if expanded
       const leaveItem = leaveData.find(item => item.leave_id === leaveId);
       if (leaveItem && employeeBalances[leaveItem.employee_id]) {
@@ -161,7 +161,7 @@ const LeaveManagement = () => {
       setIsRejectConfirmOpen(false);
       showToast('Leave rejected successfully!', 'success');
       loadLeaveData();
-      
+
       const leaveItem = leaveData.find(item => item.leave_id === leaveId);
       if (leaveItem && employeeBalances[leaveItem.employee_id]) {
         loadEmployeeBalances(leaveItem.employee_id);
@@ -179,7 +179,7 @@ const LeaveManagement = () => {
       setIsDeleteConfirmOpen(false);
       showToast('Leave request deleted successfully!', 'success');
       loadLeaveData();
-      
+
       const leaveItem = leaveData.find(item => item.leave_id === leaveId);
       if (leaveItem && employeeBalances[leaveItem.employee_id]) {
         loadEmployeeBalances(leaveItem.employee_id);
@@ -191,10 +191,37 @@ const LeaveManagement = () => {
     }
   };
 
+  // State for approve modal
+  const [isApproveModalOpen, setIsApproveModalOpen] = React.useState(false);
+  const [selectedLeaveId, setSelectedLeaveId] = React.useState(null);
+  const [selectedCategory, setSelectedCategory] = React.useState('');
+
+  const handleOpenApproveModal = (leaveId) => {
+    setSelectedLeaveId(leaveId);
+    // Reset category selection when opening modal
+    setSelectedCategory('');
+    setIsApproveModalOpen(true);
+  };
+
+  const handleConfirmApprove = async () => {
+    try {
+      await leaveAPI.approve(selectedLeaveId, { category: selectedCategory });
+      showToast('Leave approved successfully!', 'success');
+      setIsApproveModalOpen(false);
+      loadLeaveData();
+    } catch (error) {
+      console.error('Error approving leave with category:', error);
+      const errorMessage = error.response?.data?.message || 'Error approving leave. Please try again.';
+      showToast(errorMessage, 'danger');
+    }
+  };
+
+  // Replace quick approve usage
   const handleQuickApprove = async (leaveId, e) => {
     e.stopPropagation();
     if (window.confirm('Are you sure you want to approve this leave request?')) {
-      await handleApproveLeave(leaveId);
+      // Open modal for category selection
+      handleOpenApproveModal(leaveId);
     }
   };
 
@@ -210,20 +237,13 @@ const LeaveManagement = () => {
     setIsDeleteConfirmOpen(true);
   };
 
-  const toggleRowExpand = async (employeeId, e) => {
-    e.stopPropagation();
-    setExpandedRows(prev => {
-      const next = new Set(prev);
-      if (next.has(employeeId)) {
-        next.delete(employeeId);
-      } else {
-        next.add(employeeId);
-        if (!employeeBalances[employeeId]) {
-          loadEmployeeBalances(employeeId);
-        }
-      }
-      return next;
-    });
+  const toggleRowExpand = (leaveId, employeeId) => {
+    // Toggle expansion: collapse if same row, otherwise expand new row
+    setExpandedLeaveId(prev => (prev === leaveId ? null : leaveId));
+    // Load balances for the employee if not already fetched
+    if (!employeeBalances[employeeId]) {
+      loadEmployeeBalances(employeeId);
+    }
   };
 
   const loadEmployeeBalances = async (employeeId) => {
@@ -391,61 +411,61 @@ const LeaveManagement = () => {
 
         {/* Leave Table - Spread to full width */}
         <div className="leave-table-wrapper">
-          <table className="leave-main-table" style={{ width: '100%'}}>
+          <table className="leave-main-table" style={{ width: '100%' }}>
             <thead>
               <tr>
-                <th className="sortable-th" style={{width: '20%'}} onClick={() => requestSort('employee_name', 'employee_name')}>Employee Name{sortLabel('employee_name')}</th>
-                <th style={{width: '10%'}}>Type</th>
-                <th className="sortable-th" style={{width: '20%'}} onClick={() => requestSort('description', 'description')}>Description{sortLabel('description')}</th>
-                <th className="sortable-th" style={{width: '15%'}} onClick={() => requestSort('start_date', 'start_date')}>From - To{sortLabel('start_date')}</th>
-                <th className="sortable-th" style={{width: '8%'}} onClick={() => requestSort('total_days', 'total_days')}>Duration{sortLabel('total_days')}</th>
-                <th className="sortable-th" style={{width: '12%'}} onClick={() => requestSort('status', 'status')}>Status{sortLabel('status')}</th>
-                <th style={{width: '15%'}}>Actions</th>
+                <th className="sortable-th" style={{ width: '20%' }} onClick={() => requestSort('employee_name', 'employee_name')}>Employee Name{sortLabel('employee_name')}</th>
+                <th style={{ width: '10%' }}>Type</th>
+                <th className="sortable-th" style={{ width: '20%' }} onClick={() => requestSort('description', 'description')}>Description{sortLabel('description')}</th>
+                <th className="sortable-th" style={{ width: '15%' }} onClick={() => requestSort('start_date', 'start_date')}>From - To{sortLabel('start_date')}</th>
+                <th className="sortable-th" style={{ width: '8%' }} onClick={() => requestSort('total_days', 'total_days')}>Duration{sortLabel('total_days')}</th>
+                <th className="sortable-th" style={{ width: '12%' }} onClick={() => requestSort('status', 'status')}>Status{sortLabel('status')}</th>
+                <th style={{ width: '15%' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {visibleLeaves.map(leave => (
                 <React.Fragment key={leave.leave_id}>
                   <tr>
-                    <td style={{width: '20%'}}>
+                    <td style={{ width: '20%' }}>
                       <div className="leave-name-cell">
-                        <div 
+                        <div
                           className="leave-name-text leave-clickable"
                           onClick={() => handleViewAttendanceHistory(leave)}
                         >
                           {leave.employee_name}
                         </div>
                         <div className="leave-employee-id">
-                          ID: {leave.employee_code} | <span className="leave-balances-toggle" onClick={(e) => toggleRowExpand(leave.employee_id, e)}>
-                            {expandedRows.has(leave.employee_id) ? 'Hide Balances' : 'Show Balances'}
+                          ID: {leave.employee_code} | <span className="leave-balances-toggle" onClick={(e) => { e.stopPropagation(); toggleRowExpand(leave.leave_id, leave.employee_id); }}>
+                            {expandedLeaveId === leave.leave_id ? 'Hide Balances' : 'Show Balances'}
                           </span>
                         </div>
                       </div>
                     </td>
-                    <td style={{width: '10%', verticalAlign: 'middle'}}>
+                    <td style={{ width: '10%', verticalAlign: 'middle' }}>
                       <span className={`leave-type-badge leave-type-${leave.leave_type?.toLowerCase() || 'casual'}`}>
                         {leave.leave_type || 'Casual'}
                       </span>
                     </td>
-                    <td style={{width: '20%'}}>
+                    <td style={{ width: '20%' }}>
                       <div className="leave-description-cell">
                         {leave.description || '-'}
                       </div>
                     </td>
-                    <td style={{width: '15%'}}>
+                    <td style={{ width: '15%' }}>
                       <div className="leave-duration-cell">
                         {formatDate(leave.start_date)} - {formatDate(leave.end_date)}
                       </div>
                     </td>
-                    <td style={{width: '8%'}}>
+                    <td style={{ width: '8%' }}>
                       <div className="leave-days-cell">
                         {leave.total_days || calculateDuration(leave.start_date, leave.end_date)}
                       </div>
                     </td>
-                    <td style={{width: '12%'}}>
+                    <td style={{ width: '12%' }}>
                       {getStatusBadgeClass(leave.status)}
                     </td>
-                    <td style={{width: '15%'}}>
+                    <td style={{ width: '15%' }}>
                       <div className="leave-actions-container">
                         {leave.status === 'Pending' && (
                           <>
@@ -480,7 +500,7 @@ const LeaveManagement = () => {
                       </div>
                     </td>
                   </tr>
-                  {expandedRows.has(leave.employee_id) && (
+                  {expandedLeaveId === leave.leave_id && (
                     <tr className="leave-balances-row">
                       <td colSpan="7">
                         <div className="leave-balances-drawer">
@@ -488,19 +508,16 @@ const LeaveManagement = () => {
                           {balancesLoading[leave.employee_id] ? (
                             <div className="balances-loading">Loading balances...</div>
                           ) : (
-                            <div className="balances-grid-drawer">
-                              {(employeeBalances[leave.employee_id] || []).map(bal => (
-                                <div key={bal.leave_type} className="balance-drawer-pill">
-                                  <span className="balance-drawer-name">{bal.leave_type}</span>
-                                  <span className="balance-drawer-value">
-                                    <strong>{bal.allocated - bal.used - bal.pending}</strong> / {bal.allocated} remaining
-                                  </span>
-                                  <span className="balance-drawer-breakdown">
-                                    (Used: {bal.used}, Pending: {bal.pending})
-                                  </span>
+                            (() => {
+                              const balances = employeeBalances[leave.employee_id] || [];
+                              const totalUsed = balances.reduce((sum, bal) => sum + (bal.used || 0), 0);
+                              const limitExceeded = totalUsed > 2;
+                              return (
+                                <div className={limitExceeded ? "monthly-limit-note monthly-limit-exceeded" : "monthly-limit-note monthly-limit-ok"}>
+                                  Monthly leave limit (2 days): {limitExceeded ? `Exceeded (${totalUsed} days used)` : `Within limit (${totalUsed} days used)`}
                                 </div>
-                              ))}
-                            </div>
+                              );
+                            })()
                           )}
                         </div>
                       </td>
@@ -517,7 +534,7 @@ const LeaveManagement = () => {
             <div className="no-data-icon">📋</div>
             <p>No leave requests found</p>
             <p className="no-data-subtext">
-              {filters.status !== 'all' 
+              {filters.status !== 'all'
                 ? 'Try changing your filters to see more results.'
                 : 'No leave requests available.'}
             </p>
@@ -537,7 +554,7 @@ const LeaveManagement = () => {
                 Reject Leave Request?
               </h3>
               <p className="leave-delete-message">
-                Are you sure you want to reject the leave request from <strong>{selectedEmployee.employee_name}</strong>? 
+                Are you sure you want to reject the leave request from <strong>{selectedEmployee.employee_name}</strong>?
                 This action will mark the leave as rejected and notify the employee.
               </p>
 
@@ -574,7 +591,7 @@ const LeaveManagement = () => {
                 Delete Leave Request?
               </h3>
               <p className="leave-delete-message">
-                Are you sure you want to delete the leave request from <strong>{selectedEmployee.employee_name}</strong>? 
+                Are you sure you want to delete the leave request from <strong>{selectedEmployee.employee_name}</strong>?
                 This action cannot be undone and the leave request will be permanently removed from the system.
               </p>
 
@@ -599,13 +616,57 @@ const LeaveManagement = () => {
         </div>
       )}
 
+      {/* ==================== APPROVE CONFIRMATION MODAL ==================== */}
+
+      {isApproveModalOpen && selectedLeaveId && (
+        <div className="leave-modal-overlay">
+          <div className="leave-modal-content leave-approve-confirmation">
+            <div className="leave-delete-confirmation">
+              <div className="leave-approve-icon">
+                <FaCheckCircle />
+              </div>
+              <h3 className="leave-delete-title">Approve Leave Request</h3>
+              <p className="leave-delete-message">
+                Please select the leave category before approving.
+              </p>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="leave-approve-select-box"
+              >
+                <option value="" disabled>Select Category</option>
+                {leaveTypes.filter(type => type.is_active).map(type => (
+                  <option key={type.id} value={type.name}>{type.name}</option>
+                ))}
+              </select>
+              <div className="leave-delete-actions" style={{ marginTop: '1rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsApproveModalOpen(false)}
+                  className="leave-cancel-btn"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmApprove}
+                  className="leave-approve-btn"
+                  disabled={!selectedCategory}
+                >
+                  Approve
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {/* ==================== ATTENDANCE HISTORY MODAL ==================== */}
       {isLeaveModalOpen && selectedEmployee && (
         <div className="leave-modal-overlay">
           <div className="leave-modal-content leave-large-modal">
             <div className="leave-modal-header">
               <h2 id="leave-view-modal-title">Attendance History - {selectedEmployee.employee_name}</h2>
-              <button 
+              <button
                 className="leave-close-btn"
                 id="leave-view-close"
                 onClick={() => setIsLeaveModalOpen(false)}
@@ -616,16 +677,16 @@ const LeaveManagement = () => {
 
             <div className="leave-details-content">
               {/* Attendance History Cards - Spread */}
-              <div className="leave-dashboard-stats" style={{marginBottom: '1.5rem'}}>
-                <div className="leave-stat-card" id="leave-history-stat-present" style={{flex: '1', minWidth: '200px'}}>
+              <div className="leave-dashboard-stats" style={{ marginBottom: '1.5rem' }}>
+                <div className="leave-stat-card" id="leave-history-stat-present" style={{ flex: '1', minWidth: '200px' }}>
                   <div className="leave-stat-number">{attendanceHistoryStats.totalPresent}</div>
                   <div className="leave-stat-label">Present (Total)</div>
                 </div>
-                <div className="leave-stat-card" id="leave-history-stat-delayed" style={{flex: '1', minWidth: '200px'}}>
+                <div className="leave-stat-card" id="leave-history-stat-delayed" style={{ flex: '1', minWidth: '200px' }}>
                   <div className="leave-stat-number">{attendanceHistoryStats.totalDelayed}</div>
                   <div className="leave-stat-label">Delayed (Total)</div>
                 </div>
-                <div className="leave-stat-card" id="leave-history-stat-leaves" style={{flex: '1', minWidth: '200px'}}>
+                <div className="leave-stat-card" id="leave-history-stat-leaves" style={{ flex: '1', minWidth: '200px' }}>
                   <div className="leave-stat-number">{attendanceHistoryStats.totalLeaves}</div>
                   <div className="leave-stat-label">Leaves (Total)</div>
                 </div>
@@ -635,28 +696,28 @@ const LeaveManagement = () => {
               <div className="leave-form-section">
                 <h3 className="leave-section-title">Attendance History</h3>
                 <div className="leave-table-wrapper">
-                  <table className="leave-main-table" style={{tableLayout: 'fixed', width: '100%'}}>
+                  <table className="leave-main-table" style={{ tableLayout: 'fixed', width: '100%' }}>
                     <thead>
                       <tr>
-                        <th style={{width: '30%'}}>Date</th>
-                        <th style={{width: '40%'}}>Description</th>
-                        <th style={{width: '30%'}}>Status</th>
+                        <th style={{ width: '30%' }}>Date</th>
+                        <th style={{ width: '40%' }}>Description</th>
+                        <th style={{ width: '30%' }}>Status</th>
                       </tr>
                     </thead>
                     <tbody>
                       {attendanceHistory.map(record => (
                         <tr key={record.history_id}>
-                          <td style={{width: '30%'}}>
+                          <td style={{ width: '30%' }}>
                             <div className="leave-date-cell">
                               {formatDate(record.date)}
                             </div>
                           </td>
-                          <td style={{width: '40%'}}>
+                          <td style={{ width: '40%' }}>
                             <div className="leave-description-cell">
                               {record.description || 'No description'}
                             </div>
                           </td>
-                          <td style={{width: '30%'}}>
+                          <td style={{ width: '30%' }}>
                             {getStatusBadgeClass(record.status)}
                           </td>
                         </tr>

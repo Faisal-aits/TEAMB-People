@@ -254,12 +254,22 @@ const Salary = {
             deductionDays = daysInMonth;
         }
 
-        const dailyRate = monthlySalary / daysInMonth;
-        const leaveAndAbsenceDeduction = Math.round(dailyRate * deductionDays);
-        const totalDeduction = Math.round(leaveAndAbsenceDeduction + attendanceDeductions);
-        const netSalary = Math.max(0, Math.round(monthlySalary - totalDeduction));
-        const roundedPaidDays = Math.round(paidDays * 10) / 10;
-        const roundedDeductionDays = Math.round(deductionDays * 10) / 10;
+        // Cap paid leaves at 2 per month and deduct excess as unpaid days
+const paidLeaveCap = 2;
+const excessPaidLeaves = Math.max(0, paidLeaveDays - paidLeaveCap);
+if (excessPaidLeaves > 0) {
+    // Convert excess paid leaves to deduction days
+    deductionDays += excessPaidLeaves;
+    // Reduce paid days accordingly
+    paidDays -= excessPaidLeaves;
+}
+
+const dailyRate = monthlySalary / daysInMonth;
+const leaveAndAbsenceDeduction = Math.round(dailyRate * deductionDays);
+const totalDeduction = Math.round(leaveAndAbsenceDeduction + attendanceDeductions);
+const netSalary = Math.max(0, Math.round(monthlySalary - totalDeduction));
+const roundedPaidDays = Math.round(paidDays * 10) / 10;
+const roundedDeductionDays = Math.round(deductionDays * 10) / 10;
 
         const details = {
             present_days: presentDays,
