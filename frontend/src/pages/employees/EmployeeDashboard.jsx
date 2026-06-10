@@ -536,6 +536,17 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
           <HiOutlineArrowPath />
           {refreshing ? 'Refreshing' : 'Refresh'}
         </button>
+        <button 
+          type="button" 
+          className="employee-ticket-btn" 
+          onClick={() => {
+            localStorage.setItem('openRaiseTicketModal', 'true');
+            navigateToTab?.('employee-tickets');
+          }}
+        >
+          <HiOutlineExclamationTriangle />
+          Report Problem
+        </button>
         <button type="button" className="employee-report-btn" onClick={() => setReportModalOpen(true)}>
           <HiOutlinePencilSquare />
           Report

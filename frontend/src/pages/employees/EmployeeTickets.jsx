@@ -54,6 +54,12 @@ const EmployeeTickets = () => {
   useEffect(() => {
     fetchTickets();
     fetchProjects();
+
+    const shouldOpen = localStorage.getItem('openRaiseTicketModal');
+    if (shouldOpen === 'true') {
+      setIsModalOpen(true);
+      localStorage.removeItem('openRaiseTicketModal');
+    }
   }, []);
 
   useEffect(() => {

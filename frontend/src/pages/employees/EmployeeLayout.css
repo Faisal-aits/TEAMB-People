@@ -46,6 +46,7 @@
 
 .employee-refresh-btn,
 .employee-report-btn,
+.employee-ticket-btn,
 .employee-overview-card,
 .employee-panel-title button,
 .employee-attendance-actions button,
@@ -69,6 +70,28 @@
   font-weight: 800;
 }
 
+.employee-ticket-btn {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 1px solid #ef4444;
+  border-radius: 8px;
+  background: #ef4444;
+  color: #fff;
+  font-weight: 800;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+.employee-ticket-btn:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+}
+
 .employee-report-btn {
   min-height: 40px;
   display: inline-flex;
@@ -88,7 +111,8 @@
 }
 
 .employee-refresh-btn svg,
-.employee-report-btn svg {
+.employee-report-btn svg,
+.employee-ticket-btn svg {
   width: 18px;
   height: 18px;
 }
