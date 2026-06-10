@@ -15,6 +15,7 @@
   --status-p: #fffde7; --status-pt: #f57f17;
   --status-n: #f5f5f5; --status-nt: #616161;
   --status-o: #f3e5f5; --status-ot: #4a148c;
+  --status-r: #fff7e6; --status-rt: #d97706;
 
   min-height: 300px;
   width: 100%;
@@ -405,6 +406,7 @@
 .pttm-container .sP { background: var(--status-p); color: var(--status-pt) }
 .pttm-container .sN { background: var(--status-n); color: var(--status-nt) }
 .pttm-container .sO { background: var(--status-o); color: var(--status-ot) }
+.pttm-container .sR { background: var(--status-r); color: var(--status-rt) }
 
 .pttm-container #add-row {
   min-width: 1422px;

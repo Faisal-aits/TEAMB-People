@@ -7,6 +7,7 @@ const cols = [
   ['date', 'Date'],
   ['project_id', 'Project'],
   ['phase_id', 'Phase'],
+  ['module_id', 'Module'],
   ['team_id', 'Team'],
   ['assigned_user_id', 'Assigned To'],
   ['team_leader_id', 'Team Leader'],
@@ -15,8 +16,8 @@ const cols = [
   ['status', 'Status'],
   ['remarks', 'Remarks']
 ];
-const statusKey = { Completed: 'C', 'In Progress': 'I', Pending: 'P', 'Not Started': 'N', 'On Going': 'O' };
-const statusOptions = ['Pending', 'In Progress', 'Completed', 'Not Started', 'On Going'];
+const statusKey = { Completed: 'C', 'In Progress': 'I', Pending: 'P', 'Not Started': 'N', 'On Going': 'O', 'Under Review': 'R' };
+const statusOptions = ['Pending', 'In Progress', 'Completed', 'Not Started', 'On Going', 'Under Review'];
 
 const TaskGrid = forwardRef(function TaskGrid({ rows, cell, setCell, onMenu }, ref) {
   const app = useApp();
@@ -31,13 +32,14 @@ const TaskGrid = forwardRef(function TaskGrid({ rows, cell, setCell, onMenu }, r
     1: 100,
     2: 150,
     3: 130,
-    4: 130,
+    4: 140, // Module column width
     5: 130,
-    6: 130, // Team Leader column width
-    7: 175,
-    8: 250,
-    9: 110,
-    10: 200
+    6: 130,
+    7: 130, // Team Leader column width
+    8: 175,
+    9: 250,
+    10: 110,
+    11: 200
   });
   const [rowHeights, setRowHeights] = useState({});
 
@@ -408,6 +410,7 @@ const TaskGrid = forwardRef(function TaskGrid({ rows, cell, setCell, onMenu }, r
               <td style={{ color: '#333' }}>Total: {rows.length}</td>
               <td style={{ color: '#333' }}>Pj: {app.projects.length}</td>
               <td style={{ color: '#333' }}>Ph: {app.phases.length}</td>
+              <td style={{ color: '#333' }}>Md: {(app.modules || []).length}</td>
               <td style={{ color: '#333' }}>Tm: {app.teams.length}</td>
               <td style={{ color: '#333' }}>Usr: {app.users.length}</td>
               <td style={{ color: '#333' }}>Ldrs: {app.users.filter(u => u.role === 'Team Lead' || u.role === 'Manager').length || 1}</td>
@@ -430,8 +433,65 @@ const TaskGrid = forwardRef(function TaskGrid({ rows, cell, setCell, onMenu }, r
 });
 
 function DisplayCell({ task, col, app }) {
-  if (col === 'status') return <span className={`sb s${statusKey[task.status] || 'N'}`}>{task.status || ''}</span>;
+  if (col === 'status') {
+    const canSubmit =
+      (task.status === 'In Progress' || task.status === 'Pending') &&
+      task.review_status !== 'Pending Review';
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+        <span className={`sb s${statusKey[task.status] || 'N'}`}>{task.status || ''}</span>
+        {canSubmit && (
+          <button
+            title="Submit this task for team leader review"
+            onClick={async e => {
+              e.stopPropagation();
+              if (window.confirm('Submit this task for team leader review?')) {
+                await app.submitForReview(task.id);
+              }
+            }}
+            style={{
+              padding: '2px 8px',
+              fontSize: 10,
+              fontWeight: 700,
+              background: 'linear-gradient(135deg,#4f46e5,#7c3aed)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 20,
+              cursor: 'pointer',
+              letterSpacing: '0.2px',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            ➤ Submit for Review
+          </button>
+        )}
+        {task.review_status === 'Pending Review' && (
+          <span style={{
+            padding: '2px 8px', fontSize: 10, fontWeight: 700,
+            background: '#fef3c7', color: '#92400e',
+            border: '1px solid #fcd34d', borderRadius: 20,
+          }}>
+            ⏳ Awaiting Review
+          </span>
+        )}
+        {task.review_status === 'Rejected' && (
+          <span
+            title={task.review_notes || 'Rejected'}
+            style={{
+              padding: '2px 8px', fontSize: 10, fontWeight: 700,
+              background: '#fee2e2', color: '#991b1b',
+              border: '1px solid #fca5a5', borderRadius: 20,
+              cursor: 'help',
+            }}
+          >
+            ✗ Rejected
+          </span>
+        )}
+      </span>
+    );
+  }
   if (col === 'phase_id' && task.phase_id) return <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 7px', borderRadius: 10, fontSize: 11, fontWeight: 500, background: '#e0d9fb', color: '#3d0c91', whiteSpace: 'nowrap' }}>{app.phaseName(task.phase_id)}</span>;
+  if (col === 'module_id' && task.module_id) return <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 7px', borderRadius: 10, fontSize: 11, fontWeight: 500, background: '#d1fae5', color: '#065f46', whiteSpace: 'nowrap' }}>{app.moduleName(task.module_id)}</span>;
   return displayValue(task, col, app);
 }
 
@@ -450,6 +510,7 @@ function EditCell({ task, col, commit, r, c, setEdit, rows }) {
   const common = { className: col === 'date' ? 'ci' : 'ci', value, onChange: e => setValue(e.target.value), onBlur: () => submit(value), onKeyDown: keyDown };
   if (col === 'project_id') return <Select value={value} onChange={submit} options={app.projects.map(p => [p.id, p.name])} />;
   if (col === 'phase_id') return <Select value={value} onChange={submit} options={app.phases.filter(p => !task.project_id || p.project_id == task.project_id).sort((a, b) => (a.order_num || 0) - (b.order_num || 0)).map(p => [p.id, p.name])} />;
+  if (col === 'module_id') return <Select value={value} onChange={submit} options={(app.modules || []).filter(m => !task.project_id || m.project_id == task.project_id).sort((a, b) => (a.order_num || 0) - (b.order_num || 0)).map(m => [m.id, m.name])} />;
   if (col === 'team_id') return <Select value={value} onChange={submit} options={app.teams.filter(t => !task.project_id || t.project_id == task.project_id).map(t => [t.id, t.name])} />;
   if (col === 'assigned_user_id') return <Select value={value} onChange={submit} options={app.users.map(u => [u.id, `${u.name}${u.role ? ` (${u.role})` : ''}`])} />;
   if (col === 'team_leader_id') return <Select value={value} onChange={submit} options={app.users.map(u => [u.id, `${u.name}${u.role ? ` (${u.role})` : ''}`])} />;
@@ -464,6 +525,7 @@ function Select({ value, onChange, options }) {
 function displayValue(task, col, app) {
   if (col === 'project_id') return app.projectName(task[col]);
   if (col === 'phase_id') return app.phaseName(task[col]);
+  if (col === 'module_id') return app.moduleName(task[col]);
   if (col === 'team_id') return app.teamName(task[col]);
   if (col === 'assigned_user_id') return app.userName(task[col]);
   if (col === 'team_leader_id') return app.userName(task[col]);

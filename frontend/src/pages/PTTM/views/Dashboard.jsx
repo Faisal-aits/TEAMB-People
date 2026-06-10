@@ -61,7 +61,7 @@ export default function Dashboard({ switchGrid }) {
   const COLORS = { 'Completed': '#217346', 'In Progress': '#0078d4', 'Pending': '#f0ad00', 'Not Started': '#adb5bd', 'On Going': '#6f42c1' };
 
   const projCompletionData = projects.map(p => {
-    const pt = tasks.filter(t => t.project_id === p.id);
+    const pt = tasks.filter(t => String(t.project_id) === String(p.id));
     const pdone = pt.filter(t => t.status === 'Completed').length;
     const pip = pt.filter(t => t.status === 'In Progress').length;
     const ppend = pt.filter(t => t.status === 'Pending').length;
@@ -90,7 +90,7 @@ export default function Dashboard({ switchGrid }) {
   }).sort((a, b) => b.total - a.total).slice(0, 10);
 
   const projStatusData = projects.map(p => {
-    const pt = tasks.filter(t => t.project_id === p.id);
+    const pt = tasks.filter(t => String(t.project_id) === String(p.id));
     return {
       name: p.name.length > 12 ? p.name.substring(0, 12) + '...' : p.name,
       total: pt.length,
@@ -112,7 +112,7 @@ export default function Dashboard({ switchGrid }) {
   const atRiskProjects = projects.filter(p => {
     if (p.status !== 'Completed' && p.end_date && p.end_date < todayStr) return true;
     if (p.status === 'In Progress' && p.end_date) {
-      const pt = tasks.filter(t => t.project_id === p.id);
+      const pt = tasks.filter(t => String(t.project_id) === String(p.id));
       const done = pt.filter(t => t.status === 'Completed').length;
       const pct = pt.length ? Math.round((done / pt.length) * 100) : 0;
       const tdate = new Date(todayStr);
@@ -122,7 +122,7 @@ export default function Dashboard({ switchGrid }) {
     }
     return false;
   }).map(p => {
-    const pt = tasks.filter(t => t.project_id === p.id);
+    const pt = tasks.filter(t => String(t.project_id) === String(p.id));
     const done = pt.filter(t => t.status === 'Completed').length;
     const pct = pt.length ? Math.round((done / pt.length) * 100) : 0;
     const tdate = new Date(todayStr);

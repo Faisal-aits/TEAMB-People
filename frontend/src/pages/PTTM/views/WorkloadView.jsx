@@ -5,7 +5,7 @@ import { exportCSV, today } from '../utils/exportCsv';
 
 export default function WorkloadView({ filters, setFilters, switchGrid }) {
   const { teams, tasks, projectName } = useApp();
-  const visible = filters.project_id ? teams.filter(t => t.project_id === filters.project_id) : teams;
+  const visible = filters.project_id ? teams.filter(t => String(t.project_id) === String(filters.project_id)) : teams;
 
   const handleExport = () => {
     const rows = visible.map(team => {
@@ -57,7 +57,6 @@ export default function WorkloadView({ filters, setFilters, switchGrid }) {
             <th style={{ textAlign: 'center' }}>Members</th>
             <th style={{ textAlign: 'center' }}>Total</th>
             <th style={{ textAlign: 'center' }}>✅ Done</th>
-            <th style={{ textAlign: 'center' }}>🔄 IP</th>
             <th style={{ textAlign: 'center' }}>⏳ Pending</th>
             <th style={{ width: 160 }}>Completion</th>
           </tr>
@@ -87,7 +86,6 @@ function TeamRow({ team, tasks, projectName, setFilters, switchGrid }) {
       <td style={{ textAlign: 'center' }}>{members}</td>
       <td style={{ textAlign: 'center', fontWeight: 600 }}>{tt.length}</td>
       <td style={{ textAlign: 'center', color: 'var(--status-ct)' }}>{done}</td>
-      <td style={{ textAlign: 'center', color: '#084298' }}>{ip}</td>
       <td style={{ textAlign: 'center', color: '#856404' }}>{pending}</td>
       <td>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

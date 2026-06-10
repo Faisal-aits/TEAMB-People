@@ -3,22 +3,27 @@
 import { useApp } from '../context/PTTMContext';
 
 export default function FilterBar({ filters, setFilters, rowCount }) {
-  const { projects, phases, teams, users, tasks } = useApp();
+  const { projects, phases, teams, users, tasks, modules } = useApp();
   const set = patch => setFilters(prev => ({ ...prev, ...patch }));
-  const scopedPhases = filters.project_id ? phases.filter(p => p.project_id === filters.project_id) : phases;
-  const scopedTeams = filters.project_id ? teams.filter(t => t.project_id === filters.project_id) : teams;
-  const clear = () => setFilters({ project_id: '', phase_id: '', team_id: '', assigned_user_id: '', status: '', date_from: '', date_to: '', search: '' });
+  const scopedPhases = filters.project_id ? phases.filter(p => String(p.project_id) === String(filters.project_id)) : phases;
+  const scopedModules = filters.project_id ? modules.filter(m => String(m.project_id) === String(filters.project_id)) : modules;
+  const scopedTeams = filters.project_id ? teams.filter(t => String(t.project_id) === String(filters.project_id)) : teams;
+  const clear = () => setFilters({ project_id: '', phase_id: '', module_id: '', team_id: '', assigned_user_id: '', status: '', date_from: '', date_to: '', search: '' });
 
   return (
     <div id="filter-bar">
       <label>🔍 Filter:</label>
-      <select className="finp" style={{ width: 150 }} value={filters.project_id} onChange={e => set({ project_id: e.target.value, phase_id: '', team_id: '' })}>
+      <select className="finp" style={{ width: 150 }} value={filters.project_id} onChange={e => set({ project_id: e.target.value, phase_id: '', module_id: '', team_id: '' })}>
         <option value="">All Projects</option>
         {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
       </select>
       <select className="finp" style={{ width: 130 }} value={filters.phase_id} onChange={e => set({ phase_id: e.target.value })}>
         <option value="">All Phases</option>
         {scopedPhases.sort((a, b) => (a.order_num || 0) - (b.order_num || 0)).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+      </select>
+      <select className="finp" style={{ width: 130 }} value={filters.module_id || ''} onChange={e => set({ module_id: e.target.value })}>
+        <option value="">All Modules</option>
+        {scopedModules.sort((a, b) => (a.order_num || 0) - (b.order_num || 0)).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
       </select>
       <select className="finp" style={{ width: 140 }} value={filters.team_id} onChange={e => set({ team_id: e.target.value })}>
         <option value="">All Teams</option>

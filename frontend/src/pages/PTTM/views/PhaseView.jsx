@@ -6,14 +6,14 @@ import { exportCSV, today } from '../utils/exportCsv';
 export default function PhaseView({ filters, setFilters, switchGrid, onOpenPanel }) {
   const { projects, phases, tasks, projectName } = useApp();
   const pid = filters.project_id;
-  const visible = pid ? phases.filter(p => p.project_id === pid) : phases;
+  const visible = pid ? phases.filter(p => String(p.project_id) === String(pid)) : phases;
   const projectIds = pid ? [pid] : [...new Set(visible.map(p => p.project_id))];
 
   const handleExport = () => {
     const rows = projectIds.flatMap(projectId => {
-      const pPhases = visible.filter(p => p.project_id === projectId).sort((a, b) => (a.order_num || 0) - (b.order_num || 0));
-      const pName = projectName(projectId) || projects.find(p => p.id === projectId)?.name || 'Unknown Project';
-      
+      const pPhases = visible.filter(p => String(p.project_id) === String(projectId)).sort((a, b) => (a.order_num || 0) - (b.order_num || 0));
+      const pName = projectName(projectId) || projects.find(p => String(p.id) === String(projectId))?.name || 'Unknown Project';
+
       const projectRow = [
         `Project: ${pName}`,
         '', '', '', '', '', '', '', ''
@@ -63,11 +63,11 @@ export default function PhaseView({ filters, setFilters, switchGrid, onOpenPanel
       </div>
       {!visible.length && <div style={{ textAlign: 'center', color: '#aaa', padding: 40, fontSize: 13 }}>No phases found.</div>}
       {projectIds.map(projectId => {
-        const rows = visible.filter(p => p.project_id === projectId).sort((a, b) => (a.order_num || 0) - (b.order_num || 0));
+        const rows = visible.filter(p => String(p.project_id) === String(projectId)).sort((a, b) => (a.order_num || 0) - (b.order_num || 0));
         if (!rows.length) return null;
         return (
           <div key={projectId}>
-            {!pid && <div style={{ fontSize: 13, fontWeight: 600, color: '#333', margin: '14px 0 6px', paddingBottom: 4, borderBottom: '2px solid var(--xl-green)' }}>{projects.find(p => p.id === projectId)?.name || 'Unknown Project'}</div>}
+            {!pid && <div style={{ fontSize: 13, fontWeight: 600, color: '#333', margin: '14px 0 6px', paddingBottom: 4, borderBottom: '2px solid var(--xl-green)' }}>{projects.find(p => String(p.id) === String(projectId))?.name || 'Unknown Project'}</div>}
             <table className="vt" style={{ marginBottom: 18 }}>
               <thead>
                 <tr>
