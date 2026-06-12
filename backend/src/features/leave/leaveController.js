@@ -33,8 +33,8 @@ const leaveController = {
             const [employeeRows] = await pool.execute(
                 `SELECT ed.id as employee_id 
                 FROM employee_details ed 
-                WHERE ed.employee_id = ?`,
-                [user_id]
+                WHERE ed.employee_id = ? AND ed.tenant_id = ?`,
+                [user_id, req.tenantId]
             );
 
             if (employeeRows.length === 0) {
@@ -63,8 +63,8 @@ const leaveController = {
             const [employeeRows] = await pool.execute(
                 `SELECT ed.id as employee_id 
                 FROM employee_details ed 
-                WHERE ed.employee_id = ?`,
-                [user_id]
+                WHERE ed.employee_id = ? AND ed.tenant_id = ?`,
+                [user_id, req.tenantId]
             );
 
             if (employeeRows.length === 0) {
@@ -129,8 +129,8 @@ const leaveController = {
         const [adminEmployeeRows] = await pool.execute(
           `SELECT ed.id as employee_id 
                FROM employee_details ed 
-               WHERE ed.employee_id = ?`,
-          [user_id]
+               WHERE ed.employee_id = ? AND ed.tenant_id = ?`,
+          [user_id, req.tenantId]
         );
 
         const approved_by = adminEmployeeRows.length > 0
@@ -182,8 +182,8 @@ const leaveController = {
             const [adminEmployeeRows] = await pool.execute(
                 `SELECT ed.id as employee_id 
                  FROM employee_details ed 
-                 WHERE ed.employee_id = ?`,
-                [user_id]
+                 WHERE ed.employee_id = ? AND ed.tenant_id = ?`,
+                [user_id, req.tenantId]
             );
 
             const approved_by = adminEmployeeRows.length > 0
@@ -299,8 +299,8 @@ const leaveController = {
             const [employeeRows] = await pool.execute(
                 `SELECT ed.id as employee_id 
                 FROM employee_details ed 
-                WHERE ed.employee_id = ?`,
-                [user_id]
+                WHERE ed.employee_id = ? AND ed.tenant_id = ?`,
+                [user_id, req.tenantId]
             );
 
             if (employeeRows.length === 0) {
