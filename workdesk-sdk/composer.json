@@ -1,0 +1,42 @@
+{
+    "name": "workdesk/sdk",
+    "description": "Official PHP SDK for the Work Desk External Ticket Integration API",
+    "version": "1.0.0",
+    "type": "library",
+    "keywords": ["workdesk", "sdk", "ticketing", "helpdesk", "integration", "api"],
+    "homepage": "https://github.com/your-org/workdesk-sdk",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Work Desk Team",
+            "email": "dev@workdesk.io"
+        }
+    ],
+    "require": {
+        "php": ">=7.4",
+        "ext-curl": "*",
+        "ext-json": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.0 || ^10.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "WorkDesk\\SDK\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "WorkDesk\\SDK\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit --colors=always",
+        "test-coverage": "vendor/bin/phpunit --coverage-text"
+    },
+    "config": {
+        "sort-packages": true,
+        "optimize-autoloader": true
+    },
+    "minimum-stability": "stable"
+}

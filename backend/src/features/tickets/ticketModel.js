@@ -17,8 +17,8 @@ const ticketModel = {
     }
 
     const result = await query(
-      `INSERT INTO tickets (tenant_id, project_id, raised_by_user_id, title, description, priority, status, attachment_url)
-       VALUES (?, ?, ?, ?, ?, ?, 'Open', ?)`,
+      `INSERT INTO tickets (tenant_id, project_id, raised_by_user_id, title, description, priority, status, attachment_url, source_app, external_ref, api_key_id)
+       VALUES (?, ?, ?, ?, ?, ?, 'Open', ?, ?, ?, ?)`,
       [
         tenantId,
         data.project_id || null,
@@ -27,6 +27,9 @@ const ticketModel = {
         data.description,
         data.priority || 'Medium',
         data.attachment_url || null,
+        data.source_app || null,
+        data.external_ref || null,
+        data.api_key_id || null,
       ]
     );
     return result.insertId;
