@@ -322,7 +322,7 @@ const pttmController = {
     try {
       const tenantId = getTenantId(req);
       const projectId = req.params.project_id;
-      
+
       const results = [];
       for (const phase of DOC_PHASES) {
         const entry = await pttmModel.getDocflowEntry(projectId, phase.num, tenantId);
@@ -332,7 +332,7 @@ const pttmController = {
         }
         results.push(shapeEntry(projectId, phase, entry, files));
       }
-      
+
       return res.json(results);
     } catch (err) {
       next(err);

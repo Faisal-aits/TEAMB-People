@@ -26,6 +26,16 @@ const createEmployeeDepartmentsIfMissing = async () => {
       INDEX idx_employee_departments_tenant (tenant_id)
     )
   `);
+
+  try {
+    const [columns] = await pool.execute("SHOW COLUMNS FROM employee_departments LIKE 'id'");
+    if (columns && columns.length > 0) {
+      console.log('[Schema] Dropping legacy "id" column from employee_departments table to align with codebase.');
+      await pool.execute("ALTER TABLE employee_departments DROP COLUMN id");
+    }
+  } catch (error) {
+    console.warn('Failed to check/drop legacy "id" column on employee_departments:', error);
+  }
 };
 
 const ensureEmployeeSchema = () => {
