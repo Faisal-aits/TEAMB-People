@@ -19,16 +19,22 @@ const requireAdmin = (req, res, next) => {
 // Generate a new API key for the tenant
 router.post('/keys', requireAdmin, async (req, res, next) => {
   try {
-    const { name } = req.body;
+    const { name, project_id } = req.body;
     if (!name || !String(name).trim()) {
       return sendResponse(res, 400, false, 'API key name is required.', null);
     }
     const apiKey = `wdk_${crypto.randomBytes(32).toString('hex')}`;
-    const keyId = await integrationModel.createApiKey(req.tenantId, String(name).trim(), apiKey);
+    const keyId = await integrationModel.createApiKey(
+      req.tenantId,
+      String(name).trim(),
+      apiKey,
+      project_id ? Number(project_id) : null
+    );
     return sendResponse(res, 201, true, 'API key created successfully', {
       id: keyId,
       name: String(name).trim(),
       api_key: apiKey, // Only shown once — store it securely
+      project_id: project_id ? Number(project_id) : null,
       note: 'This key will not be shown again. Store it securely.',
     });
   } catch (error) {

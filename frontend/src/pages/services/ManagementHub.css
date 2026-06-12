@@ -476,3 +476,196 @@
   border-radius: var(--radius);
   padding: 20px;
 }
+
+/* Integration Guide Info Button */
+.btn-info-guide {
+  background: white;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 0px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 500;
+  font-size: 11px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-info-guide:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+/* Modal overlays and elements copied from ApiKeysSettings.css */
+.apikeys-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.apikeys-modal {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  padding: 24px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  animation: apikeysModalFadeIn 0.25s ease-out;
+}
+
+@keyframes apikeysModalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.apikeys-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.apikeys-modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.apikeys-modal-close {
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #94a3b8;
+  transition: color 0.18s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.apikeys-modal-close:hover {
+  color: #475569;
+  background: #f1f5f9;
+}
+
+.apikeys-tabs {
+  display: inline-flex;
+  gap: 6px;
+  padding: 5px;
+  margin-bottom: 24px;
+  background: #fff;
+  border: 1px solid #e6e6ec;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.apikeys-tabs button {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #555;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.apikeys-tabs button.active {
+  background: linear-gradient(135deg, rgba(109, 106, 184, 0.14), rgba(212, 90, 155, 0.12));
+  color: #5a5799;
+  box-shadow: inset 0 0 0 1px rgba(109, 106, 184, 0.12);
+}
+
+.apikeys-doc-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 0.8rem;
+  margin-bottom: 18px;
+}
+
+.apikeys-doc-step {
+  display: flex;
+  gap: 10px;
+  line-height: 1.5;
+}
+
+.apikeys-doc-step-num {
+  background: #38bdf8;
+  color: #0f172a;
+  font-weight: 700;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.apikeys-doc-code {
+  background: #0f172a;
+  padding: 10px;
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: #38bdf8;
+  margin-top: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.apikeys-primary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #6d6ab8 0%, #b469b2 55%, #d45a9b 100%);
+  color: #fff;
+  font-weight: 700;
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(109, 106, 184, 0.22);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.apikeys-primary-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(109, 106, 184, 0.3);
+}

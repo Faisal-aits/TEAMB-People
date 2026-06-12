@@ -15,6 +15,7 @@ const ensureIntegrationSchema = () => {
         CREATE TABLE IF NOT EXISTS api_keys (
           id INT AUTO_INCREMENT PRIMARY KEY,
           tenant_id INT NOT NULL,
+          project_id INT NULL,
           name VARCHAR(100) NOT NULL,
           api_key VARCHAR(255) NOT NULL UNIQUE,
           status VARCHAR(20) NOT NULL DEFAULT 'active',
@@ -38,8 +39,12 @@ const ensureIntegrationSchema = () => {
         )
       `);
 
+      // Migration helpers for existing databases
+      await addColumnIfMissing('api_keys', 'project_id', '`project_id` INT NULL COMMENT \'Project associated with this API key\' AFTER tenant_id');
+
       // Indexes on api_keys
       await addIndexIfMissing('api_keys', 'idx_api_keys_tenant', 'INDEX idx_api_keys_tenant (tenant_id)');
+      await addIndexIfMissing('api_keys', 'idx_api_keys_project', 'INDEX idx_api_keys_project (project_id)');
       await addIndexIfMissing('api_keys', 'idx_api_keys_key', 'INDEX idx_api_keys_key (api_key)');
       await addIndexIfMissing('api_keys', 'idx_api_keys_status', 'INDEX idx_api_keys_status (status)');
 
@@ -53,6 +58,11 @@ const ensureIntegrationSchema = () => {
         'api_keys',
         'fk_api_keys_tenant',
         'FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE'
+      );
+      await addForeignKeyIfMissing(
+        'api_keys',
+        'fk_api_keys_project',
+        'FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL'
       );
       await addForeignKeyIfMissing(
         'integration_audit_logs',

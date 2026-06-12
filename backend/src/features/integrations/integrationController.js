@@ -71,7 +71,7 @@ const integrationController = {
         if (payload.raised_by_name) {
           // Keep raised_by_name as-is
         } else if (payload.raised_by_email) {
-          payload.raised_by_name = `${payload.raised_by_email} (External)`;
+          payload.raised_by_name = payload.raised_by_email;
         } else {
           payload.raised_by_name = `External via ${payload.source_app || 'API'}`;
         }
@@ -91,6 +91,11 @@ const integrationController = {
       }
 
       payload.api_key_id = req.integration.apiKeyId;
+
+      // Enforce the API Key's project ID if it is set
+      if (req.integration.projectId) {
+        payload.project_id = req.integration.projectId;
+      }
 
       ticketId = await ticketService.createTicket(req.tenantId, raisedByUserId, payload);
 

@@ -39,6 +39,7 @@ const verifyApiKey = async (req, res, next) => {
     req.integration = {
       apiKeyId: keyRecord.id,
       apiKeyName: keyRecord.name,
+      projectId: keyRecord.project_id,
     };
     req.isIntegration = true;
 

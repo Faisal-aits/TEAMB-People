@@ -237,7 +237,9 @@ const TicketManagement = () => {
                   >
                     <td>#{t.id}</td>
                     <td className="admin-user-cell">
-                      {t.raised_by_name}
+                      <span className="user-name-text" title={t.raised_by_name}>
+                        {t.raised_by_name}
+                      </span>
                       {t.source_app && (
                         <span className="source-app-badge" title={`External Ref: ${t.external_ref || 'N/A'}`}>
                           via {t.source_app}

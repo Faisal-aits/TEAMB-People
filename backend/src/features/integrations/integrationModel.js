@@ -5,23 +5,23 @@ const integrationModel = {
   /**
    * Create a new API key for a tenant.
    */
-  createApiKey: async (tenantId, name, apiKey) => {
+  createApiKey: async (tenantId, name, apiKey, projectId = null) => {
     await ensureIntegrationSchema();
     const result = await query(
-      'INSERT INTO api_keys (tenant_id, name, api_key, status) VALUES (?, ?, ?, ?)',
-      [tenantId, name, apiKey, 'active']
+      'INSERT INTO api_keys (tenant_id, project_id, name, api_key, status) VALUES (?, ?, ?, ?, ?)',
+      [tenantId, projectId, name, apiKey, 'active']
     );
     return result.insertId;
   },
 
   /**
    * Find an API key record by the raw key string.
-   * Returns { id, tenant_id, name, status } or null.
+   * Returns { id, tenant_id, name, status, project_id } or null.
    */
   findApiKey: async (apiKey) => {
     await ensureIntegrationSchema();
     const rows = await query(
-      'SELECT id, tenant_id, name, status FROM api_keys WHERE api_key = ? LIMIT 1',
+      'SELECT id, tenant_id, project_id, name, status FROM api_keys WHERE api_key = ? LIMIT 1',
       [apiKey]
     );
     return rows[0] || null;
@@ -33,7 +33,11 @@ const integrationModel = {
   listApiKeys: async (tenantId) => {
     await ensureIntegrationSchema();
     return await query(
-      'SELECT id, name, status, created_at FROM api_keys WHERE tenant_id = ? ORDER BY created_at DESC',
+      `SELECT ak.id, ak.name, ak.status, ak.created_at, ak.project_id, p.name as project_name 
+       FROM api_keys ak
+       LEFT JOIN projects p ON ak.project_id = p.id
+       WHERE ak.tenant_id = ? 
+       ORDER BY ak.created_at DESC`,
       [tenantId]
     );
   },
