@@ -37,7 +37,7 @@ const resolveRaisedByUser = async (tenantId, email) => {
 
   // Default: first admin of the tenant
   const admins = await query(
-    "SELECT id FROM users WHERE tenant_id = ? AND (position = 'admin' OR role = 'admin') ORDER BY id ASC LIMIT 1",
+    "SELECT id FROM users WHERE tenant_id = ? AND position = 'admin' ORDER BY id ASC LIMIT 1",
     [tenantId]
   );
   if (admins[0]) return admins[0].id;
