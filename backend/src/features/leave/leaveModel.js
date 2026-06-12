@@ -400,9 +400,12 @@ const Leave = {
                 FROM leave_requests lr
                 LEFT JOIN employee_details ed
                     ON ed.tenant_id = lr.tenant_id
-                   AND (lr.employee_id = ed.id OR lr.employee_id = CAST(ed.employee_id AS CHAR))
+                   AND (
+                       BINARY lr.employee_id = BINARY ed.id
+                       OR (lr.employee_id REGEXP '^[0-9]+$' AND CAST(lr.employee_id AS UNSIGNED) = ed.employee_id)
+                   )
                 WHERE lr.tenant_id = ?
-                  AND (lr.employee_id = ? OR ed.id = ?)
+                  AND (BINARY lr.employee_id = BINARY ? OR BINARY ed.id = BINARY ?)
                 ORDER BY lr.created_at DESC
             `;
             
@@ -435,7 +438,10 @@ const Leave = {
                 FROM leave_requests lr
                 LEFT JOIN employee_details ed
                     ON ed.tenant_id = lr.tenant_id
-                   AND (lr.employee_id = ed.id OR lr.employee_id = CAST(ed.employee_id AS CHAR))
+                   AND (
+                       BINARY lr.employee_id = BINARY ed.id
+                       OR (lr.employee_id REGEXP '^[0-9]+$' AND CAST(lr.employee_id AS UNSIGNED) = ed.employee_id)
+                   )
                 LEFT JOIN users u
                     ON ed.employee_id = u.id
                    AND ed.tenant_id = u.tenant_id
@@ -783,7 +789,10 @@ const Leave = {
                 FROM leave_requests lr
                 LEFT JOIN employee_details ed
                     ON ed.tenant_id = lr.tenant_id
-                   AND (lr.employee_id = ed.id OR lr.employee_id = CAST(ed.employee_id AS CHAR))
+                   AND (
+                       BINARY lr.employee_id = BINARY ed.id
+                       OR (lr.employee_id REGEXP '^[0-9]+$' AND CAST(lr.employee_id AS UNSIGNED) = ed.employee_id)
+                   )
                 LEFT JOIN users u
                     ON ed.employee_id = u.id
                    AND ed.tenant_id = u.tenant_id
