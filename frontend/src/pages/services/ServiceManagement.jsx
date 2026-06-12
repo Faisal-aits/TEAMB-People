@@ -3,9 +3,10 @@ import './ManagementHub.css';
 import { clientAPI } from '../../services/clientAPI';
 import { projectAPI } from '../../services/projectAPI';
 import { serviceAPI } from '../../services/serviceAPI';
-import { FiEdit, FiTrash2, FiSearch, FiSidebar, FiPieChart, FiUsers, FiFolder, FiSettings, FiActivity, FiClipboard, FiCheckCircle, FiDollarSign, FiX, FiPlus, FiInfo } from 'react-icons/fi';
+import { FiEdit, FiTrash2, FiSearch, FiSidebar, FiPieChart, FiUsers, FiFolder, FiSettings, FiActivity, FiClipboard, FiCheckCircle, FiDollarSign, FiX, FiPlus, FiInfo, FiChevronDown, FiChevronUp, FiCalendar, FiLink, FiShield } from 'react-icons/fi';
 import '../../styles/tableControls.css';
 import ApiKeysSettings from '../Settings/ApiKeysSettings.jsx';
+import integrationAPI from '../../services/integrationAPI';
 
 const ServiceManagement = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -15,6 +16,9 @@ const ServiceManagement = () => {
   const [clients, setClients] = useState([]);
   const [projects, setProjects] = useState([]);
   const [services, setServices] = useState([]);
+  
+  const [expandedProjects, setExpandedProjects] = useState({});
+  const [apiKeys, setApiKeys] = useState([]);
   
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [formType, setFormType] = useState('client'); // 'client', 'project', 'service'
@@ -30,22 +34,32 @@ const ServiceManagement = () => {
 
   const fetchData = async () => {
     try {
-      const [clientsRes, projectsRes, servicesRes] = await Promise.all([
+      const [clientsRes, projectsRes, servicesRes, apiKeysRes] = await Promise.all([
         clientAPI.getAll(),
         projectAPI.getAll(),
-        serviceAPI.getAll()
+        serviceAPI.getAll(),
+        integrationAPI.listApiKeys().catch(() => ({ data: [] }))
       ]);
       
       const clientsData = clientsRes.data?.clients || clientsRes.data || [];
       const projectsData = projectsRes.data?.data || projectsRes.data?.projects || projectsRes.data || [];
       const servicesData = servicesRes.data?.services || servicesRes.data || [];
+      const apiKeysData = apiKeysRes.data?.data || apiKeysRes.data || [];
 
       setClients(Array.isArray(clientsData) ? clientsData : []);
       setProjects(Array.isArray(projectsData) ? projectsData : []);
       setServices(Array.isArray(servicesData) ? servicesData : []);
+      setApiKeys(Array.isArray(apiKeysData) ? apiKeysData : []);
     } catch (error) {
       showToast('Failed to load data', 'error');
     }
+  };
+
+  const toggleProjectDetails = (projectId) => {
+    setExpandedProjects(prev => ({
+      ...prev,
+      [projectId]: !prev[projectId]
+    }));
   };
 
   const showToast = (msg, type = 'info') => {
@@ -333,19 +347,168 @@ const ServiceManagement = () => {
                 </tr>
               </thead>
               <tbody>
-                {sorted.map(p => (
-                  <tr key={p.id}>
-                    <td><strong>{p.name}</strong></td>
-                    <td>{getClientName(p.client_id)}</td>
-                    <td><span className="badge badge-green">{p.status}</span></td>
-                    <td>{p.start_date ? new Date(p.start_date).toLocaleDateString() : '—'}</td>
-                    <td>{p.end_date ? new Date(p.end_date).toLocaleDateString() : '—'}</td>
-                    <td>
-                      <button className="btn-icon" onClick={() => openSidePanel('project', p)}><FiEdit /></button>
-                      <button className="btn-icon" onClick={() => handleDeleteProject(p.id)} style={{ color: 'var(--danger)' }}><FiTrash2 /></button>
-                    </td>
-                  </tr>
-                ))}
+                {sorted.map(p => {
+                  const isExpanded = !!expandedProjects[p.id];
+                  const client = clients.find(c => c.id === p.client_id) || {};
+                  const projectServices = services.filter(s => s.project_id === p.id);
+                  const projectKeys = apiKeys.filter(k => k.project_id === p.id);
+                  
+                  const totalAmount = projectServices.reduce((sum, s) => sum + (Number(s.amount) || 0), 0);
+                  const totalPaid = projectServices.reduce((sum, s) => sum + (Number(s.paid) || 0), 0);
+                  const outstanding = totalAmount - totalPaid;
+
+                  return (
+                    <React.Fragment key={p.id}>
+                      <tr className={isExpanded ? 'project-row-expanded' : ''}>
+                        <td 
+                          onClick={() => toggleProjectDetails(p.id)} 
+                          style={{ cursor: 'pointer', userSelect: 'none' }}
+                          className="project-name-cell"
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            {isExpanded ? <FiChevronUp style={{ color: '#6d6ab8' }} /> : <FiChevronDown style={{ color: '#6d6ab8' }} />}
+                            <strong>{p.name}</strong>
+                          </div>
+                        </td>
+                        <td>{getClientName(p.client_id)}</td>
+                        <td>
+                          <span className={`badge ${
+                            p.status === 'Active' ? 'badge-green' : 
+                            p.status === 'Completed' ? 'badge-blue' : 
+                            p.status === 'On Hold' ? 'badge-orange' : 'badge-red'
+                          }`}>
+                            {p.status}
+                          </span>
+                        </td>
+                        <td>{p.start_date ? new Date(p.start_date).toLocaleDateString() : '—'}</td>
+                        <td>{p.end_date ? new Date(p.end_date).toLocaleDateString() : '—'}</td>
+                        <td>
+                          <button className="btn-icon" onClick={() => openSidePanel('project', p)}><FiEdit /></button>
+                          <button className="btn-icon" onClick={() => handleDeleteProject(p.id)} style={{ color: 'var(--danger)' }}><FiTrash2 /></button>
+                        </td>
+                      </tr>
+                      {isExpanded && (
+                        <tr className="project-detail-expanded-row">
+                          <td colSpan="6">
+                            <div className="project-detail-container">
+                              <div className="project-detail-grid">
+                                {/* Left Column: Project Overview */}
+                                <div className="project-detail-col">
+                                  <h4><FiFolder /> Project Overview</h4>
+                                  <div className="project-detail-overview-content">
+                                    <p className="project-detail-desc">
+                                      <strong>Description:</strong> {p.description || <em>No description provided.</em>}
+                                    </p>
+                                    <div className="project-detail-timeline">
+                                      <div className="detail-timeline-item">
+                                        <FiCalendar />
+                                        <span>Start: {p.start_date ? new Date(p.start_date).toLocaleDateString() : '—'}</span>
+                                      </div>
+                                      <div className="detail-timeline-item">
+                                        <FiCalendar />
+                                        <span>End: {p.end_date ? new Date(p.end_date).toLocaleDateString() : '—'}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Middle Column: Client Info */}
+                                <div className="project-detail-col">
+                                  <h4><FiUsers /> Client Contacts</h4>
+                                  <div className="project-detail-client-content">
+                                    <div className="detail-info-item">
+                                      <strong>Name:</strong> <span>{client.name || '—'}</span>
+                                    </div>
+                                    {client.company && (
+                                      <div className="detail-info-item">
+                                        <strong>Company:</strong> <span>{client.company}</span>
+                                      </div>
+                                    )}
+                                    {client.email && (
+                                      <div className="detail-info-item">
+                                        <strong>Email:</strong> <span>{client.email}</span>
+                                      </div>
+                                    )}
+                                    {client.phone && (
+                                      <div className="detail-info-item">
+                                        <strong>Phone:</strong> <span>{client.phone}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Right Column: Financials & Linked Services */}
+                                <div className="project-detail-col">
+                                  <h4><FiDollarSign /> Financials & Services ({projectServices.length})</h4>
+                                  <div className="project-detail-financials-content">
+                                    <div className="financials-metric-grid">
+                                      <div className="financials-metric">
+                                        <span className="metric-label">Total</span>
+                                        <span className="metric-value">₹{totalAmount.toLocaleString()}</span>
+                                      </div>
+                                      <div className="financials-metric">
+                                        <span className="metric-label">Paid</span>
+                                        <span className="metric-value text-success">₹{totalPaid.toLocaleString()}</span>
+                                      </div>
+                                      <div className="financials-metric">
+                                        <span className="metric-label">Oustanding</span>
+                                        <span className="metric-value text-danger">₹{outstanding.toLocaleString()}</span>
+                                      </div>
+                                    </div>
+
+                                    {projectServices.length > 0 ? (
+                                      <div className="detail-services-list">
+                                        {projectServices.map(s => (
+                                          <div key={s.id} className="detail-service-item">
+                                            <span className="service-name">{s.name || s.service_name}</span>
+                                            <div className="service-meta">
+                                              <span className="service-amount">₹{Number(s.amount).toLocaleString()}</span>
+                                              <span className={`service-status-badge ${s.status === 'Completed' ? 'completed' : 'pending'}`}>
+                                                {s.status}
+                                              </span>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <p className="no-data-text">No services linked to this project.</p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Bottom Row: Integrations */}
+                              <div className="project-detail-integrations">
+                                <h4><FiShield /> Linked Integration API Keys ({projectKeys.length})</h4>
+                                {projectKeys.length > 0 ? (
+                                  <div className="project-detail-keys-grid">
+                                    {projectKeys.map(key => (
+                                      <div key={key.id} className="project-key-card">
+                                        <div className="key-card-header">
+                                          <FiLink className="key-icon" />
+                                          <span className="key-name">{key.name}</span>
+                                        </div>
+                                        <div className="key-card-body">
+                                          <span className="key-status-label">Status:</span>
+                                          <span className={`key-status-badge ${key.status === 'active' ? 'active' : 'revoked'}`}>
+                                            {key.status === 'active' ? 'Active' : 'Revoked'}
+                                          </span>
+                                          <span className="key-created-date">{new Date(key.created_at).toLocaleDateString()}</span>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="no-data-text">No integration API keys created for this project.</p>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </tbody>
             </table>
           ) : <div className="empty-state">No projects found</div>}
