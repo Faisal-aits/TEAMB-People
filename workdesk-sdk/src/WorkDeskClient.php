@@ -81,6 +81,7 @@ class WorkDeskClient
      *   - 'priority'         (string: 'Low'|'Medium'|'High'|'Urgent', default 'Medium')
      *   - 'external_ref'     (string: your system's ticket/reference ID)
      *   - 'raised_by_email'  (string: employee email to link ticket to)
+     *   - 'raised_by_name'   (string: custom name of the external raiser)
      *   - 'project_id'       (int: Work Desk project ID)
      *
      * @param  array<string,mixed>  $data          Ticket data (see above)

@@ -43,6 +43,7 @@ const ensureTicketSchema = () => {
       await addColumnIfMissing('tickets', 'source_app', '`source_app` VARCHAR(100) NULL COMMENT \'External application that raised this ticket\'');
       await addColumnIfMissing('tickets', 'external_ref', '`external_ref` VARCHAR(100) NULL COMMENT \'Ticket reference ID from the external application\'');
       await addColumnIfMissing('tickets', 'api_key_id', '`api_key_id` INT NULL COMMENT \'API key used to create this ticket via integration\'');
+      await addColumnIfMissing('tickets', 'raised_by_name', '`raised_by_name` VARCHAR(150) NULL COMMENT \'Name of the external person who raised this ticket\'');
 
       // Create ticket_comments table
       await pool.execute(`

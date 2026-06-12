@@ -32,7 +32,7 @@ const resolveRaisedByUser = async (tenantId, email) => {
       'SELECT id FROM users WHERE email = ? AND tenant_id = ? LIMIT 1',
       [email, tenantId]
     );
-    if (rows[0]) return rows[0].id;
+    if (rows[0]) return { id: rows[0].id, matched: true };
   }
 
   // Default: first admin of the tenant
@@ -40,7 +40,7 @@ const resolveRaisedByUser = async (tenantId, email) => {
     "SELECT id FROM users WHERE tenant_id = ? AND position = 'admin' ORDER BY id ASC LIMIT 1",
     [tenantId]
   );
-  if (admins[0]) return admins[0].id;
+  if (admins[0]) return { id: admins[0].id, matched: false };
 
   throw Object.assign(new Error('No valid user found in tenant to assign this ticket.'), { statusCode: 422 });
 };
@@ -63,7 +63,22 @@ const integrationController = {
       payload.title = payload.title || payload.subject;
 
       // Resolve source user
-      const raisedByUserId = await resolveRaisedByUser(req.tenantId, payload.raised_by_email);
+      const { id: raisedByUserId, matched } = await resolveRaisedByUser(req.tenantId, payload.raised_by_email);
+
+      // If we didn't match a user via email, and raised_by_name is provided, use raised_by_name.
+      // If raised_by_name is not provided, but raised_by_email is, fall back to email.
+      if (!matched) {
+        if (payload.raised_by_name) {
+          // Keep raised_by_name as-is
+        } else if (payload.raised_by_email) {
+          payload.raised_by_name = `${payload.raised_by_email} (External)`;
+        } else {
+          payload.raised_by_name = `External via ${payload.source_app || 'API'}`;
+        }
+      } else {
+        // If matched, use explicitly provided name or fall back to user's name (null)
+        payload.raised_by_name = payload.raised_by_name || null;
+      }
 
       // Handle optional attachment
       if (req.file) {
@@ -180,7 +195,7 @@ const integrationController = {
       const { comment } = validate(createCommentSchema, req.body);
 
       // Use tenant's first admin as the comment author for external calls
-      const raisedByUserId = await resolveRaisedByUser(req.tenantId, null);
+      const { id: raisedByUserId } = await resolveRaisedByUser(req.tenantId, null);
       const integrationUser = { id: raisedByUserId, position: 'admin', role: 'admin' };
 
       const commentId = await ticketService.addComment(req.tenantId, id, integrationUser, comment);

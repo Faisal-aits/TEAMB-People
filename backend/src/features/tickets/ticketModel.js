@@ -17,8 +17,8 @@ const ticketModel = {
     }
 
     const result = await query(
-      `INSERT INTO tickets (tenant_id, project_id, raised_by_user_id, title, description, priority, status, attachment_url, source_app, external_ref, api_key_id)
-       VALUES (?, ?, ?, ?, ?, ?, 'Open', ?, ?, ?, ?)`,
+      `INSERT INTO tickets (tenant_id, project_id, raised_by_user_id, title, description, priority, status, attachment_url, source_app, external_ref, api_key_id, raised_by_name)
+       VALUES (?, ?, ?, ?, ?, ?, 'Open', ?, ?, ?, ?, ?)`,
       [
         tenantId,
         data.project_id || null,
@@ -30,6 +30,7 @@ const ticketModel = {
         data.source_app || null,
         data.external_ref || null,
         data.api_key_id || null,
+        data.raised_by_name || null,
       ]
     );
     return result.insertId;
@@ -40,7 +41,7 @@ const ticketModel = {
     let sql = `
       SELECT t.*, 
              p.name as project_name,
-             CONCAT(u1.first_name, ' ', u1.last_name) as raised_by_name,
+             COALESCE(t.raised_by_name, CONCAT(u1.first_name, ' ', u1.last_name)) as raised_by_name,
              CONCAT(u2.first_name, ' ', u2.last_name) as assigned_to_name
       FROM tickets t
       LEFT JOIN projects p ON t.project_id = p.id
@@ -84,7 +85,7 @@ const ticketModel = {
     const sql = `
       SELECT t.*, 
              p.name as project_name,
-             CONCAT(u1.first_name, ' ', u1.last_name) as raised_by_name,
+             COALESCE(t.raised_by_name, CONCAT(u1.first_name, ' ', u1.last_name)) as raised_by_name,
              CONCAT(u2.first_name, ' ', u2.last_name) as assigned_to_name
       FROM tickets t
       LEFT JOIN projects p ON t.project_id = p.id

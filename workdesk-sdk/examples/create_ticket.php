@@ -23,11 +23,13 @@ $client = new WorkDeskClient($apiUrl, $apiKey);
 try {
     // 1. Create a basic ticket
     $result = $client->createTicket([
-        'subject'      => 'Login Issue in HRMS',
-        'description'  => 'Employee cannot log in since 09:00 AM. Error: "Invalid credentials" even with correct password.',
-        'priority'     => 'High',
-        'source_app'   => 'HRMS',
-        'external_ref' => 'HRMS-2024-001',
+        'subject'         => 'Login Issue in HRMS',
+        'description'     => 'Employee cannot log in since 09:00 AM. Error: "Invalid credentials" even with correct password.',
+        'priority'        => 'High',
+        'source_app'      => 'HRMS',
+        'external_ref'    => 'HRMS-2024-001',
+        'raised_by_email' => 'employee@example.com', // Option 1: matches existing user (if registered)
+        'raised_by_name'  => 'Jubeda (via HRMS)',     // Option 2: display name fallback if email is not matched
     ]);
 
     echo "✅ Ticket created!\n";

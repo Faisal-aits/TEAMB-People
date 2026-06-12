@@ -29,6 +29,7 @@ const createExternalTicketSchema = Joi.object({
   external_ref: Joi.string().trim().max(100).optional().allow(null, ''),
   // Optional: allow caller to specify the employee raising this ticket by email
   raised_by_email: Joi.string().email().trim().optional().allow(null, ''),
+  raised_by_name: Joi.string().trim().max(150).optional().allow(null, ''),
 })
   .or('title', 'subject')
   .options({ stripUnknown: true });
