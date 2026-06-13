@@ -30,12 +30,21 @@ const decryptSecret = (value) => {
     return value;
   }
 
-  const decipher = crypto.createDecipheriv('aes-256-gcm', deriveKey(), Buffer.from(iv, 'base64'));
-  decipher.setAuthTag(Buffer.from(authTag, 'base64'));
-  return Buffer.concat([
-    decipher.update(Buffer.from(encrypted, 'base64')),
-    decipher.final()
-  ]).toString('utf8');
+  try {
+    const decipher = crypto.createDecipheriv('aes-256-gcm', deriveKey(), Buffer.from(iv, 'base64'));
+    decipher.setAuthTag(Buffer.from(authTag, 'base64'));
+    return Buffer.concat([
+      decipher.update(Buffer.from(encrypted, 'base64')),
+      decipher.final()
+    ]).toString('utf8');
+  } catch (err) {
+    // AES-GCM auth tag mismatch — the encryption key has changed since the password was stored.
+    // The admin must re-save the SMTP password in Settings > Service Settings.
+    throw new Error(
+      'SMTP password could not be decrypted (encryption key mismatch). ' +
+      'Please go to Settings → Service Settings → SMTP and re-enter your SMTP password, then save.'
+    );
+  }
 };
 
 const toPublicSmtpConfig = (row) => {

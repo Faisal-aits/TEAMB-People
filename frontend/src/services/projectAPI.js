@@ -123,6 +123,8 @@ export const projectAPI = {
     status: data.status,
     remarks: data.remarks,
   }),
+  submitForReview: (id) => api.post(`/pttm/tasks/${id}/submit-review`),
+  updateTaskStatusAndRemarks: (id, status, remarks) => api.put(`/pttm/tasks/${id}`, { status, remarks }),
   getById: (id) => api.get(`/projects/${id}`),
   create: (data) => api.post('/projects', normalizeProjectPayload(data)),
   update: (id, data) => api.put(`/projects/${id}`, normalizeProjectPayload(data)),
