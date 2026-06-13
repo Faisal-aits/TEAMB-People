@@ -977,3 +977,108 @@
   margin: 0;
   font-style: italic;
 }
+
+/* Inline Key Generation Layout */
+.integrations-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 6px;
+}
+
+.integrations-header-row h4 {
+  margin: 0 !important;
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+}
+
+.btn-add-inline-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: white;
+  color: #6d6ab8;
+  border: 1px dashed #6d6ab8;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.btn-add-inline-key:hover {
+  background: rgba(109, 106, 184, 0.08);
+  border-style: solid;
+}
+
+.inline-key-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 12px;
+  animation: slideDownFade 0.2s ease-out;
+}
+
+.inline-key-input {
+  flex: 1;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 11.5px;
+  background: white;
+  outline: none;
+}
+
+.inline-key-input:focus {
+  border-color: #8a87c9;
+  box-shadow: 0 0 0 2px rgba(109, 106, 184, 0.12);
+}
+
+.btn-inline-generate {
+  background: linear-gradient(135deg, #6d6ab8 0%, #b469b2 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-weight: 700;
+  font-size: 11px;
+  cursor: pointer;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-inline-generate:hover:not(:disabled) {
+  opacity: 0.95;
+}
+
+.btn-inline-generate:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-inline-cancel {
+  background: white;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-weight: 600;
+  font-size: 11px;
+  cursor: pointer;
+  min-height: 32px;
+}
+
+.btn-inline-cancel:hover {
+  background: #f8fafc;
+  color: #1e293b;
+}

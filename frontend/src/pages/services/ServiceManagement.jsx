@@ -3,7 +3,7 @@ import './ManagementHub.css';
 import { clientAPI } from '../../services/clientAPI';
 import { projectAPI } from '../../services/projectAPI';
 import { serviceAPI } from '../../services/serviceAPI';
-import { FiEdit, FiTrash2, FiSearch, FiSidebar, FiPieChart, FiUsers, FiFolder, FiSettings, FiActivity, FiClipboard, FiCheckCircle, FiDollarSign, FiX, FiPlus, FiInfo, FiChevronDown, FiChevronUp, FiCalendar, FiLink, FiShield } from 'react-icons/fi';
+import { FiEdit, FiTrash2, FiSearch, FiSidebar, FiPieChart, FiUsers, FiFolder, FiSettings, FiActivity, FiClipboard, FiCheckCircle, FiDollarSign, FiX, FiPlus, FiInfo, FiChevronDown, FiChevronUp, FiCalendar, FiLink, FiShield, FiAlertTriangle } from 'react-icons/fi';
 import '../../styles/tableControls.css';
 import ApiKeysSettings from '../Settings/ApiKeysSettings.jsx';
 import integrationAPI from '../../services/integrationAPI';
@@ -19,6 +19,14 @@ const ServiceManagement = () => {
   
   const [expandedProjects, setExpandedProjects] = useState({});
   const [apiKeys, setApiKeys] = useState([]);
+
+  // Inline API Key generation states
+  const [inlineKeyName, setInlineKeyName] = useState('');
+  const [inlineFormProjectId, setInlineFormProjectId] = useState(null);
+  const [isGeneratingInlineKey, setIsGeneratingInlineKey] = useState(false);
+  const [createdKeyReveal, setCreatedKeyReveal] = useState(null);
+  const [showRevealModal, setShowRevealModal] = useState(false);
+  const [copied, setCopied] = useState(false);
   
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [formType, setFormType] = useState('client'); // 'client', 'project', 'service'
@@ -60,6 +68,42 @@ const ServiceManagement = () => {
       ...prev,
       [projectId]: !prev[projectId]
     }));
+  };
+
+  const handleGenerateInlineKey = async (e, projectId) => {
+    e.preventDefault();
+    const name = inlineKeyName.trim();
+    if (!name) {
+      showToast('Please enter a valid key name.', 'error');
+      return;
+    }
+
+    try {
+      setIsGeneratingInlineKey(true);
+      const response = await integrationAPI.generateApiKey(name, projectId);
+      const keyData = response.data?.data || response.data;
+      setCreatedKeyReveal(keyData);
+      setShowRevealModal(true);
+      setInlineKeyName('');
+      setInlineFormProjectId(null);
+
+      // Reload keys
+      await fetchData();
+      showToast('API key generated successfully!');
+    } catch (error) {
+      console.error('Error generating inline API key:', error);
+      showToast(error.response?.data?.message || 'Failed to generate API key.', 'error');
+    } finally {
+      setIsGeneratingInlineKey(false);
+    }
+  };
+
+  const handleCopyRevealKey = () => {
+    if (createdKeyReveal?.api_key) {
+      navigator.clipboard.writeText(createdKeyReveal.api_key);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const showToast = (msg, type = 'info') => {
@@ -479,7 +523,46 @@ const ServiceManagement = () => {
 
                               {/* Bottom Row: Integrations */}
                               <div className="project-detail-integrations">
-                                <h4><FiShield /> Linked Integration API Keys ({projectKeys.length})</h4>
+                                <div className="integrations-header-row">
+                                  <h4><FiShield /> Linked Integration API Keys ({projectKeys.length})</h4>
+                                  <button
+                                    type="button"
+                                    className="btn-add-inline-key"
+                                    onClick={() => {
+                                      setInlineFormProjectId(inlineFormProjectId === p.id ? null : p.id);
+                                      setInlineKeyName('');
+                                    }}
+                                  >
+                                    <FiPlus /> Quick Generate Key
+                                  </button>
+                                </div>
+
+                                {inlineFormProjectId === p.id && (
+                                  <form onSubmit={(e) => handleGenerateInlineKey(e, p.id)} className="inline-key-form">
+                                    <input
+                                      type="text"
+                                      placeholder="Enter API Key name..."
+                                      value={inlineKeyName}
+                                      onChange={(e) => setInlineKeyName(e.target.value)}
+                                      required
+                                      className="inline-key-input"
+                                    />
+                                    <button type="submit" disabled={isGeneratingInlineKey} className="btn-inline-generate">
+                                      {isGeneratingInlineKey ? 'Generating...' : 'Generate Key'}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setInlineFormProjectId(null);
+                                        setInlineKeyName('');
+                                      }}
+                                      className="btn-inline-cancel"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </form>
+                                )}
+
                                 {projectKeys.length > 0 ? (
                                   <div className="project-detail-keys-grid">
                                     {projectKeys.map(key => (
@@ -917,6 +1000,66 @@ $client->createTicket([
               }}
             >
               Close Setup Guide
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal for Key Reveal (from Inline generation) */}
+      {showRevealModal && createdKeyReveal && (
+        <div className="apikeys-modal-overlay">
+          <div className="apikeys-modal">
+            <div className="apikeys-modal-header">
+              <h3>API Key Generated</h3>
+              <button
+                type="button"
+                className="apikeys-modal-close"
+                onClick={() => setShowRevealModal(false)}
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="apikeys-modal-warning">
+              <FiAlertTriangle style={{ fontSize: '24px', flexShrink: 0, color: '#dc2626' }} />
+              <div>
+                <strong>Security Warning:</strong> For your security, this API key is only shown once. Make sure to copy it now. You will not be able to retrieve it later.
+              </div>
+            </div>
+
+            <div className="apikeys-field" style={{ marginBottom: '14px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontWeight: '700', fontSize: '0.85rem', color: '#475569' }}>Key Name</label>
+              <div style={{ fontWeight: '700', fontSize: '0.95rem' }}>{createdKeyReveal.name}</div>
+            </div>
+
+            <div className="apikeys-field" style={{ marginBottom: '14px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontWeight: '700', fontSize: '0.85rem', color: '#475569' }}>Associated Project</label>
+              <div style={{ fontWeight: '600', fontSize: '0.9rem', color: '#6d6ab8' }}>
+                {projects.find((p) => p.id === createdKeyReveal.project_id)?.name || 'Global / All Projects'}
+              </div>
+            </div>
+
+            <div className="apikeys-field" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontWeight: '700', fontSize: '0.85rem', color: '#475569' }}>API Key</label>
+              <div className="apikeys-key-display" style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px' }}>
+                <span className="apikeys-key-code" style={{ fontFamily: 'monospace', fontSize: '0.95rem', fontWeight: '600', color: '#0f172a', flex: 1, wordBreak: 'break-all' }}>{createdKeyReveal.api_key}</span>
+                <button
+                  type="button"
+                  className={`btn-copy ${copied ? 'copied' : ''}`}
+                  onClick={handleCopyRevealKey}
+                >
+                  {copied ? 'Copied' : 'Copy'}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="apikeys-primary-btn"
+              style={{ width: '100%', marginTop: '16px' }}
+              onClick={() => setShowRevealModal(false)}
+            >
+              I have saved the key safely
             </button>
           </div>
         </div>
