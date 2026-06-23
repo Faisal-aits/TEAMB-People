@@ -230,7 +230,7 @@ const AddExpenseModal = ({ isOpen, onClose, onExpenseAdded }) => {
                 <option value="">Select a category</option>
                 {categories.map(category => (
                   <option key={category.id} value={category.id}>
-                    {category.name} {category.limit_amount > 0 && `(Limit: â‚¹${category.limit_amount})`}
+                    {category.name} {category.limit_amount > 0 && `(Limit: \u20B9${category.limit_amount})`}
                   </option>
                 ))}
               </select>
@@ -275,7 +275,7 @@ const AddExpenseModal = ({ isOpen, onClose, onExpenseAdded }) => {
                     fontSize: '0.9rem',
                     color: '#4a5568'
                   }}>
-                    Limit Amount (â‚¹) (Optional)
+                    Limit Amount (&#8377;) (Optional)
                   </label>
                   <input
                     type="number"
@@ -352,7 +352,7 @@ const AddExpenseModal = ({ isOpen, onClose, onExpenseAdded }) => {
               fontWeight: '500',
               color: '#4a5568'
             }}>
-              Amount (â‚¹) *
+              Amount (&#8377;) *
             </label>
             <input
               type="number"
@@ -692,7 +692,7 @@ const ExpenseManagement = () => {
                       )}
                     </td>
                     <td style={{ padding: '1rem', fontWeight: '600', color: '#2d3748' }}>
-                      â‚¹{parseFloat(expense.amount || 0).toFixed(2)}
+                      &#8377;{parseFloat(expense.amount || 0).toFixed(2)}
                     </td>
                     <td style={{ padding: '1rem', color: '#4a5568', maxWidth: '250px', wordWrap: 'break-word' }}>
                       {expense.description || 'N/A'}
