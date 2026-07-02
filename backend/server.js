@@ -39,7 +39,6 @@ const integrationRoutes = require('./src/features/integrations/integrationRoutes
 const integrationAdminRoutes = require('./src/features/integrations/integrationAdminRoutes');
 const { ensureIntegrationSchema } = require('./src/features/integrations/integrationSchema');
 const { ensureServiceSettingSchema } = require('./src/features/servicesetting/serviceSettingSchema');
-const { ensureTicketSchema } = require('./src/features/tickets/ticketSchema');
 const { ensureEmployeeSchema } = require('./src/features/employee/employeeSchema');
 const { ensureSalarySchema } = require('./src/features/salary/salarySchema');
 const { ensureLeaveSchema } = require('./src/features/leave/leaveSchema');
@@ -169,4 +168,3 @@ const startServer = async () => {
 startServer();
 
 module.exports = app;
-

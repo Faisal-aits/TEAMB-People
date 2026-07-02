@@ -50,10 +50,10 @@ const TaskGrid = forwardRef(function TaskGrid({ rows, cell, setCell, onMenu }, r
   const startColResize = (e, colIndex) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     const startX = e.clientX;
     const startWidth = colWidths[colIndex];
-    
+
     const onMouseMove = (moveEvent) => {
       const deltaX = moveEvent.clientX - startX;
       const newWidth = Math.max(35, startWidth + deltaX);
@@ -62,13 +62,13 @@ const TaskGrid = forwardRef(function TaskGrid({ rows, cell, setCell, onMenu }, r
         [colIndex]: newWidth
       }));
     };
-    
+
     const onMouseUp = () => {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
       document.body.style.cursor = 'default';
     };
-    
+
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
     document.body.style.cursor = 'col-resize';
@@ -77,10 +77,10 @@ const TaskGrid = forwardRef(function TaskGrid({ rows, cell, setCell, onMenu }, r
   const startRowResize = (e, rowIndex) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     const startY = e.clientY;
     const startHeight = rowHeights[rowIndex] || 28;
-    
+
     const onMouseMove = (moveEvent) => {
       const deltaY = moveEvent.clientY - startY;
       const newHeight = Math.max(18, startHeight + deltaY);
@@ -89,13 +89,13 @@ const TaskGrid = forwardRef(function TaskGrid({ rows, cell, setCell, onMenu }, r
         [rowIndex]: newHeight
       }));
     };
-    
+
     const onMouseUp = () => {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
       document.body.style.cursor = 'default';
     };
-    
+
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
     document.body.style.cursor = 'row-resize';
@@ -110,16 +110,16 @@ const TaskGrid = forwardRef(function TaskGrid({ rows, cell, setCell, onMenu }, r
       }));
       return;
     }
-    
+
     const colKey = cols[colIndex - 1][0];
     const colLabel = cols[colIndex - 1][1];
-    
+
     let maxLength = colLabel.length;
     rows.forEach(r => {
       const val = displayValue(r, colKey, app);
       if (val) maxLength = Math.max(maxLength, String(val).length);
     });
-    
+
     const fitWidth = Math.min(500, Math.max(60, maxLength * 8 + 30));
     setColWidths(prev => ({
       ...prev,
@@ -137,10 +137,10 @@ const TaskGrid = forwardRef(function TaskGrid({ rows, cell, setCell, onMenu }, r
   const startFillDrag = (e, r, c) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     setDragFillStart({ r, c });
     setDragFillEnd({ r, c });
-    
+
     const onMouseMove = (moveEvent) => {
       const element = document.elementFromPoint(moveEvent.clientX, moveEvent.clientY);
       const td = element?.closest('td');
@@ -152,19 +152,19 @@ const TaskGrid = forwardRef(function TaskGrid({ rows, cell, setCell, onMenu }, r
         }
       }
     };
-    
+
     const onMouseUp = async () => {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
-      
+
       if (dragFillEnd) {
         const sourceTask = sortedRows[r];
         const colKey = cols[c][0];
         const fillValue = sourceTask[colKey] || '';
-        
+
         const minR = Math.min(r, dragFillEnd.r);
         const maxR = Math.max(r, dragFillEnd.r);
-        
+
         let count = 0;
         for (let i = minR; i <= maxR; i++) {
           if (i === r) continue;
@@ -178,11 +178,11 @@ const TaskGrid = forwardRef(function TaskGrid({ rows, cell, setCell, onMenu }, r
           app.showToast(`Auto-filled ${count} cells in ${cols[c][1]} column!`);
         }
       }
-      
+
       setDragFillStart(null);
       setDragFillEnd(null);
     };
-    
+
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
   };
@@ -261,7 +261,7 @@ const TaskGrid = forwardRef(function TaskGrid({ rows, cell, setCell, onMenu }, r
     if (!task) return;
     const value = displayValue(task, cols[c][0], app);
     setClipboard(value);
-    await navigator.clipboard?.writeText(value).catch(() => {});
+    await navigator.clipboard?.writeText(value).catch(() => { });
     document.querySelector(`td[data-r="${r}"][data-c="${c}"]`)?.classList.add('copy-flash');
     setTimeout(() => document.querySelector(`td[data-r="${r}"][data-c="${c}"]`)?.classList.remove('copy-flash'), 300);
     app.showToast(`Copied: ${value}`);
@@ -312,25 +312,25 @@ const TaskGrid = forwardRef(function TaskGrid({ rows, cell, setCell, onMenu }, r
             <tr id="hdr">
               <th style={{ cursor: 'default', textAlign: 'center', position: 'relative' }}>
                 #
-                <div 
-                  className="col-resize-handle" 
-                  onMouseDown={(e) => startColResize(e, 0)} 
+                <div
+                  className="col-resize-handle"
+                  onMouseDown={(e) => startColResize(e, 0)}
                   onDoubleClick={() => autoFitCol(0)}
                   onClick={(e) => e.stopPropagation()}
                 />
               </th>
               {cols.map(([key, label], ci) => (
-                <th 
-                  key={key} 
-                  onClick={() => sortBy(key)} 
-                  data-c={key} 
+                <th
+                  key={key}
+                  onClick={() => sortBy(key)}
+                  data-c={key}
                   className={sort.col === key ? (sort.dir === 'asc' ? 'sa' : 'sd') : ''}
                   style={{ position: 'relative' }}
                 >
                   {label} <span className="si" />
-                  <div 
-                    className="col-resize-handle" 
-                    onMouseDown={(e) => startColResize(e, ci + 1)} 
+                  <div
+                    className="col-resize-handle"
+                    onMouseDown={(e) => startColResize(e, ci + 1)}
                     onDoubleClick={() => autoFitCol(ci + 1)}
                     onClick={(e) => e.stopPropagation()}
                   />
@@ -340,22 +340,22 @@ const TaskGrid = forwardRef(function TaskGrid({ rows, cell, setCell, onMenu }, r
           </thead>
           <tbody id="gbody">
             {sortedRows.map((task, ri) => (
-              <tr 
-                key={task.id} 
-                data-id={task.id} 
-                className={selectedRow === ri ? 'sel' : ''} 
+              <tr
+                key={task.id}
+                data-id={task.id}
+                className={selectedRow === ri ? 'sel' : ''}
                 style={{ height: rowHeights[ri] || 28 }}
                 onContextMenu={e => { e.preventDefault(); setSelectedRow(ri); setCell({ r: ri, c: cell?.c ?? 0 }); onMenu(e.clientX, e.clientY, ri); }}
               >
-                <td 
-                  className="rn" 
+                <td
+                  className="rn"
                   onClick={() => { setSelectedRow(ri); setCell({ r: ri, c: cell?.c ?? 0 }); }}
                   style={{ position: 'relative' }}
                 >
                   {ri + 1}
-                  <div 
-                    className="row-resize-handle" 
-                    onMouseDown={(e) => startRowResize(e, ri)} 
+                  <div
+                    className="row-resize-handle"
+                    onMouseDown={(e) => startRowResize(e, ri)}
                     onDoubleClick={() => autoFitRow(ri)}
                     onClick={(e) => e.stopPropagation()}
                   />
@@ -365,32 +365,32 @@ const TaskGrid = forwardRef(function TaskGrid({ rows, cell, setCell, onMenu }, r
                   const editing = edit?.r === ri && edit?.c === ci;
                   const highlighted = isDragFillHighlighted(ri, ci);
                   return (
-                    <td 
-                      key={key} 
-                      data-r={ri} 
-                      data-c={ci} 
-                      data-k={key} 
-                      className={`${active ? 'ac' : ''} ${selectedRow === ri ? 'sel' : ''} ${highlighted ? 'drag-fill-highlight' : ''}`} 
-                      onClick={e => { e.stopPropagation(); if (active) setEdit({ r: ri, c: ci }); else { setCell({ r: ri, c: ci }); setSelectedRow(ri); } }} 
+                    <td
+                      key={key}
+                      data-r={ri}
+                      data-c={ci}
+                      data-k={key}
+                      className={`${active ? 'ac' : ''} ${selectedRow === ri ? 'sel' : ''} ${highlighted ? 'drag-fill-highlight' : ''}`}
+                      onClick={e => { e.stopPropagation(); if (active) setEdit({ r: ri, c: ci }); else { setCell({ r: ri, c: ci }); setSelectedRow(ri); } }}
                       onDoubleClick={e => { e.stopPropagation(); setEdit({ r: ri, c: ci }); }}
                     >
                       {editing ? (
-                        <EditCell 
-                          task={task} 
-                          col={key} 
-                          commit={commit} 
-                          onDone={() => setEdit(null)} 
-                          r={ri} 
-                          c={ci} 
-                          setEdit={setEdit} 
-                          rows={sortedRows} 
+                        <EditCell
+                          task={task}
+                          col={key}
+                          commit={commit}
+                          onDone={() => setEdit(null)}
+                          r={ri}
+                          c={ci}
+                          setEdit={setEdit}
+                          rows={sortedRows}
                         />
                       ) : (
                         <>
                           <DisplayCell task={task} col={key} app={app} />
                           {active && (
-                            <div 
-                              className="fill-handle" 
+                            <div
+                              className="fill-handle"
                               onMouseDown={(e) => startFillDrag(e, ri, ci)}
                               onClick={e => e.stopPropagation()}
                               title="Drag down to auto-fill"
@@ -434,37 +434,9 @@ const TaskGrid = forwardRef(function TaskGrid({ rows, cell, setCell, onMenu }, r
 
 function DisplayCell({ task, col, app }) {
   if (col === 'status') {
-    const canSubmit =
-      (task.status === 'In Progress' || task.status === 'Pending') &&
-      task.review_status !== 'Pending Review';
     return (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
         <span className={`sb s${statusKey[task.status] || 'N'}`}>{task.status || ''}</span>
-        {canSubmit && (
-          <button
-            title="Submit this task for team leader review"
-            onClick={async e => {
-              e.stopPropagation();
-              if (window.confirm('Submit this task for team leader review?')) {
-                await app.submitForReview(task.id);
-              }
-            }}
-            style={{
-              padding: '2px 8px',
-              fontSize: 10,
-              fontWeight: 700,
-              background: 'linear-gradient(135deg,#4f46e5,#7c3aed)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 20,
-              cursor: 'pointer',
-              letterSpacing: '0.2px',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            ➤ Submit for Review
-          </button>
-        )}
         {task.review_status === 'Pending Review' && (
           <span style={{
             padding: '2px 8px', fontSize: 10, fontWeight: 700,

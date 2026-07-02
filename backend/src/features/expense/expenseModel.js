@@ -7,6 +7,12 @@ const Expense = {
             SELECT 
                 e.*,
                 e.user_id AS employee_id,
+                ed.id AS employee_code,
+                COALESCE(
+                    NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(u.first_name), ''), NULLIF(TRIM(u.last_name), ''))), ''),
+                    u.email,
+                    CONCAT('User #', e.user_id)
+                ) AS employee_name,
                 u.first_name,
                 u.last_name,
                 u.email,
@@ -14,6 +20,7 @@ const Expense = {
                 ec.limit_amount as category_limit
             FROM expenses e
             JOIN users u ON e.user_id = u.id
+            LEFT JOIN employee_details ed ON ed.employee_id = u.id AND ed.tenant_id = e.tenant_id
             JOIN expense_categories ec ON e.category_id = ec.id
             WHERE e.tenant_id = ?
         `;
@@ -51,6 +58,12 @@ const Expense = {
             `SELECT 
                 e.*,
                 e.user_id AS employee_id,
+                ed.id AS employee_code,
+                COALESCE(
+                    NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(u.first_name), ''), NULLIF(TRIM(u.last_name), ''))), ''),
+                    u.email,
+                    CONCAT('User #', e.user_id)
+                ) AS employee_name,
                 u.first_name,
                 u.last_name,
                 u.email,
@@ -58,6 +71,7 @@ const Expense = {
                 ec.limit_amount as category_limit
             FROM expenses e
             JOIN users u ON e.user_id = u.id
+            LEFT JOIN employee_details ed ON ed.employee_id = u.id AND ed.tenant_id = e.tenant_id
             JOIN expense_categories ec ON e.category_id = ec.id
             WHERE e.id = ? AND e.tenant_id = ?`,
             [id, tenantId]
@@ -113,9 +127,20 @@ const Expense = {
             `SELECT 
                 e.*,
                 e.user_id AS employee_id,
+                ed.id AS employee_code,
+                COALESCE(
+                    NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(u.first_name), ''), NULLIF(TRIM(u.last_name), ''))), ''),
+                    u.email,
+                    CONCAT('User #', e.user_id)
+                ) AS employee_name,
+                u.first_name,
+                u.last_name,
+                u.email,
                 ec.name as category_name,
                 ec.limit_amount as category_limit
             FROM expenses e
+            JOIN users u ON e.user_id = u.id
+            LEFT JOIN employee_details ed ON ed.employee_id = u.id AND ed.tenant_id = e.tenant_id
             JOIN expense_categories ec ON e.category_id = ec.id
             WHERE e.user_id = ? AND e.tenant_id = ?
             ORDER BY e.submitted_at DESC`,
