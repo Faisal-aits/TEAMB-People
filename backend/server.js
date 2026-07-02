@@ -34,6 +34,10 @@ const serviceSettingRoutes = require('./src/features/servicesetting/serviceSetti
 const dashboardRoutes = require('./src/features/dashboard/dashboardRoutes');
 const aiDocumentGeneratorRoutes = require('./src/features/aiDocumentGenerator/aiDocumentGeneratorRoutes');
 const reportRoutes = require('./src/features/reports/reportRoutes');
+const ticketRoutes = require('./src/features/tickets/ticketRoutes');
+const integrationRoutes = require('./src/features/integrations/integrationRoutes');
+const integrationAdminRoutes = require('./src/features/integrations/integrationAdminRoutes');
+const { ensureIntegrationSchema } = require('./src/features/integrations/integrationSchema');
 const { ensureServiceSettingSchema } = require('./src/features/servicesetting/serviceSettingSchema');
 const { ensureEmployeeSchema } = require('./src/features/employee/employeeSchema');
 const { ensureSalarySchema } = require('./src/features/salary/salarySchema');
@@ -108,6 +112,11 @@ app.use('/api/pttm', pttmRoutes);
 app.use('/api/service-settings', serviceSettingRoutes);
 app.use('/api/ai-document-generator', aiDocumentGeneratorRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/tickets', ticketRoutes);
+// Integration API — external application ticket creation (API Key auth)
+app.use('/api/integration', integrationRoutes);
+// Integration admin — API key management and audit logs (JWT admin auth)
+app.use('/api/admin/integration', integrationAdminRoutes);
 // app.use('/api/services', serviceRoutes);
 app.use((req, res) => {
   return sendResponse(res, 404, false, 'Route not found', null);
@@ -142,6 +151,8 @@ const startServer = async () => {
     if (reportRoutes.ensureSchema) {
       await reportRoutes.ensureSchema();
     }
+    await ensureTicketSchema();
+    await ensureIntegrationSchema();
 
     app.listen(PORT, () => {
       logger.info(`Server started on port ${PORT}`);

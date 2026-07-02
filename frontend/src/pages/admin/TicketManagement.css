@@ -105,7 +105,7 @@
 }
 
 .admin-table th {
-  padding: 16px;
+  padding: 12px 8px;
   font-size: 13px;
   font-weight: 600;
   color: #64748b;
@@ -114,9 +114,10 @@
 }
 
 .admin-table td {
-  padding: 16px;
+  padding: 12px 8px;
   font-size: 14px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+  white-space: nowrap;
 }
 
 .admin-row-item {
@@ -141,6 +142,10 @@
   font-weight: 600;
   display: inline-block;
   white-space: nowrap;
+  max-width: 145px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
 }
 
 .admin-title-cell {
@@ -152,10 +157,26 @@
 }
 
 .admin-date-cell,
-.admin-user-cell,
 .admin-assignee-cell {
   font-size: 13.5px;
   color: #334155;
+}
+
+.admin-user-cell {
+  font-size: 13.5px;
+  color: #334155;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  vertical-align: middle;
+}
+
+.user-name-text {
+  max-width: 135px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
 }
 
 .admin-assignee-cell {
@@ -264,7 +285,7 @@
 
 .detail-meta-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
   background: rgba(255, 255, 255, 0.5);
   padding: 16px;
@@ -533,3 +554,50 @@
   background: rgba(99, 102, 241, 0.2);
   transform: translateY(-1px);
 }
+
+/* Segmented source tabs */
+.ticket-source-tabs {
+  display: flex;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 4px;
+  border-radius: 12px;
+  width: fit-content;
+  align-self: center;
+}
+
+.source-tab-btn {
+  background: none;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.source-tab-btn:hover {
+  color: #334155;
+}
+
+.source-tab-btn.active {
+  background: #fff;
+  color: #6366f1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Badge for external tickets */
+.source-app-badge {
+  background: rgba(168, 85, 247, 0.12);
+  color: #8b5cf6;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 6px;
+  margin-left: 8px;
+  display: inline-block;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+

@@ -3,8 +3,9 @@ import './ManagementHub.css';
 import { clientAPI } from '../../services/clientAPI';
 import { projectAPI } from '../../services/projectAPI';
 import { serviceAPI } from '../../services/serviceAPI';
-import { FiEdit, FiTrash2, FiSearch, FiSidebar, FiPieChart, FiUsers, FiFolder, FiSettings, FiActivity, FiClipboard, FiCheckCircle, FiDollarSign, FiX, FiPlus } from 'react-icons/fi';
+import { FiEdit, FiTrash2, FiSearch, FiSidebar, FiPieChart, FiUsers, FiFolder, FiSettings, FiActivity, FiClipboard, FiCheckCircle, FiDollarSign, FiX, FiPlus, FiInfo } from 'react-icons/fi';
 import '../../styles/tableControls.css';
+import ApiKeysSettings from '../Settings/ApiKeysSettings.jsx';
 
 const ServiceManagement = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -19,6 +20,9 @@ const ServiceManagement = () => {
   const [formType, setFormType] = useState('client'); // 'client', 'project', 'service'
   const [formData, setFormData] = useState({});
   const [toasts, setToasts] = useState([]);
+  const [showGuideModal, setShowGuideModal] = useState(false);
+  const [guideActiveTab, setGuideActiveTab] = useState('setup');
+  const [showApiKeys, setShowApiKeys] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -308,6 +312,9 @@ const ServiceManagement = () => {
   };
 
   const renderProjects = () => {
+    if (showApiKeys) {
+      return <ApiKeysSettings projects={projects} />;
+    }
     const filtered = projects.filter(p => p.name?.toLowerCase().includes(search.toLowerCase()) || getClientName(p.client_id)?.toLowerCase().includes(search.toLowerCase()));
     const sorted = sortRows(filtered, { client: (project) => getClientName(project.client_id) });
     return (
@@ -515,8 +522,41 @@ const ServiceManagement = () => {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="action-buttons">
-          {['clients', 'projects', 'services'].includes(activeTab) && (
+        <div className="action-buttons" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {activeTab === 'projects' && (
+            <>
+              {showApiKeys ? (
+                <button
+                  type="button"
+                  className="btn-info-guide"
+                  onClick={() => setShowApiKeys(false)}
+                  title="Back to Projects"
+                >
+                  Back to Projects
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="btn-info-guide"
+                    onClick={() => setShowGuideModal(true)}
+                    title="Show Configuration Guide"
+                  >
+                    <FiInfo /> Info
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-info-guide"
+                    onClick={() => setShowApiKeys(true)}
+                    title="Manage Integration API Keys"
+                  >
+                    <FiSettings /> API Keys
+                  </button>
+                </>
+              )}
+            </>
+          )}
+          {!showApiKeys && ['clients', 'projects', 'services'].includes(activeTab) && (
             <button className="btn-action btn-primary-action" onClick={() => openSidePanel(activeTab.slice(0, -1))} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <FiPlus /> New
             </button>
@@ -525,11 +565,11 @@ const ServiceManagement = () => {
       </div>
 
       <div className="main-tabs">
-        <button className={`main-tab ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><FiPieChart /> Dashboard</button>
-        <button className={`main-tab ${activeTab === 'clients' ? 'active' : ''}`} onClick={() => setActiveTab('clients')} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><FiUsers /> Clients <span className="tab-badge">{clients.length}</span></button>
-        <button className={`main-tab ${activeTab === 'projects' ? 'active' : ''}`} onClick={() => setActiveTab('projects')} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><FiFolder /> Projects <span className="tab-badge">{projects.length}</span></button>
-        <button className={`main-tab ${activeTab === 'services' ? 'active' : ''}`} onClick={() => setActiveTab('services')} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><FiSettings /> Services <span className="tab-badge">{services.length}</span></button>
-        <button className={`main-tab ${activeTab === 'reports' ? 'active' : ''}`} onClick={() => setActiveTab('reports')} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><FiActivity /> Reports</button>
+        <button className={`main-tab ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => { setActiveTab('dashboard'); setShowApiKeys(false); }} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><FiPieChart /> Dashboard</button>
+        <button className={`main-tab ${activeTab === 'clients' ? 'active' : ''}`} onClick={() => { setActiveTab('clients'); setShowApiKeys(false); }} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><FiUsers /> Clients <span className="tab-badge">{clients.length}</span></button>
+        <button className={`main-tab ${activeTab === 'projects' ? 'active' : ''}`} onClick={() => { setActiveTab('projects'); setShowApiKeys(false); }} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><FiFolder /> Projects <span className="tab-badge">{projects.length}</span></button>
+        <button className={`main-tab ${activeTab === 'services' ? 'active' : ''}`} onClick={() => { setActiveTab('services'); setShowApiKeys(false); }} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><FiSettings /> Services <span className="tab-badge">{services.length}</span></button>
+        <button className={`main-tab ${activeTab === 'reports' ? 'active' : ''}`} onClick={() => { setActiveTab('reports'); setShowApiKeys(false); }} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><FiActivity /> Reports</button>
       </div>
 
       <div className="main-content">
@@ -553,6 +593,171 @@ const ServiceManagement = () => {
           </div>
         ))}
       </div>
+
+      {/* Configuration Guide Modal */}
+      {showGuideModal && (
+        <div className="apikeys-modal-overlay">
+          <div className="apikeys-modal" style={{ maxWidth: '600px', width: '90%', background: '#fff', padding: '24px', borderRadius: '12px', zIndex: 1000 }}>
+            <div className="apikeys-modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#1e293b' }}>Integration Setup Guide</h3>
+              <button
+                type="button"
+                className="apikeys-modal-close"
+                onClick={() => {
+                  setShowGuideModal(false);
+                  setGuideActiveTab('setup');
+                }}
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Mini Modal Tabs */}
+            <div className="apikeys-tabs" style={{ marginBottom: '16px', display: 'flex', width: '100%' }}>
+              <button
+                type="button"
+                style={{ flex: 1, textAlign: 'center', justifyContent: 'center' }}
+                className={guideActiveTab === 'setup' ? 'active' : ''}
+                onClick={() => setGuideActiveTab('setup')}
+              >
+                Setup Steps
+              </button>
+              <button
+                type="button"
+                style={{ flex: 1, textAlign: 'center', justifyContent: 'center' }}
+                className={guideActiveTab === 'sdk' ? 'active' : ''}
+                onClick={() => setGuideActiveTab('sdk')}
+              >
+                SDK Reference
+              </button>
+            </div>
+
+            <div style={{ maxHeight: '420px', overflowY: 'auto', paddingRight: '6px' }}>
+              {guideActiveTab === 'setup' ? (
+                <>
+                  <p style={{ fontSize: '0.88rem', color: '#64748b', marginBottom: '16px' }}>
+                    Follow this step-by-step process to connect your external ticketing system with any project:
+                  </p>
+
+                  <div className="apikeys-doc-steps" style={{ fontSize: '0.88rem', gap: '14px', display: 'flex', flexDirection: 'column' }}>
+                    <div className="apikeys-doc-step" style={{ display: 'flex', gap: '10px' }}>
+                      <div className="apikeys-doc-step-num">1</div>
+                      <div>
+                        <strong>Generate API Key:</strong> Go to the <strong>Settings &rarr; API Keys</strong> module, enter a name, and generate an API key.
+                      </div>
+                    </div>
+
+                    <div className="apikeys-doc-step" style={{ display: 'flex', gap: '10px' }}>
+                      <div className="apikeys-doc-step-num">2</div>
+                      <div>
+                        <strong>Find Project ID:</strong> Go to the **Projects** tab (here in the Services module). Select your project and note its numeric ID in the URL or check the database.
+                      </div>
+                    </div>
+
+                    <div className="apikeys-doc-step" style={{ display: 'flex', gap: '10px' }}>
+                      <div className="apikeys-doc-step-num">3</div>
+                      <div>
+                        <strong>Configure SDK/API:</strong> Call the endpoint <code>POST /api/integration/tickets</code> with header <code>X-API-KEY</code> set, or use the pre-built PHP SDK:
+                        <div className="apikeys-doc-code" style={{ marginTop: '8px' }}>
+{`// PHP SDK example:
+$client = new WorkDeskClient($apiUrl, $apiKey);
+$client->createTicket([
+  'project_id' => 5,
+  'subject'    => 'Login Failure',
+  'source_app' => 'HRMS',
+  ...
+]);`}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="apikeys-doc-step" style={{ display: 'flex', gap: '10px' }}>
+                      <div className="apikeys-doc-step-num">4</div>
+                      <div>
+                        <strong>Submit Ticket:</strong> The ticket will automatically appear in the <strong>External Tickets</strong> section of your helpdesk.
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div style={{ fontSize: '0.88rem', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <p style={{ color: '#64748b', margin: 0 }}>
+                    The pre-built PHP SDK provides an object-oriented wrapper around the Work Desk REST APIs.
+                  </p>
+
+                  <div>
+                    <h4 style={{ margin: '0 0 6px 0', color: '#1e293b' }}>1. Client Instantiation</h4>
+                    <div className="apikeys-doc-code" style={{ marginTop: '4px' }}>
+{`$client = new WorkDeskClient($apiUrl, $apiKey, [
+  'verify_ssl' => true, // false for localhost dev
+  'timeout'    => 30
+]);`}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 style={{ margin: '0 0 6px 0', color: '#1e293b' }}>2. Available Client Methods</h4>
+                    <ul style={{ margin: '4px 0 0 20px', padding: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <li>
+                        <strong><code>createTicket(array $data, ?string $file): array</code></strong>
+                        <br />
+                        Creates a ticket. Accepts parameters like <code>project_id</code>, <code>subject</code>, <code>description</code>, <code>source_app</code>, <code>raised_by_email</code>, and <code>raised_by_name</code>.
+                      </li>
+                      <li>
+                        <strong><code>getTicket(int $id): Ticket</code></strong>
+                        <br />
+                        Fetches full ticket details and maps it into an object-oriented <code>Ticket</code> model.
+                      </li>
+                      <li>
+                        <strong><code>getTicketStatus(int $id): array</code></strong>
+                        <br />
+                        Lightweight status check returned as an associative array.
+                      </li>
+                      <li>
+                        <strong><code>addComment(int $ticketId, string $comment): array</code></strong>
+                        <br />
+                        Appends a text comment/update onto the ticket thread.
+                      </li>
+                      <li>
+                        <strong><code>uploadAttachment(int $id, string $path): array</code></strong>
+                        <br />
+                        Attaches a file to the ticket.
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h4 style={{ margin: '0 0 6px 0', color: '#1e293b' }}>3. Error Handling</h4>
+                    <div className="apikeys-doc-code" style={{ marginTop: '4px' }}>
+{`try {
+  $client->createTicket($data);
+} catch (ApiException $e) {
+  // HTTP level errors (e.g. 401, 400, 422)
+  echo $e->getApiMessage();
+} catch (NetworkException $e) {
+  // Connection / timeout errors
+  echo $e->getMessage();
+}`}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              className="apikeys-primary-btn"
+              style={{ width: '100%', marginTop: '20px' }}
+              onClick={() => {
+                setShowGuideModal(false);
+                setGuideActiveTab('setup');
+              }}
+            >
+              Close Setup Guide
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

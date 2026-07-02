@@ -502,14 +502,27 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
           <h1>Welcome, {currentUser.first_name || 'User'}</h1>
           <p>{profile.position || profile.designation || 'Employee'}{profile.department_name ? `, ${profile.department_name}` : ''}</p>
         </div>
-        <button type="button" className="employee-refresh-btn" onClick={() => loadDashboard(true)} disabled={refreshing}>
-          <HiOutlineArrowPath />
-          {refreshing ? 'Refreshing' : 'Refresh'}
-        </button>
-        <button type="button" className="employee-report-btn" onClick={() => setReportModalOpen(true)}>
-          <HiOutlinePencilSquare />
-          Report
-        </button>
+        <div className="employee-header-actions">
+          <button type="button" className="employee-refresh-btn" onClick={() => loadDashboard(true)} disabled={refreshing}>
+            <HiOutlineArrowPath />
+            {refreshing ? 'Refreshing' : 'Refresh'}
+          </button>
+          <button 
+            type="button" 
+            className="employee-ticket-btn" 
+            onClick={() => {
+              localStorage.setItem('openRaiseTicketModal', 'true');
+              navigateToTab?.('employee-tickets');
+            }}
+          >
+            <HiOutlineExclamationTriangle />
+            Report Problem
+          </button>
+          <button type="button" className="employee-report-btn" onClick={() => setReportModalOpen(true)}>
+            <HiOutlinePencilSquare />
+            Report
+          </button>
+        </div>
       </header>
 
       {error && <div className="employee-dashboard-alert">{error}</div>}

@@ -1,5 +1,5 @@
 // src/pages/admin/TicketManagement.jsx
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { ticketAPI } from '../../services/ticketAPI';
 import { projectAPI } from '../../services/projectAPI';
 import './TicketManagement.css';
@@ -19,6 +19,7 @@ const TicketManagement = () => {
   const [priorityFilter, setPriorityFilter] = useState('All');
   const [projectFilter, setProjectFilter] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
+  const [originFilter, setOriginFilter] = useState('All'); // 'All' | 'Internal' | 'External'
 
   const fetchTickets = async () => {
     try {
@@ -113,11 +114,15 @@ const TicketManagement = () => {
     const matchesStatus = statusFilter === 'All' || t.status === statusFilter;
     const matchesPriority = priorityFilter === 'All' || t.priority === priorityFilter;
     const matchesProject = projectFilter === 'All' || String(t.project_id) === projectFilter;
+    const matchesOrigin =
+      originFilter === 'All' ||
+      (originFilter === 'External' && t.source_app) ||
+      (originFilter === 'Internal' && !t.source_app);
     const matchesSearch =
       t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.raised_by_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (t.project_name && t.project_name.toLowerCase().includes(searchTerm.toLowerCase()));
-    return matchesStatus && matchesPriority && matchesProject && matchesSearch;
+    return matchesStatus && matchesPriority && matchesProject && matchesOrigin && matchesSearch;
   });
 
   return (
@@ -126,6 +131,30 @@ const TicketManagement = () => {
         <div>
           <h2 className="admin-title-text">Helpdesk & Ticket Management</h2>
           <p className="admin-subtitle-text">Respond to problem reports, assign assignees, and track resolutions</p>
+        </div>
+        
+        <div className="ticket-source-tabs">
+          <button
+            type="button"
+            className={`source-tab-btn ${originFilter === 'All' ? 'active' : ''}`}
+            onClick={() => setOriginFilter('All')}
+          >
+            All Tickets
+          </button>
+          <button
+            type="button"
+            className={`source-tab-btn ${originFilter === 'Internal' ? 'active' : ''}`}
+            onClick={() => setOriginFilter('Internal')}
+          >
+            Internal
+          </button>
+          <button
+            type="button"
+            className={`source-tab-btn ${originFilter === 'External' ? 'active' : ''}`}
+            onClick={() => setOriginFilter('External')}
+          >
+            External
+          </button>
         </div>
       </div>
 
@@ -207,9 +236,22 @@ const TicketManagement = () => {
                     onClick={() => selectTicket(t)}
                   >
                     <td>#{t.id}</td>
-                    <td className="admin-user-cell">{t.raised_by_name}</td>
+                    <td className="admin-user-cell">
+                      <span className="user-name-text" title={t.raised_by_name}>
+                        {t.raised_by_name}
+                      </span>
+                      {t.source_app && (
+                        <span className="source-app-badge" title={`External Ref: ${t.external_ref || 'N/A'}`}>
+                          via {t.source_app}
+                        </span>
+                      )}
+                    </td>
                     <td>
-                      <span className="admin-project-tag">{t.project_name || 'General Support'}</span>
+                      <span className="admin-project-tag">
+                        {t.source_app 
+                          ? `${t.source_app}${t.external_ref ? ` (#${t.external_ref})` : ''}`
+                          : (t.project_name || 'General Support')}
+                      </span>
                     </td>
                     <td className="admin-title-cell">{t.title}</td>
                     <td>
@@ -247,13 +289,33 @@ const TicketManagement = () => {
                   <span className="meta-value">{selectedTicket.raised_by_name}</span>
                 </div>
                 <div>
-                  <span className="meta-label">Associated Project</span>
-                  <span className="meta-value">{selectedTicket.project_name || 'General Support'}</span>
+                  <span className="meta-label">Associated Project / App ID</span>
+                  <span className="meta-value">
+                    {selectedTicket.source_app 
+                      ? `${selectedTicket.source_app}${selectedTicket.external_ref ? ` (#${selectedTicket.external_ref})` : ''}`
+                      : (selectedTicket.project_name || 'General Support')}
+                  </span>
                 </div>
                 <div>
                   <span className="meta-label">Date Raised</span>
                   <span className="meta-value-small">{formatDate(selectedTicket.created_at)}</span>
                 </div>
+                {selectedTicket.source_app && (
+                  <div>
+                    <span className="meta-label">Source App</span>
+                    <span className="meta-value" style={{ color: '#8b5cf6', fontWeight: 700 }}>
+                      {selectedTicket.source_app}
+                    </span>
+                  </div>
+                )}
+                {selectedTicket.external_ref && (
+                  <div>
+                    <span className="meta-label">External Ref</span>
+                    <span className="meta-value-small" style={{ fontWeight: 600 }}>
+                      {selectedTicket.external_ref}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Editable Status, Priority and Assignment */}
