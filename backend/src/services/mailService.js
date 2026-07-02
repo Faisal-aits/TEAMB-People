@@ -6,18 +6,36 @@ const buildTransportOptions = (config) => {
     throw new Error('SMTP configuration is incomplete');
   }
 
+  const port = Number(config.port);
   const encryption = config.encryption || 'tls';
-  return {
+
+  // Port 465 always uses implicit SSL; 587 and 25 use STARTTLS
+  const isSecure = encryption === 'ssl' || port === 465;
+
+  const options = {
     host: config.host,
-    port: Number(config.port),
-    secure: encryption === 'ssl',
-    ignoreTLS: encryption === 'none',
-    requireTLS: encryption === 'tls',
+    port,
+    secure: isSecure,
     auth: {
       user: config.username,
       pass: config.password
+    },
+    tls: {
+      // Allow self-signed or internally-issued certificates
+      rejectUnauthorized: false
     }
   };
+
+  if (!isSecure && encryption !== 'none') {
+    // For STARTTLS (port 587) require the TLS upgrade
+    options.requireTLS = true;
+  }
+
+  if (encryption === 'none') {
+    options.ignoreTLS = true;
+  }
+
+  return options;
 };
 
 const createTransportForTenant = async (tenantId) => {
@@ -138,13 +156,26 @@ const sendMail = async (tenantId, { to, subject, html, text }) => {
   const fromName = config.from_name || 'Work Desk';
   const fromEmail = config.from_email || config.username;
 
-  return transporter.sendMail({
-    from: `"${fromName.replace(/"/g, '\\"')}" <${fromEmail}>`,
-    to,
-    subject,
-    html,
-    text
-  });
+  try {
+    return await transporter.sendMail({
+      from: `"${fromName.replace(/"/g, '\\"')}" <${fromEmail}>`,
+      to,
+      subject,
+      html,
+      text
+    });
+  } catch (err) {
+    console.error('[mailService] sendMail failed:', {
+      host: config.host,
+      port: config.port,
+      encryption: config.encryption,
+      username: config.username,
+      from_email: fromEmail,
+      to,
+      error: err.message
+    });
+    throw err;
+  }
 };
 
 const sendEmployeeCredentials = async (tenantId, employee) => sendMail(tenantId, {

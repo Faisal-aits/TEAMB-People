@@ -1,21 +1,35 @@
 /* frontend/src/pages/admin/PTTM/PTTM.css */
 
 .pttm-container {
-  --xl-green: #6d6ab8; /* Premium Workspace Purple */
-  --xl-green-h: #5a5799; /* Dark Brand Purple */
-  --xl-blue: #b469b2; /* Workspace Pink-Rose */
-  --hdr-bg: #f6f5fa; /* Soft lavender-gray header background */
-  --row-bg: #fcfbfe; /* Very soft lavender-white stripe */
-  --border: #dfdbe8; /* Soft purple-gray borders */
-  --border-h: #b8b3cc; /* Soft border highlight */
-  --cell-active: #6d6ab8; /* Brand purple active cell outline */
+  --xl-green: #6d6ab8;
+  /* Premium Workspace Purple */
+  --xl-green-h: #5a5799;
+  /* Dark Brand Purple */
+  --xl-blue: #b469b2;
+  /* Workspace Pink-Rose */
+  --hdr-bg: #f6f5fa;
+  /* Soft lavender-gray header background */
+  --row-bg: #fcfbfe;
+  /* Very soft lavender-white stripe */
+  --border: #dfdbe8;
+  /* Soft purple-gray borders */
+  --border-h: #b8b3cc;
+  /* Soft border highlight */
+  --cell-active: #6d6ab8;
+  /* Brand purple active cell outline */
   --row-h: 28px;
-  --status-c: #e8f5e9; --status-ct: #1b5e20;
-  --status-i: #e8eaf6; --status-it: #1a237e;
-  --status-p: #fffde7; --status-pt: #f57f17;
-  --status-n: #f5f5f5; --status-nt: #616161;
-  --status-o: #f3e5f5; --status-ot: #4a148c;
-  --status-r: #fff7e6; --status-rt: #d97706;
+  --status-c: #e8f5e9;
+  --status-ct: #1b5e20;
+  --status-i: #e8eaf6;
+  --status-it: #1a237e;
+  --status-p: #fffde7;
+  --status-pt: #f57f17;
+  --status-n: #f5f5f5;
+  --status-nt: #616161;
+  --status-o: #f3e5f5;
+  --status-ot: #4a148c;
+  --status-r: #fff7e6;
+  --status-rt: #d97706;
 
   min-height: 300px;
   width: 100%;
@@ -51,11 +65,12 @@
 }
 
 .pttm-container #app-bar {
-  background: linear-gradient(135deg, 
-              #5a5799 0%, 
-              #b469b2 33%, 
-              #d45a9b 66%, 
-              #f0b6d4 100%) !important; /* Premium brand matched linear gradient */
+  background: linear-gradient(135deg,
+      #5a5799 0%,
+      #b469b2 33%,
+      #d45a9b 66%,
+      #f0b6d4 100%) !important;
+  /* Premium brand matched linear gradient */
   color: #fff;
   padding: 5px 12px;
   display: flex;
@@ -81,9 +96,9 @@
 }
 
 .pttm-container .bar-btn {
-  background: rgba(255,255,255,.18);
+  background: rgba(255, 255, 255, .18);
   color: #fff;
-  border: 1px solid rgba(255,255,255,.35);
+  border: 1px solid rgba(255, 255, 255, .35);
   border-radius: 3px;
   padding: 3px 10px;
   font-size: 12px;
@@ -92,7 +107,7 @@
 }
 
 .pttm-container .bar-btn:hover {
-  background: rgba(255,255,255,.3);
+  background: rgba(255, 255, 255, .3);
 }
 
 .pttm-container #ribbon {
@@ -276,16 +291,45 @@
   table-layout: fixed;
 }
 
-.pttm-container #grid col.c0 { width: 42px }
-.pttm-container #grid col.c1 { width: 100px }
-.pttm-container #grid col.c2 { width: 150px }
-.pttm-container #grid col.c3 { width: 130px }
-.pttm-container #grid col.c4 { width: 130px }
-.pttm-container #grid col.c5 { width: 130px }
-.pttm-container #grid col.c6 { width: 175px }
-.pttm-container #grid col.c7 { width: 250px }
-.pttm-container #grid col.c8 { width: 110px }
-.pttm-container #grid col.c9 { width: 200px }
+.pttm-container #grid col.c0 {
+  width: 42px
+}
+
+.pttm-container #grid col.c1 {
+  width: 100px
+}
+
+.pttm-container #grid col.c2 {
+  width: 150px
+}
+
+.pttm-container #grid col.c3 {
+  width: 130px
+}
+
+.pttm-container #grid col.c4 {
+  width: 130px
+}
+
+.pttm-container #grid col.c5 {
+  width: 130px
+}
+
+.pttm-container #grid col.c6 {
+  width: 175px
+}
+
+.pttm-container #grid col.c7 {
+  width: 250px
+}
+
+.pttm-container #grid col.c8 {
+  width: 110px
+}
+
+.pttm-container #grid col.c9 {
+  width: 200px
+}
 
 .pttm-container #grid thead th {
   background: var(--hdr-bg);
@@ -401,12 +445,35 @@
   white-space: nowrap;
 }
 
-.pttm-container .sC { background: var(--status-c); color: var(--status-ct) }
-.pttm-container .sI { background: var(--status-i); color: var(--status-it) }
-.pttm-container .sP { background: var(--status-p); color: var(--status-pt) }
-.pttm-container .sN { background: var(--status-n); color: var(--status-nt) }
-.pttm-container .sO { background: var(--status-o); color: var(--status-ot) }
-.pttm-container .sR { background: var(--status-r); color: var(--status-rt) }
+.pttm-container .sC {
+  background: var(--status-c);
+  color: var(--status-ct)
+}
+
+.pttm-container .sI {
+  background: var(--status-i);
+  color: var(--status-it)
+}
+
+.pttm-container .sP {
+  background: var(--status-p);
+  color: var(--status-pt)
+}
+
+.pttm-container .sN {
+  background: var(--status-n);
+  color: var(--status-nt)
+}
+
+.pttm-container .sO {
+  background: var(--status-o);
+  color: var(--status-ot)
+}
+
+.pttm-container .sR {
+  background: var(--status-r);
+  color: var(--status-rt)
+}
 
 .pttm-container #add-row {
   min-width: 1422px;
@@ -429,7 +496,7 @@
 
 .pttm-container #sbar {
   background: var(--xl-green);
-  color: rgba(255,255,255,.9);
+  color: rgba(255, 255, 255, .9);
   padding: 2px 12px;
   font-size: 11px;
   display: flex;
@@ -453,7 +520,8 @@
 }
 
 .pttm-container #sbar .sbar-resize-handle:hover {
-  background-color: rgba(33, 115, 70, 0.6) !important; /* Premium Excel green line highlight on hover */
+  background-color: rgba(33, 115, 70, 0.6) !important;
+  /* Premium Excel green line highlight on hover */
 }
 
 .pttm-container #sbar .si2 {
@@ -472,7 +540,7 @@
   bottom: 26px;
   right: 12px;
   font-size: 10px;
-  color: rgba(255,255,255,.6);
+  color: rgba(255, 255, 255, .6);
   pointer-events: none;
   text-align: right;
   line-height: 1.6;
@@ -511,7 +579,7 @@
   border-radius: 4px;
   padding: 12px;
   background: #fff;
-  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .04);
 }
 
 .pttm-container .scard h3 {
@@ -551,7 +619,7 @@
   border-collapse: collapse;
   font-size: 12.5px;
   background: #fff;
-  box-shadow: 0 1px 3px rgba(0,0,0,.05);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .05);
 }
 
 .pttm-container .vt th {
@@ -598,7 +666,7 @@
   background: #fff;
   border: 1px solid #ccc;
   border-radius: 3px;
-  box-shadow: 0 3px 10px rgba(0,0,0,.15);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, .15);
   z-index: 2000;
   display: block;
   min-width: 170px;
@@ -636,7 +704,7 @@
   width: 340px;
   background: #fff;
   border-left: 1px solid var(--border);
-  box-shadow: -3px 0 12px rgba(0,0,0,.1);
+  box-shadow: -3px 0 12px rgba(0, 0, 0, .1);
   z-index: 500;
   transform: translateX(100%);
   transition: transform .2s ease;
@@ -842,8 +910,13 @@
 }
 
 @keyframes cflash {
-  0% { background: #fffbd6 }
-  100% { background: transparent }
+  0% {
+    background: #fffbd6
+  }
+
+  100% {
+    background: transparent
+  }
 }
 
 .pttm-container #df-project-bar {
@@ -855,7 +928,7 @@
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 8px 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .04);
 }
 
 .pttm-container #df-project-bar label {
@@ -933,10 +1006,29 @@
   z-index: 1;
 }
 
-.pttm-container .df-num.ns { background: #f0f0f0; border-color: #ccc; color: #999 }
-.pttm-container .df-num.ip { background: #cfe2ff; border-color: #0078d4; color: #084298 }
-.pttm-container .df-num.wc { background: #fff3cd; border-color: #f0ad00; color: #856404 }
-.pttm-container .df-num.done { background: #d1e7dd; border-color: #217346; color: #0a3622 }
+.pttm-container .df-num.ns {
+  background: #f0f0f0;
+  border-color: #ccc;
+  color: #999
+}
+
+.pttm-container .df-num.ip {
+  background: #cfe2ff;
+  border-color: #0078d4;
+  color: #084298
+}
+
+.pttm-container .df-num.wc {
+  background: #fff3cd;
+  border-color: #f0ad00;
+  color: #856404
+}
+
+.pttm-container .df-num.done {
+  background: #d1e7dd;
+  border-color: #217346;
+  color: #0a3622
+}
 
 .pttm-container .df-connector {
   width: 2px;
@@ -946,8 +1038,13 @@
   margin: 0 auto;
 }
 
-.pttm-container .df-connector.ip { background: #0078d4 }
-.pttm-container .df-connector.done { background: #217346 }
+.pttm-container .df-connector.ip {
+  background: #0078d4
+}
+
+.pttm-container .df-connector.done {
+  background: #217346
+}
 
 .pttm-container .df-card {
   flex: 1;
@@ -961,12 +1058,20 @@
 }
 
 .pttm-container .df-card:hover {
-  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
 }
 
-.pttm-container .df-card.done-card { border-color: #c3e0cf }
-.pttm-container .df-card.ip-card { border-color: #9dc4f5 }
-.pttm-container .df-card.wc-card { border-color: #f5d98c }
+.pttm-container .df-card.done-card {
+  border-color: #c3e0cf
+}
+
+.pttm-container .df-card.ip-card {
+  border-color: #9dc4f5
+}
+
+.pttm-container .df-card.wc-card {
+  border-color: #f5d98c
+}
 
 .pttm-container .df-card-head {
   display: flex;
@@ -979,9 +1084,17 @@
   user-select: none;
 }
 
-.pttm-container .df-card.done-card .df-card-head { background: #f0f8f3 }
-.pttm-container .df-card.ip-card .df-card-head { background: #f0f6ff }
-.pttm-container .df-card.wc-card .df-card-head { background: #fffcf0 }
+.pttm-container .df-card.done-card .df-card-head {
+  background: #f0f8f3
+}
+
+.pttm-container .df-card.ip-card .df-card-head {
+  background: #f0f6ff
+}
+
+.pttm-container .df-card.wc-card .df-card-head {
+  background: #fffcf0
+}
 
 .pttm-container .df-phase-name {
   font-weight: 600;
@@ -1027,10 +1140,25 @@
   margin-left: 8px;
 }
 
-.pttm-container .dfs-ns { background: #e9ecef; color: #495057 }
-.pttm-container .dfs-ip { background: #cfe2ff; color: #084298 }
-.pttm-container .dfs-wc { background: #fff3cd; color: #856404 }
-.pttm-container .dfs-done { background: #d1e7dd; color: #0a3622 }
+.pttm-container .dfs-ns {
+  background: #e9ecef;
+  color: #495057
+}
+
+.pttm-container .dfs-ip {
+  background: #cfe2ff;
+  color: #084298
+}
+
+.pttm-container .dfs-wc {
+  background: #fff3cd;
+  color: #856404
+}
+
+.pttm-container .dfs-done {
+  background: #d1e7dd;
+  color: #0a3622
+}
 
 .pttm-container .df-body {
   padding: 12px;
@@ -1285,7 +1413,8 @@
 }
 
 .pttm-container .col-resize-handle:hover {
-  background-color: rgba(109, 106, 184, 0.5) !important; /* Premium brand purple handle */
+  background-color: rgba(109, 106, 184, 0.5) !important;
+  /* Premium brand purple handle */
 }
 
 .pttm-container .row-resize-handle {
@@ -1302,7 +1431,8 @@
 }
 
 .pttm-container .row-resize-handle:hover {
-  background-color: rgba(109, 106, 184, 0.5) !important; /* Premium brand purple handle */
+  background-color: rgba(109, 106, 184, 0.5) !important;
+  /* Premium brand purple handle */
 }
 
 /* Excel Auto-Fill Drag Handle & Highlights */
@@ -1320,7 +1450,7 @@
   border: 1px solid #fff !important;
   cursor: crosshair;
   z-index: 110;
-  box-shadow: 0 0 2px rgba(0,0,0,0.3);
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
 }
 
 .pttm-container td.drag-fill-highlight {

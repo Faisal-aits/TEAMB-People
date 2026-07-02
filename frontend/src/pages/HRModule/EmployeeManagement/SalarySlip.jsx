@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { employeeAPI } from '../../../services/employeeAPI';
 import companyLogo from "../../../assets/img/company.png";
 import stampPng from "../../../assets/img/stamp.png";
+import { useLocation } from "react-router-dom";
 import { 
   HiOutlineCurrencyDollar, 
   HiOutlineUser, 
@@ -10,7 +11,8 @@ import {
   HiOutlineEye,
   HiOutlineDocumentPlus,
   HiOutlinePhone,
-  HiOutlineArrowDownOnSquare
+  HiOutlineArrowDownOnSquare,
+  HiOutlineArrowLeft
 } from "react-icons/hi2";
 import { TbWorld } from "react-icons/tb";
 import { TfiEmail } from "react-icons/tfi";
@@ -18,12 +20,17 @@ import './SalarySlip.css';
 import { salarySlipPDFService } from '../../../services/salarySlipPDFService';
 import { salaryAPI } from '../../../services/salaryAPI';
 import brandingAPI from '../../../services/brandingAPI';
-import { useLocation } from "react-router-dom";
 import axios from 'axios';
 
-const SalarySlip  = ({ initialEmployee = null }) => {
-    const location = useLocation();
-      const routedEmployee = initialEmployee || location.state?.employee || null;
+const getEmployeeName = (employee) => {
+  const fullName = `${employee?.first_name || ""} ${employee?.last_name || ""}`.trim();
+  return fullName || employee?.name || employee?.employee_name || employee?.email || "Unnamed Employee";
+};
+
+const SalarySlip = ({ initialEmployee = null, onBack = null }) => {
+  const location = useLocation();
+  const routedEmployee = initialEmployee || location.state?.employee || null;
+  
   const [employees, setEmployees] = useState([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -61,15 +68,83 @@ const SalarySlip  = ({ initialEmployee = null }) => {
     signature_url: null
   });
 
+  const currentEmployeeName = routedEmployee ? getEmployeeName(routedEmployee) : null;
+
+  // ✅ Auto-populate form when routedEmployee is available
+  useEffect(() => {
+    if (routedEmployee && routedEmployee.employee_id) {
+     
+      const employeeName = getEmployeeName(routedEmployee);
+      const basicSalary = routedEmployee.salary || routedEmployee.ctc || 0;
+      const hra = routedEmployee.salary_hra || 0;
+      const medical = routedEmployee.salary_medical_allowance || 0;
+      const conveyance = routedEmployee.salary_travel_allowance || 0;
+      const special = routedEmployee.salary_other_allowance || 0;
+      
+      // Calculate PF (12% of basic)
+      const pf = basicSalary * 0.12;
+      const pt = routedEmployee.salary_professional_tax || (basicSalary > 10000 ? 200 : 0);
+      const tds = 0;
+      
+      setSelectedEmployeeId(routedEmployee.id || routedEmployee.employee_id);
+      setFormData({
+        ...formData,
+        fullName: employeeName,
+        designation: routedEmployee.designation || routedEmployee.position || "",
+        departmentId: routedEmployee.department_id || "",
+        earnings: {
+          basic: basicSalary,
+          hra: hra,
+          conveyance: conveyance,
+          medical: medical,
+          special: special
+        },
+        deductions: {
+          pf: pf,
+          pt: pt,
+          tds: tds
+        }
+      });
+    }
+  }, [routedEmployee]);
+
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
         const res = await employeeAPI.getAll();
-        setEmployees(res.data.employees || res.data.data || []);
+        const employeesList = res.data.employees || res.data.data || [];
+        setEmployees(employeesList);
+        
+        // If we have a routed employee, find and populate their data
+        if (routedEmployee && routedEmployee.employee_id) {
+          const matchedEmp = employeesList.find(emp => 
+            String(emp.id) === String(routedEmployee.id) || 
+            String(emp.employee_id) === String(routedEmployee.employee_id)
+          );
+          if (matchedEmp) {
+            const employeeName = getEmployeeName(matchedEmp);
+            setSelectedEmployeeId(matchedEmp.id || matchedEmp.employee_id);
+            setFormData(prev => ({
+              ...prev,
+              fullName: employeeName,
+              designation: matchedEmp.designation || matchedEmp.position || "",
+              departmentId: matchedEmp.department_id || "",
+              earnings: {
+                ...prev.earnings,
+                basic: matchedEmp.salary || matchedEmp.ctc || 0,
+                hra: matchedEmp.salary_hra || 0,
+                medical: matchedEmp.salary_medical_allowance || 0,
+                conveyance: matchedEmp.salary_travel_allowance || 0,
+                special: matchedEmp.salary_other_allowance || 0
+              }
+            }));
+          }
+        }
       } catch (err) {
         console.error("Error fetching employees:", err);
       }
     };
+    
     const fetchBranding = async () => {
       try {
         const res = await brandingAPI.get();
@@ -91,6 +166,7 @@ const SalarySlip  = ({ initialEmployee = null }) => {
         console.error("Error fetching branding:", err);
       }
     };
+    
     fetchEmployees();
     fetchBranding();
   }, []);
@@ -109,6 +185,47 @@ const SalarySlip  = ({ initialEmployee = null }) => {
       setFormData(prev => ({
         ...prev,
         [field]: value
+      }));
+    }
+  };
+
+  const handleEmployeeSelect = (employeeName) => {
+    const match = employees.find(emp => 
+      getEmployeeName(emp).toLowerCase() === employeeName.trim().toLowerCase()
+    );
+    
+    if (match) {
+      const basicSalary = match.salary || match.ctc || 0;
+      const hra = match.salary_hra || 0;
+      const medical = match.salary_medical_allowance || 0;
+      const conveyance = match.salary_travel_allowance || 0;
+      const special = match.salary_other_allowance || 0;
+      const pf = basicSalary * 0.12;
+      const pt = match.salary_professional_tax || (basicSalary > 10000 ? 200 : 0);
+      
+      setSelectedEmployeeId(match.id || match.employee_id);
+      setFormData(prev => ({
+        ...prev,
+        fullName: employeeName,
+        designation: match.designation || match.position || "",
+        departmentId: match.department_id || "",
+        earnings: {
+          basic: basicSalary,
+          hra: hra,
+          conveyance: conveyance,
+          medical: medical,
+          special: special
+        },
+        deductions: {
+          pf: pf,
+          pt: pt,
+          tds: 0
+        }
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        fullName: employeeName
       }));
     }
   };
@@ -206,7 +323,32 @@ const SalarySlip  = ({ initialEmployee = null }) => {
   return (
     <div className="salary-slip-manager">
       <div className="slip-form-container" ref={formRef}>
-        <h2><HiOutlineCurrencyDollar /> Salary Slip Generator</h2>
+        {/* Back button and header */}
+        <div style={{ display: "flex", alignItems: "center", gap: "15px", marginBottom: "20px" }}>
+          {onBack && (
+            <button 
+              onClick={onBack}
+              style={{ 
+                background: "#f1f5f9", 
+                border: "none", 
+                borderRadius: "8px", 
+                padding: "8px", 
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "5px"
+              }}
+            >
+              <HiOutlineArrowLeft size={20} />
+            </button>
+          )}
+          <h2 style={{ margin: 0 }}><HiOutlineCurrencyDollar /> Salary Slip Generator</h2>
+          {currentEmployeeName && (
+            <span style={{ fontSize: "16px", color: "#64748b", fontWeight: "normal", marginLeft: "10px" }}>
+              - {currentEmployeeName}
+            </span>
+          )}
+        </div>
         
         <div className="form-section">
           <div className="section-label"><HiOutlineUser /> Employee Selection</div>
@@ -219,31 +361,14 @@ const SalarySlip  = ({ initialEmployee = null }) => {
               placeholder="Start typing employee name..."
               value={formData.fullName}
               style={{fontWeight: '600', color: '#1e293b', border: '2px solid #cbd5e1'}}
-              onChange={(e) => {
-                const val = e.target.value;
-                handleInputChange(null, 'fullName', val);
-                const match = employees.find(emp => 
-                  `${emp.first_name} ${emp.last_name}`.trim().toLowerCase() === val.trim().toLowerCase()
-                );
-                if (match) {
-                  setSelectedEmployeeId(match.id || match.employee_id);
-                  setFormData(prev => ({
-                    ...prev,
-                    designation: match.position || match.role_name || "",
-                    departmentId: match.department_id || "",
-                    earnings: {
-                      ...prev.earnings,
-                      basic: match.salary || 0
-                    }
-                  }));
-                }
-              }}
+              onChange={(e) => handleEmployeeSelect(e.target.value)}
             />
             <datalist id="employee-list">
               {employees.map(emp => (
-                <option key={emp.id || emp.employee_id} value={`${emp.first_name} ${emp.last_name}`.trim()} />
+                <option key={emp.id || emp.employee_id} value={getEmployeeName(emp)} />
               ))}
             </datalist>
+           
           </div>
           <div className="input-grid">
             <div className="form-group">

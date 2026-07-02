@@ -8,6 +8,7 @@ import {
   HiOutlineClock,
   HiOutlineExclamationTriangle,
   HiOutlineMagnifyingGlass,
+  HiOutlineXMark,
 } from 'react-icons/hi2';
 import { projectAPI } from '../../services/projectAPI';
 import './EmployeeProjects.css';
@@ -63,6 +64,11 @@ const EmployeeProjects = () => {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [editStatus, setEditStatus] = useState('');
+  const [editRemarks, setEditRemarks] = useState('');
+  const [modalMessage, setModalMessage] = useState({ type: '', text: '' });
+  const [modalSubmitting, setModalSubmitting] = useState(false);
 
   const loadWork = useCallback(async (isRefresh = false) => {
     try {
@@ -104,6 +110,106 @@ const EmployeeProjects = () => {
   useEffect(() => {
     loadWork();
   }, [loadWork]);
+
+  const handleRowClick = (task) => {
+    setSelectedTask(task);
+    setEditStatus(task.status || 'Pending');
+    setEditRemarks(task.remarks || '');
+    setModalMessage({ type: '', text: '' });
+  };
+
+  const handleSave = async () => {
+    if (!selectedTask) return;
+    setModalSubmitting(true);
+    setModalMessage({ type: '', text: '' });
+    try {
+      await projectAPI.updateTaskStatusAndRemarks(selectedTask.id, editStatus, editRemarks);
+      setModalMessage({ type: 'success', text: 'Task updated successfully!' });
+      setTasks((prev) =>
+        prev.map((t) => (t.id === selectedTask.id ? { ...t, status: editStatus, remarks: editRemarks } : t))
+      );
+    } catch (err) {
+      console.error(err);
+      setModalMessage({ type: 'error', text: err.response?.data?.error || 'Failed to update task.' });
+    } finally {
+      setModalSubmitting(false);
+    }
+  };
+
+  const handleSubmitForReview = async () => {
+    if (!selectedTask) return;
+    setModalSubmitting(true);
+    setModalMessage({ type: '', text: '' });
+    try {
+      // First save status and remarks
+      await projectAPI.updateTaskStatusAndRemarks(selectedTask.id, editStatus, editRemarks);
+      // Then submit for review
+      const res = await projectAPI.submitForReview(selectedTask.id);
+      
+      const updatedTask = res.data?.data || res.data || {};
+      const newStatus = updatedTask.status || 'Under Review';
+      const newReviewStatus = updatedTask.review_status || 'Pending Review';
+      const submittedAt = updatedTask.submitted_at || new Date().toISOString();
+
+      setModalMessage({ type: 'success', text: 'Task submitted for review successfully!' });
+      
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === selectedTask.id
+            ? {
+                ...t,
+                status: newStatus,
+                remarks: editRemarks,
+                review_status: newReviewStatus,
+                submitted_at: submittedAt,
+              }
+            : t
+        )
+      );
+
+      setSelectedTask((prev) => ({
+        ...prev,
+        status: newStatus,
+        remarks: editRemarks,
+        review_status: newReviewStatus,
+        submitted_at: submittedAt,
+      }));
+    } catch (err) {
+      console.error(err);
+      setModalMessage({ type: 'error', text: err.response?.data?.error || 'Failed to submit task for review.' });
+    } finally {
+      setModalSubmitting(false);
+    }
+  };
+
+  const handleQuickSubmit = async (e, task) => {
+    e.stopPropagation();
+    if (!window.confirm('Submit this task for review?')) return;
+    try {
+      setError('');
+      const res = await projectAPI.submitForReview(task.id);
+      const updatedTask = res.data?.data || res.data || {};
+      const newStatus = updatedTask.status || 'Under Review';
+      const newReviewStatus = updatedTask.review_status || 'Pending Review';
+      const submittedAt = updatedTask.submitted_at || new Date().toISOString();
+
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === task.id
+            ? {
+                ...t,
+                status: newStatus,
+                review_status: newReviewStatus,
+                submitted_at: submittedAt,
+              }
+            : t
+        )
+      );
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.error || 'Failed to submit task for review.');
+    }
+  };
 
   const summary = useMemo(() => {
     const activeTasks = tasks.filter((task) => !isCompleted(task));
@@ -310,7 +416,7 @@ const EmployeeProjects = () => {
                   </tr>
                 ) : (
                   filteredTasks.map((task) => (
-                    <tr key={task.id}>
+                    <tr key={task.id} className="employee-task-row-interactive" onClick={() => handleRowClick(task)}>
                       <td>
                         <div className="employee-task-title">
                           <strong>{task.task_title || task.title || 'Untitled Task'}</strong>
@@ -327,9 +433,30 @@ const EmployeeProjects = () => {
                       <td>{task.phase_name || task.phase?.name || task.team_name || task.team?.name || '-'}</td>
                       <td>{formatDate(task.due_date || task.date)}</td>
                       <td>
-                        <span className={`employee-task-status ${getStatusClass(task.status)}`}>
-                          {task.status || 'Pending'}
-                        </span>
+                        <div className="employee-status-cell">
+                          <span className={`employee-task-status ${getStatusClass(task.status)}`}>
+                            {task.status || 'Pending'}
+                          </span>
+                          {task.review_status === 'Pending Review' && (
+                            <span className="employee-review-badge pending">Awaiting Review</span>
+                          )}
+                          {task.review_status === 'Rejected' && (
+                            <span className="employee-review-badge rejected">Revision Required</span>
+                          )}
+                          {task.review_status === 'Approved' && (
+                            <span className="employee-review-badge approved">Approved</span>
+                          )}
+                          {((task.status === 'In Progress' || task.status === 'Pending') && task.review_status !== 'Pending Review' && task.review_status !== 'Approved' && task.status !== 'Under Review' && task.status !== 'Completed') && (
+                            <button
+                              type="button"
+                              className="employee-quick-submit-btn"
+                              onClick={(e) => handleQuickSubmit(e, task)}
+                              title="Submit task for review"
+                            >
+                              ➤ Submit
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -339,6 +466,147 @@ const EmployeeProjects = () => {
           </div>
         </div>
       </section>
+
+      {selectedTask && (
+        <div className="employee-modal-overlay" onClick={() => { if (!modalSubmitting) setSelectedTask(null); loadWork(true); }}>
+          <div className="employee-modal" onClick={(e) => e.stopPropagation()}>
+            <header className="employee-modal-header">
+              <div>
+                <h2>Task Details</h2>
+                <p className="employee-modal-subtitle">{selectedTask.project?.name || selectedTask.project_name || 'No Project'}</p>
+              </div>
+              <button type="button" className="employee-modal-close" onClick={() => { if (!modalSubmitting) setSelectedTask(null); loadWork(true); }}>
+                <HiOutlineXMark />
+              </button>
+            </header>
+
+            {modalMessage.text && (
+              <div className={`employee-modal-alert ${modalMessage.type}`}>
+                {modalMessage.type === 'success' ? <HiOutlineCheckCircle /> : <HiOutlineExclamationTriangle />}
+                <span>{modalMessage.text}</span>
+              </div>
+            )}
+
+            <div className="employee-modal-body">
+              {/* Revision notes if task is rejected */}
+              {selectedTask.review_status === 'Rejected' && (
+                <div className="employee-modal-revision-notes">
+                  <div className="revision-header">
+                    <HiOutlineExclamationTriangle />
+                    <span>Revision Feedback from Team Leader</span>
+                  </div>
+                  <p className="revision-text">{selectedTask.review_notes || 'Please revise this task according to guidelines.'}</p>
+                </div>
+              )}
+
+              {/* Awaiting Review banner */}
+              {(selectedTask.review_status === 'Pending Review' || selectedTask.status === 'Under Review') && (
+                <div className="employee-modal-review-banner">
+                  <HiOutlineClock />
+                  <span>This task is currently under review and cannot be edited.</span>
+                </div>
+              )}
+
+              {/* Completed/Approved banner */}
+              {(selectedTask.status === 'Completed' || selectedTask.review_status === 'Approved') && (
+                <div className="employee-modal-completed-banner">
+                  <HiOutlineCheckCircle />
+                  <span>This task has been completed and reviewed, and is locked.</span>
+                </div>
+              )}
+
+              <div className="employee-modal-grid">
+                <div className="grid-item">
+                  <label>Task Title</label>
+                  <p>{selectedTask.title || selectedTask.task_title}</p>
+                </div>
+                <div className="grid-item">
+                  <label>Phase</label>
+                  <p>{selectedTask.phase?.name || selectedTask.phase_name || '-'}</p>
+                </div>
+                <div className="grid-item">
+                  <label>Team</label>
+                  <p>{selectedTask.team?.name || selectedTask.team_name || '-'}</p>
+                </div>
+                <div className="grid-item">
+                  <label>Due Date</label>
+                  <p>{formatDate(selectedTask.due_date || selectedTask.date)}</p>
+                </div>
+                {selectedTask.description && (
+                  <div className="grid-item full-width">
+                    <label>Description</label>
+                    <p className="description-text">{selectedTask.description}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="employee-modal-edit-fields">
+                <div className="edit-group">
+                  <label htmlFor="task-status-select">Status</label>
+                  <select
+                    id="task-status-select"
+                    value={editStatus}
+                    onChange={(e) => setEditStatus(e.target.value)}
+                    disabled={selectedTask.review_status === 'Pending Review' || selectedTask.status === 'Under Review' || selectedTask.status === 'Completed' || selectedTask.review_status === 'Approved' || modalSubmitting}
+                  >
+                    <option value="Pending">Pending</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Not Started">Not Started</option>
+                    <option value="On Going">On Going</option>
+                  </select>
+                </div>
+
+                <div className="edit-group">
+                  <label htmlFor="task-remarks-textarea">My Remarks / Submission Comments</label>
+                  <textarea
+                    id="task-remarks-textarea"
+                    rows={3}
+                    placeholder="Describe your progress, links to work, or notes here..."
+                    value={editRemarks}
+                    onChange={(e) => setEditRemarks(e.target.value)}
+                    disabled={selectedTask.review_status === 'Pending Review' || selectedTask.status === 'Under Review' || selectedTask.status === 'Completed' || selectedTask.review_status === 'Approved' || modalSubmitting}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <footer className="employee-modal-footer">
+              <button
+                type="button"
+                className="employee-btn-secondary"
+                onClick={() => { setSelectedTask(null); loadWork(true); }}
+                disabled={modalSubmitting}
+              >
+                Close
+              </button>
+              {selectedTask.review_status !== 'Pending Review' && 
+               selectedTask.status !== 'Under Review' && 
+               selectedTask.status !== 'Completed' && 
+               selectedTask.review_status !== 'Approved' && (
+                <>
+                  <button
+                    type="button"
+                    className="employee-btn-primary"
+                    onClick={handleSave}
+                    disabled={modalSubmitting}
+                  >
+                    {modalSubmitting ? 'Saving...' : 'Save Changes'}
+                  </button>
+                  <button
+                    type="button"
+                    className="employee-btn-submit-review"
+                    onClick={handleSubmitForReview}
+                    disabled={modalSubmitting}
+                  >
+                    {modalSubmitting ? 'Submitting...' : 'Submit for Review'}
+                  </button>
+                </>
+              )}
+            </footer>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

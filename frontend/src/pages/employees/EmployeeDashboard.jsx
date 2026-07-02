@@ -25,7 +25,6 @@ import offerLetterAPI from '../../services/offerLetterAPI';
 import { projectAPI } from '../../services/projectAPI';
 import { reportAPI } from '../../services/reportAPI';
 import resignationAPI from '../../services/resignationAPI';
-import { ticketAPI } from '../../services/ticketAPI';
 import './EmployeeLayout.css';
 
 const MODULE_META = {
@@ -164,18 +163,12 @@ const MODULE_META = {
     description: 'Assigned projects, tasks, deadlines, and status.',
     icon: <HiOutlineBriefcase />,
   },
-  employee_tickets: {
-    title: 'My Tickets',
-    description: 'Raise problems, link projects, and track resolutions.',
-    icon: <HiOutlineExclamationTriangle />,
-  },
 };
 
 const DEFAULT_EMPLOYEE_MODULES = [
   { module_key: 'employee_attendance', name: 'My Attendance', access: 'write' },
   { module_key: 'employee_expense', name: 'My Expense', access: 'write' },
   { module_key: 'employee_projects', name: 'My Projects & Tasks', access: 'write' },
-  { module_key: 'employee_tickets', name: 'My Tickets', access: 'write' },
 ];
 
 const numberFormat = new Intl.NumberFormat('en-IN');
@@ -227,7 +220,6 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
     projects: [],
     tasks: [],
     reports: [],
-    tickets: [],
   });
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [reportText, setReportText] = useState('');
@@ -259,7 +251,6 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
         projectsResult,
         tasksResult,
         reportResult,
-        ticketsResult,
       ] = await Promise.allSettled([
         employeeAPI.getMyProfile(),
         attendanceAPI.getMyTodayAttendance(),
@@ -273,7 +264,6 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
         projectAPI.getMyProjects(),
         projectAPI.getMyTasks(),
         reportAPI.getMyReports(),
-        ticketAPI.getAll(),
       ]);
 
       const profileResponse = getSafeValue(profileResult);
@@ -288,7 +278,6 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
       const projectsResponse = getSafeValue(projectsResult);
       const tasksResponse = getSafeValue(tasksResult);
       const reportResponse = getSafeValue(reportResult);
-      const ticketsResponse = getSafeValue(ticketsResult);
 
       setDashboardData({
         profile: profileResponse?.data?.employee || null,
@@ -299,13 +288,12 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
         documents: {
           offerLetters: getArray(offerResponse, ['letters']).length,
           experienceLetters: getArray(experienceResponse, ['data', 'letters']).length,
-          incrementLetters: getArray(incrementResult, ['data', 'letters']).length,
+          incrementLetters: getArray(incrementResponse, ['data', 'letters']).length,
           resignations: getArray(resignationResponse, ['data', 'requests']).length,
         },
         projects: getArray(projectsResponse, ['projects']),
         tasks: getArray(tasksResponse, ['tasks']),
         reports: getArray(reportResponse, ['reports']),
-        tickets: getArray(ticketsResponse, ['tickets']),
       });
     } catch (err) {
       console.error('Failed to load employee dashboard:', err);
@@ -452,15 +440,6 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
     };
   }, [dashboardData.projects, dashboardData.tasks]);
 
-  const ticketSummary = useMemo(() => {
-    const open = dashboardData.tickets.filter((t) => ['Open', 'In Progress'].includes(t.status));
-    return {
-      openCount: open.length,
-      totalCount: dashboardData.tickets.length,
-      latest: dashboardData.tickets[0],
-    };
-  }, [dashboardData.tickets]);
-
   const profile = dashboardData.profile || {};
   const todayAttendance = dashboardData.todayAttendance || {};
   const isCheckedIn = Boolean(todayAttendance.check_in_time);
@@ -470,7 +449,6 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
     employee_attendance: `${todayAttendance.status || 'Not checked in'} today, ${formatNumber(attendanceSummary.total)} records this month`,
     employee_expense: `${formatNumber(expenseSummary.pendingCount)} pending, ${formatCurrency(expenseSummary.pendingAmount)}`,
     employee_projects: `${formatNumber(projectSummary.projectCount)} projects, ${formatNumber(projectSummary.activeTasks)} active tasks`,
-    employee_tickets: `${formatNumber(ticketSummary.openCount)} open, ${formatNumber(ticketSummary.totalCount)} total tickets`,
   };
 
   const summaryCards = [
@@ -505,14 +483,6 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
       icon: <HiOutlineReceiptPercent />,
       tone: 'emerald',
       tab: 'employee-expense',
-    },
-    {
-      label: 'Support Tickets',
-      value: `${formatNumber(ticketSummary.openCount)} Open`,
-      note: `${formatNumber(ticketSummary.totalCount)} raised total`,
-      icon: <HiOutlineExclamationTriangle />,
-      tone: 'rose',
-      tab: 'employee-tickets',
     },
   ];
 
@@ -653,13 +623,7 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
                   <HiOutlineReceiptPercent />
                 </button>
               )}
-              {ticketSummary.openCount > 0 && (
-                <button type="button" className="warning" onClick={() => navigateToTab?.('employee-tickets')}>
-                  <span>{formatNumber(ticketSummary.openCount)} open support tickets</span>
-                  <HiOutlineExclamationTriangle />
-                </button>
-              )}
-              {isCheckedIn && isCheckedOut && leaveSummary.pending === 0 && expenseSummary.pendingCount === 0 && ticketSummary.openCount === 0 && (
+              {isCheckedIn && isCheckedOut && leaveSummary.pending === 0 && expenseSummary.pendingCount === 0 && (
                 <div className="employee-all-clear">
                   <HiOutlineCheckCircle />
                   <span>No pending employee actions</span>
@@ -681,10 +645,6 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
               <button type="button" onClick={() => navigateToTab?.('employee-expense')}>
                 <span>Latest expense</span>
                 <strong>{expenseSummary.latest ? `${formatCurrency(expenseSummary.latest.amount)} - ${expenseSummary.latest.payment_status || 'pending'}` : 'No expenses submitted'}</strong>
-              </button>
-              <button type="button" onClick={() => navigateToTab?.('employee-tickets')}>
-                <span>Latest support ticket</span>
-                <strong>{ticketSummary.latest ? `${ticketSummary.latest.title} (${ticketSummary.latest.status})` : 'No tickets raised'}</strong>
               </button>
             </div>
           </div>

@@ -16,13 +16,12 @@ export default function PhaseView({ filters, setFilters, switchGrid, onOpenPanel
 
       const projectRow = [
         `Project: ${pName}`,
-        '', '', '', '', '', '', '', ''
+        '', '', '', '', '', '', ''
       ];
 
       const phaseRows = pPhases.map(ph => {
         const pht = tasks.filter(t => t.phase_id === ph.id);
         const done = pht.filter(t => t.status === 'Completed').length;
-        const ip = pht.filter(t => t.status === 'In Progress').length;
         const pending = pht.filter(t => t.status === 'Pending').length;
         const ns = pht.filter(t => t.status === 'Not Started').length;
         const og = pht.filter(t => t.status === 'On Going').length;
@@ -32,7 +31,6 @@ export default function PhaseView({ filters, setFilters, switchGrid, onOpenPanel
           '',
           pht.length,
           done,
-          ip,
           pending,
           ns,
           og,
@@ -44,7 +42,7 @@ export default function PhaseView({ filters, setFilters, switchGrid, onOpenPanel
     });
 
     const csvData = [
-      ['Phase Name', 'Project', 'Total Tasks', 'Completed', 'In Progress', 'Pending', 'Not Started', 'On Going', '% Done'],
+      ['Phase Name', 'Project', 'Total Tasks', 'Completed', 'Pending', 'Not Started', 'On Going', '% Done'],
       ...rows
     ];
     exportCSV(csvData, `AITS_Phase_Progress_${today()}.csv`);
@@ -76,7 +74,6 @@ export default function PhaseView({ filters, setFilters, switchGrid, onOpenPanel
                   <th>Description</th>
                   <th style={{ textAlign: 'center' }}>Total</th>
                   <th style={{ textAlign: 'center' }}>✅ Done</th>
-                  <th style={{ textAlign: 'center' }}>🔄 IP</th>
                   <th style={{ textAlign: 'center' }}>⏳ Pending</th>
                   <th style={{ width: 180 }}>Progress</th>
                 </tr>
@@ -97,7 +94,6 @@ export default function PhaseView({ filters, setFilters, switchGrid, onOpenPanel
 function PhaseRow({ phase, tasks, setFilters, switchGrid }) {
   const pht = tasks.filter(t => t.phase_id === phase.id);
   const done = pht.filter(t => t.status === 'Completed').length;
-  const ip = pht.filter(t => t.status === 'In Progress').length;
   const pending = pht.filter(t => t.status === 'Pending' || t.status === 'Not Started').length;
   const pct = pht.length ? Math.round((done / pht.length) * 100) : 0;
   const color = pct === 100 ? '#217346' : pct > 0 ? '#084298' : '#888';
@@ -113,7 +109,6 @@ function PhaseRow({ phase, tasks, setFilters, switchGrid }) {
       <td style={{ fontSize: 11, color: '#666' }}>{phase.description || '—'}</td>
       <td style={{ textAlign: 'center', fontWeight: 600 }}>{pht.length}</td>
       <td style={{ textAlign: 'center', color: 'var(--status-ct)' }}>{done}</td>
-      <td style={{ textAlign: 'center', color: '#084298' }}>{ip}</td>
       <td style={{ textAlign: 'center', color: '#856404' }}>{pending}</td>
       <td>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

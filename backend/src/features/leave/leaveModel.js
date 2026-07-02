@@ -352,11 +352,11 @@ const Leave = {
                 }
             }
 
-            // 3. Insert leave request (store both is_paid and optional medical_document)
+            // 3. Insert leave request
             const [result] = await connection.execute(
-                `INSERT INTO leave_requests (tenant_id, employee_id, leave_type, is_paid, description, start_date, end_date, medical_document, status)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Pending')`,
-                [tenantId, employee_id, leave_type, leavePolicy.is_paid ? 1 : 0, description, start_date, end_date, leaveData.medical_document || null]
+                `INSERT INTO leave_requests (tenant_id, employee_id, leave_type, is_paid, description, start_date, end_date, status)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, 'Pending')`,
+                [tenantId, employee_id, leave_type, leavePolicy.is_paid ? 1 : 0, description, start_date, end_date]
             );
 
             // 4. Update pending balance
@@ -386,7 +386,7 @@ const Leave = {
             const query = `
                 SELECT 
                     lr.leave_id,
-                    lr.employee_id,
+                    COALESCE(ed.id, lr.employee_id) as employee_id,
                     lr.leave_type,
                     lr.description,
                     lr.start_date,
@@ -396,14 +396,20 @@ const Leave = {
                     lr.approved_by,
                     lr.approved_at,
                     lr.created_at,
-                    lr.updated_at,
-                    CASE WHEN lr.medical_document IS NOT NULL THEN 1 ELSE 0 END as has_document
+                    lr.updated_at
                 FROM leave_requests lr
-                WHERE lr.employee_id = ? AND lr.tenant_id = ?
+                LEFT JOIN employee_details ed
+                    ON ed.tenant_id = lr.tenant_id
+                   AND (
+                       BINARY lr.employee_id = BINARY ed.id
+                       OR (lr.employee_id REGEXP '^[0-9]+$' AND CAST(lr.employee_id AS UNSIGNED) = ed.employee_id)
+                   )
+                WHERE lr.tenant_id = ?
+                  AND (BINARY lr.employee_id = BINARY ? OR BINARY ed.id = BINARY ?)
                 ORDER BY lr.created_at DESC
             `;
             
-            const [rows] = await pool.execute(query, [employeeId, tenantId]);
+            const [rows] = await pool.execute(query, [tenantId, employeeId, employeeId]);
             return rows;
         } catch (error) {
             console.error('Error in Leave.getByEmployeeId:', error);
@@ -417,9 +423,9 @@ const Leave = {
             let query = `
                 SELECT 
                     lr.leave_id,
-                    lr.employee_id,
-                    ed.id as employee_code,
-                    CONCAT(u.first_name, ' ', u.last_name) as employee_name,
+                    COALESCE(ed.id, lr.employee_id) as employee_id,
+                    COALESCE(ed.id, lr.employee_id) as employee_code,
+                    COALESCE(NULLIF(TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))), ''), 'Unknown Employee') as employee_name,
                     lr.leave_type,
                     lr.description,
                     lr.start_date,
@@ -428,11 +434,17 @@ const Leave = {
                     lr.status,
                     lr.approved_by,
                     DATE_FORMAT(lr.approved_at, '%Y-%m-%d %h:%i %p') as approved_at,
-                    lr.created_at,
-                    CASE WHEN lr.medical_document IS NOT NULL THEN 1 ELSE 0 END as has_document
+                    lr.created_at
                 FROM leave_requests lr
-                JOIN employee_details ed ON lr.employee_id = ed.id
-                JOIN users u ON ed.employee_id = u.id
+                LEFT JOIN employee_details ed
+                    ON ed.tenant_id = lr.tenant_id
+                   AND (
+                       BINARY lr.employee_id = BINARY ed.id
+                       OR (lr.employee_id REGEXP '^[0-9]+$' AND CAST(lr.employee_id AS UNSIGNED) = ed.employee_id)
+                   )
+                LEFT JOIN users u
+                    ON ed.employee_id = u.id
+                   AND ed.tenant_id = u.tenant_id
                 WHERE lr.tenant_id = ?
             `;
             
@@ -454,7 +466,7 @@ const Leave = {
             return rows || [];
         } catch (error) {
             console.error('Error in Leave.getAll:', error);
-            return [];
+            throw error;
         }
     },
 
@@ -762,9 +774,9 @@ const Leave = {
             const query = `
                 SELECT 
                     lr.leave_id,
-                    lr.employee_id,
-                    ed.id as employee_code,
-                    CONCAT(u.first_name, ' ', u.last_name) as employee_name,
+                    COALESCE(ed.id, lr.employee_id) as employee_id,
+                    COALESCE(ed.id, lr.employee_id) as employee_code,
+                    COALESCE(NULLIF(TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))), ''), 'Unknown Employee') as employee_name,
                     lr.leave_type,
                     lr.description,
                     lr.start_date,
@@ -775,8 +787,15 @@ const Leave = {
                     lr.approved_at,
                     lr.created_at
                 FROM leave_requests lr
-                JOIN employee_details ed ON lr.employee_id = ed.id
-                JOIN users u ON ed.employee_id = u.id
+                LEFT JOIN employee_details ed
+                    ON ed.tenant_id = lr.tenant_id
+                   AND (
+                       BINARY lr.employee_id = BINARY ed.id
+                       OR (lr.employee_id REGEXP '^[0-9]+$' AND CAST(lr.employee_id AS UNSIGNED) = ed.employee_id)
+                   )
+                LEFT JOIN users u
+                    ON ed.employee_id = u.id
+                   AND ed.tenant_id = u.tenant_id
                 WHERE lr.leave_id = ? AND lr.tenant_id = ?
             `;
             

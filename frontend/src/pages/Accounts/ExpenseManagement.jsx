@@ -1,14 +1,18 @@
 // Merged Expense Management Component - No role restrictions
 import React, { useState, useEffect } from 'react';
 import { expenseAPI } from '../../services/expenseAPI';
-import { useAuth } from '../../contexts/AuthContext';
 import { useTableControls } from '../../hooks/useTableControls';
 import './ExpenseManagement.css';
 import '../../styles/tableControls.css';
 
 import { API_BASE_URL as API_URL } from '../../services/api';
 
-const EXPENSE_SEARCH_FIELDS = ['category_name', 'description', 'payment_status', 'amount', 'submitted_at'];
+const getExpenseEmployeeName = (expense = {}) => {
+  const fullName = expense.employee_name || `${expense.first_name || ''} ${expense.last_name || ''}`.trim();
+  return fullName || expense.email || (expense.employee_id ? `User #${expense.employee_id}` : 'N/A');
+};
+
+const EXPENSE_SEARCH_FIELDS = [getExpenseEmployeeName, 'employee_code', 'category_name', 'description', 'payment_status', 'amount', 'submitted_at'];
 
 // AddExpenseModal Component (integrated)
 const AddExpenseModal = ({ isOpen, onClose, onExpenseAdded }) => {
@@ -172,7 +176,7 @@ const AddExpenseModal = ({ isOpen, onClose, onExpenseAdded }) => {
               color: '#718096'
             }}
           >
-            ×
+            Ã—
           </button>
         </div>
 
@@ -204,7 +208,7 @@ const AddExpenseModal = ({ isOpen, onClose, onExpenseAdded }) => {
                   padding: 0
                 }}
               >
-                {showAddCategory ? '✕ Cancel' : '+ Add Category'}
+                {showAddCategory ? 'âœ• Cancel' : '+ Add Category'}
               </button>
             </div>
 
@@ -226,7 +230,7 @@ const AddExpenseModal = ({ isOpen, onClose, onExpenseAdded }) => {
                 <option value="">Select a category</option>
                 {categories.map(category => (
                   <option key={category.id} value={category.id}>
-                    {category.name} {category.limit_amount > 0 && `(Limit: ₹${category.limit_amount})`}
+                    {category.name} {category.limit_amount > 0 && `(Limit: \u20B9${category.limit_amount})`}
                   </option>
                 ))}
               </select>
@@ -271,7 +275,7 @@ const AddExpenseModal = ({ isOpen, onClose, onExpenseAdded }) => {
                     fontSize: '0.9rem',
                     color: '#4a5568'
                   }}>
-                    Limit Amount (₹) (Optional)
+                    Limit Amount (&#8377;) (Optional)
                   </label>
                   <input
                     type="number"
@@ -335,7 +339,7 @@ const AddExpenseModal = ({ isOpen, onClose, onExpenseAdded }) => {
                     fontWeight: '500'
                   }}
                 >
-                  {addingCategory ? 'Creating...' : '✓ Create Category'}
+                  {addingCategory ? 'Creating...' : 'âœ“ Create Category'}
                 </button>
               </div>
             )}
@@ -348,7 +352,7 @@ const AddExpenseModal = ({ isOpen, onClose, onExpenseAdded }) => {
               fontWeight: '500',
               color: '#4a5568'
             }}>
-              Amount (₹) *
+              Amount (&#8377;) *
             </label>
             <input
               type="number"
@@ -624,7 +628,7 @@ const ExpenseManagement = () => {
             <input
               className="table-search-input"
               type="search"
-              placeholder="Search category, description, status..."
+              placeholder="Search employee, category, description, status..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -668,6 +672,7 @@ const ExpenseManagement = () => {
               <thead>
                 <tr style={{ borderBottom: '2px solid #e2e8f0', background: '#f9fafb' }}>
                   <th className="sortable-th" onClick={() => requestSort('category_name', 'category_name')} style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#4a5568' }}>Category{sortLabel('category_name')}</th>
+                  <th className="sortable-th" onClick={() => requestSort('employee_name', getExpenseEmployeeName)} style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#4a5568' }}>Employee{sortLabel('employee_name')}</th>
                   <th className="sortable-th" onClick={() => requestSort('amount', 'amount')} style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#4a5568' }}>Amount{sortLabel('amount')}</th>
                   <th className="sortable-th" onClick={() => requestSort('description', 'description')} style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#4a5568' }}>Description{sortLabel('description')}</th>
                   <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#4a5568' }}>Receipt</th>
@@ -680,8 +685,14 @@ const ExpenseManagement = () => {
                 {visibleExpenses.map((expense, index) => (
                   <tr key={expense.id || index} style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '1rem', color: '#4a5568' }}>{expense.category_name || 'N/A'}</td>
+                    <td style={{ padding: '1rem', color: '#4a5568' }}>
+                      <div style={{ fontWeight: '600', color: '#2d3748' }}>{getExpenseEmployeeName(expense)}</div>
+                      {expense.employee_code && (
+                        <div style={{ fontSize: '0.75rem', color: '#718096', marginTop: '0.2rem' }}>ID: {expense.employee_code}</div>
+                      )}
+                    </td>
                     <td style={{ padding: '1rem', fontWeight: '600', color: '#2d3748' }}>
-                      ₹{parseFloat(expense.amount || 0).toFixed(2)}
+                      &#8377;{parseFloat(expense.amount || 0).toFixed(2)}
                     </td>
                     <td style={{ padding: '1rem', color: '#4a5568', maxWidth: '250px', wordWrap: 'break-word' }}>
                       {expense.description || 'N/A'}
