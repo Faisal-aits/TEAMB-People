@@ -488,9 +488,9 @@ const generateChallanHTML = (challan) => {
                     <div class="address-right">
                         <div class="address-label">From,</div>
                         <div class="from-address-content">
-                            ${formatTextWithBreaks(challan.from_address) || 'Above Being Healthy Gym, Near Surbhi Hospital, Nagar Sambhajinagar Road, Ahilyanagar [Ahmednagar] Maharashtra 414003'}
+                            ${formatTextWithBreaks(challan.from_address) || ''}
                             <div class="contact-info">
-                                ${formatTextWithBreaks(challan.contact_info || 'info@arhamitsolution.in<br>9322195628')}
+                                ${formatTextWithBreaks(challan.contact_info || '')}
                             </div>
                         </div>
                     </div>

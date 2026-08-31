@@ -36,7 +36,7 @@ const hashRows = async (rows) => Promise.all(rows.map(async (row) => {
   };
 }));
 
-const processEmployeeBulkUpload = async (tenantId, file) => {
+const processEmployeeBulkUpload = async (tenantId, file, settings = {}) => {
   const parsedFile = await parseEmployeeUploadFile(file);
   if (parsedFile.errors.length > 0) {
     return {
@@ -65,7 +65,8 @@ const processEmployeeBulkUpload = async (tenantId, file) => {
     parsedFile.rows,
     departments,
     existingEmails,
-    existingEmployeeIds
+    existingEmployeeIds,
+    settings
   );
 
   let inserted = [];

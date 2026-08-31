@@ -9,7 +9,10 @@ const authMiddleware = require('../../middleware/auth.middleware');
 const requireModuleAccess = require('../../middleware/requireModuleAccess');
 
 const setTenantId = (req, res, next) => {
-    req.tenantId = req.user?.tenant_id || req.headers['x-tenant-id'] || 1;
+    if (!req.user || !req.user.tenant_id) {
+        return res.status(401).json({ success: false, message: 'Tenant context is missing from token' });
+    }
+    req.tenantId = req.user.tenant_id;
     next();
 };
 
@@ -39,10 +42,14 @@ router.post('/generate/:employeeId', canWriteSalary, salaryController.generateEm
 router.post('/generate-all', canWriteSalary, salaryController.generateAllSalaries);
 router.put('/update/:salaryRecordId', canWriteSalary, salaryController.updateSalaryRecord);
 router.post('/payment/:salaryRecordId', canWriteSalary, salaryController.recordSalaryPayment);
+router.post('/pay-bulk', canWriteSalary, salaryController.payBulkSalaries);
+router.post('/pay/:salaryRecordId', canWriteSalary, salaryController.paySalary);
 router.post('/mark-paid/:salaryRecordId', canWriteSalary, salaryController.markSalaryPaid);
 router.post('/mark-pending/:salaryRecordId', canWriteSalary, salaryController.markSalaryPending);
 router.get('/history/:employeeId', canReadSalary, salaryController.getEmployeeSalaryHistory);
-router.get('/slip/:salaryRecordId', canReadSalary, salaryController.getSalarySlip);
+router.get('/my-slips', salaryController.getMySalarySlips);
+router.get('/slip/:salaryRecordId', salaryController.getSalarySlip);
+router.post('/send-payslip/:salaryRecordId', canWriteSalary, salaryController.sendPayslipEmail);
 router.get('/calculation/:employeeId', canReadSalary, salaryController.getSalaryCalculation);
 // Test route
 router.get('/test', canReadSalary, (req, res) => {

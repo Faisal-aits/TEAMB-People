@@ -1,6 +1,63 @@
 const nodemailer = require('nodemailer');
 const ServiceSetting = require('../features/servicesetting/serviceSettingModel');
 
+const APP_NAME = process.env.APP_NAME || 'TEAM B People';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5175';
+
+const createSystemTransporter = async () => {
+  try {
+    const ServiceSetting = require('../features/servicesetting/serviceSettingModel');
+    const row = await ServiceSetting.getSetting(0, 'super_admin_smtp');
+    const config = ServiceSetting.toPrivateSmtpConfig(row);
+
+    if (config && config.host && config.username && config.password) {
+      const port = Number(config.port || 587);
+      const isSecure = config.encryption === 'ssl' || port === 465;
+      return {
+        transporter: nodemailer.createTransport({
+          host: config.host,
+          port,
+          secure: isSecure,
+          auth: {
+            user: config.username,
+            pass: config.password
+          },
+          tls: { rejectUnauthorized: false }
+        }),
+        config: {
+          from_name: config.from_name || APP_NAME,
+          from_email: config.from_email || config.username
+        }
+      };
+    }
+  } catch (err) {
+    console.warn('[mailService] Failed to load super admin SMTP setting from DB:', err.message);
+  }
+
+  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+    const port = Number(process.env.SMTP_PORT || 465);
+    const isSecure = process.env.SMTP_SECURE === 'true' || port === 465;
+    return {
+      transporter: nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port,
+        secure: isSecure,
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS
+        },
+        tls: { rejectUnauthorized: false }
+      }),
+      config: {
+        from_name: process.env.FROM_NAME || APP_NAME,
+        from_email: process.env.FROM_EMAIL || process.env.SMTP_USER
+      }
+    };
+  }
+
+  return null;
+};
+
 const buildTransportOptions = (config) => {
   if (!config?.host || !config?.port || !config?.username || !config?.password) {
     throw new Error('SMTP configuration is incomplete');
@@ -76,9 +133,9 @@ const buildCredentialsTemplate = ({ employeeName, email, password }) => {
 
   return `
     <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto; color: #111827;">
-      <h2 style="margin: 0 0 16px; color: #111827;">Welcome to Work Desk</h2>
+      <h2 style="margin: 0 0 16px; color: #111827;">Welcome to ${APP_NAME}</h2>
       <p>Hello ${safeName},</p>
-      <p>Your Work Desk employee account has been created. Use the credentials below to sign in.</p>
+      <p>Your ${APP_NAME} employee account has been created. Use the credentials below to sign in.</p>
       <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
         <tr>
           <td style="padding: 10px; background: #f3f4f6; font-weight: 700;">Login Email</td>
@@ -91,12 +148,12 @@ const buildCredentialsTemplate = ({ employeeName, email, password }) => {
         <tr>
           <td style="padding: 10px; background: #f3f4f6; font-weight: 700;">Login URL</td>
           <td style="padding: 10px; border: 1px solid #e5e7eb;">
-            <a href="https://work-desk.tech">https://work-desk.tech</a>
+            <a href="${FRONTEND_URL}">${FRONTEND_URL}</a>
           </td>
         </tr>
       </table>
       <p style="color: #92400e;">Please change this password after your first login.</p>
-      <p>Regards,<br />Work Desk Team</p>
+      <p>Regards,<br />${APP_NAME} Team</p>
     </div>
   `;
 };
@@ -127,7 +184,7 @@ const buildOfferLetterTemplate = ({ candidateName, formData }) => {
         </tr>
       </table>
       <p>Please review the offer and contact HR for acceptance or any clarification.</p>
-      <p>Regards,<br />Work Desk Team</p>
+      <p>Regards,<br />${APP_NAME} Team</p>
     </div>
   `;
 };
@@ -138,22 +195,22 @@ const buildPasswordResetTemplate = ({ userName, resetLink }) => {
 
   return `
     <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto; color: #111827;">
-      <h2 style="margin: 0 0 16px; color: #111827;">Reset Your Work Desk Password</h2>
+      <h2 style="margin: 0 0 16px; color: #111827;">Reset Your ${APP_NAME} Password</h2>
       <p>Hello ${safeName},</p>
-      <p>We received a request to reset your Work Desk password. Use the button below to choose a new password.</p>
+      <p>We received a request to reset your ${APP_NAME} password. Use the button below to choose a new password.</p>
       <p style="margin: 24px 0;">
         <a href="${safeResetLink}" style="background: #6d5dfc; color: #ffffff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block;">Reset Password</a>
       </p>
       <p>This link will expire in 1 hour.</p>
       <p>If you did not request this, you can ignore this email.</p>
-      <p>Regards,<br />Work Desk Team</p>
+      <p>Regards,<br />${APP_NAME} Team</p>
     </div>
   `;
 };
 
 const sendMail = async (tenantId, { to, subject, html, text }) => {
   const { transporter, config } = await createTransportForTenant(tenantId);
-  const fromName = config.from_name || 'Work Desk';
+  const fromName = config.from_name || APP_NAME;
   const fromEmail = config.from_email || config.username;
 
   try {
@@ -180,15 +237,15 @@ const sendMail = async (tenantId, { to, subject, html, text }) => {
 
 const sendEmployeeCredentials = async (tenantId, employee) => sendMail(tenantId, {
   to: employee.email,
-  subject: 'Your Work Desk Login Credentials',
+  subject: `Your ${APP_NAME} Login Credentials`,
   html: buildCredentialsTemplate(employee),
   text: [
     `Hello ${employee.employeeName},`,
     '',
-    'Your Work Desk employee account has been created.',
+    `Your ${APP_NAME} employee account has been created.`,
     `Login Email: ${employee.email}`,
     `Temporary Password: ${employee.password}`,
-    'Login URL: https://work-desk.tech',
+    'Login URL: ${FRONTEND_URL}',
     '',
     'Please change this password after your first login.'
   ].join('\n')
@@ -196,32 +253,32 @@ const sendEmployeeCredentials = async (tenantId, employee) => sendMail(tenantId,
 
 const sendTestEmail = async (tenantId, to) => sendMail(tenantId, {
   to,
-  subject: 'Work Desk SMTP Test Email',
-  html: '<p>Your Work Desk SMTP configuration is working.</p>',
-  text: 'Your Work Desk SMTP configuration is working.'
+  subject: `${APP_NAME} SMTP Test Email`,
+  html: `<p>Your ${APP_NAME} SMTP configuration is working.</p>`,
+  text: `Your ${APP_NAME} SMTP configuration is working.`
 });
 
 const sendPasswordResetEmail = async (tenantId, user) => sendMail(tenantId, {
   to: user.email,
-  subject: 'Reset Your Work Desk Password',
+  subject: `Reset Your ${APP_NAME} Password`,
   html: buildPasswordResetTemplate(user),
   text: [
     `Hello ${user.userName || 'there'},`,
     '',
-    'We received a request to reset your Work Desk password.',
+    `We received a request to reset your ${APP_NAME} password.`,
     `Reset link: ${user.resetLink}`,
     '',
     'This link will expire in 1 hour.',
     'If you did not request this, you can ignore this email.',
     '',
     'Regards,',
-    'Work Desk Team'
+    `${APP_NAME} Team`
   ].join('\n')
 });
 
 const sendOfferLetter = async (tenantId, offer) => sendMail(tenantId, {
   to: offer.candidateEmail,
-  subject: `Offer Letter - ${offer.formData.designation || 'Work Desk'}`,
+  subject: `Offer Letter - ${offer.formData.designation || APP_NAME}`,
   html: buildOfferLetterTemplate(offer),
   text: [
     `Hello ${offer.candidateName || offer.formData.fullName || 'Candidate'},`,
@@ -233,14 +290,135 @@ const sendOfferLetter = async (tenantId, offer) => sendMail(tenantId, {
     'Please review the offer and contact HR for acceptance or any clarification.',
     '',
     'Regards,',
-    'Work Desk Team'
+    `${APP_NAME} Team`
   ].join('\n')
 });
+
+const sendSalarySlip = async (tenantId, { to, name, monthName, year, pdfBuffer }) => {
+  const { transporter, config } = await createTransportForTenant(tenantId);
+  const fromName = config.from_name || APP_NAME;
+  const fromEmail = config.from_email || config.username;
+  const safeName = escapeHtml(name || 'Employee');
+  const safeMonth = escapeHtml(`${monthName} ${year}`);
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto; color: #111827;">
+      <h2 style="margin: 0 0 16px; color: #111827;">Salary Slip — ${safeMonth}</h2>
+      <p>Hello ${safeName},</p>
+      <p>Please find attached your salary slip for <strong>${safeMonth}</strong>.</p>
+      <p>If you have any questions regarding your salary, please contact the HR department.</p>
+      <p>Regards,<br />${APP_NAME} Team</p>
+    </div>
+  `;
+
+  return transporter.sendMail({
+    from: `"${fromName.replace(/"/g, '\\"')}" <${fromEmail}>`,
+    to,
+    subject: `Salary Slip for ${monthName} ${year} — ${APP_NAME}`,
+    html,
+    text: `Hello ${name},\n\nPlease find attached your salary slip for ${monthName} ${year}.\n\nRegards,\n${APP_NAME} Team`,
+    attachments: [
+      {
+        filename: `SalarySlip_${(name || '').replace(/\s+/g, '_')}_${monthName}_${year}.pdf`,
+        content: pdfBuffer,
+        contentType: 'application/pdf'
+      }
+    ]
+  });
+};
+
+const sendOrganizationWelcomeEmail = async ({ tenantId, orgName, slug, adminName, adminEmail, adminPassword, plan, maxEmployees }) => {
+  let transporter, config;
+  
+  // Try Super Admin system SMTP first (configured in Super Admin SMTP panel)
+  const sysRes = await createSystemTransporter();
+  if (sysRes) {
+    transporter = sysRes.transporter;
+    config = sysRes.config;
+  } else {
+    try {
+      const res = await createTransportForTenant(tenantId);
+      transporter = res.transporter;
+      config = res.config;
+    } catch (err) {
+      console.warn('[mailService] System & Tenant SMTP not configured for organization welcome email:', err.message);
+      return false;
+    }
+  }
+
+  const fromName = config.from_name || APP_NAME;
+  const fromEmail = config.from_email || config.username;
+  const loginUrl = `${FRONTEND_URL}/login`;
+
+  const safeOrgName = escapeHtml(orgName);
+  const safeSlug = escapeHtml(slug);
+  const safeAdminName = escapeHtml(adminName || 'Admin');
+  const safeAdminEmail = escapeHtml(adminEmail);
+  const safePassword = escapeHtml(adminPassword);
+  const safeUrl = escapeHtml(loginUrl);
+  const safePlan = escapeHtml(plan || 'Free');
+  const safeMax = escapeHtml(maxEmployees || 'Unlimited');
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto; color: #111827; line-height: 1.6; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; padding: 24px; background-color: #ffffff;">
+      <div style="background-color: #4f46e5; padding: 20px 24px; margin: -24px -24px 24px -24px; color: #ffffff;">
+        <h2 style="margin: 0; font-size: 22px; font-weight: 700;">🎉 Welcome to ${APP_NAME}!</h2>
+      </div>
+      <p style="font-size: 16px;">Hello <strong>${safeAdminName}</strong>,</p>
+      <p>Congratulations! Your organization <strong>${safeOrgName}</strong> has been successfully created on <strong>${APP_NAME}</strong>.</p>
+      
+      <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 18px; margin: 20px 0;">
+        <h3 style="margin-top: 0; color: #4f46e5; font-size: 16px;">🔑 Your Admin Credentials & Workspace URL</h3>
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+          <tr>
+            <td style="padding: 6px 0; color: #4b5563; font-weight: 600; width: 140px;">Organization:</td>
+            <td style="padding: 6px 0; color: #111827; font-weight: 700;">${safeOrgName} (${safeSlug})</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #4b5563; font-weight: 600;">Login Email:</td>
+            <td style="padding: 6px 0; color: #111827; font-weight: 700;">${safeAdminEmail}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #4b5563; font-weight: 600;">Password:</td>
+            <td style="padding: 6px 0; color: #2563eb; font-weight: 700;">${safePassword}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #4b5563; font-weight: 600;">Plan:</td>
+            <td style="padding: 6px 0; color: #059669; font-weight: 700;">${safePlan} (${safeMax} Employees)</td>
+          </tr>
+        </table>
+      </div>
+
+      <p style="margin: 28px 0; text-align: center;">
+        <a href="${safeUrl}" style="background-color: #4f46e5; color: #ffffff; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block; font-size: 16px;">Sign In to Your Workspace ↗</a>
+      </p>
+
+      <p style="font-size: 13px; color: #92400e; background-color: #fffbebfb; border-left: 4px solid #f59e0b; padding: 12px; margin: 20px 0; border-radius: 4px;">
+        💡 <strong>Security Note:</strong> For security reasons, please log in and change your password after your first login.
+      </p>
+
+      <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+      <p style="font-size: 12px; color: #9ca3af; text-align: center; margin: 0;">
+        Sent automatically by ${APP_NAME} Platform.
+      </p>
+    </div>
+  `;
+
+  return transporter.sendMail({
+    from: `"${fromName.replace(/"/g, '\\"')}" <${fromEmail}>`,
+    to: adminEmail,
+    subject: `Welcome to ${APP_NAME} — Access Credentials for ${orgName}`,
+    html,
+    text: `Welcome to ${APP_NAME}!\n\nYour organization ${orgName} has been created.\n\nLogin URL: ${loginUrl}\nEmail: ${adminEmail}\nPassword: ${adminPassword}\n\nPlease change your password upon your first login.`
+  });
+};
 
 module.exports = {
   assertSmtpConfigured,
   sendEmployeeCredentials,
   sendOfferLetter,
   sendPasswordResetEmail,
-  sendTestEmail
+  sendTestEmail,
+  sendSalarySlip,
+  sendOrganizationWelcomeEmail
 };

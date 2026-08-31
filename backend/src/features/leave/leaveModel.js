@@ -4,25 +4,26 @@ const { pool } = require('../../config/db');
 const Leave = {
     // Default leave types setup
     DEFAULT_LEAVE_TYPES: [
-        { name: 'Casual', max_days: 10, is_paid: 1 },
-        { name: 'Sick', max_days: 10, is_paid: 1 },
-        { name: 'Earned', max_days: 15, is_paid: 1 },
-        { name: 'Maternity', max_days: 90, is_paid: 1 },
-        { name: 'Unpaid', max_days: 365, is_paid: 0 }
+        { name: 'PL', max_days: 12, allocation_frequency: 'Quarterly', is_paid: 1 },
+        { name: 'PSL', max_days: 5, allocation_frequency: 'Yearly', is_paid: 1 }
     ],
 
     // Initialize default leave types for a tenant if not present
     initLeaveTypes: async (connection, tenantId) => {
         try {
+            await connection.execute(
+                'UPDATE leave_types SET is_active = 0 WHERE tenant_id = ? AND LOWER(name) = "unpaid"',
+                [tenantId]
+            );
             const [rows] = await connection.execute(
-                'SELECT COUNT(*) as count FROM leave_types WHERE tenant_id = ?',
+                'SELECT COUNT(*) as count FROM leave_types WHERE tenant_id = ? AND is_active = 1',
                 [tenantId]
             );
             if (rows[0].count === 0) {
                 for (const type of Leave.DEFAULT_LEAVE_TYPES) {
                     await connection.execute(
-                        'INSERT INTO leave_types (tenant_id, name, max_days, is_paid) VALUES (?, ?, ?, ?)',
-                        [tenantId, type.name, type.max_days, type.is_paid]
+                        'INSERT INTO leave_types (tenant_id, name, max_days, allocation_frequency, is_paid) VALUES (?, ?, ?, ?, ?)',
+                        [tenantId, type.name, type.max_days, type.allocation_frequency, type.is_paid]
                     );
                 }
             }
@@ -40,7 +41,7 @@ const Leave = {
 
             // Fetch the leave types
             const [leaveTypes] = await connection.execute(
-                'SELECT name, max_days FROM leave_types WHERE tenant_id = ? AND is_active = 1',
+                'SELECT name, max_days, allocation_frequency FROM leave_types WHERE tenant_id = ? AND is_active = 1',
                 [tenantId]
             );
 
@@ -91,7 +92,7 @@ const Leave = {
             try {
                 await Leave.initLeaveTypes(connection, tenantId);
                 const [rows] = await connection.execute(
-                    'SELECT id, name, max_days, is_paid, is_active FROM leave_types WHERE tenant_id = ? AND is_active = 1 ORDER BY name',
+                    'SELECT id, name, max_days, allocation_frequency, is_paid, is_active FROM leave_types WHERE tenant_id = ? AND is_active = 1 AND LOWER(name) <> "unpaid" ORDER BY id',
                     [tenantId]
                 );
                 return rows;
@@ -109,7 +110,7 @@ const Leave = {
         try {
             await Leave.initLeaveTypes(connection, tenantId);
             const [rows] = await connection.execute(
-                'SELECT id, name, max_days, is_paid, is_active FROM leave_types WHERE tenant_id = ? ORDER BY is_active DESC, name',
+                'SELECT id, name, max_days, allocation_frequency, is_paid, is_active FROM leave_types WHERE tenant_id = ? AND is_active = 1 AND LOWER(name) <> "unpaid" ORDER BY id',
                 [tenantId]
             );
             return rows;
@@ -121,7 +122,7 @@ const Leave = {
     getLeaveTypePolicy: async (connection, tenantId, leaveType) => {
         await Leave.initLeaveTypes(connection, tenantId);
         const [rows] = await connection.execute(
-            'SELECT name, max_days, is_paid, is_active FROM leave_types WHERE tenant_id = ? AND name = ?',
+            'SELECT name, max_days, allocation_frequency, is_paid, is_active FROM leave_types WHERE tenant_id = ? AND name = ?',
             [tenantId, leaveType]
         );
 
@@ -132,6 +133,7 @@ const Leave = {
         return {
             name: rows[0].name,
             max_days: Number(rows[0].max_days) || 0,
+            allocation_frequency: rows[0].allocation_frequency,
             is_paid: Number(rows[0].is_paid) === 1,
             is_active: Number(rows[0].is_active) === 1
         };
@@ -162,6 +164,7 @@ const Leave = {
 
             const name = String(leaveTypeData.name || '').trim();
             const maxDays = Number.parseInt(leaveTypeData.max_days, 10);
+            const allocationFrequency = leaveTypeData.allocation_frequency || 'Yearly';
             const isPaid = leaveTypeData.is_paid ? 1 : 0;
             const year = new Date().getFullYear();
 
@@ -174,8 +177,8 @@ const Leave = {
             }
 
             const [result] = await connection.execute(
-                'INSERT INTO leave_types (tenant_id, name, max_days, is_paid, is_active) VALUES (?, ?, ?, ?, 1)',
-                [tenantId, name, maxDays, isPaid]
+                'INSERT INTO leave_types (tenant_id, name, max_days, allocation_frequency, is_paid, is_active) VALUES (?, ?, ?, ?, ?, 1)',
+                [tenantId, name, maxDays, allocationFrequency, isPaid]
             );
 
             await connection.execute(
@@ -208,6 +211,7 @@ const Leave = {
             const maxDays = Number.parseInt(leaveTypeData.max_days, 10);
             const isPaid = leaveTypeData.is_paid ? 1 : 0;
             const isActive = leaveTypeData.is_active ? 1 : 0;
+            const allocationFrequency = leaveTypeData.allocation_frequency || 'Yearly';
             const year = new Date().getFullYear();
 
             if (!Number.isInteger(maxDays) || maxDays < 0 || maxDays > 365) {
@@ -226,8 +230,8 @@ const Leave = {
             const leaveTypeName = existingRows[0].name;
 
             await connection.execute(
-                'UPDATE leave_types SET max_days = ?, is_paid = ?, is_active = ? WHERE tenant_id = ? AND id = ?',
-                [maxDays, isPaid, isActive, tenantId, typeId]
+                'UPDATE leave_types SET max_days = ?, allocation_frequency = ?, is_paid = ?, is_active = ? WHERE tenant_id = ? AND id = ?',
+                [maxDays, allocationFrequency, isPaid, isActive, tenantId, typeId]
             );
 
             if (isActive) {
@@ -264,13 +268,53 @@ const Leave = {
             try {
                 await Leave.initBalances(connection, tenantId, employeeId, year);
                 const [rows] = await connection.execute(
-                    `SELECT lb.leave_type, lb.allocated, lb.used, lb.pending, (lb.allocated - lb.used - lb.pending) as remaining
+                    `SELECT lb.leave_type, lb.allocated, lb.used, lb.pending, 
+                            lt.allocation_frequency, lt.max_days,
+                            (lb.allocated - lb.used - lb.pending) as remaining
                      FROM leave_balances lb
                      JOIN leave_types lt ON lt.tenant_id = lb.tenant_id AND lt.name = lb.leave_type
                      WHERE lb.tenant_id = ? AND lb.employee_id = ? AND lb.year = ? AND lt.is_active = 1
                      ORDER BY lt.name`,
                     [tenantId, employeeId, year]
                 );
+                
+                for (let row of rows) {
+                    const freq = row.allocation_frequency || 'Yearly';
+                    
+                    if (freq === 'Quarterly') {
+                        row.allocated = row.max_days;
+                        const [stats] = await connection.execute(`
+                            SELECT 
+                                SUM(CASE WHEN status = 'Approved' THEN DATEDIFF(end_date, start_date) + 1 ELSE 0 END) as period_used,
+                                SUM(CASE WHEN status = 'Pending' THEN DATEDIFF(end_date, start_date) + 1 ELSE 0 END) as period_pending
+                            FROM leave_requests 
+                            WHERE tenant_id = ? AND employee_id = ? AND leave_type = ? 
+                            AND YEAR(start_date) = ? AND QUARTER(start_date) = QUARTER(CURRENT_DATE)
+                        `, [tenantId, employeeId, row.leave_type, year]);
+                        
+                        row.used = Number(stats[0]?.period_used || 0);
+                        row.pending = Number(stats[0]?.period_pending || 0);
+                        row.remaining = row.allocated - row.used - row.pending;
+                    } else if (freq === 'Monthly') {
+                        row.allocated = row.max_days;
+                        const [stats] = await connection.execute(`
+                            SELECT 
+                                SUM(CASE WHEN status = 'Approved' THEN DATEDIFF(end_date, start_date) + 1 ELSE 0 END) as period_used,
+                                SUM(CASE WHEN status = 'Pending' THEN DATEDIFF(end_date, start_date) + 1 ELSE 0 END) as period_pending
+                            FROM leave_requests 
+                            WHERE tenant_id = ? AND employee_id = ? AND leave_type = ? 
+                            AND YEAR(start_date) = ? AND MONTH(start_date) = MONTH(CURRENT_DATE)
+                        `, [tenantId, employeeId, row.leave_type, year]);
+                        
+                        row.used = Number(stats[0]?.period_used || 0);
+                        row.pending = Number(stats[0]?.period_pending || 0);
+                        row.remaining = row.allocated - row.used - row.pending;
+                    } else if (freq === 'None') {
+                        row.allocated = 365; // virtually unlimited
+                        row.remaining = 365; // virtually unlimited
+                    }
+                }
+                
                 return rows;
             } finally {
                 connection.release();
@@ -333,22 +377,53 @@ const Leave = {
                 throw new Error('Selected leave type is inactive');
             }
 
-            // Fetch current balance for the selected type
+            let remaining = 0;
+            const freq = leavePolicy.allocation_frequency || 'Yearly';
+            
             const [balanceRows] = await connection.execute(
-                `SELECT allocated, used, pending 
-                 FROM leave_balances 
+                `SELECT allocated, used, pending FROM leave_balances 
                  WHERE tenant_id = ? AND employee_id = ? AND leave_type = ? AND year = ?`,
                 [tenantId, employee_id, leave_type, year]
             );
 
-            if (leavePolicy.is_paid) {
-                if (balanceRows.length === 0) {
-                    throw new Error('Leave balance not found for selected leave type');
-                }
-                const balance = balanceRows[0];
-                const remaining = balance.allocated - balance.used - balance.pending;
-                if (remaining < total_days) {
-                    throw new Error(`Insufficient leave balance. Remaining: ${remaining} days, Requested: ${total_days} days.`);
+            if (balanceRows.length === 0) {
+                throw new Error('Leave balance not found for selected leave type');
+            }
+
+            let allocated = balanceRows[0].allocated;
+            
+            if (freq === 'Quarterly') {
+                allocated = leavePolicy.max_days;
+                const [stats] = await connection.execute(`
+                    SELECT 
+                        SUM(CASE WHEN status IN ('Approved', 'Pending') THEN DATEDIFF(end_date, start_date) + 1 ELSE 0 END) as period_taken
+                    FROM leave_requests 
+                    WHERE tenant_id = ? AND employee_id = ? AND leave_type = ? 
+                    AND YEAR(start_date) = YEAR(?) AND QUARTER(start_date) = QUARTER(?)
+                `, [tenantId, employee_id, leave_type, start_date, start_date]);
+                remaining = allocated - Number(stats[0]?.period_taken || 0);
+            } else if (freq === 'Monthly') {
+                allocated = leavePolicy.max_days;
+                const [stats] = await connection.execute(`
+                    SELECT 
+                        SUM(CASE WHEN status IN ('Approved', 'Pending') THEN DATEDIFF(end_date, start_date) + 1 ELSE 0 END) as period_taken
+                    FROM leave_requests 
+                    WHERE tenant_id = ? AND employee_id = ? AND leave_type = ? 
+                    AND YEAR(start_date) = YEAR(?) AND MONTH(start_date) = MONTH(?)
+                `, [tenantId, employee_id, leave_type, start_date, start_date]);
+                remaining = allocated - Number(stats[0]?.period_taken || 0);
+            } else if (freq === 'None') {
+                allocated = 365;
+                remaining = 365;
+            } else {
+                // Yearly
+                remaining = balanceRows[0].allocated - balanceRows[0].used - balanceRows[0].pending;
+            }
+
+            if (leavePolicy.is_paid || freq !== 'None') {
+                if (remaining < total_days && freq !== 'None') {
+                    const nextPeriod = freq === 'Quarterly' ? 'quarter' : freq === 'Monthly' ? 'month' : 'year';
+                    throw new Error(`${leave_type} balance exhausted. More leaves will be allocated next ${nextPeriod}. Remaining: ${remaining} days, Requested: ${total_days} days.`);
                 }
             }
 

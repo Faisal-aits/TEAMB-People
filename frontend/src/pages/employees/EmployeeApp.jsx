@@ -7,8 +7,9 @@ import ExperienceLetters from '../HRModule/EmployeeManagement/ExperienceLetters'
 import IncrementLetters from '../HRModule/EmployeeManagement/IncrementLetters';
 import DeclarationForm from '../HRModule/EmployeeManagement/DeclarationForm';
 import ResignationRequests from '../HRModule/EmployeeManagement/ResignationRequests';
-import SalarySlip from '../HRModule/EmployeeManagement/SalarySlip';
 import EmployeeAttendance from './EmployeeAttendance';
+import EmployeeRegularization from './EmployeeRegularization';
+
 const EmployeeApp = () => (
   <PortalProvider basePath="/dashboard">
     <Routes>
@@ -19,8 +20,9 @@ const EmployeeApp = () => (
       <Route path="/increment-letters" element={<IncrementLetters />} />
       <Route path="/declaration-form" element={<DeclarationForm />} />
       <Route path="/resignation-requests" element={<ResignationRequests />} />
-      <Route path="/salary-slip" element={<SalarySlip />} />
       <Route path="/employee-attendance" element={<EmployeeAttendance />} />
+      <Route path="/regularization" element={<EmployeeRegularization />} />
+
       <Route path="*" element={<EmployeeLayout />} />
     </Routes>
   </PortalProvider>

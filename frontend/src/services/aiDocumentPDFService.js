@@ -1,7 +1,6 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import brandingAPI from './brandingAPI';
-import fallbackLogo from '../assets/img/company.png';
 
 const escapeHtml = (value) => String(value ?? '')
   .replace(/&/g, '&amp;')
@@ -52,7 +51,7 @@ const buildHtml = ({ schema, formData, branding }) => {
   return `
     <div class="ai-doc-page">
       <header>
-        <img src="${branding.logo}" alt="Logo" />
+        ${branding.logo ? `<img src="${branding.logo}" alt="Logo" />` : ''}
         <div>
           <h1>${escapeHtml(branding.companyName)}</h1>
           <p>${escapeHtml(branding.companyAddress)}</p>
@@ -67,6 +66,7 @@ const buildHtml = ({ schema, formData, branding }) => {
             <tbody>${details}</tbody>
           </table>
         ` : ''}
+        ${branding.stamp ? `<div class="stamp"><img src="${branding.stamp}" alt="Stamp" /></div>` : ''}
       </main>
     </div>
   `;
@@ -77,19 +77,21 @@ const getBranding = async () => {
     const res = await brandingAPI.get();
     const branding = res.data?.branding || {};
     return {
-      companyName: branding.company_name || 'Arham IT Solution',
+      companyName: branding.company_name || '',
       companyAddress: branding.company_address || '',
       companyEmail: branding.company_email || '',
       companyPhone: branding.company_phone || '',
-      logo: branding.logo_url ? brandingAPI.getImageUrl(branding.logo_url) : fallbackLogo,
+      logo: branding.logo_url ? brandingAPI.getImageUrl(branding.logo_url) : null,
+      stamp: branding.stamp_url ? brandingAPI.getImageUrl(branding.stamp_url) : null,
     };
   } catch {
     return {
-      companyName: 'Arham IT Solution',
+      companyName: '',
       companyAddress: '',
       companyEmail: '',
       companyPhone: '',
-      logo: fallbackLogo,
+      logo: null,
+      stamp: null,
     };
   }
 };

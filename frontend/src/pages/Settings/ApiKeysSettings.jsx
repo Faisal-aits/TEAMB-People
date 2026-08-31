@@ -313,7 +313,7 @@ const ApiKeysSettings = ({ projects = [] }) => {
             <section className="apikeys-doc-panel">
               <h3><HiOutlineInformationCircle /> Integration SDK</h3>
               <p>
-                API keys authorize external applications (like PHP HRMS, CRMs, or slackbots) to create support tickets in Work Desk.
+                API keys authorize external applications (like PHP HRMS, CRMs, or slackbots) to create support tickets in TEAM B People.
               </p>
               <div className="apikeys-doc-steps">
                 <div className="apikeys-doc-step">
@@ -322,7 +322,7 @@ const ApiKeysSettings = ({ projects = [] }) => {
                 </div>
                 <div className="apikeys-doc-step">
                   <div className="apikeys-doc-step-num">2</div>
-                  <div>Use the Work Desk PHP SDK to submit external queries.</div>
+                  <div>Use the TEAM B People PHP SDK to submit external queries.</div>
                 </div>
               </div>
               <div className="apikeys-doc-code">

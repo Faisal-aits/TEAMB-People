@@ -306,8 +306,12 @@ const BulkUploadModal = ({ isOpen, onClose, onUploadComplete }) => {
     const sampleRow = BULK_UPLOAD_COLUMNS.map((column) => BULK_UPLOAD_SAMPLE_ROW[column.key] ?? '');
     const instructionRows = [
       ['Use the Employees sheet for upload data.'],
-      ['Do not remove required columns. Dates must be YYYY-MM-DD.'],
+      ['Do not remove required columns (Emp Id, First Name, Last Name, Email, Department, Designation, Employment Type, Joining Date, Salary During Probation, Salary After Probation).'],
+      ['Dates must use YYYY-MM-DD format (e.g. 2026-05-23).'],
       ['Create departments in the system first, or use a valid Department ID.'],
+      ['Salary During Probation = employee basic (in-hand) salary during probation.'],
+      ['Salary After Probation = employee basic (in-hand) salary after probation.'],
+      ['All salary allowances (HRA, Medical, Travel, Other) and Probation Months are optional.'],
       ['Complete SMTP configuration before uploading because credentials are emailed to employees.']
     ];
 
@@ -353,6 +357,13 @@ const BulkUploadModal = ({ isOpen, onClose, onUploadComplete }) => {
       setUploadProgress(100);
       setUploadResult(response.data);
       if (response.data?.failedRows > 0 || response.data?.errors?.length > 0) {
+        const errorMessages = Array.from(new Set(response.data.errors.map(e => e.message)));
+        const duplicateErrors = errorMessages.filter(msg => msg.includes('already exists'));
+        
+        if (duplicateErrors.length > 0) {
+          alert(`Failed to add some employees: ${duplicateErrors.join(' and ')}`);
+        }
+        
         showToast('warning', response.data.message || 'Upload completed with some failed rows. Check the details below.');
       } else {
         showToast('success', response.data?.message || 'Employees uploaded successfully.');
@@ -361,6 +372,15 @@ const BulkUploadModal = ({ isOpen, onClose, onUploadComplete }) => {
     } catch (error) {
       const data = error.response?.data;
       const failureMessage = getUploadFailureMessage(error);
+      const errorMessages = Array.from(new Set(data?.errors?.map(e => e.message) || []));
+      const duplicateErrors = errorMessages.filter(msg => msg.includes('already exists'));
+      
+      if (duplicateErrors.length > 0) {
+        alert(`Failed to upload: ${duplicateErrors.join(' and ')}`);
+      } else if (data?.message && data.message.includes('already exists')) {
+        alert(`Failed to upload: ${data.message}`);
+      }
+
       setUploadResult(data || {
         success: false,
         totalRows: parsedRows.length,
@@ -603,10 +623,13 @@ const BulkUploadModal = ({ isOpen, onClose, onUploadComplete }) => {
                 <h3>Validation Rules</h3>
                 <ul>
                   <li>Email must be valid and unique.</li>
-                  <li>Employee ID, employee name, department, designation, employment type, joining date, CTC, and Basic are required.</li>
+                  <li>Employee ID, first name, last name, email, department, designation, employment type, joining date, salary during probation, and salary after probation are required.</li>
                   <li>Phone fields accept digits, spaces, +, -, and parentheses.</li>
-                  <li>Dates must use YYYY-MM-DD.</li>
+                  <li>Dates must use YYYY-MM-DD format (e.g. 2026-05-23).</li>
                   <li>Department must already exist in the system or use a valid Department ID.</li>
+                  <li><strong>Salary During Probation</strong> — employee basic (in-hand) salary during probation.</li>
+                  <li><strong>Salary After Probation</strong> — employee basic (in-hand) salary after probation.</li>
+                  <li>All allowances (HRA, Medical, Travel, Other), probation months, and CTC are optional.</li>
                   <li>Gross, PF, ESIC, P.Tax, LWF, deductions, net salary, and employer contributions are calculated by the system.</li>
                   <li>Duplicate columns, unsupported headers, and duplicate rows are rejected.</li>
                 </ul>

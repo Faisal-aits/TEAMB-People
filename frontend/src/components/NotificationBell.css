@@ -1,0 +1,198 @@
+.notification-bell-container {
+  position: absolute;
+  top: 1rem;
+  right: 1.5rem;
+  z-index: 10000;
+  animation: bellFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes bellFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.notification-bell-btn {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  border-radius: 50%;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #475569;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.notification-bell-btn:hover {
+  background: #f8fafc;
+  color: #1e293b;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+
+.notification-bell-btn.active {
+  background: #eff6ff;
+  color: #2563eb;
+  border-color: #93c5fd;
+}
+
+.notification-icon {
+  font-size: 1.35rem;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  background-color: #ef4444;
+  color: white;
+  border-radius: 50%;
+  padding: 2px 5px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.4);
+  animation: pulseBadge 2s infinite;
+}
+
+@keyframes pulseBadge {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+.notification-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 340px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e2e8f0;
+  max-height: 420px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: dropdownSlide 0.2s ease-out;
+}
+
+@keyframes dropdownSlide {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.notification-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8fafc;
+}
+
+.notification-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.mark-all-read-btn {
+  background: none;
+  border: none;
+  color: #2563eb;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.mark-all-read-btn:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.notification-list {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.notification-item {
+  padding: 0.85rem 1.25rem;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.notification-item:hover {
+  background-color: #f8fafc;
+}
+
+.notification-item.unread {
+  background-color: #f0f7ff;
+  border-left: 3px solid #2563eb;
+}
+
+.notification-item.unread:hover {
+  background-color: #e0effe;
+}
+
+.notification-title {
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 0.2rem;
+  font-size: 0.88rem;
+}
+
+.notification-message {
+  color: #475569;
+  font-size: 0.82rem;
+  margin-bottom: 0.4rem;
+  line-height: 1.4;
+}
+
+.notification-time {
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+.notification-empty {
+  padding: 2.5rem 1rem;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 0.88rem;
+}
+
+/* AUTOMATICALLY SHIFT NEIGHBORING PAGE HEADERS WHEN NOTIFICATION BELL IS VISIBLE */
+body.has-unread-notifications .leave-management-header,
+body.has-unread-notifications .leave-header,
+body.has-unread-notifications .attendance-header,
+body.has-unread-notifications .header-actions,
+body.has-unread-notifications .salary-management-header {
+  padding-right: 56px !important;
+  transition: padding-right 0.3s ease;
+}
+
+body.has-unread-notifications .leave-add-btn,
+body.has-unread-notifications .salary-add-record-btn {
+  margin-right: 48px !important;
+  transition: margin-right 0.3s ease;
+}

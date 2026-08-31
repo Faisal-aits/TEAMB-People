@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FaExclamationTriangle, FaCamera, FaCheckCircle, FaSync, FaFileExport, FaPrint } from 'react-icons/fa';
+import { FaExclamationTriangle, FaCamera, FaCheckCircle, FaSync, FaFileExport, FaPrint, FaClock } from 'react-icons/fa';
 import { attendanceAPI } from '../../../services/attendanceAPI';
 import { employeeAPI } from '../../../services/employeeAPI';
 import { leaveAPI } from '../../../services/leaveAPI';
@@ -18,6 +18,13 @@ const AttendanceManagement = () => {
   const [error, setError] = useState(null);
   const [autoMarkStatus, setAutoMarkStatus] = useState(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isHalfDayModalOpen, setIsHalfDayModalOpen] = useState(false);
+  const [halfDayLoading, setHalfDayLoading] = useState(false);
+  const [halfDayForm, setHalfDayForm] = useState({
+    date: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }).split(' ')[0],
+    employee_id: 'all',
+    reason: ''
+  });
   const [reportData, setReportData] = useState([]);
   const [reportFilters, setReportFilters] = useState({
     startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
@@ -57,6 +64,9 @@ const AttendanceManagement = () => {
       return value.toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }).split(' ')[0];
     }
     let str = String(value);
+    if (str.includes('Z')) {
+      return new Date(str).toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }).split(' ')[0];
+    }
     if (str.includes('T')) str = str.split('T')[0];
     if (str.includes(' ')) str = str.split(' ')[0];
     return str;
@@ -69,6 +79,7 @@ const AttendanceManagement = () => {
     if (value === 'half day' || value === 'half-day') return 'Half Day';
     if (value === 'on leave' || value === 'leave') return 'On Leave';
     if (value === 'absent') return 'Absent';
+    if (value === 'holiday') return 'Holiday';
     return status || 'Absent';
   };
 
@@ -79,6 +90,37 @@ const AttendanceManagement = () => {
   const handleRefresh = async () => {
     await initializeRealData();
     setCurrentPage(1);
+  };
+
+  const handleMarkHalfDaySubmit = async (e) => {
+    e.preventDefault();
+    if (!halfDayForm.date) {
+      alert('Please select a date');
+      return;
+    }
+    try {
+      setHalfDayLoading(true);
+      const payload = {
+        date: halfDayForm.date,
+        employee_id: halfDayForm.employee_id,
+        mark_all: halfDayForm.employee_id === 'all',
+        reason: halfDayForm.reason
+      };
+      const response = await attendanceAPI.markHalfDay(payload);
+      if (response.data?.success) {
+        alert(response.data.message || 'Half day marked successfully');
+        setIsHalfDayModalOpen(false);
+        setHalfDayForm({ date: getTodayIST(), employee_id: 'all', reason: '' });
+        await handleRefresh();
+      } else {
+        alert(response.data?.message || 'Failed to mark half day');
+      }
+    } catch (err) {
+      console.error('Mark half day error:', err);
+      alert(err.response?.data?.message || 'Failed to mark half day');
+    } finally {
+      setHalfDayLoading(false);
+    }
   };
 
   // Helper function to format time short
@@ -215,6 +257,14 @@ const initializeRealData = async () => {
         attendance = attendanceResponse.data.data;
       }
     }
+    
+    let holidayDates = new Set();
+    if (attendanceResponse.data && attendanceResponse.data.holidays) {
+      holidayDates = new Set(attendanceResponse.data.holidays.map(h => normalizeDateString(h.date)));
+    }
+    // Store holidayDates in state or window so helper functions can use it if needed.
+    // For now we can just attach it to window for simplicity or define it globally in the file.
+    window.__holidayDates = holidayDates;
 
  const normalizedAttendance = (attendance || []).map(record => {
   const recordDate = normalizeDateString(record.date || record.attendance_date);
@@ -232,7 +282,7 @@ const initializeRealData = async () => {
     ].filter(Boolean).map(value => String(value).trim()),
     check_in_time: record.check_in_time || record.check_in || record.checkIn,
     check_out_time: record.check_out_time || record.check_out || record.checkOut,
-    status: normalizeStatus(record.status || (record.check_in_time ? 'Present' : 'Absent')),
+    status: normalizeStatus(record.status || (record.check_in_time ? 'Present' : (window.__holidayDates?.has(recordDate) ? 'Holiday' : 'Absent'))),
     date: recordDate,
     remarks: record.remarks,
     check_in_latitude: record.check_in_latitude,
@@ -277,34 +327,34 @@ const getUserAttendance = (user) => {
   const todayDate = getTodayIST();
   const yesterdayDate = getYesterdayIST();
 
-  if (!user || !user.employee_id) {
-  
+  if (!user) {
     return {
       check_in_time: '-',
       check_out_time: '-',
-      status: 'Absent',
+      status: window.__holidayDates?.has(todayDate) ? 'Holiday' : 'Absent',
       attendance_id: null
     };
   }
 
-  const userKeys = (user.attendance_keys?.length ? user.attendance_keys : [user.employee_id, user.user_id, user.id])
+  const userKeys = (user.attendance_keys?.length ? user.attendance_keys : [user.employee_id, user.hr_employee_code, user.user_id, user.id, user.details_id])
     .filter(Boolean)
     .map(value => String(value).trim());
+
   const userRecords = attendanceData.filter(
-    att => (att.match_keys || [att.employee_id, att.user_id])
+    att => (att.match_keys || [att.employee_id, att.user_id, att.hr_employee_code])
       .filter(Boolean)
       .some(key => userKeys.includes(String(key).trim()))
   );
 
   const record =
-    userRecords.find(att => att.date === todayDate) ||
-    userRecords.find(att => att.date === yesterdayDate && att.check_in_time);
+    userRecords.find(att => normalizeDateString(att.date) === todayDate) ||
+    userRecords.find(att => normalizeDateString(att.date) === yesterdayDate && att.check_in_time);
 
   if (record) {
     return {
       check_in_time: record.check_in_time || '-',
       check_out_time: record.check_out_time || '-',
-      status: normalizeStatus(record.status || 'Absent'),
+      status: normalizeStatus(record.status || (window.__holidayDates?.has(todayDate) ? 'Holiday' : 'Absent')),
       attendance_id: record.attendance_id || null,
       check_in_latitude: record.check_in_latitude,
       check_in_longitude: record.check_in_longitude,
@@ -316,7 +366,7 @@ const getUserAttendance = (user) => {
   return {
     check_in_time: '-',
     check_out_time: '-',
-    status: 'Absent',
+    status: window.__holidayDates?.has(todayDate) ? 'Holiday' : 'Absent',
     attendance_id: null
   };
 };
@@ -427,6 +477,7 @@ const getUserAttendance = (user) => {
         badgeClass += 'attendance-status-active';
         break;
       case 'Delayed': badgeClass += 'attendance-status-delayed'; break;
+      case 'Holiday': badgeClass += 'attendance-status-holiday'; break;
       default: badgeClass += 'attendance-status-inactive';
     }
     return <span className={badgeClass}>{displayStatus?.toUpperCase() || 'ABSENT'}</span>;
@@ -475,7 +526,7 @@ const getUserAttendance = (user) => {
           date.toLocaleDateString('en-US', { weekday: 'short' }),
           formatTime(record.check_in_time),
           formatTime(record.check_out_time),
-          record.status || 'Absent',
+          record.status || (window.__holidayDates?.has(record.date) ? 'Holiday' : 'Absent'),
           record.remarks || ''
         ]);
       });
@@ -585,14 +636,16 @@ const getUserAttendance = (user) => {
 
         const getLeaveCode = (leave) => {
           const leaveType = String(leave?.leave_type || '').trim().toLowerCase();
-          if (leaveType === 'casual') return 'CL';
-          if (leaveType === 'unpaid') return 'LWP';
+          if (leaveType === 'casual' || leaveType === 'sick') return 'PSL';
+          if (leaveType === 'unpaid') return 'UL';
           return 'PL';
         };
 
-        const getDateHeader = (dayInfo) => (
-          crossesMonth ? `${dayInfo.dayNumber}/${String(dayInfo.month).padStart(2, '0')}` : String(dayInfo.dayNumber)
-        );
+        const monthNamesShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const getDateHeader = (dayInfo) => {
+          const year = dayInfo.date ? dayInfo.date.split('-')[0] : new Date().getFullYear();
+          return `${dayInfo.dayNumber} ${monthNamesShort[dayInfo.month - 1]} ${year}`;
+        };
 
         const formattedReport = filteredUsers.map((user, index) => {
           const userName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.name || 'Unknown';
@@ -611,6 +664,7 @@ const getUserAttendance = (user) => {
           let lwpDays = 0;
           let delayedDays = 0;
           let absentDays = 0;
+          let holidayDays = 0;
           let leaveDays = 0;
 
           dateRange.forEach((dayInfo) => {
@@ -636,7 +690,7 @@ const getUserAttendance = (user) => {
                 return;
               }
               if (status === 'delayed' || status === 'late') {
-                row[header] = 'D';
+                row[header] = 'P';
                 presentDays += 1;
                 delayedDays += 1;
                 return;
@@ -650,8 +704,8 @@ const getUserAttendance = (user) => {
               if (status === 'on leave' || status === 'leave') {
                 const leaveCode = getLeaveCode(leave);
                 row[header] = leaveCode;
-                if (leaveCode === 'CL') casualLeaveDays += 1;
-                else if (leaveCode === 'LWP') lwpDays += 1;
+                if (leaveCode === 'PSL') casualLeaveDays += 1;
+                else if (leaveCode === 'UL') lwpDays += 1;
                 else paidLeaveDays += 1;
                 leaveDays += 1;
                 return;
@@ -661,23 +715,33 @@ const getUserAttendance = (user) => {
             if (leave) {
               const leaveCode = getLeaveCode(leave);
               row[header] = leaveCode;
-              if (leaveCode === 'CL') casualLeaveDays += 1;
-              else if (leaveCode === 'LWP') lwpDays += 1;
+              if (leaveCode === 'PSL') casualLeaveDays += 1;
+              else if (leaveCode === 'UL') lwpDays += 1;
               else paidLeaveDays += 1;
               leaveDays += 1;
               return;
             }
 
-            row[header] = 'A';
-            lwpDays += 1;
-            absentDays += 1;
+            let currentStatus = 'Absent';
+            if (window.__holidayDates && window.__holidayDates.has(dayInfo.date)) {
+              currentStatus = 'Holiday';
+            }
+            
+            if (currentStatus === 'Holiday') {
+              row[header] = 'H/Day';
+              holidayDays += 1;
+            } else {
+              row[header] = 'A';
+              lwpDays += 1;
+              absentDays += 1;
+            }
           });
 
           row['Present Days'] = presentDays;
           row.PL = paidLeaveDays;
-          row.CL = casualLeaveDays;
+          row.PSL = casualLeaveDays;
           row['W/O'] = weeklyOffDays;
-          row.LWP = lwpDays;
+          row.UL = lwpDays;
           row['Payable Days'] = presentDays + paidLeaveDays + casualLeaveDays + weeklyOffDays;
 
           return {
@@ -690,6 +754,7 @@ const getUserAttendance = (user) => {
               lwpDays,
               delayedDays,
               absentDays,
+              holidayDays,
               leaveDays
             }
           };
@@ -782,7 +847,7 @@ const getUserAttendance = (user) => {
           'Position': user.position || 'Unknown'
         };
         
-        let presentCount = 0, absentCount = 0, lateCount = 0, totalHours = 0, workingDays = 0;
+        let presentCount = 0, absentCount = 0, lateCount = 0, totalHours = 0, workingDays = 0, holidayCount = 0;
         
         for (const dayInfo of dateRange) {
           const attendance = userKeys
@@ -876,6 +941,7 @@ const getUserAttendance = (user) => {
         const percentage = workingDays > 0 ? ((presentCount / workingDays) * 100).toFixed(1) : '0';
         userRow['Present'] = presentCount;
         userRow['Absent'] = absentCount;
+        userRow['Holiday'] = holidayCount;
         userRow['Late'] = lateCount;
         userRow['Total Hours'] = totalHours.toFixed(1);
         userRow['Attendance %'] = `${percentage}%`;
@@ -967,6 +1033,13 @@ const getUserAttendance = (user) => {
         <div className="attendance-header-actions">
           <button
             type="button"
+            className="attendance-action-btn mark-halfday-btn"
+            onClick={() => setIsHalfDayModalOpen(true)}
+          >
+            <FaClock /> Mark Half Day
+          </button>
+          <button
+            type="button"
             className="attendance-action-btn"
             onClick={() => setIsReportModalOpen(true)}
           >
@@ -997,45 +1070,42 @@ const getUserAttendance = (user) => {
       </div>
 
       {/* Filters */}
-     
+        <div className="attendance-filters" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'white', padding: '16px 20px', borderRadius: '8px', marginBottom: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '1px solid #e5e7eb' }}>
+          <div className="search-box">
+            <i className="fas fa-search"></i>
+            <input
+              type="text"
+              placeholder="Search employees, department, position..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+              style={{ backgroundColor: 'white' }}
+            />
+          </div>
+          <div className="filter-group" style={{ backgroundColor: 'white' }}>
+            <label style={{marginRight: '10px', backgroundColor: 'white'}}>Filter by Status:</label>
+            <select 
+              value={statusFilter} 
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              style={{ padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px', outline: 'none', backgroundColor: 'white' }}
+            >
+              <option value="all">All</option>
+              <option value="present">Present</option>
+              <option value="absent">Absent</option>
+              <option value="delayed">Delayed</option>
+            </select>
+          </div>
+        </div>
 
       {/* Attendance Table */}
       <div className="attendance-table-container">
         <div className="attendance-table-header">
           <h3>Today's Attendance </h3>
-          {/* Attendance Table */}
-
-   
-    <div className="attendance-filters">
-      <div className="filter-group">
-        <label>Filter by Status:</label>
-        <select 
-          value={statusFilter} 
-          onChange={(e) => {
-            setStatusFilter(e.target.value);
-            setCurrentPage(1);
-          }}
-          className="status-filter-select"
-        >
-          <option value="all">All Employees</option>
-          <option value="present">Present Only</option>
-          <option value="absent">Absent Only</option>
-          <option value="delayed">Delayed Only</option>
-        </select>
-      </div>
-      <input
-        className="table-search-input"
-        type="search"
-        placeholder="Search employees, department, position..."
-        value={searchTerm}
-        onChange={(e) => {
-          setSearchTerm(e.target.value);
-          setCurrentPage(1);
-        }}
-      />
-     
-    </div>
-  
         </div>
         <div className="attendance-table-wrapper">
           {loading ? (
@@ -1208,6 +1278,98 @@ const getUserAttendance = (user) => {
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mark Half Day Modal */}
+      {isHalfDayModalOpen && (
+        <div className="attendance-modal-overlay" style={{ zIndex: 9999 }}>
+          <div className="attendance-modal-content" style={{ maxWidth: '500px', width: '90%', padding: '24px', borderRadius: '12px', background: '#ffffff' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#1e293b', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FaClock style={{ color: '#d97706' }} /> Mark Half Day
+              </h3>
+              <button
+                type="button"
+                className="attendance-close-btn"
+                onClick={() => setIsHalfDayModalOpen(false)}
+                style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#64748b' }}
+              >
+                &times;
+              </button>
+            </div>
+
+            <form onSubmit={handleMarkHalfDaySubmit}>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', fontSize: '0.88rem', color: '#334155' }}>
+                  Select Date <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input
+                  type="date"
+                  value={halfDayForm.date}
+                  onChange={(e) => setHalfDayForm({ ...halfDayForm, date: e.target.value })}
+                  required
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', outline: 'none' }}
+                />
+                <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', display: 'block' }}>
+                  You can select present, past, or future dates.
+                </span>
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', fontSize: '0.88rem', color: '#334155' }}>
+                  Select Employee <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <select
+                  value={halfDayForm.employee_id}
+                  onChange={(e) => setHalfDayForm({ ...halfDayForm, employee_id: e.target.value })}
+                  required
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', outline: 'none', backgroundColor: '#ffffff' }}
+                >
+                  <option value="all">-- All Active Employees --</option>
+                  {users.map((u) => {
+                    const empId = u.employee_id || u.id;
+                    const name = `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.name || `Employee #${empId}`;
+                    return (
+                      <option key={u.id || empId} value={empId}>
+                        {name} ({empId})
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', fontSize: '0.88rem', color: '#334155' }}>
+                  Reason / Notes (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Approved Half Day Leave, Early Exit"
+                  value={halfDayForm.reason}
+                  onChange={(e) => setHalfDayForm({ ...halfDayForm, reason: e.target.value })}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', outline: 'none' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsHalfDayModalOpen(false)}
+                  style={{ padding: '9px 18px', border: '1px solid #cbd5e1', borderRadius: '8px', background: '#f8fafc', color: '#475569', fontWeight: '600', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={halfDayLoading}
+                  style={{ padding: '9px 20px', border: 'none', borderRadius: '8px', background: '#d97706', color: '#ffffff', fontWeight: '600', cursor: halfDayLoading ? 'not-allowed' : 'pointer' }}
+                >
+                  {halfDayLoading ? 'Saving...' : 'Mark Half Day'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

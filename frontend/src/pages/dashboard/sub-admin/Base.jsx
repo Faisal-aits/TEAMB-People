@@ -1,5 +1,7 @@
 // src/pages/dashboard/employee/Base.jsx
 import React, { useState, useEffect } from 'react';
+import worklyLogo from '../../../assets/img/workly-full-logo.png';
+import worklyShortLogo from '../../../assets/img/workly-logo.png';
 import { BsPersonCircle } from "react-icons/bs";
 import { useAuth } from '../../../contexts/AuthContext';
 import './Base.css';
@@ -15,7 +17,6 @@ import ReportsHistory from './ReportsHistory.jsx'
 import Settings from './Settings.jsx';
 import HRDashboard from './HRDashboard.jsx';
 import OfferLetter from '../HR/OfferLetter.jsx'; //Offer letter jsx HR Folder  
-import SalarySlip from '../HR/SalarySlip.jsx';
 import SalaryHistory from '../HR/SalaryHistory.jsx';
 import EmployeeDirectory from '../HR/EmployeeDirectory.jsx';
 import ResignationRequests from '../HR/ResignationRequests.jsx';
@@ -38,7 +39,6 @@ const [reportsOpen, setReportsOpen] = useState(false);
   const { user, logout } = useAuth();
   const isKosquOrganization = (user?.tenant_slug || '').toLowerCase() === 'kosqu';
   const restrictedHrTabsForKosqu = new Set([
-    'salary-slip',
     'salary-history',
     'hr-employee-directory',
     'resignation',
@@ -193,8 +193,6 @@ const [reportsOpen, setReportsOpen] = useState(false);
         return <HRDashboard setActiveTab={setActiveTab} />;
       case 'offer-letter':
         return <OfferLetter  {...contentProps} />;
-      case 'salary-slip':
-        return <SalarySlip {...contentProps} />;
       case 'salary-history':
         return <SalaryHistory {...contentProps} />;
       case 'hr-employee-directory':
@@ -229,9 +227,9 @@ const [reportsOpen, setReportsOpen] = useState(false);
           <div className="sidebar-header">
             <div className="header-content">
               {sidebarOpen ? (
-                <h2 className="company-title-sidebar">Work Desk</h2>
+                <img src={worklyLogo} alt="Workly Logo" className="company-logo-sidebar" style={{ maxHeight: '40px', maxWidth: '100%', transform: 'scale(2.5)' }} />
               ) : (
-                <div className="company-icon">W</div>
+                <img src={worklyShortLogo} alt="W Logo" style={{ maxHeight: '52px', maxWidth: '52px', objectFit: 'contain', transform: 'scale(1.4)' }} />
               )}
             </div>
           </div>

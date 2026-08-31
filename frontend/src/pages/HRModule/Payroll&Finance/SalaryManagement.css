@@ -124,9 +124,9 @@
 
 /* Generate Button */
 .btn-generate-small {
-  background: linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%);
-  border: none;
-  color: white;
+  background: #E6E6FA;
+  border: 1px solid #c7d2fe;
+  color: #000000;
   padding: 0.8rem 1.25rem;
   border-radius: 8px;
   cursor: pointer;
@@ -139,7 +139,8 @@
 }
 
 .btn-generate-small:hover {
-  background: linear-gradient(135deg, #7a77b9 0%, #c493c2 33%, #d883b0 66%, #e8c1d8 100%);
+  background: #dcdcfe;
+  color: #000000;
   transform: translateY(-2px);
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
 }
@@ -821,8 +822,9 @@
 
 /* Employee Info Card */
 .employee-info-card {
-  background: linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%);
-  color: white;
+  background: #E6E6FA;
+  color: #000000;
+  border: 1px solid #c7d2fe;
   border-radius: 12px;
   padding: 1rem;
   margin: 1rem;
@@ -864,19 +866,21 @@
 
 .salary-details-modal .modal-header {
   padding: 1.15rem 1.35rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.42);
-  background: linear-gradient(135deg, #8d8ad4 0%, #de95c4 58%, #ffd2e8 100%);
+  border-bottom: 1px solid #c7d2fe;
+  background: #E6E6FA;
 }
 
 .salary-details-modal .modal-header h3 {
   font-size: 1.18rem;
   line-height: 1.25;
   letter-spacing: 0;
+  color: #1e1b4b;
 }
 
 .salary-details-modal .close-btn {
   font-size: 1.35rem;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(109, 106, 184, 0.12);
+  color: #1e1b4b;
 }
 
 .salary-details-modal .modal-body {
@@ -888,10 +892,9 @@
   margin: 0 0 1.15rem;
   padding: 1.1rem;
   border-radius: 14px;
-  background:
-    linear-gradient(135deg, rgba(115, 103, 197, 0.94) 0%, rgba(220, 127, 183, 0.9) 62%, rgba(255, 186, 219, 0.95) 100%),
-    radial-gradient(circle at top right, rgba(255, 255, 255, 0.35), transparent 34%);
-  box-shadow: 0 18px 36px rgba(141, 105, 184, 0.22);
+  background: #E6E6FA;
+  border: 1px solid #c7d2fe;
+  box-shadow: 0 4px 14px rgba(109, 106, 184, 0.1);
 }
 
 .salary-details-modal .info-grid {
@@ -905,15 +908,16 @@
 
 .salary-details-modal .info-label {
   margin-bottom: 0.2rem;
-  color: rgba(255, 255, 255, 0.82);
+  color: #4c4a8a;
   font-size: 0.68rem;
   font-weight: 800;
 }
 
 .salary-details-modal .info-value {
-  color: #ffffff;
+  color: #1e1b4b;
   font-size: 0.98rem;
   line-height: 1.25;
+  font-weight: 600;
 }
 
 .salary-details-modal .summary-stats {

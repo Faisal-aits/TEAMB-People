@@ -37,12 +37,35 @@ const EmployeeDetail = ({ emp, allOfferLetters, allSlipRecords, onBack }) => {
 
   const getInitials = (f, l) => `${f?.[0]||''}${l?.[0]||''}`.toUpperCase();
 
-  const mapToFormData = r => ({
-    fullName: r.employee_name, designation: r.designation,
-    monthYear: `${r.month} ${r.year}`, paymentMode: r.payment_mode || "Bank Transfer",
-    earnings: { basic: r.basic_salary, hra: r.allowances?.hra||0, conveyance: r.allowances?.transport||0, medical: r.allowances?.medical||0, special: r.allowances?.special||0 },
-    deductions: { pf: r.deductions?.provident_fund||0, pt: r.deductions?.professional_tax||0, tds: r.deductions?.tax||0 }
-  });
+  const mapToFormData = r => {
+    const details = (typeof r.details === 'string' ? JSON.parse(r.details || '{}') : r.details) || {};
+    return {
+      fullName: r.employee_name || `${r.first_name || ''} ${r.last_name || ''}`.trim(),
+      employeeId: r.employee_id,
+      designation: r.designation || r.position || '',
+      department: r.department || r.department_name || '',
+      dateOfJoining: r.joining_date || r.date_of_joining || '',
+      monthYear: `${r.month} ${r.year}`,
+      month: r.month_number || r.month,
+      year: r.year,
+      bankAccountNo: r.bank_account_number || r.bank_account_no || '',
+      pan: r.pan_number || r.pan || '',
+      uan: r.uan || '',
+      basicSalary: Math.round(r.basic_salary || 0),
+      grossSalary: Math.round(r.gross_salary || r.basic_salary || 0),
+      netSalary: Math.round(r.net_salary || r.basic_salary || 0),
+      deductionAmount: Math.round(r.deduction_amount || 0),
+      presentDays:     details.present_days      ?? r.present_days     ?? '-',
+      absentDays:      details.absent_days       ?? r.absent_days      ?? '-',
+      halfDays:        details.half_days         ?? r.half_days        ?? '-',
+      paidLeaveDays:   details.paid_leave_days   ?? r.paid_leave_days  ?? '-',
+      unpaidLeaveDays: details.unpaid_leave_days ?? r.unpaid_leave_days ?? '-',
+      payableDays:     details.paid_days         ?? r.paid_days        ?? '-',
+      nonPayableDays:  details.deduction_days    ?? r.deduction_days   ?? '-',
+      earnings: { basic: Math.round(r.basic_salary || 0) },
+      paymentMode: r.payment_mode || "Bank Transfer"
+    };
+  };
 
   const handleAction = async (type, action, doc) => {
     try {

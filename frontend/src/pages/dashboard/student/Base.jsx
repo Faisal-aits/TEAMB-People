@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import worklyLogo from '../../../assets/img/workly-full-logo.png';
+import worklyShortLogo from '../../../assets/img/workly-logo.png';
 import { useAuth } from '../../../contexts/AuthContext';
 import './Base.css';
 import Profile from './Profile.jsx';
@@ -72,9 +74,9 @@ const Base = () => {
           <div className="sidebar-header">
             <div className="header-content">
               {sidebarOpen ? (
-                <h2 className="company-title-sidebar">Work Desk</h2>
+                <img src={worklyLogo} alt="Workly Logo" className="company-logo-sidebar" style={{ maxHeight: '40px', maxWidth: '100%', transform: 'scale(2.5)' }} />
               ) : (
-                <div className="company-icon">W</div>
+                <img src={worklyShortLogo} alt="W Logo" style={{ maxHeight: '52px', maxWidth: '52px', objectFit: 'contain', transform: 'scale(1.4)' }} />
               )}
             </div>
           </div>

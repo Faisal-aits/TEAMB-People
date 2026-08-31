@@ -68,7 +68,10 @@ const verifyTokenOrApiKey = (req, res, next) => {
     // JWT path — mirrors auth.middleware.js verifyToken
     try {
       const token = authHeader.split(' ')[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'arham_simple_secret_2023');
+      if (!process.env.JWT_SECRET) {
+        return sendResp(res, 500, false, 'Server configuration error', null);
+      }
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const role = decoded.role || decoded.position || decoded.role_name;
       req.user = decoded;
       req.user.id = decoded.id || decoded.user_id;

@@ -1,6 +1,6 @@
 const clientModel = require('./clientModel');
 const { query } = require('../../config/db');
-const { ensureCrmSchema } = require('../services/crmSchema');
+const { ensureCrmSchema } = require('./crmSchema');
 
 const clientController = {
   getAllClients: async (req, res) => {

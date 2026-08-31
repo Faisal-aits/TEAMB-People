@@ -197,8 +197,20 @@ const ShiftManagement = () => {
     }
 };
   const formatTime = (timeString) => {
-    if (!timeString) return '';
-    return timeString.substring(0, 5);
+    if (!timeString || timeString === '-' || timeString === '--') return '--';
+    if (typeof timeString === 'string' && (timeString.includes('AM') || timeString.includes('PM'))) return timeString;
+    try {
+      const parts = String(timeString).split(':');
+      if (parts.length < 2) return timeString;
+      let hour = parseInt(parts[0], 10);
+      const minute = parseInt(parts[1], 10);
+      if (isNaN(hour) || isNaN(minute)) return timeString;
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      hour = hour % 12 || 12;
+      return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} ${ampm}`;
+    } catch (e) {
+      return timeString;
+    }
   };
 
   if (loading) {
@@ -260,7 +272,7 @@ const ShiftManagement = () => {
                    </td>
                   <td style={{width: '15%'}}>
                     <div className="lm-time-cell">
-                      {shift.check_in_time} - {shift.check_out_time}
+                      {formatTime(shift.check_in_time)} - {formatTime(shift.check_out_time)}
                     </div>
                    </td>
                   <td style={{width: '10%'}}>
@@ -525,11 +537,11 @@ const ShiftManagement = () => {
                 <div className="lm-details-grid">
                   <div className="lm-detail-item">
                     <label>Check In</label>
-                    <span>{selectedShift.check_in_time}</span>
+                    <span>{formatTime(selectedShift.check_in_time)}</span>
                   </div>
                   <div className="lm-detail-item">
                     <label>Check Out</label>
-                    <span>{selectedShift.check_out_time}</span>
+                    <span>{formatTime(selectedShift.check_out_time)}</span>
                   </div>
                   <div className="lm-detail-item">
                     <label>Grace Period</label>

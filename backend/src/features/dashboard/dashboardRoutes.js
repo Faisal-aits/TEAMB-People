@@ -93,7 +93,11 @@ const canAccessHrDashboard = async (req, res, next) => {
 const getDashboardAttendanceSummary = async (tenantId, date) => {
   const [employees, attendanceRows, leaveRows] = await Promise.all([
     runRows(
-      `SELECT ed.id AS employee_id, ed.employee_id AS user_id, u.id AS id
+      `SELECT ed.id AS hr_code, ed.id AS employee_id, u.id AS user_id, u.id AS id,
+              TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS full_name,
+              u.first_name,
+              u.last_name,
+              u.email
        FROM employee_details ed
        JOIN users u ON u.id = ed.employee_id AND u.tenant_id = ed.tenant_id
        WHERE ed.tenant_id = ?
@@ -102,12 +106,14 @@ const getDashboardAttendanceSummary = async (tenantId, date) => {
       [tenantId]
     ),
     runRows(
-      `SELECT a.employee_id, ed.id AS hr_employee_code, ed.employee_id AS user_id,
+      `SELECT a.employee_id, ed.id AS hr_employee_code, ed.employee_id AS user_id, u.id AS u_user_id,
+              TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS full_name,
               a.status, a.is_half_day
        FROM tb_attendance a
-       LEFT JOIN employee_details ed ON a.employee_id = ed.id
-       WHERE a.date = ? AND (a.tenant_id = ? OR ed.tenant_id = ?)`,
-      [date, tenantId, tenantId]
+       LEFT JOIN employee_details ed ON (a.employee_id = ed.id OR a.employee_id = ed.employee_id)
+       LEFT JOIN users u ON (u.id = ed.employee_id OR u.id = a.employee_id)
+       WHERE (a.date = ? OR DATE(a.date) = ?) AND (a.tenant_id = ? OR ed.tenant_id = ? OR u.tenant_id = ?)`,
+      [date, date, tenantId, tenantId, tenantId]
     ),
     runRows(
       `SELECT lr.employee_id AS hr_employee_code, ed.employee_id AS user_id
@@ -125,7 +131,7 @@ const getDashboardAttendanceSummary = async (tenantId, date) => {
 
   const attendanceByKey = new Map();
   attendanceRows.forEach((record) => {
-    [record.hr_employee_code, record.employee_id, record.user_id]
+    [record.hr_employee_code, record.employee_id, record.user_id, record.u_user_id]
       .filter(Boolean)
       .forEach((key) => attendanceByKey.set(String(key).trim(), record));
   });
@@ -145,19 +151,30 @@ const getDashboardAttendanceSummary = async (tenantId, date) => {
     leaveToday: 0,
     halfDayToday: 0,
     pendingToday: 0,
+    presentList: [],
+    absentList: [],
+    leaveList: [],
+    halfDayList: [],
   };
 
   employees.forEach((employee) => {
-    const record = [employee.employee_id, employee.user_id, employee.id]
+    const record = [employee.hr_code, employee.employee_id, employee.user_id, employee.id]
       .filter(Boolean)
       .map((key) => attendanceByKey.get(String(key).trim()))
       .find(Boolean);
+
+    const rawName = String(record?.full_name || employee.full_name || '').trim();
+    const firstLast = `${employee.first_name || ''} ${employee.last_name || ''}`.trim();
+    const email = String(employee.email || '').trim();
+    const empName = rawName || firstLast || email || `Employee #${employee.hr_code || employee.user_id || 'X'}`;
+
     const isOnApprovedLeave = [employee.employee_id, employee.user_id, employee.id]
       .filter(Boolean)
       .some((key) => leaveByKey.has(String(key).trim()));
 
     if (!record && isOnApprovedLeave) {
       summary.leaveToday += 1;
+      summary.leaveList.push(empName);
       return;
     }
 
@@ -166,29 +183,34 @@ const getDashboardAttendanceSummary = async (tenantId, date) => {
 
     if (isOnApprovedLeave && status === 'Absent') {
       summary.leaveToday += 1;
+      summary.leaveList.push(empName);
       return;
     }
 
     if (isHalfDay) {
       summary.halfDayToday += 1;
       summary.presentToday += 1;
-      summary.delayedToday += 1;
+      summary.halfDayList.push(empName);
+      summary.presentList.push(empName);
       return;
     }
 
     if (status === 'Present' || status === 'Delayed') {
       summary.presentToday += 1;
+      summary.presentList.push(empName);
       if (status === 'Delayed') summary.delayedToday += 1;
       return;
     }
 
     if (status === 'On Leave') {
       summary.leaveToday += 1;
+      summary.leaveList.push(empName);
       return;
     }
 
     if (status === 'Absent') {
       summary.absentToday += 1;
+      summary.absentList.push(empName);
       return;
     }
 
@@ -432,6 +454,10 @@ const getOverview = async (req, res) => {
           approvedLeaveToday,
           pendingLeaves,
           missingEmployeeProfiles,
+          presentEmployees: attendanceToday.presentList || [],
+          absentEmployees: attendanceToday.absentList || [],
+          leaveEmployees: attendanceToday.leaveList || [],
+          halfDayEmployees: attendanceToday.halfDayList || [],
         },
         accounts: {
           invoicesThisMonth,

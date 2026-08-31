@@ -9,7 +9,6 @@ import {
   HiOutlineTrash
 } from 'react-icons/hi2';
 import brandingAPI from '../../services/brandingAPI';
-import BillingSettings from '../Accounts/BillingSettings';
 import './BrandingSettings.css';
 
 const defaultTerms = [
@@ -40,8 +39,7 @@ const assetFields = [
   { key: 'company_stamp', dbKey: 'stamp_url', label: 'Company Stamp' }
 ];
 
-const BrandingSettings = ({ initialTab = 'branding' }) => {
-  const [activeTab, setActiveTab] = useState(initialTab);
+const BrandingSettings = () => {
   const [form, setForm] = useState(emptyForm);
   const [assets, setAssets] = useState({ logo_url: null, signature_url: null, stamp_url: null });
   const [loading, setLoading] = useState(true);
@@ -182,41 +180,19 @@ const BrandingSettings = ({ initialTab = 'branding' }) => {
           <div className="branding-kicker">Settings</div>
           <h2><HiOutlineBuildingOffice2 /> Branding</h2>
         </div>
-        {activeTab === 'branding' && (
-          <button className="branding-primary-btn" type="button" onClick={handleSave} disabled={saving}>
-            <HiOutlineCheckCircle />
-            {saving ? 'Saving...' : 'Save Branding'}
-          </button>
-        )}
-      </div>
-
-      <div className="branding-tabs" role="tablist" aria-label="Settings sections">
-        <button
-          type="button"
-          className={activeTab === 'branding' ? 'active' : ''}
-          onClick={() => setActiveTab('branding')}
-        >
-          <HiOutlineBuildingOffice2 />
-          Branding Information
-        </button>
-        <button
-          type="button"
-          className={activeTab === 'billing' ? 'active' : ''}
-          onClick={() => setActiveTab('billing')}
-        >
-          <HiOutlineBanknotes />
-          Billing Settings
+        <button className="branding-primary-btn" type="button" onClick={handleSave} disabled={saving}>
+          <HiOutlineCheckCircle />
+          {saving ? 'Saving...' : 'Save Branding'}
         </button>
       </div>
 
-      {activeTab === 'branding' && message && (
+      {message && (
         <div className={`branding-alert ${messageType === 'error' ? 'is-error' : ''}`}>
           {message}
         </div>
       )}
 
-      {activeTab === 'branding' ? (
-        <>
+      <>
           <div className="branding-stats">
             <div className="branding-stat">
               <span>Company Details</span>
@@ -358,11 +334,6 @@ const BrandingSettings = ({ initialTab = 'branding' }) => {
             </aside>
           </form>
         </>
-      ) : (
-        <div className="branding-tab-panel">
-          <BillingSettings />
-        </div>
-      )}
     </div>
   );
 };

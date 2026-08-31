@@ -9,7 +9,10 @@ const uploadRoot = path.join(__dirname, '..', 'uploads', 'ai-documents');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const tenantId = req.tenantId || 1;
+    if (!req.user || !req.user.tenant_id) {
+        return cb(new Error('Tenant context is missing from token'));
+    }
+    const tenantId = req.user.tenant_id;
     const uploadDir = path.join(uploadRoot, String(tenantId));
     fs.mkdirSync(uploadDir, { recursive: true });
     cb(null, uploadDir);
@@ -32,8 +35,11 @@ const upload = multer({
 });
 
 const getTenantId = (req) => {
-  const parsed = Number.parseInt(req.tenantId || req.headers['x-tenant-id'] || 1, 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+  const parsed = Number.parseInt(req.user?.tenant_id, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+      throw new Error('Tenant context is missing from token');
+  }
+  return parsed;
 };
 const getUserId = (req) => req.user?.id || req.user?.employee_id || null;
 

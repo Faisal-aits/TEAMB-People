@@ -67,9 +67,9 @@
 }
 
 .leave-add-btn {
-  background: linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%);
-  border: none;
-  color: white;
+  background: #E6E6FA;
+  border: 1px solid #c7d2fe;
+  color: #000000;
   padding: 0.75rem 1.5rem;
   border-radius: 12px;
   cursor: pointer;
@@ -84,7 +84,8 @@
 }
 
 .leave-add-btn:hover {
-  background: linear-gradient(135deg, #7a77b9 0%, #c493c2 33%, #d883b0 66%, #e8c1d8 100%);
+  background: #dcdcfe;
+  color: #1e1b4b;
   transform: translateY(-2px);
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
 }
@@ -192,9 +193,9 @@
 }
 
 .refresh-button {
-  background: linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%);
-  border: none;
-  color: white;
+  background: #E6E6FA;
+  border: 1px solid #c7d2fe;
+  color: #000000;
   padding: 0.75rem 1.5rem;
   border-radius: 12px;
   cursor: pointer;
@@ -715,7 +716,7 @@
   box-shadow: var(--shadow-md);
 }
 
-.leave-cancel-btn {
+.leave-modal-red-btn {
   position: relative;
   overflow: hidden;
 
@@ -745,7 +746,7 @@
 }
 
 /* Shine Effect */
-.leave-cancel-btn::before {
+.leave-modal-red-btn::before {
   content: "";
   position: absolute;
   top: 0;
@@ -762,11 +763,11 @@
   transition: all 0.7s ease;
 }
 
-.leave-cancel-btn:hover::before {
+.leave-modal-red-btn:hover::before {
   left: 120%;
 }
 
-.leave-cancel-btn:hover {
+.leave-modal-red-btn:hover {
   background: linear-gradient(135deg, #dc2626, #b91c1c);
 
   transform: translateY(-3px);
@@ -776,20 +777,20 @@
     0 15px 35px rgba(220, 38, 38, 0.2);
 }
 
-.leave-cancel-btn:active {
+.leave-modal-red-btn:active {
   transform: translateY(0);
   box-shadow:
     0 4px 12px rgba(239, 68, 68, 0.2);
 }
 
-.leave-cancel-btn:focus {
+.leave-modal-red-btn:focus {
   outline: none;
   box-shadow:
     0 0 0 4px rgba(239, 68, 68, 0.2),
     0 10px 25px rgba(239, 68, 68, 0.25);
 }
 
-.leave-cancel-btn:disabled {
+.leave-modal-red-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
@@ -929,9 +930,9 @@
 }
 
 .leave-approve-select {
-  background: linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%);
-  color: #fff;
-  border: none;
+  background: #E6E6FA;
+  color: #000000;
+  border: 1px solid #c7d2fe;
   padding: 0.6rem 1rem;
   border-radius: 12px;
   font-size: 0.9rem;
@@ -1057,7 +1058,7 @@
     flex-direction: column;
   }
 
-  .leave-cancel-btn,
+  .leave-modal-red-btn,
   .leave-submit-btn,
   .leave-edit-btn,
   .leave-delete-btn {
@@ -1259,3 +1260,20 @@
   background-color: #f3f4f6;
   color: #374151;
 }
+
+.leave-cancel-btn {
+  padding: 0.75rem 1.75rem;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.leave-cancel-btn:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+

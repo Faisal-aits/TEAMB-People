@@ -83,6 +83,25 @@ const leaveController = {
                 return res.status(400).json({ message: 'End date cannot be before start date' });
             }
 
+            const normType = String(leave_type || '').toUpperCase();
+            const isPL = normType.startsWith('PL') || normType.includes('PRIVILEGE') || normType.includes('PLANNED');
+
+            if (isPL) {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const minAllowed = new Date(today);
+                minAllowed.setDate(minAllowed.getDate() + 7);
+
+                const reqStartDate = new Date(start_date);
+                reqStartDate.setHours(0, 0, 0, 0);
+
+                if (reqStartDate < minAllowed) {
+                    return res.status(400).json({
+                        message: 'PL (Paid Leave) must be requested at least 7 days (1 week) in advance.'
+                    });
+                }
+            }
+
             const leaveId = await Leave.create(req.tenantId, {
                 employee_id,
                 leave_type: leave_type || 'Casual',

@@ -1,7 +1,5 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import fallbackLogo from '../assets/img/company.png';
-import fallbackStamp from '../assets/img/stamp.png';
 import { brandingAPI } from './brandingAPI';
 
 const parseTerms = (terms) => {
@@ -24,19 +22,19 @@ const buildPdfData = (formData, branding = {}) => {
   return {
     formData: { ...formData, termsAndConditions: terms },
     company: {
-      name: branding.company_name || "Arham IT Solution",
-      address: branding.company_address || "Above Being Healthy Gym, Near Surbhi Hospital, Nagar Sambhajjnagar Road, Ahliyanagar 414003",
-      email: branding.company_email || "info@arhamitsolution.in",
-      website: branding.company_website || "www.arhamitsolution.in",
-      phone: branding.company_phone || "9322195628"
+      name: branding.company_name || "",
+      address: branding.company_address || "",
+      email: branding.company_email || "",
+      website: branding.company_website || "",
+      phone: branding.company_phone || ""
     },
     hr: {
-      name: branding.hr_name || "Sharjeel Iqbal",
-      designation: branding.hr_designation || "HR and BDE Executive",
+      name: branding.hr_name || "",
+      designation: branding.hr_designation || "",
       signature: branding.signature_url ? brandingAPI.getImageUrl(branding.signature_url) : null
     },
-    logo: branding.logo_url ? brandingAPI.getImageUrl(branding.logo_url) : fallbackLogo,
-    stamp: branding.stamp_url ? brandingAPI.getImageUrl(branding.stamp_url) : fallbackStamp
+    logo: branding.logo_url ? brandingAPI.getImageUrl(branding.logo_url) : null,
+    stamp: branding.stamp_url ? brandingAPI.getImageUrl(branding.stamp_url) : null
   };
 };
 
@@ -95,6 +93,56 @@ export const offerLetterPDFService = {
       console.error('Error previewing offer letter:', error);
       throw error;
     }
+  },
+
+  getBlobUrlOfferLetter: async (formData) => {
+    try {
+      let branding = {};
+      try {
+        const res = await brandingAPI.get();
+        if (res.data?.success && res.data?.branding) branding = res.data.branding;
+      } catch (err) { console.error("Failed to load branding", err); }
+
+      const pdfData = buildPdfData(formData, branding);
+
+      const pages = [
+        generatePage1HTML(pdfData),
+        generatePage2HTML(pdfData),
+        generatePage3HTML(pdfData),
+        ...(pdfData.formData.termsAndConditions?.length ? [generateTermsHTML(pdfData)] : [])
+      ];
+
+      const pdf = await generatePDF(pages);
+      return pdf.output('bloburl');
+    } catch (error) {
+      console.error('Error generating preview:', error);
+      throw error;
+    }
+  },
+
+  getBase64OfferLetter: async (formData) => {
+    try {
+      let branding = {};
+      try {
+        const res = await brandingAPI.get();
+        if (res.data?.success && res.data?.branding) branding = res.data.branding;
+      } catch (err) { console.error("Failed to load branding", err); }
+
+      const pdfData = buildPdfData(formData, branding);
+
+      const pages = [
+        generatePage1HTML(pdfData),
+        generatePage2HTML(pdfData),
+        generatePage3HTML(pdfData),
+        ...(pdfData.formData.termsAndConditions?.length ? [generateTermsHTML(pdfData)] : [])
+      ];
+
+      const pdf = await generatePDF(pages);
+      return pdf.output('datauristring'); // Returns base64 string
+    } catch (error) {
+      console.error('Error generating base64 offer letter:', error);
+      throw error;
+    }
   }
 };
 
@@ -123,18 +171,18 @@ const generatePDF = async (pagesHTML) => {
         document.body.appendChild(tempDiv);
 
         const canvas = await html2canvas(tempDiv, {
-          scale: 2,
+          scale: 1, // Reduced scale for compression
           useCORS: true,
           logging: false,
           backgroundColor: '#ffffff'
         });
 
-        const imgData = canvas.toDataURL('image/png');
+        const imgData = canvas.toDataURL('image/jpeg', 0.6); // Use JPEG with 60% quality
         const imgWidth = 210;
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
         if (i > 0) pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+        pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
         
         document.body.removeChild(tempDiv);
       }
@@ -221,7 +269,7 @@ const generatePage1HTML = ({ formData, company, hr, logo, stamp }) => `
       <div style="text-align: justify; font-size: 11pt; font-family: 'Times New Roman', Times, serif; margin-top: 30px;">
         <p>Congratulations!</p>
         <p>We are pleased to offer you the position of <strong>${formData.designation || '[Designation]'}</strong> with the Company. The effective date of your appointment is agreed as <strong>${formatDate(formData.joiningDate) || '[Joining Date]'}</strong>.</p>
-        <p>Your annual compensation (CTC) will be <strong>Rs. ${formData.ctc} (${formData.ctcInWords} only)</strong> per annum, subject to statutory deductions. Performance assessment will be conducted periodically.</p>
+        <p>Your ${formData.salary_format === 'Monthly' ? 'monthly salary' : 'annual compensation (CTC)'} will be <strong>Rs. ${formData.ctc} (${formData.ctcInWords} only)</strong> per ${formData.salary_format === 'Monthly' ? 'month' : 'annum'}, subject to statutory deductions. Performance assessment will be conducted periodically.</p>
         <p>Your continued employment is contingent upon your satisfactorily meeting the Company's expectations.</p>
         <p>On your first day of work, you will be required to sign the <strong>Employment Agreement</strong>, which will contain detailed terms and conditions of your employment with the Company. You are expected to follow the policies, rules, and regulations laid out by the Company. On your first day of employment, you will be given additional information about the Company, its procedures, policies, benefit programs, and more.</p>
         <p>Any female employee who has conceived prior to joining the Company is expected to inform the Company of her pregnancy before signing the Offer Letter and the Employee Agreement.</p>

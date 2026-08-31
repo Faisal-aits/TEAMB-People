@@ -16,7 +16,10 @@ const verifySuperAdminToken = (req, res, next) => {
             });
         }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'arham_simple_secret_2023');
+        if (!process.env.JWT_SECRET) {
+            return res.status(500).json({ success: false, message: 'Server configuration error' });
+        }
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
         if (!decoded.is_super_admin) {
             return res.status(403).json({
@@ -54,5 +57,10 @@ router.post('/tenants', superAdminController.createTenant);
 router.get('/tenants/:id', superAdminController.getTenantById);
 router.put('/tenants/:id', superAdminController.updateTenant);
 router.delete('/tenants/:id', superAdminController.deleteTenant);
+
+// SMTP Settings
+router.get('/smtp', superAdminController.getSmtpConfig);
+router.post('/smtp', superAdminController.updateSmtpConfig);
+router.post('/smtp/test', superAdminController.testSmtpConfig);
 
 module.exports = router;

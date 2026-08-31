@@ -1,9 +1,6 @@
 // pfDeclarationPDFService.js
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import fallbackLogo from '../assets/img/company.png';
-import fallbackStamp from '../assets/img/stamp.png';
-
 const pfDeclarationPDFService = {
   downloadPFDeclaration: async (formData) => {
     console.log('Starting PDF generation...', formData);
@@ -23,8 +20,8 @@ const pfDeclarationPDFService = {
           name: branding.hr_name || "HR Name",
           designation: branding.hr_designation || "HR Designation"
         },
-        logo: branding.logo_url || fallbackLogo,
-        stamp: branding.stamp_url || fallbackStamp
+        logo: branding.logo_url || null,
+        stamp: branding.stamp_url || null
       };
 
       // Generate separate HTML for Page 1 and Page 2
@@ -124,8 +121,8 @@ const pfDeclarationPDFService = {
           name: branding.hr_name || "HR Name",
           designation: branding.hr_designation || "HR Designation"
         },
-        logo: branding.logo_url || fallbackLogo,
-        stamp: branding.stamp_url || fallbackStamp
+        logo: branding.logo_url || null,
+        stamp: branding.stamp_url || null
       };
 
       // Generate separate HTML for Page 1 and Page 2

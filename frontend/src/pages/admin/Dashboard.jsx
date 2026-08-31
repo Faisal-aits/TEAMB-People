@@ -143,8 +143,7 @@ const Dashboard = ({ user, navigateToTab }) => {
     { label: 'Offer Letter', tab: 'offerletter', icon: <HiOutlineDocumentText /> },
     { label: 'Create Invoice', tab: 'billing', icon: <HiOutlineBanknotes /> },
     { label: 'Review Leaves', tab: 'leave', icon: <HiOutlineCalendarDays /> },
-    { label: 'Branding', tab: 'branding', icon: <HiOutlineCog6Tooth /> },
-    { label: 'PTTM Tasks', tab: 'pttm', icon: <HiOutlineBriefcase /> }
+    { label: 'Branding', tab: 'branding', icon: <HiOutlineCog6Tooth /> }
   ];
 
   if (loading) {
@@ -261,10 +260,6 @@ const Dashboard = ({ user, navigateToTab }) => {
             </div>
 
             <div className="module-grid">
-              <div><HiOutlineUserGroup /><span>Clients</span><strong>{formatNumber(overview.services?.clientsTotal)}</strong></div>
-              <div><HiOutlineBriefcase /><span>Active Services</span><strong>{formatNumber(overview.services?.activeServices)}</strong></div>
-              <div><HiOutlineClipboardDocumentList /><span>Open Tasks</span><strong>{formatNumber(overview.pttm?.openTasks)}</strong></div>
-              <div><HiOutlineExclamationTriangle /><span>Overdue Tasks</span><strong>{formatNumber(overview.pttm?.overdueTasks)}</strong></div>
               <div><HiOutlineUsers /><span>Active Access</span><strong>{formatNumber(overview.access?.activeUsers)}</strong></div>
               <div><HiOutlineDocumentText /><span>Read Only</span><strong>{formatNumber(overview.access?.readOnlyUsers)}</strong></div>
             </div>

@@ -12,10 +12,13 @@ const LeaveManagement = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
+    leave_type: '',
     description: '',
+    duration_type: 'single',
     start_date: '',
     end_date: '',
   });
+  const [balances, setBalances] = useState([]);
 
   // Load current employee data
   const loadCurrentEmployeeData = async () => {
@@ -47,6 +50,13 @@ const LeaveManagement = () => {
   
       setLeaves(response.data.leaves || []);
       
+      try {
+        const balanceResponse = await leaveAPI.getMyBalances();
+        setBalances(balanceResponse.data.balances || []);
+      } catch (err) {
+        console.error('Error fetching balances', err);
+      }
+      
       // Add this to get employee_id:
       if (response.data.employee_id) {
         setCurrentUser(prev => ({
@@ -66,8 +76,8 @@ const LeaveManagement = () => {
     try {
       // Prepare data for export
       const exportData = filteredLeaves.map(leave => ({
-        'Applied Date': formatDate(leave.created_at),
         'Description': leave.description,
+        'Leave Type': leave.leave_type,
         'From Date': formatDate(leave.start_date),
         'To Date': formatDate(leave.end_date),
         'Total Days': `${leave.total_days} day(s)`,
@@ -127,17 +137,43 @@ const LeaveManagement = () => {
     }));
   };
 
+  const isPLType = (type) => {
+    const norm = String(type || '').toUpperCase();
+    return norm.startsWith('PL') || norm.includes('PRIVILEGE') || norm.includes('PLANNED');
+  };
+
+  const getMinStartDate = (leaveType) => {
+    const today = new Date();
+    if (isPLType(leaveType)) {
+      const minDate = new Date(today);
+      minDate.setDate(minDate.getDate() + 7);
+      return minDate.toISOString().split('T')[0];
+    }
+    return today.toISOString().split('T')[0];
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.description || !formData.start_date || !formData.end_date) {
+    const isSingle = formData.duration_type === 'single';
+    const effectiveEndDate = isSingle ? formData.start_date : formData.end_date;
+    
+    if (!formData.leave_type || !formData.description || !formData.start_date || !effectiveEndDate) {
       alert('Please fill in all required fields');
       return;
     }
 
-    if (new Date(formData.start_date) > new Date(formData.end_date)) {
+    if (new Date(formData.start_date) > new Date(effectiveEndDate)) {
       alert('End date cannot be before start date');
       return;
+    }
+
+    if (isPLType(formData.leave_type)) {
+      const minAllowed = getMinStartDate(formData.leave_type);
+      if (formData.start_date < minAllowed) {
+        alert('PL (Paid Leave) must be requested at least 1 week (7 days) in advance.');
+        return;
+      }
     }
 
     if (!currentUser || !currentUser.id) {
@@ -149,16 +185,19 @@ const LeaveManagement = () => {
 
     try {
       const leaveData = {
+        leave_type: formData.leave_type,
         description: formData.description,
         start_date: formData.start_date,
-        end_date: formData.end_date
+        end_date: effectiveEndDate
       };
 
       
       const response = await leaveAPI.create(leaveData);
      
       setFormData({
+        leave_type: '',
         description: '',
+        duration_type: 'single',
         start_date: '',
         end_date: '',
       });
@@ -284,6 +323,7 @@ const LeaveManagement = () => {
           <thead>
             <tr>
               <th className="leave-th-date">Applied Date</th>
+              <th className="leave-th-type">Leave Type</th>
               <th className="leave-th-description">Description</th>
               <th className="leave-th-from">From Date</th>
               <th className="leave-th-to">To Date</th>
@@ -298,6 +338,11 @@ const LeaveManagement = () => {
                 <td className="leave-td-date">
                   <div className="leave-date-cell">
                     {formatDate(leave.created_at)}
+                  </div>
+                </td>
+                <td className="leave-td-type">
+                  <div className="leave-type-cell">
+                    {leave.leave_type === 'PL' ? 'PL (Quarterly)' : leave.leave_type === 'PSL' ? 'PSL (Yearly)' : leave.leave_type}
                   </div>
                 </td>
                 <td className="leave-td-description">
@@ -402,6 +447,25 @@ const LeaveManagement = () => {
               </div>
 
               <div className="leave-form-group">
+                <label htmlFor="leave-type" className="leave-form-label">Leave Type *</label>
+                <select
+                  id="leave-type"
+                  name="leave_type"
+                  value={formData.leave_type}
+                  onChange={handleInputChange}
+                  required
+                  className="leave-form-input"
+                >
+                  <option value="">Select Leave Type</option>
+                  {balances.map(b => (
+                    <option key={b.leave_type} value={b.leave_type}>
+                      {b.leave_type === 'PL' ? 'PL (Quarterly)' : b.leave_type === 'PSL' ? 'PSL (Yearly)' : b.leave_type} - {b.remaining} days available
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="leave-form-group">
                 <label htmlFor="leave-description" className="leave-form-label">Description *</label>
                 <input
                   id="leave-description"
@@ -416,7 +480,33 @@ const LeaveManagement = () => {
               </div>
 
               <div className="leave-form-group">
-                <label htmlFor="leave-from-date" className="leave-form-label">From Date *</label>
+                <label className="leave-form-label">Duration Type</label>
+                <div className="leave-duration-options" style={{ display: 'flex', gap: '20px', marginTop: '10px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="duration_type"
+                      value="single"
+                      checked={formData.duration_type === 'single'}
+                      onChange={handleInputChange}
+                    />
+                    Single Day
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="duration_type"
+                      value="multiple"
+                      checked={formData.duration_type === 'multiple'}
+                      onChange={handleInputChange}
+                    />
+                    Multiple Days
+                  </label>
+                </div>
+              </div>
+
+              <div className="leave-form-group">
+                <label htmlFor="leave-from-date" className="leave-form-label">{formData.duration_type === 'single' ? 'Date *' : 'From Date *'}</label>
                 <input
                   id="leave-from-date"
                   type="date"
@@ -425,23 +515,30 @@ const LeaveManagement = () => {
                   onChange={handleInputChange}
                   required
                   className="leave-form-input"
-                  min={new Date().toISOString().split('T')[0]}
+                  min={getMinStartDate(formData.leave_type)}
                 />
+                {isPLType(formData.leave_type) && (
+                  <small className="leave-helper-text" style={{ color: '#d97706', display: 'block', marginTop: '4px', fontWeight: '600' }}>
+                    Note: PL (Paid Leave) must be requested at least 1 week (7 days) in advance.
+                  </small>
+                )}
               </div>
 
-              <div className="leave-form-group">
-                <label htmlFor="leave-to-date" className="leave-form-label">To Date *</label>
-                <input
-                  id="leave-to-date"
-                  type="date"
-                  name="end_date"
-                  value={formData.end_date}
-                  onChange={handleInputChange}
-                  required
-                  className="leave-form-input"
-                  min={formData.start_date || new Date().toISOString().split('T')[0]}
-                />
-              </div>
+              {formData.duration_type === 'multiple' && (
+                <div className="leave-form-group">
+                  <label htmlFor="leave-to-date" className="leave-form-label">To Date *</label>
+                  <input
+                    id="leave-to-date"
+                    type="date"
+                    name="end_date"
+                    value={formData.end_date}
+                    onChange={handleInputChange}
+                    required
+                    className="leave-form-input"
+                    min={formData.start_date || new Date().toISOString().split('T')[0]}
+                  />
+                </div>
+              )}
 
               {formData.start_date && formData.end_date && (
                 <div className="leave-form-group">

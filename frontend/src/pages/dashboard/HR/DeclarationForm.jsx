@@ -12,15 +12,19 @@ import {
   HiOutlinePlus,
   HiOutlineUser,
   HiOutlineCalendar,
-  HiOutlineEnvelope
+  HiOutlineEnvelope,
+  HiArrowLeft
 } from "react-icons/hi2";
 import { TfiEmail } from "react-icons/tfi";
+import { useNavigate } from 'react-router-dom';
 import './DeclarationForm.css';
 import pfDeclarationPDFService from '../../../services/pfDeclarationPDFService';
 import brandingAPI from '../../../services/brandingAPI';
 import declarationFormAPI from '../../../services/declarationFormAPI';
+import BrandingValidationModal from '../../../components/BrandingValidationModal';
 
 const DeclarationForm = () => {
+  const navigate = useNavigate();
   const [employees, setEmployees] = useState([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -70,16 +74,18 @@ const DeclarationForm = () => {
   });
 
   const [branding, setBranding] = useState({
-    company_name: "Arham IT Solution",
-    company_address: "Above Being Healthy Gym",
-    company_email: "info@arhamitsolution.in",
-    company_website: "www.arhamitsolution.in",
-    hr_name: "Sharjeel Iqbal",
-    hr_designation: "HR and BDE Executive",
-    logo_url: companyLogo,
-    stamp_url: stampPng,
+    company_name: "",
+    company_address: "",
+    company_email: "",
+    company_website: "",
+    hr_name: "",
+    hr_designation: "",
+    logo_url: "",
+    stamp_url: "",
     signature_url: null
   });
+
+  const [isBrandingModalOpen, setIsBrandingModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -95,17 +101,22 @@ const DeclarationForm = () => {
         
         if (brandingRes.data?.success && brandingRes.data?.branding) {
           const b = brandingRes.data.branding;
+          if (!b.company_name) {
+            setIsBrandingModalOpen(true);
+          }
           setBranding(prev => ({
             ...prev,
-            company_name: b.company_name || prev.company_name,
-            company_address: b.company_address || prev.company_address,
-            company_email: b.company_email || prev.company_email,
-            company_website: b.company_website || prev.company_website,
-            hr_name: b.hr_name || prev.hr_name,
-            hr_designation: b.hr_designation || prev.hr_designation,
-            logo_url: b.logo_url ? brandingAPI.getImageUrl(b.logo_url) : prev.logo_url,
-            stamp_url: b.stamp_url ? brandingAPI.getImageUrl(b.stamp_url) : prev.stamp_url
+            company_name: b.company_name || "",
+            company_address: b.company_address || "",
+            company_email: b.company_email || "",
+            company_website: b.company_website || "",
+            hr_name: b.hr_name || "",
+            hr_designation: b.hr_designation || "",
+            logo_url: b.logo_url ? brandingAPI.getImageUrl(b.logo_url) : "",
+            stamp_url: b.stamp_url ? brandingAPI.getImageUrl(b.stamp_url) : ""
           }));
+        } else {
+          setIsBrandingModalOpen(true);
         }
         
         setSavedForms(formsRes.data.data || []);
@@ -293,13 +304,31 @@ const DeclarationForm = () => {
   };
 
   return (
-    <div style={{ padding: "30px", background: "#f8fafc", minHeight: "100vh" }}>
+    <div className="declaration-container" style={{ background: "#f8fafc", minHeight: "100vh" }}>
+      <BrandingValidationModal isOpen={isBrandingModalOpen} onClose={() => setIsBrandingModalOpen(false)} />
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-        <h2 style={{ fontSize: "24px", fontWeight: "bold", color: "#1e293b", display: "flex", alignItems: "center", gap: "10px", margin: 0 }}>
-          <HiOutlineDocumentText size={28} color="#4f46e5" />
-          EPF Form 11 (Revised)
-        </h2>
+        <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
+          <button 
+            onClick={() => navigate(-1)}
+            style={{ 
+              background: "#fff", 
+              border: "1px solid #cbd5e1", 
+              borderRadius: "8px", 
+              padding: "8px", 
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
+            }}
+          >
+            <HiArrowLeft size={20} color="#475569" />
+          </button>
+          <h2 style={{ fontSize: "24px", fontWeight: "bold", color: "#1e293b", display: "flex", alignItems: "center", gap: "10px", margin: 0 }}>
+            <HiOutlineDocumentText size={28} color="#4f46e5" />
+            EPF Form 11 (Revised)
+          </h2>
+        </div>
         <button 
           onClick={() => { resetForm(); setShowModal(true); }} 
           style={{ background: "#4f46e5", color: "white", border: "none", padding: "10px 20px", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}

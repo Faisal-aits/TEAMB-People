@@ -12,6 +12,7 @@ import aiDocumentGeneratorAPI from '../../../services/aiDocumentGeneratorAPI';
 import brandingAPI from '../../../services/brandingAPI';
 import companyLogo from '../../../assets/img/company.png';
 import stampPng from '../../../assets/img/stamp.png';
+import BrandingValidationModal from '../../../components/BrandingValidationModal';
 
 const emptyForm = {
   employee_id: '',
@@ -37,7 +38,12 @@ const emptyForm = {
   salary_travel_allowance: '',
   salary_other_allowance: '',
   is_active: true,
-  department_ids: []
+  department_ids: [],
+  is_on_probation: false,
+  probation_months: '',
+  probation_end_date: '',
+  salary_during_probation: '',
+  salary_after_probation: ''
 };
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
@@ -78,6 +84,96 @@ const calculatePayrollFields = (data) => {
   };
 };
 
+const combineKYCDocuments = async (frontInput, backInput, docTitle) => {
+  if (frontInput instanceof File && frontInput.type === 'application/pdf' && !backInput) {
+    return frontInput;
+  }
+
+  const doc = new jsPDF('p', 'mm', 'a4');
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 15;
+  const availableWidth = pageWidth - (margin * 2);
+
+  const fileToDataUrl = (fileOrUrl) => {
+    return new Promise((resolve, reject) => {
+      if (typeof fileOrUrl === 'string') return resolve(fileOrUrl);
+      if (fileOrUrl instanceof File || fileOrUrl instanceof Blob) {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(fileOrUrl);
+      } else {
+        reject(new Error('Invalid file type'));
+      }
+    });
+  };
+
+  const loadImage = (url) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = url;
+    });
+  };
+
+  doc.setFontSize(16);
+  doc.setTextColor(30, 41, 59);
+  doc.text(docTitle || 'KYC Document', margin, 20);
+
+  let currentY = 30;
+
+  if (frontInput) {
+    const frontDataUrl = await fileToDataUrl(frontInput);
+    const frontImg = await loadImage(frontDataUrl);
+
+    doc.setFontSize(12);
+    doc.setTextColor(71, 85, 105);
+    doc.text('Front Side:', margin, currentY);
+    currentY += 5;
+
+    const maxH = backInput ? 110 : 230;
+    let frontW = availableWidth;
+    let frontH = frontW * (frontImg.height / frontImg.width);
+    if (frontH > maxH) {
+      frontH = maxH;
+      frontW = frontH * (frontImg.width / frontImg.height);
+    }
+
+    doc.addImage(frontDataUrl, 'JPEG', margin, currentY, frontW, frontH);
+    currentY += frontH + 15;
+  }
+
+  if (backInput) {
+    const backDataUrl = await fileToDataUrl(backInput);
+    const backImg = await loadImage(backDataUrl);
+
+    const maxH = 110;
+    let backW = availableWidth;
+    let backH = backW * (backImg.height / backImg.width);
+    if (backH > maxH) {
+      backH = maxH;
+      backW = backH * (backImg.width / backImg.height);
+    }
+
+    if (currentY + backH + 10 > pageHeight) {
+      doc.addPage();
+      currentY = 20;
+    }
+
+    doc.setFontSize(12);
+    doc.setTextColor(71, 85, 105);
+    doc.text('Back Side:', margin, currentY);
+    currentY += 5;
+
+    doc.addImage(backDataUrl, 'JPEG', margin, currentY, backW, backH);
+  }
+
+  const pdfBlob = doc.output('blob');
+  return new File([pdfBlob], `${(docTitle || 'kyc_document').replace(/\s+/g, '_')}_combined.pdf`, { type: 'application/pdf' });
+};
+
 const EmployeeManagement = () => {
   const navigate = useNavigate();
   const portalBase = usePortalBase();
@@ -90,6 +186,30 @@ const EmployeeManagement = () => {
   const [formData, setFormData] = useState(emptyForm);
   const [editFormData, setEditFormData] = useState(emptyForm);
   const [viewDocumentsModalOpen, setViewDocumentsModalOpen] = useState(false);
+
+  // Admin KYC Documents Management State
+  const [adminKycModalOpen, setAdminKycModalOpen] = useState(false);
+  const [adminKycDocs, setAdminKycDocs] = useState([]);
+  const [adminKycLoading, setAdminKycLoading] = useState(false);
+  const [showAdminUploadKycForm, setShowAdminUploadKycForm] = useState(false);
+  const [adminKycUploadData, setAdminKycUploadData] = useState({
+    document_type: 'aadhar_card',
+    title: ''
+  });
+  const [adminFrontFile, setAdminFrontFile] = useState(null);
+  const [adminFrontPreview, setAdminFrontPreview] = useState(null);
+  const [adminBackFile, setAdminBackFile] = useState(null);
+  const [adminBackPreview, setAdminBackPreview] = useState(null);
+  const [adminKycUploading, setAdminKycUploading] = useState(false);
+
+  // Admin Live Camera State
+  const [adminActiveCameraSide, setAdminActiveCameraSide] = useState(null);
+  const [adminCameraStream, setAdminCameraStream] = useState(null);
+  const adminVideoRef = useRef(null);
+
+  const [adminPdfPreviewUrl, setAdminPdfPreviewUrl] = useState(null);
+  const [adminPdfPreviewTitle, setAdminPdfPreviewTitle] = useState('Document');
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -99,16 +219,18 @@ const EmployeeManagement = () => {
   const [selectedAiTemplate, setSelectedAiTemplate] = useState(null);
   const [aiDocumentFormData, setAiDocumentFormData] = useState({});
   const [aiDocumentBranding, setAiDocumentBranding] = useState({
-    company_name: 'Arham IT Solution',
-    company_address: 'Above Being Healthy Gym, Near Surbhi Hospital, Nagar Sambhajjnagar Road, Ahliyanagar 414003',
-    company_email: 'info@arhamitsolution.in',
-    company_website: 'www.arhamitsolution.in',
-    hr_name: 'Sharjeel Iqbal',
-    hr_designation: 'HR and BDE Executive',
-    logo_url: companyLogo,
-    stamp_url: stampPng,
+    company_name: '',
+    company_address: '',
+    company_email: '',
+    company_website: '',
+    hr_name: '',
+    hr_designation: '',
+    logo_url: '',
+    stamp_url: '',
     signature_url: null
   });
+  
+  const [isBrandingModalOpen, setIsBrandingModalOpen] = useState(false);
   const [isAiDocumentGenerating, setIsAiDocumentGenerating] = useState(false);
   const [showResetPasswordForm, setShowResetPasswordForm] = useState(false);
   const [newPassword, setNewPassword] = useState('');
@@ -122,6 +244,11 @@ const EmployeeManagement = () => {
   const [itemsPerPage] = useState(10);
   const aiSlipPreviewRef = useRef(null);
   
+  const [companySettings, setCompanySettings] = useState({
+    salary_format: 'Monthly',
+    probation_months: '3'
+  });
+  
   const token = localStorage.getItem('token');
   const authHeaders = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
 
@@ -133,6 +260,200 @@ const EmployeeManagement = () => {
     }
     alert(error.response?.data?.message || fallbackMessage);
   }, []);
+
+  const loadAdminEmployeeKycDocs = useCallback(async (empId) => {
+    try {
+      setAdminKycLoading(true);
+      const res = await axios.get(`${API_URL}/api/documents/employee/${empId}`, {
+        headers: authHeaders
+      });
+      setAdminKycDocs(res.data.documents || []);
+    } catch (err) {
+      console.error('Error loading employee documents:', err);
+      setAdminKycDocs([]);
+    } finally {
+      setAdminKycLoading(false);
+    }
+  }, [authHeaders]);
+
+  const handleOpenAdminKycModal = () => {
+    setViewDocumentsModalOpen(false);
+    setAdminKycModalOpen(true);
+    if (selectedEmployee) {
+      const targetId = selectedEmployee.id || selectedEmployee.employee_id;
+      loadAdminEmployeeKycDocs(targetId);
+    }
+  };
+
+  useEffect(() => {
+    if (adminKycModalOpen && selectedEmployee) {
+      const targetId = selectedEmployee.id || selectedEmployee.employee_id;
+      loadAdminEmployeeKycDocs(targetId);
+    }
+  }, [adminKycModalOpen, selectedEmployee, loadAdminEmployeeKycDocs]);
+
+  const handleAdminDeleteDoc = async (docId) => {
+    if (!window.confirm('Are you sure you want to delete this KYC document?')) return;
+    try {
+      await axios.delete(`${API_URL}/api/documents/${docId}`, { headers: authHeaders });
+      alert('Document deleted successfully');
+      if (selectedEmployee) loadAdminEmployeeKycDocs(selectedEmployee.id || selectedEmployee.employee_id);
+    } catch (err) {
+      console.error('Failed to delete document:', err);
+      alert('Failed to delete document');
+    }
+  };
+
+  const startAdminCamera = async (side) => {
+    setAdminActiveCameraSide(side);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+      });
+      setAdminCameraStream(stream);
+    } catch (err) {
+      console.error('Camera access error:', err);
+      alert('Unable to access camera. Please check camera permissions or upload a file.');
+      setAdminActiveCameraSide(null);
+    }
+  };
+
+  const stopAdminCamera = () => {
+    if (adminCameraStream) {
+      adminCameraStream.getTracks().forEach(track => track.stop());
+      setAdminCameraStream(null);
+    }
+    setAdminActiveCameraSide(null);
+  };
+
+  useEffect(() => {
+    if (adminActiveCameraSide && adminVideoRef.current && adminCameraStream) {
+      adminVideoRef.current.srcObject = adminCameraStream;
+    }
+  }, [adminActiveCameraSide, adminCameraStream]);
+
+  const captureAdminPhoto = () => {
+    if (!adminVideoRef.current) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = adminVideoRef.current.videoWidth || 1280;
+    canvas.height = adminVideoRef.current.videoHeight || 720;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(adminVideoRef.current, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+
+    if (adminActiveCameraSide === 'front') {
+      setAdminFrontFile(dataUrl);
+      setAdminFrontPreview(dataUrl);
+    } else if (adminActiveCameraSide === 'back') {
+      setAdminBackFile(dataUrl);
+      setAdminBackPreview(dataUrl);
+    }
+    stopAdminCamera();
+  };
+
+  const handleAdminFileChange = (e, side) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (side === 'front') {
+        setAdminFrontFile(file);
+        setAdminFrontPreview(file.type.startsWith('image/') ? event.target.result : null);
+      } else {
+        setAdminBackFile(file);
+        setAdminBackPreview(file.type.startsWith('image/') ? event.target.result : null);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAdminUploadKycSubmit = async (e) => {
+    e.preventDefault();
+    if (!adminFrontFile) {
+      alert('Please upload or capture the Front Side of the document');
+      return;
+    }
+    if (!adminKycUploadData.title.trim()) {
+      alert('Please enter a document title');
+      return;
+    }
+
+    setAdminKycUploading(true);
+    try {
+      const finalFile = await combineKYCDocuments(adminFrontFile, adminBackFile, adminKycUploadData.title.trim());
+
+      const formData = new FormData();
+      formData.append('employee_id', selectedEmployee.id || selectedEmployee.employee_id);
+      formData.append('document_type', adminKycUploadData.document_type);
+      formData.append('title', adminKycUploadData.title.trim());
+      formData.append('file', finalFile);
+
+      const res = await axios.post(`${API_URL}/api/documents/upload`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (res.data.success) {
+        alert('KYC Document merged and uploaded successfully for employee!');
+        setShowAdminUploadKycForm(false);
+        setAdminKycUploadData({ document_type: 'aadhar_card', title: '' });
+        setAdminFrontFile(null);
+        setAdminFrontPreview(null);
+        setAdminBackFile(null);
+        setAdminBackPreview(null);
+        if (selectedEmployee) loadAdminEmployeeKycDocs(selectedEmployee.id || selectedEmployee.employee_id);
+      }
+    } catch (err) {
+      console.error('Error uploading KYC document for employee:', err);
+      alert(err.response?.data?.message || 'Failed to upload document');
+    } finally {
+      setAdminKycUploading(false);
+    }
+  };
+
+  const triggerFileDownload = async (fileUrl, fileName) => {
+    try {
+      const response = await fetch(fileUrl);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName || 'document.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error('Download error, falling back to direct link:', err);
+      const link = document.createElement('a');
+      link.href = fileUrl;
+      link.setAttribute('download', fileName || 'document.pdf');
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  const loadCompanySettings = useCallback(async () => {
+    try {
+      const [formatRes, probRes, enableProbRes] = await Promise.all([
+        axios.get('/api/settings/salary_format', { headers: authHeaders }),
+        axios.get('/api/settings/probation_months', { headers: authHeaders }),
+        axios.get('/api/settings/enable_probation', { headers: authHeaders })
+      ]);
+      setCompanySettings({
+        salary_format: formatRes.data?.value || 'Monthly',
+        probation_months: probRes.data?.value || '4',
+        enable_probation: enableProbRes.data?.value === 'true'
+      });
+    } catch (error) {
+      console.error('Failed to load company settings:', error);
+    }
+  }, [authHeaders]);
 
   // Load departments
   const loadDepartments = useCallback(async () => {
@@ -163,10 +484,40 @@ const EmployeeManagement = () => {
     }
   }, [authHeaders, handleRequestError]);
 
+  const loadBranding = useCallback(async () => {
+    try {
+      const res = await brandingAPI.get();
+      if (res.data?.success && res.data?.branding) {
+        const b = res.data.branding;
+        if (!b.company_name) {
+          setIsBrandingModalOpen(true);
+        }
+        setAiDocumentBranding({
+          company_name: b.company_name || "",
+          company_address: b.company_address || "",
+          company_email: b.company_email || "",
+          company_website: b.company_website || "",
+          hr_name: b.hr_name || "",
+          hr_designation: b.hr_designation || "",
+          logo_url: b.logo_url ? brandingAPI.getImageUrl(b.logo_url) : "",
+          stamp_url: b.stamp_url ? brandingAPI.getImageUrl(b.stamp_url) : "",
+          signature_url: b.signature_url ? brandingAPI.getImageUrl(b.signature_url) : null
+        });
+      } else {
+        setIsBrandingModalOpen(true);
+      }
+    } catch (err) {
+      console.error("Error fetching branding:", err);
+      setIsBrandingModalOpen(true);
+    }
+  }, []);
+
   useEffect(() => {
     loadEmployees();
     loadDepartments();
-  }, [loadEmployees, loadDepartments]);
+    loadBranding();
+    loadCompanySettings();
+  }, [loadEmployees, loadDepartments, loadBranding, loadCompanySettings]);
 
   // Filter employees - FIXED to properly filter out soft-deleted employees
   const filteredEmployees = useMemo(() => {
@@ -253,10 +604,18 @@ const EmployeeManagement = () => {
       }
       setFormData(prev => ({ ...prev, department_ids: selectedValues }));
     } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: type === 'checkbox' ? checked : value
-      }));
+      setFormData(prev => {
+        const newData = { ...prev, [name]: type === 'checkbox' ? checked : value };
+        if (name === 'joining_date' && newData.joining_date && companySettings.enable_probation) {
+          const months = parseInt(companySettings.probation_months, 10);
+          if (!isNaN(months) && months > 0) {
+            const d = new Date(newData.joining_date);
+            d.setMonth(d.getMonth() + months);
+            newData.probation_end_date = d.toISOString().slice(0, 10);
+          }
+        }
+        return newData;
+      });
     }
   };
 
@@ -272,10 +631,18 @@ const EmployeeManagement = () => {
       }
       setEditFormData(prev => ({ ...prev, department_ids: selectedValues }));
     } else {
-      setEditFormData(prev => ({
-        ...prev,
-        [name]: type === 'checkbox' ? checked : value
-      }));
+      setEditFormData(prev => {
+        const newData = { ...prev, [name]: type === 'checkbox' ? checked : value };
+        if (name === 'joining_date' && newData.joining_date && companySettings.enable_probation) {
+          const months = parseInt(companySettings.probation_months, 10);
+          if (!isNaN(months) && months > 0) {
+            const d = new Date(newData.joining_date);
+            d.setMonth(d.getMonth() + months);
+            newData.probation_end_date = d.toISOString().slice(0, 10);
+          }
+        }
+        return newData;
+      });
     }
   };
 
@@ -285,52 +652,66 @@ const EmployeeManagement = () => {
       return false;
     }
 
-    if (!data.department_ids?.length || !data.position || !data.employment_type || !data.joining_date || data.salary === '' || data.salary_basic === '') {
-      alert('Please fill in Department, Designation, Employment Type, Joining Date, CTC, and Basic.');
-      return false;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(data.email)) {
-      alert('Please enter a valid email address.');
-      return false;
-    }
-
-    if (parseAmount(data.salary) <= 0 || parseAmount(data.salary_basic) <= 0) {
-      alert('CTC and Basic must be greater than 0.');
-      return false;
+    if (companySettings.salary_format === 'Monthly') {
+      if (!data.department_ids?.length || !data.position || !data.employment_type || !data.joining_date || data.salary_during_probation === '' || data.salary_after_probation === '') {
+        alert('Please fill in Department, Designation, Employment Type, Joining Date, Salary During Probation, and Salary After Probation.');
+        return false;
+      }
+      if (parseAmount(data.salary_during_probation) <= 0 || parseAmount(data.salary_after_probation) <= 0) {
+        alert('Salary values must be greater than 0.');
+        return false;
+      }
+    } else {
+      if (!data.department_ids?.length || !data.position || !data.employment_type || !data.joining_date || data.salary === '' || data.salary_basic === '') {
+        alert('Please fill in Department, Designation, Employment Type, Joining Date, CTC, and Basic.');
+        return false;
+      }
+      if (parseAmount(data.salary) <= 0 || parseAmount(data.salary_basic) <= 0) {
+        alert('CTC and Basic must be greater than 0.');
+        return false;
+      }
     }
 
     return true;
   };
 
-  const buildPayload = (data) => ({
-    employee_id: data.employee_id?.trim() || null,
-    first_name: data.first_name,
-    last_name: data.last_name,
-    email: data.email,
-    phone: data.phone || '',
-    date_of_birth: data.date_of_birth || null,
-    joining_date: data.joining_date || null,
-    last_working_date: data.last_working_date || null,
-    address: data.address || '',
-    emergency_contact: data.emergency_contact || '',
-    bank_account_number: data.bank_account_number || '',
-    ifsc_code: data.ifsc_code || '',
-    pan_number: data.pan_number || '',
-    aadhar_number: data.aadhar_number || '',
-    salary: data.salary === '' ? null : Number(data.salary),
-    salary_basic: data.salary_basic === '' ? 0 : Number(data.salary_basic),
-    salary_hra: data.salary_hra === '' ? 0 : Number(data.salary_hra),
-    salary_medical_allowance: data.salary_medical_allowance === '' ? 0 : Number(data.salary_medical_allowance),
-    salary_travel_allowance: data.salary_travel_allowance === '' ? 0 : Number(data.salary_travel_allowance),
-    salary_other_allowance: data.salary_other_allowance === '' ? 0 : Number(data.salary_other_allowance),
-    is_active: data.is_active === true || data.is_active === 'true',
-    department_id: data.department_ids?.[0] || null,
-    department_ids: data.department_ids || [],
-    position: data.position || null,
-    employment_type: data.employment_type || null
-  });
+  const buildPayload = (data) => {
+    const isMonthly = companySettings.salary_format === 'Monthly';
+    const payloadSalary = isMonthly ? data.salary_after_probation : data.salary;
+    const payloadBasic = isMonthly ? data.salary_after_probation : data.salary_basic;
+
+    return {
+      employee_id: data.employee_id?.trim() || null,
+      first_name: data.first_name,
+      last_name: data.last_name,
+      email: data.email,
+      phone: data.phone || '',
+      date_of_birth: data.date_of_birth || null,
+      joining_date: data.joining_date || null,
+      last_working_date: data.last_working_date || null,
+      address: data.address || '',
+      emergency_contact: data.emergency_contact || '',
+      bank_account_number: data.bank_account_number || '',
+      ifsc_code: data.ifsc_code || '',
+      pan_number: data.pan_number || '',
+      aadhar_number: data.aadhar_number || '',
+      salary: payloadSalary === '' ? null : Number(payloadSalary),
+      salary_basic: payloadBasic === '' ? 0 : Number(payloadBasic),
+      salary_hra: data.salary_hra === '' ? 0 : Number(data.salary_hra),
+      salary_medical_allowance: data.salary_medical_allowance === '' ? 0 : Number(data.salary_medical_allowance),
+      salary_travel_allowance: data.salary_travel_allowance === '' ? 0 : Number(data.salary_travel_allowance),
+      salary_other_allowance: data.salary_other_allowance === '' ? 0 : Number(data.salary_other_allowance),
+      is_active: data.is_active === true || data.is_active === 'true',
+      department_id: data.department_ids?.[0] || null,
+      department_ids: data.department_ids || [],
+      position: data.position || null,
+      employment_type: data.employment_type || null,
+      is_on_probation: companySettings.enable_probation,
+      probation_end_date: data.probation_end_date || null,
+      salary_during_probation: data.salary_during_probation === '' ? null : Number(data.salary_during_probation),
+      salary_after_probation: data.salary_after_probation === '' ? null : Number(data.salary_after_probation)
+    };
+  };
 
   const handleCreateEmployee = async (e) => {
     e.preventDefault();
@@ -432,7 +813,10 @@ const EmployeeManagement = () => {
       is_active: Boolean(employee.is_active),
       department_ids: employee.department_ids || (employee.department_id ? [employee.department_id] : []),
       position: employee.position || '',
-      employment_type: employee.employment_type || ''
+      employment_type: employee.employment_type || '',
+      salary_during_probation: employee.salary_during_probation ?? '',
+      salary_after_probation: employee.salary_after_probation ?? '',
+      probation_end_date: formatDateForInput(employee.probation_end_date)
     };
 
     setSelectedEmployee(employee);
@@ -510,7 +894,7 @@ const EmployeeManagement = () => {
 
   const handleGenerateSalarySlip = () => {
     setViewDocumentsModalOpen(false);
-    navigate(`${portalBase}/salary-slip`, { 
+    navigate(`${portalBase}/salary-slip-record`, { 
       state: { employee: selectedEmployee } 
     });
   };
@@ -854,7 +1238,7 @@ const EmployeeManagement = () => {
               value={data.employee_id}
               onChange={onChange}
               maxLength="20"
-              placeholder="e.g. AITS101"
+              placeholder="e.g. TEAMB01"
               required
             />
           </div>
@@ -878,101 +1262,122 @@ const EmployeeManagement = () => {
       </div>
 
       <div className="form-section">
-        <h3 className="section-title">Employment Details</h3>
-        <div className="form-row-three">
-          <div className="form-group">
-            <label>Joining Date *</label>
-            <input type="date" name="joining_date" value={data.joining_date} onChange={onChange} required />
+          <h3 className="section-title">Employment Details</h3>
+          <div className="form-row-three">
+            <div className="form-group">
+              <label>Joining Date *</label>
+              <input type="date" name="joining_date" value={data.joining_date} onChange={onChange} required />
+            </div>
+            <div className="form-group">
+              <label>Last Working Date</label>
+              <input type="date" name="last_working_date" value={data.last_working_date} onChange={onChange} />
+            </div>
+            {companySettings.salary_format !== 'Monthly' && (
+              <div className="form-group">
+                <label>Yearly CTC *</label>
+                <input type="number" name="salary" step="0.01" value={data.salary} onChange={onChange} required />
+              </div>
+            )}
+            <div className="form-group">
+              <label>Designation *</label>
+              <input type="text" name="position" value={data.position} onChange={onChange} placeholder="e.g., Software Engineer" required />
+            </div>
+            <div className="form-group">
+              <label>Employment Type *</label>
+              <select name="employment_type" value={data.employment_type} onChange={onChange} required>
+                <option value="">Select type</option>
+                {EMPLOYMENT_TYPES.map((type) => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Status</label>
+              <select name="is_active" value={data.is_active ? 'true' : 'false'} onChange={onChange}>
+                <option value="true">Active</option>
+                <option value="false">Inactive</option>
+              </select>
+            </div>
           </div>
-          <div className="form-group">
-            <label>Last Working Date</label>
-            <input type="date" name="last_working_date" value={data.last_working_date} onChange={onChange} />
-          </div>
-          <div className="form-group">
-            <label>CTC *</label>
-            <input type="number" name="salary" step="0.01" value={data.salary} onChange={onChange} required />
-          </div>
-          <div className="form-group">
-            <label>Designation *</label>
-            <input type="text" name="position" value={data.position} onChange={onChange} placeholder="e.g., Software Engineer" required />
-          </div>
-          <div className="form-group">
-            <label>Employment Type *</label>
-            <select name="employment_type" value={data.employment_type} onChange={onChange} required>
-              <option value="">Select type</option>
-              {EMPLOYMENT_TYPES.map((type) => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </select>
-          </div>
-          <div className="form-group">
-            <label>Status</label>
-            <select name="is_active" value={data.is_active ? 'true' : 'false'} onChange={onChange}>
-              <option value="true">Active</option>
-              <option value="false">Inactive</option>
-            </select>
-          </div>
-        </div>
-      </div>
 
-      <div className="form-section">
-        <h3 className="section-title">Departments</h3>
-        <div className="form-row-three">
-          <div className="form-group">
-            <label>Departments (Multi-select) *</label>
-            <select 
-              name="department_ids" 
-              multiple 
-              value={data.department_ids || []} 
-              onChange={onChange}
-              style={{ height: '100px' }}
-              required
-            >
-              {departments.map(dept => (
-                <option key={dept.id} value={dept.id}>{dept.name}</option>
-              ))}
-            </select>
-            <small>Hold Ctrl/Cmd to select multiple departments</small>
-          </div>
+          {companySettings.enable_probation && (
+            <div className="form-row-three" style={{ marginTop: '15px' }}>
+              <div className="form-group">
+                <label>Probation End Date</label>
+                <input type="date" name="probation_end_date" value={data.probation_end_date || ''} readOnly disabled />
+              </div>
+              <div className="form-group">
+                <label>Salary During Probation ({companySettings.salary_format === 'Monthly' ? 'Monthly' : 'Yearly'}) *</label>
+                <input type="number" name="salary_during_probation" value={data.salary_during_probation || ''} onChange={onChange} required={companySettings.salary_format === 'Monthly'} />
+              </div>
+              <div className="form-group">
+                <label>Salary After Probation ({companySettings.salary_format === 'Monthly' ? 'Monthly' : 'Yearly'}) *</label>
+                <input type="number" name="salary_after_probation" value={data.salary_after_probation || ''} onChange={onChange} required={companySettings.salary_format === 'Monthly'} />
+              </div>
+            </div>
+          )}
         </div>
-      </div>
 
-      <div className="form-section">
-        <h3 className="section-title">Salary Structure</h3>
-        <div className="form-row-three">
-          <div className="form-group">
-            <label>Basic *</label>
-            <input type="number" name="salary_basic" step="0.01" value={data.salary_basic} onChange={onChange} required />
-          </div>
-          <div className="form-group">
-            <label>HRA</label>
-            <input type="number" name="salary_hra" step="0.01" value={data.salary_hra} onChange={onChange} />
-          </div>
-          <div className="form-group">
-            <label>Medical Allowance</label>
-            <input type="number" name="salary_medical_allowance" step="0.01" value={data.salary_medical_allowance} onChange={onChange} />
-          </div>
-          <div className="form-group">
-            <label>Travel Allowance</label>
-            <input type="number" name="salary_travel_allowance" step="0.01" value={data.salary_travel_allowance} onChange={onChange} />
-          </div>
-          <div className="form-group">
-            <label>Other</label>
-            <input type="number" name="salary_other_allowance" step="0.01" value={data.salary_other_allowance} onChange={onChange} />
+        <div className="form-section">
+          <h3 className="section-title">Departments</h3>
+          <div className="form-row-three">
+            <div className="form-group">
+              <label>Departments (Multi-select) *</label>
+              <select 
+                name="department_ids" 
+                multiple 
+                value={data.department_ids || []} 
+                onChange={onChange}
+                style={{ height: '100px' }}
+                required
+              >
+                {departments.map(dept => (
+                  <option key={dept.id} value={dept.id}>{dept.name}</option>
+                ))}
+              </select>
+              <small>Hold Ctrl/Cmd to select multiple departments</small>
+            </div>
           </div>
         </div>
-        <div className="payroll-summary-grid">
-          <div><span>Gross</span><strong>{formatSalary(payroll.salary_gross)}</strong></div>
-          <div><span>PF</span><strong>{formatSalary(payroll.salary_pf)}</strong></div>
-          <div><span>ESIC</span><strong>{formatSalary(payroll.salary_esic)}</strong></div>
-          <div><span>P.Tax</span><strong>{formatSalary(payroll.salary_professional_tax)}</strong></div>
-          <div><span>LWF</span><strong>{formatSalary(payroll.salary_lwf)}</strong></div>
-          <div><span>Total Deduction</span><strong>{formatSalary(payroll.salary_total_deduction)}</strong></div>
-          <div><span>Net Salary</span><strong>{formatSalary(payroll.salary_net)}</strong></div>
-          <div><span>Employer PF 13%</span><strong>{formatSalary(payroll.employer_pf)}</strong></div>
-          <div><span>Employer ESIC 3.25%</span><strong>{formatSalary(payroll.employer_esic)}</strong></div>
-        </div>
-      </div>
+
+        {companySettings.salary_format !== 'Monthly' && (
+          <div className="form-section">
+            <h3 className="section-title">Salary Structure</h3>
+            <div className="form-row-three">
+              <div className="form-group">
+                <label>Basic *</label>
+                <input type="number" name="salary_basic" step="0.01" value={data.salary_basic} onChange={onChange} required />
+              </div>
+              <div className="form-group">
+                <label>HRA</label>
+                <input type="number" name="salary_hra" step="0.01" value={data.salary_hra} onChange={onChange} />
+              </div>
+              <div className="form-group">
+                <label>Medical Allowance</label>
+                <input type="number" name="salary_medical_allowance" step="0.01" value={data.salary_medical_allowance} onChange={onChange} />
+              </div>
+              <div className="form-group">
+                <label>Travel Allowance</label>
+                <input type="number" name="salary_travel_allowance" step="0.01" value={data.salary_travel_allowance} onChange={onChange} />
+              </div>
+              <div className="form-group">
+                <label>Other</label>
+                <input type="number" name="salary_other_allowance" step="0.01" value={data.salary_other_allowance} onChange={onChange} />
+              </div>
+            </div>
+            <div className="payroll-summary-grid">
+              <div><span>Gross</span><strong>{formatSalary(payroll.salary_gross)}</strong></div>
+              <div><span>PF</span><strong>{formatSalary(payroll.salary_pf)}</strong></div>
+              <div><span>ESIC</span><strong>{formatSalary(payroll.salary_esic)}</strong></div>
+              <div><span>P.Tax</span><strong>{formatSalary(payroll.salary_professional_tax)}</strong></div>
+              <div><span>LWF</span><strong>{formatSalary(payroll.salary_lwf)}</strong></div>
+              <div><span>Total Deduction</span><strong>{formatSalary(payroll.salary_total_deduction)}</strong></div>
+              <div><span>Net Salary</span><strong>{formatSalary(payroll.salary_net)}</strong></div>
+              <div><span>Employer PF 13%</span><strong>{formatSalary(payroll.employer_pf)}</strong></div>
+              <div><span>Employer ESIC 3.25%</span><strong>{formatSalary(payroll.employer_esic)}</strong></div>
+            </div>
+          </div>
+        )}
 
       <div className="form-section">
         <h3 className="section-title">Personal Information</h3>
@@ -1036,6 +1441,7 @@ const EmployeeManagement = () => {
 
   return (
     <div className="employee-section">
+      <BrandingValidationModal isOpen={isBrandingModalOpen} onClose={() => setIsBrandingModalOpen(false)} />
       <div className="employee-title-block employee-page-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h2>Employee Management</h2>
@@ -1058,7 +1464,7 @@ const EmployeeManagement = () => {
       </div>
 
       {activeTab === 'offerLetters' ? (
-        <OfferLetterComponent onEmployeeConverted={() => {
+        <OfferLetterComponent companySettings={companySettings} onEmployeeConverted={() => {
           loadEmployees();
           setActiveTab('employees');
         }} />
@@ -1088,6 +1494,12 @@ const EmployeeManagement = () => {
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
           </select>
+          <button className="add-employee-btn" onClick={() => { 
+            setFormData({ ...emptyForm, probation_months: companySettings.probation_months }); 
+            setIsModalOpen(true); 
+          }}>
+            <i className="fas fa-plus"></i> Add Employee
+          </button>
           <button className="import-btn" onClick={() => setIsBulkUploadModalOpen(true)}>
             <i className="fas fa-cloud-upload-alt"></i> Bulk Upload
           </button>
@@ -1100,10 +1512,18 @@ const EmployeeManagement = () => {
                 <i className="fas fa-users"></i>
               </div>
               <div>No employees found.</div>
-              <p className="no-data-subtext">Convert candidates from Offer Letters to build your directory.</p>
-              <button className="add-first-btn" onClick={() => setIsBulkUploadModalOpen(true)}>
-                <i className="fas fa-cloud-upload-alt"></i> Bulk Upload
-              </button>
+              <p className="no-data-subtext">Add employees manually, via bulk upload, or convert from Offer Letters.</p>
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                <button className="add-first-btn" onClick={() => { 
+                  setFormData({ ...emptyForm, probation_months: companySettings.probation_months }); 
+                  setIsModalOpen(true); 
+                }} style={{ backgroundColor: 'var(--primary-color)', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '5px', cursor: 'pointer' }}>
+                  <i className="fas fa-plus"></i> Add Employee
+                </button>
+                <button className="add-first-btn" onClick={() => setIsBulkUploadModalOpen(true)}>
+                  <i className="fas fa-cloud-upload-alt"></i> Bulk Upload
+                </button>
+              </div>
             </div>
           ) : (
             <>
@@ -1288,75 +1708,105 @@ const EmployeeManagement = () => {
                     <span className="view-detail-label">Last Working Date</span>
                     <span className="view-detail-value">{formatDate(selectedEmployee.last_working_date)}</span>
                   </div>
-                  <div className="view-detail-row">
-                    <span className="view-detail-label">CTC</span>
-                    <span className="view-detail-value">{formatSalary(selectedEmployee.salary)}</span>
-                  </div>
+                  {companySettings.enable_probation && selectedEmployee.probation_end_date && (
+                    <div className="view-detail-row">
+                      <span className="view-detail-label">Probation End Date</span>
+                      <span className="view-detail-value">{formatDate(selectedEmployee.probation_end_date)}</span>
+                    </div>
+                  )}
+                  {companySettings.salary_format === 'Monthly' ? (
+                    companySettings.enable_probation ? (
+                      <>
+                        <div className="view-detail-row">
+                          <span className="view-detail-label">Salary During Probation</span>
+                          <span className="view-detail-value">{formatSalary(selectedEmployee.salary_during_probation)}</span>
+                        </div>
+                        <div className="view-detail-row">
+                          <span className="view-detail-label">Salary After Probation</span>
+                          <span className="view-detail-value">{formatSalary(selectedEmployee.salary_after_probation)}</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="view-detail-row">
+                        <span className="view-detail-label">Monthly Salary</span>
+                        <span className="view-detail-value">{formatSalary(selectedEmployee.salary || selectedEmployee.salary_after_probation)}</span>
+                      </div>
+                    )
+                  ) : (
+                    <div className="view-detail-row">
+                      <span className="view-detail-label">CTC</span>
+                      <span className="view-detail-value">{formatSalary(selectedEmployee.salary)}</span>
+                    </div>
+                  )}
                 </div>
 
-                <div className="view-detail-section">
-                  <h4>Salary Structure</h4>
-                  <div className="view-detail-row">
-                    <span className="view-detail-label">Basic</span>
-                    <span className="view-detail-value">{formatSalary(selectedEmployee.salary_basic)}</span>
-                  </div>
-                  <div className="view-detail-row">
-                    <span className="view-detail-label">HRA</span>
-                    <span className="view-detail-value">{formatSalary(selectedEmployee.salary_hra)}</span>
-                  </div>
-                  <div className="view-detail-row">
-                    <span className="view-detail-label">Medical Allowance</span>
-                    <span className="view-detail-value">{formatSalary(selectedEmployee.salary_medical_allowance)}</span>
-                  </div>
-                  <div className="view-detail-row">
-                    <span className="view-detail-label">Travel Allowance</span>
-                    <span className="view-detail-value">{formatSalary(selectedEmployee.salary_travel_allowance)}</span>
-                  </div>
-                  <div className="view-detail-row">
-                    <span className="view-detail-label">Other</span>
-                    <span className="view-detail-value">{formatSalary(selectedEmployee.salary_other_allowance)}</span>
-                  </div>
-                </div>
+                {companySettings.salary_format !== 'Monthly' && (
+                  <>
+                    <div className="view-detail-section">
+                      <h4>Salary Structure</h4>
+                      <div className="view-detail-row">
+                        <span className="view-detail-label">Basic</span>
+                        <span className="view-detail-value">{formatSalary(selectedEmployee.salary_basic)}</span>
+                      </div>
+                      <div className="view-detail-row">
+                        <span className="view-detail-label">HRA</span>
+                        <span className="view-detail-value">{formatSalary(selectedEmployee.salary_hra)}</span>
+                      </div>
+                      <div className="view-detail-row">
+                        <span className="view-detail-label">Medical Allowance</span>
+                        <span className="view-detail-value">{formatSalary(selectedEmployee.salary_medical_allowance)}</span>
+                      </div>
+                      <div className="view-detail-row">
+                        <span className="view-detail-label">Travel Allowance</span>
+                        <span className="view-detail-value">{formatSalary(selectedEmployee.salary_travel_allowance)}</span>
+                      </div>
+                      <div className="view-detail-row">
+                        <span className="view-detail-label">Other</span>
+                        <span className="view-detail-value">{formatSalary(selectedEmployee.salary_other_allowance)}</span>
+                      </div>
+                    </div>
 
-                <div className="view-detail-section">
-                  <h4>Payroll Calculation</h4>
-                  <div className="view-detail-row">
-                    <span className="view-detail-label">Gross</span>
-                    <span className="view-detail-value">{formatSalary(selectedEmployee.salary_gross)}</span>
-                  </div>
-                  <div className="view-detail-row">
-                    <span className="view-detail-label">PF</span>
-                    <span className="view-detail-value">{formatSalary(selectedEmployee.salary_pf)}</span>
-                  </div>
-                  <div className="view-detail-row">
-                    <span className="view-detail-label">ESIC</span>
-                    <span className="view-detail-value">{formatSalary(selectedEmployee.salary_esic)}</span>
-                  </div>
-                  <div className="view-detail-row">
-                    <span className="view-detail-label">P.Tax</span>
-                    <span className="view-detail-value">{formatSalary(selectedEmployee.salary_professional_tax)}</span>
-                  </div>
-                  <div className="view-detail-row">
-                    <span className="view-detail-label">LWF</span>
-                    <span className="view-detail-value">{formatSalary(selectedEmployee.salary_lwf)}</span>
-                  </div>
-                  <div className="view-detail-row">
-                    <span className="view-detail-label">Total Deduction</span>
-                    <span className="view-detail-value">{formatSalary(selectedEmployee.salary_total_deduction)}</span>
-                  </div>
-                  <div className="view-detail-row">
-                    <span className="view-detail-label">Net Salary</span>
-                    <span className="view-detail-value">{formatSalary(selectedEmployee.salary_net)}</span>
-                  </div>
-                  <div className="view-detail-row">
-                    <span className="view-detail-label">Employer PF 13%</span>
-                    <span className="view-detail-value">{formatSalary(selectedEmployee.employer_pf)}</span>
-                  </div>
-                  <div className="view-detail-row">
-                    <span className="view-detail-label">Employer ESIC 3.25%</span>
-                    <span className="view-detail-value">{formatSalary(selectedEmployee.employer_esic)}</span>
-                  </div>
-                </div>
+                    <div className="view-detail-section">
+                      <h4>Payroll Calculation</h4>
+                      <div className="view-detail-row">
+                        <span className="view-detail-label">Gross</span>
+                        <span className="view-detail-value">{formatSalary(selectedEmployee.salary_gross)}</span>
+                      </div>
+                      <div className="view-detail-row">
+                        <span className="view-detail-label">PF</span>
+                        <span className="view-detail-value">{formatSalary(selectedEmployee.salary_pf)}</span>
+                      </div>
+                      <div className="view-detail-row">
+                        <span className="view-detail-label">ESIC</span>
+                        <span className="view-detail-value">{formatSalary(selectedEmployee.salary_esic)}</span>
+                      </div>
+                      <div className="view-detail-row">
+                        <span className="view-detail-label">P.Tax</span>
+                        <span className="view-detail-value">{formatSalary(selectedEmployee.salary_professional_tax)}</span>
+                      </div>
+                      <div className="view-detail-row">
+                        <span className="view-detail-label">LWF</span>
+                        <span className="view-detail-value">{formatSalary(selectedEmployee.salary_lwf)}</span>
+                      </div>
+                      <div className="view-detail-row">
+                        <span className="view-detail-label">Total Deduction</span>
+                        <span className="view-detail-value">{formatSalary(selectedEmployee.salary_total_deduction)}</span>
+                      </div>
+                      <div className="view-detail-row">
+                        <span className="view-detail-label">Net Salary</span>
+                        <span className="view-detail-value">{formatSalary(selectedEmployee.salary_net)}</span>
+                      </div>
+                      <div className="view-detail-row">
+                        <span className="view-detail-label">Employer PF 13%</span>
+                        <span className="view-detail-value">{formatSalary(selectedEmployee.employer_pf)}</span>
+                      </div>
+                      <div className="view-detail-row">
+                        <span className="view-detail-label">Employer ESIC 3.25%</span>
+                        <span className="view-detail-value">{formatSalary(selectedEmployee.employer_esic)}</span>
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 <div className="view-detail-section">
                   <h4>Personal</h4>
@@ -1503,8 +1953,8 @@ const EmployeeManagement = () => {
                   <i className="fas fa-money-bill-wave"></i>
                 </div>
                 <div className="document-info">
-                  <h3>Salary Slip</h3>
-                  <p>Generate monthly salary slip</p>
+                  <h3>Salary Slip Record</h3>
+                  <p>View generated monthly salary slips</p>
                 </div>
                 <div className="document-arrow">
                   <i className="fas fa-arrow-right"></i>
@@ -1557,6 +2007,19 @@ const EmployeeManagement = () => {
                 <div className="document-info">
                   <h3>EPF Declaration Form</h3>
                   <p>Generate EPF declaration</p>
+                </div>
+                <div className="document-arrow">
+                  <i className="fas fa-arrow-right"></i>
+                </div>
+              </div>
+
+              <div className="document-card" onClick={handleOpenAdminKycModal}>
+                <div className="document-icon kyc" style={{ background: '#ecfdf5', color: '#059669' }}>
+                  <i className="fas fa-id-card"></i>
+                </div>
+                <div className="document-info">
+                  <h3>KYC & Profile Documents</h3>
+                  <p>View, upload & manage employee KYC documents</p>
                 </div>
                 <div className="document-arrow">
                   <i className="fas fa-arrow-right"></i>
@@ -1677,6 +2140,281 @@ const EmployeeManagement = () => {
         onUploadComplete={loadEmployees}
         departments={departments}
       />
+
+      {/* Admin KYC Documents Modal */}
+      {adminKycModalOpen && selectedEmployee && (
+        <div className="modal-overlay">
+          <div className="modal-content1 documents-modal" style={{ maxWidth: '750px' }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h2><i className="fas fa-id-card"></i> KYC & Profile Documents</h2>
+                <h3 className="employee-name-header" style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#64748b' }}>
+                  For: {selectedEmployee.first_name} {selectedEmployee.last_name} ({selectedEmployee.employee_id || 'ID#'})
+                </h3>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowAdminUploadKycForm(!showAdminUploadKycForm)}
+                  style={{ padding: '6px 14px', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}
+                >
+                  {showAdminUploadKycForm ? 'View Documents' : '+ Upload KYC Document'}
+                </button>
+                <button className="close-btn" onClick={() => setAdminKycModalOpen(false)}>×</button>
+              </div>
+            </div>
+
+            {showAdminUploadKycForm ? (
+              <form onSubmit={handleAdminUploadKycSubmit} style={{ padding: '20px' }}>
+                <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', color: '#1e293b' }}>Upload & Combine KYC Document for Employee</h3>
+                
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{ display: 'block', marginBottom: '5px', fontSize: '13px', fontWeight: '500', color: '#475569' }}>Document Type *</label>
+                  <select
+                    value={adminKycUploadData.document_type}
+                    onChange={(e) => setAdminKycUploadData({ ...adminKycUploadData, document_type: e.target.value })}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+                    required
+                  >
+                    <option value="aadhar_card">Aadhar Card</option>
+                    <option value="pan_card">PAN Card</option>
+                    <option value="passport">Passport</option>
+                    <option value="driving_license">Driving License</option>
+                    <option value="voter_id">Voter ID</option>
+                    <option value="kyc_document">Other KYC Document</option>
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{ display: 'block', marginBottom: '5px', fontSize: '13px', fontWeight: '500', color: '#475569' }}>Document Title *</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Aadhar Card (Front & Back)"
+                    value={adminKycUploadData.title}
+                    onChange={(e) => setAdminKycUploadData({ ...adminKycUploadData, title: e.target.value })}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+                    required
+                  />
+                </div>
+
+                {/* Dual Upload Section: Front & Back */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+                  {/* Front Side */}
+                  <div style={{ border: '1px dashed #cbd5e1', padding: '15px', borderRadius: '8px', textAlign: 'center', backgroundColor: '#f8fafc' }}>
+                    <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#334155' }}>Front Side *</h4>
+                    {adminFrontPreview ? (
+                      <div style={{ position: 'relative', marginBottom: '10px' }}>
+                        <img src={adminFrontPreview} alt="Front Preview" style={{ width: '100%', maxHeight: '120px', objectFit: 'contain', borderRadius: '4px', border: '1px solid #e2e8f0' }} />
+                        <button
+                          type="button"
+                          onClick={() => { setAdminFrontFile(null); setAdminFrontPreview(null); }}
+                          style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '22px', height: '22px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : adminFrontFile ? (
+                      <div style={{ padding: '10px', fontSize: '13px', color: '#166534', fontWeight: '500' }}>PDF File Selected</div>
+                    ) : (
+                      <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '10px' }}>Upload file or capture photo</div>
+                    )}
+
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '6px 12px', background: '#3b82f6', color: 'white', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}>
+                        File
+                        <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => handleAdminFileChange(e, 'front')} style={{ display: 'none' }} />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => startAdminCamera('front')}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '6px 12px', background: '#059669', color: 'white', border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}
+                      >
+                        Camera
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Back Side */}
+                  <div style={{ border: '1px dashed #cbd5e1', padding: '15px', borderRadius: '8px', textAlign: 'center', backgroundColor: '#f8fafc' }}>
+                    <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#334155' }}>Back Side (Optional)</h4>
+                    {adminBackPreview ? (
+                      <div style={{ position: 'relative', marginBottom: '10px' }}>
+                        <img src={adminBackPreview} alt="Back Preview" style={{ width: '100%', maxHeight: '120px', objectFit: 'contain', borderRadius: '4px', border: '1px solid #e2e8f0' }} />
+                        <button
+                          type="button"
+                          onClick={() => { setAdminBackFile(null); setAdminBackPreview(null); }}
+                          style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '22px', height: '22px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : adminBackFile ? (
+                      <div style={{ padding: '10px', fontSize: '13px', color: '#166534', fontWeight: '500' }}>PDF File Selected</div>
+                    ) : (
+                      <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '10px' }}>Upload file or capture photo</div>
+                    )}
+
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '6px 12px', background: '#3b82f6', color: 'white', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}>
+                        File
+                        <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => handleAdminFileChange(e, 'back')} style={{ display: 'none' }} />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => startAdminCamera('back')}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '6px 12px', background: '#059669', color: 'white', border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}
+                      >
+                        Camera
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminUploadKycForm(false)}
+                    style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: 'white', color: '#475569', cursor: 'pointer', fontWeight: '500' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={adminKycUploading}
+                    style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', backgroundColor: '#2563eb', color: 'white', cursor: 'pointer', fontWeight: '500' }}
+                  >
+                    {adminKycUploading ? 'Combining & Uploading...' : 'Combine & Upload Document'}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="documents-grid" style={{ padding: '20px' }}>
+                {adminKycLoading ? (
+                  <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '20px', color: '#64748b' }}>
+                    Loading employee documents...
+                  </div>
+                ) : adminKycDocs.filter(d => d.document_type !== 'salary_slip').length > 0 ? (
+                  adminKycDocs
+                    .filter(d => d.document_type !== 'salary_slip')
+                    .map(doc => (
+                      <div className="document-card" key={doc.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, cursor: 'pointer' }} onClick={() => { setAdminPdfPreviewTitle(doc.title); setAdminPdfPreviewUrl(`${API_URL}${doc.file_url}`); }}>
+                          <div className="document-icon">
+                            <i className="fas fa-file-pdf"></i>
+                          </div>
+                          <div className="document-info">
+                            <h3 style={{ textTransform: 'capitalize', margin: 0, fontSize: '14px' }}>{doc.document_type.replace('_', ' ')}</h3>
+                            <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#64748b' }}>{doc.title} - {new Date(doc.generated_at || doc.created_at).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button
+                            type="button"
+                            onClick={() => { setAdminPdfPreviewTitle(doc.title); setAdminPdfPreviewUrl(`${API_URL}${doc.file_url}`); }}
+                            style={{ padding: '6px 10px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+                            title="View Document"
+                          >
+                            <i className="fas fa-eye"></i> View
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => triggerFileDownload(`${API_URL}${doc.file_url}`, `${doc.title || doc.document_type}.pdf`)}
+                            style={{ padding: '6px 10px', background: '#059669', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+                            title="Download Document"
+                          >
+                            <i className="fas fa-download"></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAdminDeleteDoc(doc.id)}
+                            style={{ padding: '6px 10px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+                            title="Delete Document"
+                          >
+                            <i className="fas fa-trash"></i>
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                ) : (
+                  <div className="no-documents-msg" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '20px' }}>
+                     <p>No KYC or Profile documents uploaded for this employee yet.</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="modal-footer" style={{ padding: '0 20px 20px' }}>
+              <button className="cancel-btn footer-btn" onClick={() => setAdminKycModalOpen(false)} style={{ marginLeft: 'auto' }}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Live Camera Modal Overlay */}
+      {adminActiveCameraSide && (
+        <div className="modal-overlay" style={{ zIndex: 99999 }}>
+          <div className="modal-content1" style={{ maxWidth: '500px', padding: '20px', textAlign: 'center' }}>
+            <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', color: '#1e293b' }}>
+              Capture {adminActiveCameraSide === 'front' ? 'Front Side' : 'Back Side'} Photo
+            </h3>
+            <div style={{ position: 'relative', width: '100%', background: '#000', borderRadius: '8px', overflow: 'hidden', marginBottom: '15px' }}>
+              <video ref={adminVideoRef} autoPlay playsInline style={{ width: '100%', height: '320px', objectFit: 'cover' }} />
+              <div style={{ position: 'absolute', top: '10px', left: '10px', right: '10px', bottom: '10px', border: '2px dashed rgba(255,255,255,0.7)', borderRadius: '6px', pointerEvents: 'none' }} />
+            </div>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+              <button
+                type="button"
+                onClick={stopAdminCamera}
+                style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: 'white', color: '#475569', cursor: 'pointer', fontWeight: '500' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={captureAdminPhoto}
+                style={{ padding: '8px 20px', borderRadius: '6px', border: 'none', backgroundColor: '#059669', color: 'white', cursor: 'pointer', fontWeight: '600' }}
+              >
+                Capture Photo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin PDF Preview Modal */}
+      {adminPdfPreviewUrl && (
+        <div className="modal-overlay" style={{ zIndex: 99999 }}>
+          <div className="modal-content1" style={{ width: '90%', maxWidth: '1000px', height: '90vh', display: 'flex', flexDirection: 'column', padding: '0', overflow: 'hidden' }}>
+            <div className="modal-header" style={{ padding: '15px 20px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#1e293b' }}><i className="fas fa-file-pdf"></i> {adminPdfPreviewTitle || 'Document Preview'}</h2>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button 
+                  onClick={() => triggerFileDownload(adminPdfPreviewUrl, `${(adminPdfPreviewTitle || 'document').replace(/\s+/g, '_')}.pdf`)} 
+                  className="btn-submit" 
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '8px 16px', background: '#2563eb', color: 'white', borderRadius: '6px', border: 'none', cursor: 'pointer', fontWeight: '500' }}
+                >
+                  <i className="fas fa-download"></i> Download
+                </button>
+                <button 
+                  onClick={() => setAdminPdfPreviewUrl(null)} 
+                  className="close-btn"
+                  style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#64748b' }}
+                >
+                  &times;
+                </button>
+              </div>
+            </div>
+            <div style={{ flex: 1, width: '100%', background: '#e2e8f0' }}>
+              <iframe 
+                src={`${adminPdfPreviewUrl}#toolbar=0`}
+                style={{ width: '100%', height: '100%', border: 'none' }}
+                title="Document Preview"
+              />
+            </div>
+          </div>
+        </div>
+      )}
       </>
       )}
     </div>

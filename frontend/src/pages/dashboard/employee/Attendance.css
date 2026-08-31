@@ -202,13 +202,14 @@
 }
 
 .refresh-btn {
-  background: linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%);
-  color: white;
-  border: none;
+  background: #E6E6FA;
+  border: 1px solid #c7d2fe;
+  color: #000000;
 }
 
 .refresh-btn:hover {
-  background: linear-gradient(135deg, #7a77b9 0%, #c493c2 33%, #d883b0 66%, #e8c1d8 100%);
+  background: #dcdcfe;
+  color: #000000;
 }
 
 /* Table Styles */

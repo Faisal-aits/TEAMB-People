@@ -37,7 +37,7 @@ const Login = () => {
             <HiShieldCheck color="white" />
           </div>
           <h1>Super Admin</h1>
-          <p>Work Desk Platform Control Center</p>
+          <p>TEAM B People Platform Control Center</p>
         </div>
 
         <form className="login-form" onSubmit={handleSubmit}>

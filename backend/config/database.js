@@ -1,4 +1,5 @@
 // config/database.js
+process.env.TZ = 'Asia/Kolkata';
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
@@ -15,6 +16,10 @@ const dbConfig = {
 };
 
 const pool = mysql.createPool(dbConfig);
+
+pool.on('connection', (connection) => {
+    connection.query("SET time_zone = '+05:30'");
+});
 
 async function checkDBConnection() {
     try {

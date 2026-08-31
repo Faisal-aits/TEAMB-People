@@ -21,9 +21,9 @@
 }
 
 .lm-primary-btn {
-  background: linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%);
-  border: none;
-  color: white;
+  background: #E6E6FA;
+  border: 1px solid #c7d2fe;
+  color: #000000;
   padding: 0.75rem 1.5rem;
   border-radius: 12px;
   cursor: pointer;
@@ -38,7 +38,8 @@
 }
 
 .lm-primary-btn:hover {
-  background: linear-gradient(135deg, #7a77b9 0%, #c493c2 33%, #d883b0 66%, #e8c1d8 100%);
+  background: #dcdcfe;
+  color: #1e1b4b;
   transform: translateY(-2px);
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
 }
@@ -601,9 +602,9 @@
 }
 
 #lm-add-shift-btn {
-  background: linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%);
-  border: none;
-  color: white;
+  background: #E6E6FA;
+  border: 1px solid #c7d2fe;
+  color: #000000;
   padding: 0.75rem 1.5rem;
   border-radius: 12px;
   cursor: pointer;
@@ -618,7 +619,8 @@
 }
 
 #lm-add-shift-btn:hover {
-  background: linear-gradient(135deg, #7a77b9 0%, #c493c2 33%, #d883b0 66%, #e8c1d8 100%);
+  background: #dcdcfe;
+  color: #000000;
   transform: translateY(-2px);
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
 }
@@ -632,45 +634,58 @@
 }
 
 /* Form select multiple styles */
-.lm-form-field select[multiple] {
-  min-height: 120px;
-  resize: vertical;
+#lm-shift-employees-select {
+  height: 120px;
+  padding: 0.5rem;
 }
 
-.lm-form-field small {
-  color: #718096;
-  font-size: 0.75rem;
-  margin-top: 0.25rem;
-  display: block;
+#lm-shift-employees-select option {
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin-bottom: 2px;
 }
 
-/* Responsive adjustments for shift management */
-@media (max-width: 768px) {
-  .lm-table-header {
-    flex-direction: column;
-    gap: 1rem;
-    align-items: flex-start;
-  }
-  
-  #lm-add-shift-btn {
-    width: 100%;
-    justify-content: center;
-  }
+#lm-shift-employees-select option:checked {
+  background: linear-gradient(135deg, #6d6ab8 0%, #E6E6FA 100%);
+  color: #000000;
 }
+
+/* Checkbox Styles */
+.lm-checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.lm-checkbox-group input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #6d6ab8;
+  cursor: pointer;
+}
+
+.lm-checkbox-group label {
+  margin-bottom: 0;
+  cursor: pointer;
+  font-weight: 500;
+}
+
 /* ==================== DEFAULT SHIFT MANAGEMENT STYLES ==================== */
 
 /* Default Shift Row Styles */
 .lm-default-shift-row {
-  background: linear-gradient(135deg, rgba(138, 135, 201, 0.1) 0%, rgba(212, 163, 210, 0.1) 33%, rgba(232, 147, 192, 0.1) 66%, rgba(248, 209, 232, 0.1) 100%) !important;
-  border-left: 4px solid #8a87c9;
+  background: #f4f4fe !important;
+  border-left: 4px solid #6d6ab8;
 }
 
 .lm-default-badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%);
-  color: white;
+  background: #E6E6FA;
+  color: #000000;
+  border: 1px solid #c7d2fe;
   padding: 2px 8px;
   border-radius: 12px;
   font-size: 0.75rem;
@@ -691,8 +706,9 @@
 }
 
 .lm-status-default {
-  background: linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%);
-  color: white;
+  background: #E6E6FA;
+  color: #000000;
+  border: 1px solid #c7d2fe;
   padding: 4px 8px;
   border-radius: 8px;
   font-size: 0.75rem;
@@ -701,25 +717,17 @@
 }
 
 .lm-status-regular {
-  background: rgba(138, 135, 201, 0.1);
-  color: #8a87c9;
+  background: #f4f4fe;
+  color: #6d6ab8;
   padding: 4px 8px;
   border-radius: 8px;
   font-size: 0.75rem;
   font-weight: 600;
-  border: 1px solid rgba(138, 135, 201, 0.2);
+  border: 1px solid #c7d2fe;
 }
 
 /* Default Action Button */
 .lm-default-btn {
-  background: linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%) !important;
-  color: white !important;
-  border: none !important;
-  padding: 0.4rem 0.8rem;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.8rem;
-  font-weight: 500;
   transition: all 0.3s ease;
   white-space: nowrap;
   flex: 1;

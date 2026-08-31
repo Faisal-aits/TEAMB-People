@@ -57,8 +57,21 @@ const Tenants = () => {
     e.preventDefault();
     setAlert(null);
     try {
-      await superAdminAPI.createTenant(formData);
-      showAlert('success', 'Organization created successfully!');
+      const adminEmail = formData.admin_email.trim();
+      if (!adminEmail) {
+        showAlert('error', 'Admin Email is required');
+        return;
+      }
+      const payload = {
+        ...formData,
+        email: adminEmail,
+        admin_email: adminEmail,
+        admin_first_name: formData.admin_first_name || 'Admin',
+        admin_last_name: formData.admin_last_name || formData.name || 'Manager',
+        admin_password: formData.admin_password.trim() // passed as-is; blank = backend auto-generates
+      };
+      const res = await superAdminAPI.createTenant(payload);
+      showAlert('success', res.data?.message || 'Organization created successfully!');
       setShowModal(false);
       setFormData(EMPTY_FORM);
       fetchTenants();
@@ -127,7 +140,23 @@ const Tenants = () => {
   return (
     <div className="tenants-page fade-in">
       {alert && (
-        <div className={`alert alert-${alert.type}`}>{alert.message}</div>
+        <div
+          className={`alert alert-${alert.type}`}
+          style={{
+            position: 'fixed',
+            top: '24px',
+            right: '24px',
+            zIndex: 999999,
+            maxWidth: '480px',
+            boxShadow: '0 12px 32px rgba(0, 0, 0, 0.5)',
+            borderRadius: '8px',
+            padding: '14px 20px',
+            fontSize: '14px',
+            fontWeight: '600'
+          }}
+        >
+          {alert.message}
+        </div>
       )}
 
       {/* Page header */}
@@ -264,6 +293,11 @@ const Tenants = () => {
 
             <form onSubmit={handleSubmit}>
               <div className="modal-body">
+                {alert && (
+                  <div className={`alert alert-${alert.type}`} style={{ marginBottom: '16px' }}>
+                    {alert.message}
+                  </div>
+                )}
                 <div className="modal-form">
                   <div className="form-section-title">Organization Details</div>
 
@@ -280,31 +314,17 @@ const Tenants = () => {
                     />
                   </div>
 
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Slug (URL identifier) *</label>
-                      <input
-                        id="tenant-slug"
-                        type="text"
-                        className="form-input"
-                        placeholder="acme-corp"
-                        value={formData.slug}
-                        onChange={(e) => setFormData(prev => ({ ...prev, slug: e.target.value }))}
-                        required
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Email *</label>
-                      <input
-                        id="tenant-email"
-                        type="email"
-                        className="form-input"
-                        placeholder="admin@acme.com"
-                        value={formData.email}
-                        onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                        required
-                      />
-                    </div>
+                  <div className="form-group">
+                    <label>Slug (URL identifier) *</label>
+                    <input
+                      id="tenant-slug"
+                      type="text"
+                      className="form-input"
+                      placeholder="acme-corp"
+                      value={formData.slug}
+                      onChange={(e) => setFormData(prev => ({ ...prev, slug: e.target.value }))}
+                      required
+                    />
                   </div>
 
                   <div className="form-row">
@@ -390,11 +410,12 @@ const Tenants = () => {
                       <label>Admin Password</label>
                       <input
                         id="admin-password"
-                        type="password"
+                        type="text"
                         className="form-input"
-                        placeholder="Leave empty for first-login setup"
+                        placeholder="Leave empty to auto-generate"
                         value={formData.admin_password}
                         onChange={(e) => setFormData(prev => ({ ...prev, admin_password: e.target.value }))}
+                        autoComplete="off"
                       />
                     </div>
                   </div>

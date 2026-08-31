@@ -82,3 +82,66 @@
     flex-direction: column;
   }
 }
+
+.smtp-password-group {
+  position: relative;
+}
+
+.smtp-password-hint {
+  margin-top: 8px;
+  padding: 12px 14px;
+  background: #fffbeb;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  color: #78350f;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  animation: hintFadeIn 0.15s ease;
+}
+
+@keyframes hintFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.smtp-hint-title {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #92400e;
+}
+
+.smtp-hint-body {
+  line-height: 1.5;
+}
+
+.smtp-hint-links {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.smtp-hint-links span {
+  font-weight: 600;
+}
+
+.smtp-hint-links a {
+  color: #1d4ed8;
+  text-decoration: underline;
+  font-weight: 600;
+}
+
+.smtp-hint-links a:hover {
+  color: #1e40af;
+}
+
+.smtp-hint-steps {
+  background: #fef3c7;
+  border-radius: 6px;
+  padding: 6px 10px;
+  line-height: 1.6;
+  font-size: 0.8rem;
+}

@@ -181,26 +181,17 @@
   box-shadow: 0 8px 18px rgba(16, 24, 40, 0.08);
 }
 
-.ai-doc-btn.primary {
-  background: var(--gradient-brand);
-  border: none;
-  color: var(--color-text-inverse);
-}
-
-.ai-doc-btn.primary:hover {
-  background: var(--gradient-brand-hover);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-sm);
-}
-
+.ai-doc-btn.primary,
 .ai-doc-btn.success {
-  background: var(--gradient-brand);
-  border: none;
-  color: var(--color-text-inverse);
+  background: #E6E6FA;
+  border: 1px solid #c7d2fe;
+  color: #000000;
 }
 
+.ai-doc-btn.primary:hover,
 .ai-doc-btn.success:hover {
-  background: var(--gradient-brand-hover);
+  background: #dcdcfe;
+  color: #000000;
   transform: translateY(-2px);
   box-shadow: var(--shadow-sm);
 }

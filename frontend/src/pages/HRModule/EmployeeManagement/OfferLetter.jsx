@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import axios from 'axios';
 import { offerLetterAPI } from '../../../services/offerLetterAPI';
 import { employeeAPI } from '../../../services/employeeAPI';
 import offerLetterPDFService from '../../../services/offerLetterPDFService';
 import './Employee.css';
 import './OfferLetterBuilder.css';
-import logoUrl from '../../../assets/img/company.png';
+import brandingAPI from '../../../services/brandingAPI';
+import BrandingValidationModal from '../../../components/BrandingValidationModal';
 
 
 const numberToWords = (num) => {
@@ -33,7 +35,7 @@ const defaultTerms = [
   "Employment may be terminated by either party with one month's notice or payment in lieu thereof."
 ];
 
-const OfferLetter = ({ onEmployeeConverted }) => {
+const OfferLetter = ({ companySettings = { salary_format: 'Monthly', probation_months: '4', enable_probation: true }, onEmployeeConverted }) => {
   const [offerLetters, setOfferLetters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -44,6 +46,7 @@ const OfferLetter = ({ onEmployeeConverted }) => {
   const [departments, setDepartments] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  const [previewPdfUrl, setPreviewPdfUrl] = useState(null);
 
   const [formData, setFormData] = useState({
     issueDate: new Date().toISOString().slice(0, 10),
@@ -67,8 +70,32 @@ const OfferLetter = ({ onEmployeeConverted }) => {
     employerPf: '',
     employerEsi: '',
     netPay: '',
+    monthlySalary: '',
+    monthlySalaryInWords: '',
+    salaryDuringProbation: '',
+    salaryDuringProbationInWords: '',
+    salaryAfterProbation: '',
+    salaryAfterProbationInWords: '',
     terms: [...defaultTerms]
   });
+
+  const [branding, setBranding] = useState({
+    company_name: "",
+    company_address: "",
+    company_email: "",
+    company_website: "",
+    hr_name: "",
+    hr_designation: "",
+    logo_url: "",
+    stamp_url: "",
+    signature_url: null
+  });
+
+  const [isBrandingModalOpen, setIsBrandingModalOpen] = useState(false);
+  // Derive probation months from prop (set by AdminLayout from settings)
+  const probationMonths = companySettings.probation_months || '4';
+  const enableProbation = companySettings.enable_probation !== false;
+  const salaryFormat = companySettings.salary_format || 'Monthly';
 
   const loadOfferLetters = useCallback(async () => {
     try {
@@ -92,9 +119,38 @@ const OfferLetter = ({ onEmployeeConverted }) => {
     }
   };
 
+  const loadBranding = async () => {
+    try {
+      const res = await brandingAPI.get();
+      if (res.data?.success && res.data?.branding) {
+        const b = res.data.branding;
+        if (!b.company_name) {
+          setIsBrandingModalOpen(true);
+        }
+        setBranding({
+          company_name: b.company_name || "",
+          company_address: b.company_address || "",
+          company_email: b.company_email || "",
+          company_website: b.company_website || "",
+          hr_name: b.hr_name || "",
+          hr_designation: b.hr_designation || "",
+          logo_url: b.logo_url ? brandingAPI.getImageUrl(b.logo_url) : "",
+          stamp_url: b.stamp_url ? brandingAPI.getImageUrl(b.stamp_url) : "",
+          signature_url: b.signature_url ? brandingAPI.getImageUrl(b.signature_url) : null
+        });
+      } else {
+        setIsBrandingModalOpen(true);
+      }
+    } catch (err) {
+      console.error("Error fetching branding:", err);
+      setIsBrandingModalOpen(true);
+    }
+  };
+
   useEffect(() => {
     loadOfferLetters();
     loadDepartments();
+    loadBranding();
   }, [loadOfferLetters]);
 
   const totalPages = Math.ceil(offerLetters.length / itemsPerPage);
@@ -115,9 +171,11 @@ const OfferLetter = ({ onEmployeeConverted }) => {
     const { name, value } = e.target;
     setFormData((prev) => {
       const newData = { ...prev, [name]: value };
-      if (name === 'ctc' && value) {
-        newData.ctcInWords = numberToWords(parseInt(value.replace(/,/g, ''), 10)) || '';
-      }
+      const toWords = (v) => v ? numberToWords(parseInt(String(v).replace(/,/g, ''), 10)) || '' : '';
+      if (name === 'ctc') newData.ctcInWords = toWords(value);
+      if (name === 'monthlySalary') newData.monthlySalaryInWords = toWords(value);
+      if (name === 'salaryDuringProbation') newData.salaryDuringProbationInWords = toWords(value);
+      if (name === 'salaryAfterProbation') newData.salaryAfterProbationInWords = toWords(value);
       return newData;
     });
   };
@@ -151,26 +209,45 @@ const OfferLetter = ({ onEmployeeConverted }) => {
         candidate_name: formData.fullName,
         candidate_email: formData.email,
         issue_date: formData.issueDate,
-        form_data: { ...formData }
+        form_data: { ...formData, salary_format: companySettings.salary_format }
       };
 
-      await offerLetterAPI.save(payload);
-      alert('Offer letter generated successfully!');
-
+      // Show success and close modal immediately to avoid loading wait
+      alert('Offer letter generation started! It will be generated and emailed shortly.');
       setIsModalOpen(false);
+      setIsSubmitting(false);
+
+      // Save form data in a local variable for the background task
+      const formDataForPdf = { ...formData };
+
+      // Reset form
       setFormData({
         issueDate: new Date().toISOString().slice(0, 10),
         salutation: 'Mr.', fullName: '', address: '', phone: '', email: '',
         designation: '', joiningDate: '', ctc: '', ctcInWords: '',
         basicSalary: '', hra: '', conveyanceAllowance: '', specialAllowance: '', medicalAllowance: '',
         totalEarning: '', professionalTax: '', tds: '', employerPf: '', employerEsi: '', netPay: '',
+        monthlySalary: '', monthlySalaryInWords: '',
+        salaryDuringProbation: '', salaryDuringProbationInWords: '',
+        salaryAfterProbation: '', salaryAfterProbationInWords: '',
         terms: [...defaultTerms]
       });
-      loadOfferLetters();
+
+      // Run generation and API call in background
+      (async () => {
+        try {
+          const pdfBase64 = await offerLetterPDFService.getBase64OfferLetter(formDataForPdf);
+          payload.pdf_base64 = pdfBase64;
+          await offerLetterAPI.save(payload);
+          loadOfferLetters();
+        } catch (err) {
+          console.error('Failed to generate/save offer letter in background:', err);
+        }
+      })();
+
     } catch (error) {
-      console.error('Failed to generate offer letter:', error);
-      alert(error.response?.data?.message || 'Failed to generate offer letter');
-    } finally {
+      console.error('Failed to process offer letter:', error);
+      alert('Failed to process offer letter');
       setIsSubmitting(false);
     }
   };
@@ -225,8 +302,14 @@ const OfferLetter = ({ onEmployeeConverted }) => {
     }
   };
 
-  const handleViewPDF = (offer) => {
-    offerLetterPDFService.viewOfferLetter(offer.form_data);
+  const handleViewPDF = async (offer) => {
+    try {
+      const blobUrl = await offerLetterPDFService.getBlobUrlOfferLetter(offer.form_data);
+      setPreviewPdfUrl(blobUrl);
+    } catch (err) {
+      console.error("Failed to generate PDF preview", err);
+      alert("Failed to generate PDF preview");
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -245,10 +328,10 @@ const OfferLetter = ({ onEmployeeConverted }) => {
 
   const renderPreviewHeader = () => (
     <div className="preview-header">
-      <img src={logoUrl} alt="Logo" className="preview-logo" onError={(e) => { e.target.style.display = 'none' }} />
+      {branding.logo_url && <img src={branding.logo_url} alt="Logo" className="preview-logo" onError={(e) => { e.target.style.display = 'none' }} />}
       <div className="preview-contact">
-        <div className="preview-contact-item"><i className="fas fa-globe"></i> www.arhamitsolution.in</div>
-        <div className="preview-contact-item"><i className="fas fa-envelope"></i> info@arhamitsolution.in</div>
+        <div className="preview-contact-item"><i className="fas fa-globe"></i> {branding.company_website}</div>
+        <div className="preview-contact-item"><i className="fas fa-envelope"></i> {branding.company_email}</div>
       </div>
     </div>
   );
@@ -257,6 +340,7 @@ const OfferLetter = ({ onEmployeeConverted }) => {
 
   return (
     <div className="employee-section">
+      <BrandingValidationModal isOpen={isBrandingModalOpen} onClose={() => setIsBrandingModalOpen(false)} />
       <div className="employee-table-container glass-form">
         <div className="table-header employee-management-header">
           <h3 style={{ margin: 0 }}>Offer Letters Tracking</h3>
@@ -416,21 +500,84 @@ const OfferLetter = ({ onEmployeeConverted }) => {
                     </div>
                     <div className="form-group-builder">
                       <label>Joining Date</label>
-                      <input type="date" name="joiningDate" value={formData.joiningDate} onChange={handleInputChange} />
+                      <input type="date" name="joiningDate" value={formData.joiningDate} onChange={handleInputChange} required />
                     </div>
                   </div>
-                  <div className="row-2">
-                    <div className="form-group-builder">
-                      <label>Annual CTC</label>
-                      <input type="number" name="ctc" value={formData.ctc} onChange={handleInputChange} placeholder="e.g. 96000" />
+                  {/* ── MONTHLY mode ── */}
+                  {salaryFormat === 'Monthly' && !enableProbation && (
+                    <div className="row-2">
+                      <div className="form-group-builder">
+                        <label>Monthly Salary (In-Hand) *</label>
+                        <input type="number" name="monthlySalary" value={formData.monthlySalary} onChange={handleInputChange} placeholder="e.g. 20000" />
+                      </div>
+                      <div className="form-group-builder">
+                        <label>Salary in Words</label>
+                        <input type="text" name="monthlySalaryInWords" value={formData.monthlySalaryInWords} onChange={handleInputChange} placeholder="Auto generated" />
+                      </div>
                     </div>
-                    <div className="form-group-builder">
-                      <label>CTC in Words</label>
-                      <input type="text" name="ctcInWords" value={formData.ctcInWords} onChange={handleInputChange} placeholder="Auto generated or enter manually" />
-                    </div>
-                  </div>
+                  )}
+                  {salaryFormat === 'Monthly' && enableProbation && (
+                    <>
+                      <div className="row-2">
+                        <div className="form-group-builder">
+                          <label>Salary During Probation (Per Month In-Hand) *</label>
+                          <input type="number" name="salaryDuringProbation" value={formData.salaryDuringProbation} onChange={handleInputChange} placeholder="e.g. 15000" />
+                        </div>
+                        <div className="form-group-builder">
+                          <label>In Words (Auto)</label>
+                          <input type="text" name="salaryDuringProbationInWords" value={formData.salaryDuringProbationInWords} onChange={handleInputChange} placeholder="Auto generated" />
+                        </div>
+                      </div>
+                      <div className="row-2">
+                        <div className="form-group-builder">
+                          <label>Salary After Probation (Per Month In-Hand) *</label>
+                          <input type="number" name="salaryAfterProbation" value={formData.salaryAfterProbation} onChange={handleInputChange} placeholder="e.g. 20000" />
+                        </div>
+                        <div className="form-group-builder">
+                          <label>In Words (Auto)</label>
+                          <input type="text" name="salaryAfterProbationInWords" value={formData.salaryAfterProbationInWords} onChange={handleInputChange} placeholder="Auto generated" />
+                        </div>
+                      </div>
+                    </>
+                  )}
+                  {/* ── YEARLY mode ── */}
+                  {salaryFormat !== 'Monthly' && (
+                    <>
+                      <div className="row-2">
+                        <div className="form-group-builder">
+                          <label>Annual Salary (CTC) *</label>
+                          <input type="number" name="ctc" value={formData.ctc} onChange={handleInputChange} placeholder="e.g. 240000" />
+                        </div>
+                        <div className="form-group-builder">
+                          <label>CTC in Words (Auto)</label>
+                          <input type="text" name="ctcInWords" value={formData.ctcInWords} onChange={handleInputChange} placeholder="Auto generated" />
+                        </div>
+                      </div>
+                      <div className="row-2">
+                        <div className="form-group-builder">
+                          <label>Salary During Probation (Per Month In-Hand)</label>
+                          <input type="number" name="salaryDuringProbation" value={formData.salaryDuringProbation} onChange={handleInputChange} placeholder="e.g. 15000" />
+                        </div>
+                        <div className="form-group-builder">
+                          <label>In Words (Auto)</label>
+                          <input type="text" name="salaryDuringProbationInWords" value={formData.salaryDuringProbationInWords} onChange={handleInputChange} placeholder="Auto generated" />
+                        </div>
+                      </div>
+                      <div className="row-2">
+                        <div className="form-group-builder">
+                          <label>Salary After Probation (Per Month In-Hand)</label>
+                          <input type="number" name="salaryAfterProbation" value={formData.salaryAfterProbation} onChange={handleInputChange} placeholder="e.g. 20000" />
+                        </div>
+                        <div className="form-group-builder">
+                          <label>In Words (Auto)</label>
+                          <input type="text" name="salaryAfterProbationInWords" value={formData.salaryAfterProbationInWords} onChange={handleInputChange} placeholder="Auto generated" />
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
 
+                {salaryFormat !== 'Monthly' && (
                 <div className="builder-section">
                   <h3>Salary Breakup</h3>
                   <table className="salary-table">
@@ -500,6 +647,7 @@ const OfferLetter = ({ onEmployeeConverted }) => {
                     </tbody>
                   </table>
                 </div>
+                )}
 
                 <div className="builder-section">
                   <h3>Terms & Conditions</h3>
@@ -536,7 +684,28 @@ const OfferLetter = ({ onEmployeeConverted }) => {
                     <p><strong>Subject : Offer Letter</strong></p>
                     <p>Congratulations!</p>
                     <p>We are pleased to offer you the position of <strong>{formData.designation || '________________'}</strong> with the Company. The effective date of your appointment is agreed as <strong>{formData.joiningDate || 'DD-MM-YYYY'}</strong>.</p>
-                    <p>Your annual compensation (CTC) will be <strong>Rs. {formData.ctc || '___'}</strong> (<strong>{formData.ctcInWords || '_____ only'}</strong>) per annum.</p>
+
+                    {/* ── Monthly, no probation ── */}
+                    {salaryFormat === 'Monthly' && !enableProbation && (
+                      <p>Your monthly in-hand salary will be <strong>Rs. {formData.monthlySalary || '___'}</strong> (<strong>{formData.monthlySalaryInWords || '_____ only'}</strong>) per month.</p>
+                    )}
+
+                    {/* ── Monthly, with probation ── */}
+                    {salaryFormat === 'Monthly' && enableProbation && (
+                      <p>
+                        During the probation period of <strong>{probationMonths} month{Number(probationMonths) !== 1 ? 's' : ''}</strong>, your monthly in-hand salary will be <strong>Rs. {formData.salaryDuringProbation || '___'}</strong> (<strong>{formData.salaryDuringProbationInWords || '_____ only'}</strong>). Upon successful completion of probation, your monthly in-hand salary will be revised to <strong>Rs. {formData.salaryAfterProbation || '___'}</strong> (<strong>{formData.salaryAfterProbationInWords || '_____ only'}</strong>).
+                      </p>
+                    )}
+
+                    {/* ── Yearly (CTC) ── */}
+                    {salaryFormat !== 'Monthly' && (
+                      <p>Your annual compensation (CTC) will be <strong>Rs. {formData.ctc || '___'}</strong> (<strong>{formData.ctcInWords || '_____ only'}</strong>) per annum.</p>
+                    )}
+                    {salaryFormat !== 'Monthly' && (formData.salaryDuringProbation || formData.salaryAfterProbation) && (
+                      <p>
+                        During the probation period of <strong>{probationMonths} month{Number(probationMonths) !== 1 ? 's' : ''}</strong>, your monthly in-hand salary will be <strong>Rs. {formData.salaryDuringProbation || '___'}</strong> (<strong>{formData.salaryDuringProbationInWords || '_____ only'}</strong>). Upon successful completion of probation, your monthly in-hand salary will be revised to <strong>Rs. {formData.salaryAfterProbation || '___'}</strong> (<strong>{formData.salaryAfterProbationInWords || '_____ only'}</strong>).
+                      </p>
+                    )}
                     <p>Your continued employment is contingent upon your satisfactorily meeting the Company's expectations.</p>
                     <p>Your salary structure is provided in Annexure 1.</p>
                     <p>On your first day, please bring the documents as provided in Annexure 2.</p>
@@ -549,11 +718,11 @@ const OfferLetter = ({ onEmployeeConverted }) => {
                   {renderPreviewHeader()}
                   <div className="preview-body">
                     <p>Note that this Letter of Offer is valid for two (2) working days from the date of receipt.</p>
-                    <p>We look forward to you joining Arham IT Solution and to a mutually rewarding working relationship.</p>
+                    <p>We look forward to you joining {branding.company_name} and to a mutually rewarding working relationship.</p>
                     <br /><br />
-                    <p>Stamp</p>
+                    {branding.stamp_url ? <img src={branding.stamp_url} alt="Stamp" style={{ maxWidth: '100px' }} /> : <p>Stamp</p>}
                     <p>Best Regards,</p>
-                    <p>Sharjeel Iqbal,<br />HR and BDE Executive,<br />Arham IT Solution</p>
+                    <p>{branding.hr_name},<br />{branding.hr_designation},<br />{branding.company_name}</p>
                     <br /><br />
                     <p>I agree and accept this Letter of Offer which has been read, understood and accepted by me.</p>
                     <p>Signature : ________<br />Name :- {formData.salutation} {formData.fullName || '________________'}<br />Date : </p>
@@ -562,6 +731,7 @@ const OfferLetter = ({ onEmployeeConverted }) => {
                 </div>
 
                 {/* Page 3 (Annexure 1) */}
+                {companySettings.salary_format !== 'Monthly' && (
                 <div className="preview-page">
                   {renderPreviewHeader()}
                   <div className="preview-body">
@@ -635,12 +805,15 @@ const OfferLetter = ({ onEmployeeConverted }) => {
                     <div style={{ textAlign: 'center', marginTop: '40px', color: '#94a3b8' }}>Page 3 (Annexure 1)</div>
                   </div>
                 </div>
+                )}
 
-                {/* Page 4 (Annexure 2) */}
+                {/* Annexure for Documents */}
                 <div className="preview-page">
                   {renderPreviewHeader()}
                   <div className="preview-body">
-                    <h3 style={{ textAlign: 'center' }}>Annexure 2 - Documents required at the time of joining</h3>
+                    <h3 style={{ textAlign: 'center' }}>
+                      {companySettings.salary_format === 'Monthly' ? 'Annexure 1' : 'Annexure 2'} - Documents required at the time of joining
+                    </h3>
                     <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px', fontSize: '10pt' }}>
                       <thead>
                         <tr>
@@ -662,7 +835,9 @@ const OfferLetter = ({ onEmployeeConverted }) => {
                         <tr><td style={{ border: '1px solid #000', padding: '8px' }}>9.</td><td style={{ border: '1px solid #000', padding: '8px' }}>EPF Details</td><td style={{ border: '1px solid #000', padding: '8px' }}></td><td style={{ border: '1px solid #000', padding: '8px' }}>EPF number</td></tr>
                       </tbody>
                     </table>
-                    <div style={{ textAlign: 'center', marginTop: '40px', color: '#94a3b8' }}>Page 4 (Annexure 2)</div>
+                    <div style={{ textAlign: 'center', marginTop: '40px', color: '#94a3b8' }}>
+                      Page {companySettings.salary_format === 'Monthly' ? '3 (Annexure 1)' : '4 (Annexure 2)'}
+                    </div>
                   </div>
                 </div>
 
@@ -702,7 +877,7 @@ const OfferLetter = ({ onEmployeeConverted }) => {
                     type="text"
                     value={acceptFormData.employee_id}
                     onChange={(e) => setAcceptFormData({ ...acceptFormData, employee_id: e.target.value })}
-                    placeholder="e.g. AITS101"
+                    placeholder="e.g. TEAMB01"
                     required
                   />
                 </div>
@@ -742,6 +917,25 @@ const OfferLetter = ({ onEmployeeConverted }) => {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PDF Preview Modal */}
+      {previewPdfUrl && (
+        <div className="modal-overlay" onClick={() => setPreviewPdfUrl(null)}>
+          <div className="modal-content preview-modal" style={{ width: '80%', maxWidth: '900px', height: '90vh', padding: 0 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header" style={{ padding: '15px 20px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between' }}>
+              <h3 style={{ margin: 0 }}>Offer Letter Preview</h3>
+              <button className="close-btn" style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }} onClick={() => setPreviewPdfUrl(null)}>&times;</button>
+            </div>
+            <div className="modal-body" style={{ height: 'calc(100% - 60px)', padding: 0 }}>
+              <iframe 
+                src={`${previewPdfUrl}#toolbar=0`} 
+                title="Offer Letter Preview" 
+                style={{ width: '100%', height: '100%', border: 'none' }}
+              />
             </div>
           </div>
         </div>

@@ -16,6 +16,7 @@ import {
     FaCalendarPlus,
     FaFileUpload
 } from 'react-icons/fa';
+import { employeeAPI } from '../../../services/employeeAPI';
 import './HolidayManagement.css';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
@@ -94,6 +95,8 @@ const HolidayManagement = () => {
     const [showEditModal, setShowEditModal] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
 
+    const [employees, setEmployees] = useState([]);
+
     // Modal Form States
     const [newHolidayData, setNewHolidayData] = useState({
         name: '',
@@ -101,7 +104,8 @@ const HolidayManagement = () => {
         endDate: '',
         category: 'Gazetted',
         description: '',
-        isRange: false
+        isRange: false,
+        selectedEmployee: 'all'
     });
 
     const [editHolidayData, setEditHolidayData] = useState({
@@ -118,6 +122,20 @@ const HolidayManagement = () => {
     const authHeaders = useMemo(() => ({
         Authorization: `Bearer ${token}`
     }), [token]);
+
+    // Fetch employee list for Local Off specific selection
+    useEffect(() => {
+        const fetchEmployeesList = async () => {
+            try {
+                const res = await employeeAPI.getAll();
+                const empList = res.data?.employees || res.data || [];
+                setEmployees(empList);
+            } catch (err) {
+                console.error('Error loading employees for holiday modal:', err);
+            }
+        };
+        fetchEmployeesList();
+    }, []);
 
     // Save calendar selections to local storage
     useEffect(() => {
@@ -199,7 +217,6 @@ const HolidayManagement = () => {
         // Breakup count
         const breakup = {
             Gazetted: 0,
-            Restricted: 0,
             Company: 0,
             Local: 0
         };
@@ -304,14 +321,23 @@ const HolidayManagement = () => {
     // CRUD Handlers
     const handleAddHoliday = async (e) => {
         e.preventDefault();
-        const { name, date, endDate, category, description, isRange } = newHolidayData;
+        const { name, date, endDate, category, description, isRange, selectedEmployee } = newHolidayData;
 
         if (!name || !date) {
             alert('Holiday Name and Date are required');
             return;
         }
 
-        const compoundDescription = `[${category}] ${description}`.trim();
+        let targetInfo = '';
+        if (category === 'Local') {
+            if (selectedEmployee && selectedEmployee !== 'all') {
+                targetInfo = `(For: ${selectedEmployee}) `;
+            } else {
+                targetInfo = `(For: All Employees) `;
+            }
+        }
+
+        const compoundDescription = `[${category}] ${targetInfo}${description || ''}`.trim();
         const datesToAdd = [];
 
         if (isRange && endDate && endDate > date) {
@@ -631,13 +657,13 @@ const HolidayManagement = () => {
             {
                 'Date (YYYY-MM-DD)': '2026-08-15',
                 'Holiday Name': 'Independence Day',
-                'Category (Gazetted/Restricted/Company/Local)': 'Gazetted',
+                'Category (Gazetted/Company/Local)': 'Gazetted',
                 'Description': 'National Day celebration'
             },
             {
                 'Date (YYYY-MM-DD)': '2026-10-25',
                 'Holiday Name': 'Dussehra',
-                'Category (Gazetted/Restricted/Company/Local)': 'Restricted',
+                'Category (Gazetted/Company/Local)': 'Company',
                 'Description': 'Regional festival'
             }
         ];
@@ -697,7 +723,6 @@ const HolidayManagement = () => {
                     <div className="category-breakdown">
                         {[
                             { key: 'Gazetted',   label: 'Gazetted',   color: '#ef4444', bg: '#fee2e2' },
-                            { key: 'Restricted', label: 'Restricted', color: '#f97316', bg: '#ffedd5' },
                             { key: 'Company',    label: 'Company',    color: '#6366f1', bg: '#e0e7ff' },
                             { key: 'Local',      label: 'Local',      color: '#6b7280', bg: '#f3f4f6' },
                         ].map(({ key, label, color, bg }) => {
@@ -768,7 +793,6 @@ const HolidayManagement = () => {
                                 <select className="holiday-select" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
                                     <option value="All">All Categories</option>
                                     <option value="Gazetted">Gazetted</option>
-                                    <option value="Restricted">Restricted</option>
                                     <option value="Company">Company Holiday</option>
                                     <option value="Local">Local</option>
                                 </select>
@@ -1018,11 +1042,32 @@ const HolidayManagement = () => {
                                         onChange={(e) => setNewHolidayData({ ...newHolidayData, category: e.target.value })}
                                     >
                                         <option value="Gazetted">Gazetted (National)</option>
-                                        <option value="Restricted">Restricted Holiday</option>
                                         <option value="Company">Company Holiday</option>
                                         <option value="Local">Local Off</option>
                                     </select>
                                 </div>
+
+                                {newHolidayData.category === 'Local' && (
+                                    <div className="form-group">
+                                        <label className="form-label">Select Employee</label>
+                                        <select
+                                            className="form-input"
+                                            value={newHolidayData.selectedEmployee || 'all'}
+                                            onChange={(e) => setNewHolidayData({ ...newHolidayData, selectedEmployee: e.target.value })}
+                                        >
+                                            <option value="all">-- All Employees --</option>
+                                            {employees.map(emp => {
+                                                const empName = emp.first_name ? `${emp.first_name} ${emp.last_name || ''}`.trim() : (emp.name || emp.employee_id);
+                                                const empCode = emp.employee_id || emp.id || '';
+                                                return (
+                                                    <option key={emp.id || emp.employee_id || emp.user_id} value={empName}>
+                                                        {empName} {empCode ? `(${empCode})` : ''}
+                                                    </option>
+                                                );
+                                            })}
+                                        </select>
+                                    </div>
+                                )}
                                 <div className="form-group">
                                     <label className="form-label">Description</label>
                                     <textarea
@@ -1083,7 +1128,6 @@ const HolidayManagement = () => {
                                         onChange={(e) => setEditHolidayData({ ...editHolidayData, category: e.target.value })}
                                     >
                                         <option value="Gazetted">Gazetted (National)</option>
-                                        <option value="Restricted">Restricted Holiday</option>
                                         <option value="Company">Company Holiday</option>
                                         <option value="Local">Local Off</option>
                                     </select>

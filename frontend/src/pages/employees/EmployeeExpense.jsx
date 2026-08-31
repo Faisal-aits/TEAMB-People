@@ -290,11 +290,11 @@ const ExpenseTable = () => {
     return (
       <div className="expense-section">
         <div className="expense-header">
-          <h2>Expense Management</h2>
+          <h2>Reimbursement Management</h2>
         </div>
         <div className="loading-container">
           <div className="loading-spinner"></div>
-          <p>Loading expenses...</p>
+          <p>Loading reimbursements...</p>
         </div>
       </div>
     );
@@ -303,19 +303,19 @@ const ExpenseTable = () => {
   return (
     <div className="expense-section">
       <div className="expense-header">
-        <h2>Expense Management</h2>
+        <h2>Reimbursement Management</h2>
         <button 
           className="add-expense-btn"
           onClick={() => setIsModalOpen(true)}
         >
           <span className="btn-icon">+</span>
-          Add New Expense
+          Add Reimbursement
         </button>
       </div>
 
       <div className="expense-table-container glass-form">
         <div className="table-header">
-          <h3>My Expenses</h3>
+          <h3>My Reimbursements</h3>
           <div className="table-actions">
             <select 
               className="filter-btn"
@@ -412,18 +412,18 @@ const ExpenseTable = () => {
         {visibleExpenses.length === 0 && (
           <div className="no-expenses">
             <div className="no-data-icon">💰</div>
-            <p>No expenses found</p>
+            <p>No reimbursements found</p>
             <p className="no-data-subtext">
               {filterPayment !== 'All'
                 ? 'Try changing your filters to see more results.'
-                : 'Get started by submitting your first expense.'}
+                : 'Get started by submitting your first reimbursement.'}
             </p>
             {filterPayment === 'All' && (
               <button
                 onClick={() => setIsModalOpen(true)}
                 className="add-first-btn"
               >
-                Submit First Expense
+                Submit First Reimbursement
               </button>
             )}
           </div>
@@ -434,7 +434,7 @@ const ExpenseTable = () => {
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h2>Submit New Expense</h2>
+              <h2>Submit New Reimbursement</h2>
               <button 
                 className="close-btn"
                 onClick={() => setIsModalOpen(false)}
@@ -528,7 +528,7 @@ const ExpenseTable = () => {
                   className="submit-btn"
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? 'Submitting...' : 'Submit Expense'}
+                  {isSubmitting ? 'Submitting...' : 'Submit Reimbursement'}
                 </button>
               </div>
             </form>

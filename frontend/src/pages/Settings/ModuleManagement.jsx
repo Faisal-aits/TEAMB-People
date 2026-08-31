@@ -20,7 +20,6 @@ const MODULE_GROUPS = [
       'shift_management',
       'salary_management',
       'holiday_management',
-      'ai_document_generator',
       'offer_letters',
       'declarations',
       'resignations',
@@ -40,8 +39,6 @@ const MODULE_GROUPS = [
       'quotation_management',
     ],
   },
-  { title: 'Services', keys: ['services', 'service_management'] },
-  { title: 'Planning & Tasks', keys: ['pttm'] },
   { title: 'Employee Self Service', keys: ['employee_attendance', 'employee_expense', 'employee_projects'] },
 ];
 

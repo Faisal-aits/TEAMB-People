@@ -33,14 +33,11 @@ const Layout = () => {
   return (
     <div className="layout">
       <aside className="sidebar">
-        <div className="sidebar-brand">
-          <div className="brand-icon">
-            <HiShieldCheck />
+        <div className="sidebar-brand" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div style={{ background: '#ffffff', borderRadius: '8px', padding: '6px 12px', display: 'inline-flex', alignItems: 'center', width: 'fit-content' }}>
+            <img src="/logo.png" alt="TEAM B People" style={{ height: '26px', objectFit: 'contain' }} />
           </div>
-          <div className="brand-text">
-            <h2>Work Desk</h2>
-            <span>Super Admin Panel</span>
-          </div>
+          <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '600', letterSpacing: '0.5px' }}>Super Admin Panel</span>
         </div>
 
         <nav className="sidebar-nav">

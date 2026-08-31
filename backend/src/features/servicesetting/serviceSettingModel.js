@@ -164,7 +164,14 @@ const ServiceSetting = {
     });
 
     return ServiceSetting.getSmtpConfig(tenantId);
-  }
+  },
+
+  getSetting,
+  upsertSetting,
+  encryptSecret,
+  decryptSecret,
+  toPublicSmtpConfig,
+  toPrivateSmtpConfig
 };
 
 module.exports = ServiceSetting;

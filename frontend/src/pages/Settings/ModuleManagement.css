@@ -25,9 +25,9 @@
 .mm-refresh-btn,
 .mm-manage-btn,
 .mm-save-btn {
-  background: #6d6ab8;
-  color: #fff;
-  border: none;
+  background: #E6E6FA;
+  border: 1px solid #c7d2fe;
+  color: #000000;
   padding: 8px 16px;
   border-radius: 8px;
   cursor: pointer;
@@ -38,7 +38,8 @@
 .mm-refresh-btn:hover,
 .mm-manage-btn:hover,
 .mm-save-btn:hover {
-  background: #5a57a0;
+  background: #dcdcfe;
+  color: #000000;
 }
 
 .mm-error {

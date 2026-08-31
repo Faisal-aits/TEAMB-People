@@ -20,38 +20,10 @@
   font-weight: 600;
 }
 
-.attendance-add-btn {
-  background: linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%);
-  border: none;
-  color: white;
-  padding: 0.75rem 1.5rem;
-  border-radius: 10px;
-  cursor: pointer;
-  font-family: inherit;
-  font-weight: 600;
-  font-size: 0.9rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(138, 135, 201, 0.3);
-}
-
-.attendance-add-btn:hover {
-  background: linear-gradient(135deg, #7a77b9 0%, #c493c2 33%, #d883b0 66%, #e8c1d8 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(138, 135, 201, 0.4);
-}
-
-.attendance-btn-icon {
-  font-size: 1.1rem;
-}
-
-/* Add this to your existing CSS for the top enroll button */
-.attendance-enroll-top-btn,.attendance-action-btn {
-  background: linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%);
-  border: none;
-  color: white;
+.attendance-add-btn, .attendance-enroll-top-btn, .attendance-action-btn {
+  background: #E6E6FA;
+  border: 1px solid #c7d2fe;
+  color: #000000;
   padding: 0.60rem 1rem;
   border-radius: 10px;
   cursor: pointer;
@@ -62,15 +34,15 @@
   align-items: center;
   gap: 0.5rem;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(138, 135, 201, 0.3);
- 
+  box-shadow: 0 4px 12px rgba(138, 135, 201, 0.15);
 }
 
-
-.attendance-enroll-top-btn:hover,.attendance-action-btn:hover
-{  background: linear-gradient(135deg, #7a77b9 0%, #c493c2 33%, #d883b0 66%, #e8c1d8 100%);
+.attendance-add-btn:hover, .attendance-enroll-top-btn:hover, .attendance-action-btn:hover {
+  background: #dcdcfe;
+  color: #1e1b4b;
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(138, 135, 201, 0.4);}
+  box-shadow: 0 6px 20px rgba(138, 135, 201, 0.25);
+}
 /* Update table header to accommodate the new button */
 .attendance-table-header {
   display: flex;

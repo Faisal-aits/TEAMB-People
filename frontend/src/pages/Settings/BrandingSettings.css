@@ -51,14 +51,17 @@
   min-height: 42px;
   padding: 0 18px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #6d6ab8 0%, #b469b2 55%, #d45a9b 100%);
-  color: #fff;
+  background: #E6E6FA;
+  border: 1px solid #c7d2fe;
+  color: #000000;
   font-weight: 700;
-  box-shadow: 0 10px 24px rgba(109, 106, 184, 0.22);
+  box-shadow: 0 10px 24px rgba(109, 106, 184, 0.15);
 }
 
 .branding-primary-btn:hover:not(:disabled),
 .branding-upload-btn:hover:not(.is-busy) {
+  background: #dcdcfe;
+  color: #000000;
   transform: translateY(-1px);
 }
 
@@ -175,8 +178,10 @@
 
 .branding-tab-panel .quotation-submit-btn {
   border-radius: 8px;
-  background: linear-gradient(135deg, #6d6ab8 0%, #b469b2 55%, #d45a9b 100%);
-  box-shadow: 0 10px 24px rgba(109, 106, 184, 0.18);
+  background: #E6E6FA;
+  border: 1px solid #c7d2fe;
+  color: #000000;
+  box-shadow: 0 10px 24px rgba(109, 106, 184, 0.15);
 }
 
 .branding-stats {

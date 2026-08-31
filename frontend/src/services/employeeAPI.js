@@ -17,6 +17,12 @@ export const employeeAPI = {
   // Get current logged-in employee profile
   getMyProfile: () => api.get('/employees/my-profile'),
 
+  // Update current logged-in employee profile
+  updateMyProfile: (data) => api.put('/employees/my-profile', data),
+
+  // Reset current logged-in employee password
+  resetMyPassword: (data) => api.post('/employees/my-profile/reset-password', data),
+
   // Create new employee
   create: (employeeData) => api.post('/employees', employeeData),
 
@@ -96,3 +102,5 @@ export const employeeAPI = {
   getFaceStatus: (employeeId) => 
     api.get(`/employees/${employeeId}/face-status`),
 };
+
+export default employeeAPI;

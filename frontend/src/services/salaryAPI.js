@@ -5,8 +5,7 @@ const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 const getAuthHeaders = () => {
     const token = localStorage.getItem('token');
     return {
-        Authorization: `Bearer ${token}`,
-        'x-tenant-id': '1'
+        Authorization: `Bearer ${token}`
     };
 };
 
@@ -36,6 +35,20 @@ export const salaryAPI = {
     // Generate salary for single employee
     generateEmployeeSalary: (employeeId, month, year) => {
         return axios.post(`${API_URL}/api/salary/generate/${employeeId}`, { month, year }, {
+            headers: getAuthHeaders()
+        });
+    },
+
+    // Pay salaries for all employees
+    payBulkSalaries: (month, year) => {
+        return axios.post(`${API_URL}/api/salary/pay-bulk`, { month, year }, {
+            headers: getAuthHeaders()
+        });
+    },
+
+    // Pay salary for single employee
+    paySalary: (salaryRecordId) => {
+        return axios.post(`${API_URL}/api/salary/pay/${salaryRecordId}`, {}, {
             headers: getAuthHeaders()
         });
     },
@@ -82,14 +95,19 @@ export const salaryAPI = {
         });
     },
 
+    // Get logged-in user salary slips
+    getMySalarySlips: () => {
+        return axios.get(`${API_URL}/api/salary/my-slips`, {
+            headers: getAuthHeaders()
+        });
+    },
+
     // Get salary slip
     getSalarySlip: (salaryRecordId) => {
         return axios.get(`${API_URL}/api/salary/slip/${salaryRecordId}`, {
-            headers: getAuthHeaders(),
-            responseType: 'blob'
+            headers: getAuthHeaders()
         });
     },
-    
 };
 
 export default salaryAPI;

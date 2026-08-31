@@ -23,6 +23,10 @@ const employeeDetailSelectColumns = `
           ed.employer_pf,
           ed.employer_esic,
           ed.auto_checkout_enabled,
+          ed.salary_during_probation,
+          ed.salary_after_probation,
+          ed.is_on_probation,
+          ed.probation_end_date,
           DATE_FORMAT(ed.joining_date, '%Y-%m-%d') as joining_date,
           DATE_FORMAT(ed.last_working_date, '%Y-%m-%d') as last_working_date,
           DATE_FORMAT(ed.date_of_birth, '%Y-%m-%d') as date_of_birth,
@@ -32,7 +36,11 @@ const employeeDetailSelectColumns = `
           ed.ifsc_code,
           ed.pan_number,
           ed.aadhar_number,
-          ed.status`;
+          ed.status,
+          ed.is_on_probation,
+          DATE_FORMAT(ed.probation_end_date, '%Y-%m-%d') as probation_end_date,
+          ed.salary_after_probation,
+          ed.salary_during_probation`;
 
 const Employee = {
   // Get all employees (tenant-scoped)
@@ -152,8 +160,9 @@ ${employeeDetailSelectColumns},
          salary_gross, salary_pf, salary_esic, salary_professional_tax, salary_lwf,
          salary_total_deduction, salary_net, employer_pf, employer_esic,
          joining_date, last_working_date, date_of_birth, address, emergency_contact,
-         bank_account_number, ifsc_code, pan_number, aadhar_number, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         bank_account_number, ifsc_code, pan_number, aadhar_number, status,
+         is_on_probation, probation_end_date, salary_after_probation, salary_during_probation)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           employeeId,
           tenantId,
@@ -185,7 +194,11 @@ ${employeeDetailSelectColumns},
           employeeData.ifsc_code || null,
           employeeData.pan_number || null,
           employeeData.aadhar_number || null,
-          employeeData.status || 'active'
+          employeeData.status || 'active',
+          employeeData.is_on_probation ? 1 : 0,
+          employeeData.probation_end_date || null,
+          employeeData.salary_after_probation || null,
+          employeeData.salary_during_probation || null
         ]
       );
 
@@ -261,6 +274,27 @@ ${employeeDetailSelectColumns},
     }
   },
 
+  updateBankDetails: async (tenantId, employeeId, updateData) => {
+    try {
+      await pool.execute(
+        `UPDATE employee_details 
+         SET bank_account_number = ?, ifsc_code = ?, pan_number = ?, aadhar_number = ?
+         WHERE id = ? AND tenant_id = ?`,
+        [
+          updateData.bank_account_number || null,
+          updateData.ifsc_code || null,
+          updateData.pan_number || null,
+          updateData.aadhar_number || null,
+          employeeId,
+          tenantId
+        ]
+      );
+    } catch (error) {
+      console.error('Error in Employee.updateBankDetails:', error);
+      throw error;
+    }
+  },
+
   // Update employee
   update: async (tenantId, id, employeeData) => {
     const connection = await pool.getConnection();
@@ -330,7 +364,8 @@ ${employeeDetailSelectColumns},
              salary_pf = ?, salary_esic = ?, salary_professional_tax = ?, salary_lwf = ?,
              salary_total_deduction = ?, salary_net = ?, employer_pf = ?, employer_esic = ?,
              joining_date = ?, last_working_date = ?, date_of_birth = ?, address = ?, emergency_contact = ?,
-             bank_account_number = ?, ifsc_code = ?, pan_number = ?, aadhar_number = ?, status = ?
+             bank_account_number = ?, ifsc_code = ?, pan_number = ?, aadhar_number = ?, status = ?,
+             is_on_probation = ?, probation_end_date = ?, salary_after_probation = ?, salary_during_probation = ?
          WHERE id = ? AND tenant_id = ?`,
         [
           requestedEmployeeId,
@@ -362,6 +397,10 @@ ${employeeDetailSelectColumns},
           employeeData.pan_number || null,
           employeeData.aadhar_number || null,
           employeeData.status || 'active',
+          employeeData.is_on_probation !== undefined ? (employeeData.is_on_probation ? 1 : 0) : 0,
+          employeeData.probation_end_date || null,
+          employeeData.salary_after_probation || null,
+          employeeData.salary_during_probation || null,
           id,
           tenantId
         ]
@@ -561,8 +600,8 @@ ${employeeDetailSelectColumns},
   checkEmployeeIdExists: async (tenantId, employeeId) => {
     try {
       const [rows] = await pool.execute(
-        'SELECT id FROM employee_details WHERE id = ? AND tenant_id = ?',
-        [employeeId, tenantId]
+        'SELECT id FROM employee_details WHERE UPPER(id) = UPPER(?)',
+        [employeeId]
       );
       return rows.length > 0;
     } catch (error) {
@@ -595,8 +634,8 @@ ${employeeDetailSelectColumns},
     try {
       const placeholders = uniqueEmployeeIds.map(() => '?').join(',');
       const [rows] = await pool.execute(
-        `SELECT UPPER(id) as employee_id FROM employee_details WHERE tenant_id = ? AND UPPER(id) IN (${placeholders})`,
-        [tenantId, ...uniqueEmployeeIds]
+        `SELECT UPPER(id) as employee_id FROM employee_details WHERE UPPER(id) IN (${placeholders})`,
+        [...uniqueEmployeeIds]
       );
       return new Set(rows.map((row) => row.employee_id));
     } catch (error) {
@@ -709,7 +748,11 @@ ${employeeDetailSelectColumns},
           employee.ifsc_code || null,
           employee.pan_number || null,
           employee.aadhar_number || null,
-          employee.status || 'active'
+          employee.status || 'active',
+          employee.is_on_probation ? 1 : 0,
+          employee.probation_end_date || null,
+          employee.salary_after_probation || null,
+          employee.salary_during_probation || null
         ];
       });
 
@@ -720,7 +763,8 @@ ${employeeDetailSelectColumns},
           salary_gross, salary_pf, salary_esic, salary_professional_tax, salary_lwf,
           salary_total_deduction, salary_net, employer_pf, employer_esic,
           joining_date, last_working_date, date_of_birth, address, emergency_contact,
-          bank_account_number, ifsc_code, pan_number, aadhar_number, status)
+          bank_account_number, ifsc_code, pan_number, aadhar_number, status,
+          is_on_probation, probation_end_date, salary_after_probation, salary_during_probation)
          VALUES ?`,
         [employeeDetailValues]
       );
@@ -822,6 +866,26 @@ ${employeeDetailSelectColumns},
       return rows;
     } catch (error) {
       console.error('Error in Employee.getAllWithFaceEncodings:', error);
+      throw error;
+    }
+  },
+
+  // Check probation completion
+  checkProbationCompletion: async () => {
+    try {
+      const [rows] = await pool.execute(
+        `SELECT ed.id, ed.employee_id, ed.tenant_id, u.id as user_id, ed.salary_after_probation,
+                ed.is_on_probation, ed.probation_end_date, u.first_name, u.last_name, u.email
+         FROM employee_details ed
+         JOIN users u ON ed.employee_id = u.id
+         WHERE ed.is_on_probation = 1 
+           AND ed.probation_end_date <= CURRENT_DATE
+           AND ed.status = 'active'
+           AND u.is_active = 1`
+      );
+      return rows;
+    } catch (error) {
+      console.error('Error in Employee.checkProbationCompletion:', error);
       throw error;
     }
   }

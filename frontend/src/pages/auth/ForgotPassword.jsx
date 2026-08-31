@@ -49,12 +49,6 @@ const ForgotPassword = () => {
     return (
         <div className="travel-login-container">
             <div className="company-content">
-                <div className="company-text">
-                    <h1 className="company-title">WORK DESK</h1>
-                    <div className="company-quote">
-                        <p className="quote-text">Password Rescue Center</p>
-                    </div>
-                </div>
             </div>
 
             <div className="forms-container">

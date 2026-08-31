@@ -10,7 +10,6 @@ const emptyLeaveType = {
 
 const LeavePolicySettings = () => {
   const [leaveTypes, setLeaveTypes] = useState([]);
-  const [leaveTypeForm, setLeaveTypeForm] = useState(emptyLeaveType);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -19,7 +18,8 @@ const LeavePolicySettings = () => {
     try {
       setLoading(true);
       const response = await leaveAPI.getLeaveTypeSettings();
-      setLeaveTypes(response.data?.leave_types || []);
+      const types = (response.data?.leave_types || []).filter(t => String(t.name || '').trim().toLowerCase() !== 'unpaid');
+      setLeaveTypes(types);
     } catch (error) {
       setMessage({
         type: 'error',
@@ -58,6 +58,7 @@ const LeavePolicySettings = () => {
       setMessage({ type: '', text: '' });
       await leaveAPI.updateLeaveType(type.id, {
         max_days: maxDays,
+        allocation_frequency: type.allocation_frequency || 'Yearly',
         is_paid: Boolean(type.is_paid),
         is_active: Boolean(type.is_active)
       });
@@ -73,38 +74,6 @@ const LeavePolicySettings = () => {
     }
   };
 
-  const createLeaveType = async (event) => {
-    event.preventDefault();
-    const name = leaveTypeForm.name.trim();
-    const maxDays = validateMaxDays(leaveTypeForm.max_days);
-
-    if (!name) {
-      setMessage({ type: 'error', text: 'Leave type name is required.' });
-      return;
-    }
-
-    if (maxDays === null) return;
-
-    try {
-      setSaving(true);
-      setMessage({ type: '', text: '' });
-      await leaveAPI.createLeaveType({
-        name,
-        max_days: maxDays,
-        is_paid: leaveTypeForm.is_paid
-      });
-      setLeaveTypeForm(emptyLeaveType);
-      setMessage({ type: 'success', text: 'Leave type added.' });
-      await loadLeaveTypes();
-    } catch (error) {
-      setMessage({
-        type: 'error',
-        text: error.response?.data?.message || 'Failed to add leave type'
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
 
   return (
     <div className="leave-policy-page app-page">
@@ -121,45 +90,6 @@ const LeavePolicySettings = () => {
         </div>
       )}
 
-      <section className="leave-policy-panel app-card app-card-padded">
-        <h3 className="app-section-title">Add Leave Type</h3>
-        <form className="leave-policy-form app-form" onSubmit={createLeaveType}>
-          <div className="app-form-group">
-            <label>Leave Type *</label>
-            <input
-              value={leaveTypeForm.name}
-              onChange={(event) => setLeaveTypeForm((prev) => ({ ...prev, name: event.target.value }))}
-              placeholder="e.g. Comp Off"
-              maxLength={50}
-              disabled={saving}
-            />
-          </div>
-          <div className="app-form-group">
-            <label>Annual Days *</label>
-            <input
-              type="number"
-              min="0"
-              max="365"
-              value={leaveTypeForm.max_days}
-              onChange={(event) => setLeaveTypeForm((prev) => ({ ...prev, max_days: event.target.value }))}
-              placeholder="12"
-              disabled={saving}
-            />
-          </div>
-          <label className="leave-policy-check">
-            <input
-              type="checkbox"
-              checked={leaveTypeForm.is_paid}
-              onChange={(event) => setLeaveTypeForm((prev) => ({ ...prev, is_paid: event.target.checked }))}
-              disabled={saving}
-            />
-            Paid
-          </label>
-          <button type="submit" className="app-button app-button-primary" disabled={saving}>
-            {saving ? 'Saving...' : 'Add Type'}
-          </button>
-        </form>
-      </section>
 
       <section className="leave-policy-panel app-card">
         <div className="leave-policy-table-header">
@@ -175,9 +105,9 @@ const LeavePolicySettings = () => {
               <thead>
                 <tr>
                   <th>Leave Type</th>
-                  <th>Annual Days</th>
+                  <th>Total Annual Days</th>
+                  <th>Frequency</th>
                   <th>Paid</th>
-                  <th>Active</th>
                   <th>Action</th>
                 </tr>
               </thead>
@@ -198,26 +128,19 @@ const LeavePolicySettings = () => {
                       />
                     </td>
                     <td>
-                      <label className="leave-policy-check">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(type.is_paid)}
-                          onChange={(event) => updateDraftType(type.id, 'is_paid', event.target.checked ? 1 : 0)}
-                          disabled={saving}
-                        />
-                        Paid
-                      </label>
+                      <select
+                        value={type.allocation_frequency || 'Yearly'}
+                        onChange={(event) => updateDraftType(type.id, 'allocation_frequency', event.target.value)}
+                        disabled={saving}
+                      >
+                        <option value="Yearly">Yearly</option>
+                        <option value="Quarterly">Quarterly</option>
+                        <option value="Monthly">Monthly</option>
+                        <option value="None">None</option>
+                      </select>
                     </td>
                     <td>
-                      <label className="leave-policy-check">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(type.is_active)}
-                          onChange={(event) => updateDraftType(type.id, 'is_active', event.target.checked ? 1 : 0)}
-                          disabled={saving}
-                        />
-                        Active
-                      </label>
+                      {Boolean(type.is_paid) ? 'Yes' : 'No'}
                     </td>
                     <td>
                       <button

@@ -240,8 +240,8 @@ getEmployeeHistory: async (tenantId, employeeId) => {
                 CONCAT(a.status, IFNULL(CONCAT(" - ", a.remarks), "")) as description,
                 a.status,
                 DATE_FORMAT(a.created_at, "%Y-%m-%d") as created_date,
-                TIME_FORMAT(a.check_in, "%H:%i") as check_in_time,
-                TIME_FORMAT(a.check_out, "%H:%i") as check_out_time,
+                TIME_FORMAT(a.check_in, "%h:%i %p") as check_in_time,
+                TIME_FORMAT(a.check_out, "%h:%i %p") as check_out_time,
                 a.is_half_day,
                 a.worked_hours,
                 a.remarks,
@@ -825,6 +825,112 @@ getByEmployeeAndDate: async (tenantId, employeeId, date) => {
                 throw error;
             }
         },
+
+        markHalfDay: async (tenantId, { date, employeeId, markAll, reason, adminUserId }) => {
+            const connection = await pool.getConnection();
+            try {
+                await connection.beginTransaction();
+
+                let targetEmployeeIds = [];
+                const isBulkAll = markAll || employeeId === 'all' || !employeeId;
+
+                if (isBulkAll) {
+                    const [attRows] = await connection.execute(
+                        `SELECT DISTINCT a.employee_id 
+                         FROM tb_attendance a
+                         WHERE (a.tenant_id = ? OR a.tenant_id IS NULL) 
+                           AND a.date = ? 
+                           AND LOWER(TRIM(a.status)) NOT IN ('on leave', 'leave', 'absent', 'holiday')`,
+                        [tenantId, date]
+                    );
+
+                    const [leaveRows] = await connection.execute(
+                        `SELECT ed.id AS hr_employee_code, ed.employee_id AS user_id
+                         FROM leave_requests lr
+                         JOIN employee_details ed ON ed.id = lr.employee_id AND ed.tenant_id = lr.tenant_id
+                         WHERE lr.tenant_id = ?
+                           AND LOWER(lr.status) = 'approved'
+                           AND ? BETWEEN lr.start_date AND lr.end_date`,
+                        [tenantId, date]
+                    );
+
+                    const onLeaveKeys = new Set();
+                    leaveRows.forEach((r) => {
+                        if (r.hr_employee_code) onLeaveKeys.add(String(r.hr_employee_code).trim());
+                        if (r.user_id) onLeaveKeys.add(String(r.user_id).trim());
+                    });
+
+                    targetEmployeeIds = attRows
+                        .map((row) => String(row.employee_id).trim())
+                        .filter((empId) => !onLeaveKeys.has(empId));
+                } else {
+                    const [empRows] = await connection.execute(
+                        `SELECT ed.id FROM employee_details ed
+                         WHERE ed.tenant_id = ? AND (ed.id = ? OR ed.employee_id = ?)`,
+                        [tenantId, employeeId, employeeId]
+                    );
+                    if (empRows.length > 0) {
+                        targetEmployeeIds = [empRows[0].id];
+                    } else {
+                        targetEmployeeIds = [employeeId];
+                    }
+                }
+
+                if (targetEmployeeIds.length === 0) {
+                    await connection.rollback();
+                    return { count: 0, message: isBulkAll ? 'No present/checked-in employees found for selected date' : 'Employee not found' };
+                }
+
+                let approverEmpId = null;
+                if (adminUserId) {
+                    const [appRows] = await connection.execute(
+                        `SELECT id FROM employee_details WHERE tenant_id = ? AND (id = ? OR employee_id = ? OR employee_id = (SELECT CAST(id AS CHAR) FROM users WHERE id = ?))`,
+                        [tenantId, adminUserId, adminUserId, adminUserId]
+                    );
+                    if (appRows.length > 0) {
+                        approverEmpId = appRows[0].id;
+                    }
+                }
+
+                let updatedCount = 0;
+                const remarks = reason || 'Marked Half Day by Admin';
+
+                for (const empId of targetEmployeeIds) {
+                    const [existing] = await connection.execute(
+                        `SELECT attendance_id FROM tb_attendance WHERE (tenant_id = ? OR tenant_id IS NULL) AND employee_id = ? AND date = ?`,
+                        [tenantId, empId, date]
+                    );
+
+                    if (existing.length > 0) {
+                        await connection.execute(
+                            `UPDATE tb_attendance 
+                             SET status = 'Half Day', is_half_day = 1, remarks = COALESCE(?, remarks), approved_by = ?, updated_at = NOW()
+                             WHERE attendance_id = ?`,
+                            [remarks, approverEmpId, existing[0].attendance_id]
+                        );
+                        updatedCount++;
+                    } else if (!isBulkAll) {
+                        const shift = await getEmployeeShiftForDateHelper(connection, tenantId, empId, date);
+                        const shiftId = shift ? shift.shift_id : 1;
+
+                        await connection.execute(
+                            `INSERT INTO tb_attendance (tenant_id, employee_id, shift_id, date, status, is_half_day, remarks, approved_by, created_at, updated_at)
+                             VALUES (?, ?, ?, ?, 'Half Day', 1, ?, ?, NOW(), NOW())`,
+                            [tenantId, empId, shiftId, date, remarks, approverEmpId]
+                        );
+                        updatedCount++;
+                    }
+                }
+
+                await connection.commit();
+                return { count: updatedCount, message: `Successfully marked Half Day for ${updatedCount} employee(s)` };
+            } catch (error) {
+                await connection.rollback();
+                throw error;
+            } finally {
+                connection.release();
+            }
+        }
     };
 
     module.exports = Attendance;

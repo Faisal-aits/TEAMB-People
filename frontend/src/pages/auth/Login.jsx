@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import worklyFullLogo from '../../assets/img/workly-full-logo.png';
 import './Login.css';
 
 const Login = () => {
@@ -96,12 +97,6 @@ const Login = () => {
     <div className="travel-login-container">
       {/* Left Side - Company Content */}
       <div className="company-content">
-        <div className="company-text">
-          <h1 className="company-title">WORK DESK</h1>
-          <div className="company-quote">
-            <p className="quote-text">Multi-Tenant Workforce Management</p>
-          </div>
-        </div>
       </div>
 
       {/* Right Side - Forms */}

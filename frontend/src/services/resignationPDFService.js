@@ -1,7 +1,5 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import fallbackLogo from '../assets/img/company.png';
-import fallbackStamp from '../assets/img/stamp.png';
 import { brandingAPI } from './brandingAPI';
 
 export const resignationPDFService = {
@@ -28,8 +26,8 @@ export const resignationPDFService = {
           designation: branding.hr_designation || "HR Designation",
           signature: branding.signature_url ? brandingAPI.getImageUrl(branding.signature_url) : null
         },
-        logo: branding.logo_url ? brandingAPI.getImageUrl(branding.logo_url) : fallbackLogo,
-        stamp: branding.stamp_url ? brandingAPI.getImageUrl(branding.stamp_url) : fallbackStamp
+        logo: branding.logo_url ? brandingAPI.getImageUrl(branding.logo_url) : null,
+        stamp: branding.stamp_url ? brandingAPI.getImageUrl(branding.stamp_url) : null
       };
 
       const htmlContent = generateLetterHTML(fullData);

@@ -328,19 +328,19 @@
 
 .leave-submit-btn {
   padding: 0.6rem 1.25rem;
-  background: rgba(72, 187, 120, 0.2);
-  color: #2f855a;
-  border: none;
+  background: #E6E6FA;
+  border: 1px solid #c7d2fe;
+  color: #000000;
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.85rem;
-  font-weight: 500;
+  font-weight: 600;
   transition: all 0.3s ease;
 }
 
 .leave-submit-btn:hover {
-  background: #2f855a;
-  color: white;
+  background: #dcdcfe;
+  color: #000000;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(138, 135, 201, 0.3);
 }

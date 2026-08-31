@@ -28,15 +28,16 @@ const ticketController = {
       
       // Handle optional file attachment upload
       if (req.file) {
-        const ext = path.extname(req.file.originalname).toLowerCase();
-        const fileName = `ticket_${Date.now()}_${req.user.id}${ext}`;
+        const { saveCompressedFile } = require('../../utils/fileCompressor');
         const uploadDir = path.join(__dirname, '../../../uploads/ticket-attachments');
-        if (!fs.existsSync(uploadDir)) {
-          fs.mkdirSync(uploadDir, { recursive: true });
-        }
-        const filePath = path.join(uploadDir, fileName);
-        fs.writeFileSync(filePath, req.file.buffer);
-        payload.attachment_url = `uploads/ticket-attachments/${fileName}`;
+        const saved = await saveCompressedFile({
+          buffer: req.file.buffer,
+          originalname: req.file.originalname,
+          mimetype: req.file.mimetype,
+          destinationDir: uploadDir,
+          filenamePrefix: `ticket_${req.user.id}`
+        });
+        payload.attachment_url = `uploads/ticket-attachments/${saved.filename}`;
       }
 
       const ticketId = await ticketService.createTicket(req.tenantId, req.user.id, payload);

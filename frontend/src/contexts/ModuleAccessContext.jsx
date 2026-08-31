@@ -29,12 +29,15 @@ export const TAB_TO_MODULE = {
   expenses: 'expense_management',
   billingsettings: 'billing_settings',
   quotation: 'quotation_management',
-  service: 'service_management',
-  pttm: 'pttm',
   'employee-attendance': 'employee_attendance',
+  'employee-break': 'employee_attendance',
   'employee-leave': 'employee_attendance',
   'employee-expense': 'employee_expense',
   'employee-projects': 'employee_projects',
+  'employee-regularization': 'employee_attendance',
+  'employee-report': 'employee_attendance',
+  'regularization': 'attendance_management',
+  'reports': 'hr_dashboard', // No specific reports permission yet, using hr_dashboard or null
 };
 
 export const MODULE_DEFAULT_TAB = {
@@ -59,10 +62,8 @@ export const MODULE_DEFAULT_TAB = {
   expense_management: 'expenses',
   billing_settings: 'billingsettings',
   quotation_management: 'quotation',
-  services: 'service',
-  service_management: 'service',
-  pttm: 'pttm',
   employee_attendance: 'employee-attendance',
+  employee_break: 'employee-break',
   employee_expense: 'employee-expense',
   employee_projects: 'employee-projects',
 };

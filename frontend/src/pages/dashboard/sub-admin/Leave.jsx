@@ -13,6 +13,7 @@ const LeaveManagement = () => {
   
   const [formData, setFormData] = useState({
     description: '',
+    duration_type: 'single',
     start_date: '',
     end_date: '',
   });
@@ -130,12 +131,15 @@ const LeaveManagement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.description || !formData.start_date || !formData.end_date) {
+    const isSingle = formData.duration_type === 'single';
+    const effectiveEndDate = isSingle ? formData.start_date : formData.end_date;
+    
+    if (!formData.description || !formData.start_date || !effectiveEndDate) {
       alert('Please fill in all required fields');
       return;
     }
 
-    if (new Date(formData.start_date) > new Date(formData.end_date)) {
+    if (new Date(formData.start_date) > new Date(effectiveEndDate)) {
       alert('End date cannot be before start date');
       return;
     }
@@ -151,7 +155,7 @@ const LeaveManagement = () => {
       const leaveData = {
         description: formData.description,
         start_date: formData.start_date,
-        end_date: formData.end_date
+        end_date: effectiveEndDate
       };
 
     
@@ -162,6 +166,7 @@ const LeaveManagement = () => {
       // Reset form
       setFormData({
         description: '',
+        duration_type: 'single',
         start_date: '',
         end_date: '',
       });
@@ -419,7 +424,33 @@ const LeaveManagement = () => {
               </div>
 
               <div className="leave-form-group">
-                <label htmlFor="leave-from-date" className="leave-form-label">From Date *</label>
+                <label className="leave-form-label">Duration Type</label>
+                <div className="leave-duration-options" style={{ display: 'flex', gap: '20px', marginTop: '10px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="duration_type"
+                      value="single"
+                      checked={formData.duration_type === 'single'}
+                      onChange={handleInputChange}
+                    />
+                    Single Day
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="duration_type"
+                      value="multiple"
+                      checked={formData.duration_type === 'multiple'}
+                      onChange={handleInputChange}
+                    />
+                    Multiple Days
+                  </label>
+                </div>
+              </div>
+
+              <div className="leave-form-group">
+                <label htmlFor="leave-from-date" className="leave-form-label">{formData.duration_type === 'single' ? 'Date *' : 'From Date *'}</label>
                 <input
                   id="leave-from-date"
                   type="date"
@@ -432,26 +463,29 @@ const LeaveManagement = () => {
                 />
               </div>
 
-              <div className="leave-form-group">
-                <label htmlFor="leave-to-date" className="leave-form-label">To Date *</label>
-                <input
-                  id="leave-to-date"
-                  type="date"
-                  name="end_date"
-                  value={formData.end_date}
-                  onChange={handleInputChange}
-                  required
-                  className="leave-form-input"
-                  min={formData.start_date || new Date().toISOString().split('T')[0]}
-                />
-              </div>
+              {formData.duration_type === 'multiple' && (
+                <div className="leave-form-group">
+                  <label htmlFor="leave-to-date" className="leave-form-label">To Date *</label>
+                  <input
+                    id="leave-to-date"
+                    type="date"
+                    name="end_date"
+                    value={formData.end_date}
+                    onChange={handleInputChange}
+                    required
+                    className="leave-form-input"
+                    min={formData.start_date || new Date().toISOString().split('T')[0]}
+                  />
+                </div>
+              )}
 
-              {formData.start_date && formData.end_date && (
+              {formData.start_date && (formData.duration_type === 'single' || formData.end_date) && (
                 <div className="leave-form-group">
                   <label className="leave-form-label">Total Days</label>
                   <input
                     type="text"
                     value={(() => {
+                      if (formData.duration_type === 'single') return '1 day(s)';
                       const start = new Date(formData.start_date);
                       const end = new Date(formData.end_date);
                       const diffTime = Math.abs(end - start);

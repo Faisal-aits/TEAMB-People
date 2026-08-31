@@ -190,13 +190,17 @@
     transition: var(--transition);
 }
 
+.holiday-container .btn-primary,
 .btn-primary {
-    background: var(--primary-color);
-    color: white;
+    background: #E6E6FA !important;
+    border: 1px solid #c7d2fe !important;
+    color: #000000 !important;
 }
 
+.holiday-container .btn-primary:hover,
 .btn-primary:hover {
-    background: var(--primary-hover);
+    background: #dcdcfe !important;
+    color: #000000 !important;
 }
 
 .btn-secondary {

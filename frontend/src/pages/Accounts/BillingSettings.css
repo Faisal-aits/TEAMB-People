@@ -298,20 +298,22 @@
   width: 100%;
   min-height: 42px;
   padding: 0 16px;
-  border: none;
+  border: 1px solid #c7d2fe;
   border-radius: 8px;
-  background: linear-gradient(135deg, #6d6ab8 0%, #b469b2 55%, #d45a9b 100%);
-  color: #fff;
+  background: #E6E6FA;
+  color: #000000;
   cursor: pointer;
   font: inherit;
   font-weight: 800;
-  box-shadow: 0 10px 24px rgba(109, 106, 184, 0.18);
+  box-shadow: 0 10px 24px rgba(109, 106, 184, 0.15);
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
 .billing-settings-actions button:hover:not(:disabled) {
+  background: #dcdcfe;
+  color: #000000;
   transform: translateY(-1px);
-  box-shadow: 0 12px 28px rgba(109, 106, 184, 0.22);
+  box-shadow: 0 12px 28px rgba(109, 106, 184, 0.2);
 }
 
 .billing-settings-actions button:disabled {

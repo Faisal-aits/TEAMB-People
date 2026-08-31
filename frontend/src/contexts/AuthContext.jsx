@@ -19,13 +19,33 @@ export const AuthProvider = ({ children }) => {
 
   const isAdmin = user?.position === 'admin';
 
+  const setAuthCookie = (name, value, hours = 24) => {
+    const expires = new Date(Date.now() + hours * 60 * 60 * 1000).toUTCString();
+    document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
+  };
+
+  const getAuthCookie = (name) => {
+    const matches = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + '=([^;]*)'));
+    return matches ? decodeURIComponent(matches[1]) : null;
+  };
+
+  const eraseAuthCookie = (name) => {
+    document.cookie = `${name}=; Max-Age=-99999999; path=/; SameSite=Lax`;
+  };
+
   const isTokenExpired = (token) => {
     if (!token) return true;
     try {
       const base64Url = token.split('.')[1];
       const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
       const payload = JSON.parse(atob(base64));
-      return payload.exp * 1000 < Date.now();
+      const isJwtExpired = payload.exp * 1000 < Date.now();
+
+      const loginTime = localStorage.getItem('login_time');
+      const is24hPassed = loginTime ? (Date.now() - Number(loginTime) > 24 * 60 * 60 * 1000) : false;
+      const cookieExists = Boolean(getAuthCookie('auth_token'));
+
+      return isJwtExpired || is24hPassed || !cookieExists;
     } catch {
       return true;
     }
@@ -76,6 +96,8 @@ export const AuthProvider = ({ children }) => {
 
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('login_time', Date.now().toString());
+      setAuthCookie('auth_token', token, 24);
 
       setUser(userData);
       setIsAuthenticated(true);
@@ -90,6 +112,8 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('login_time');
+    eraseAuthCookie('auth_token');
     setUser(null);
     setIsAuthenticated(false);
     window.location.href = '/login';

@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { pool } = require('../../config/db');
 const Employee = require('./employeeModel');
+const Settings = require('../settings/settingsModel');
 const { sendEmployeeCredentials, sendOfferLetter } = require('../../services/mailService');
 
 let offerLetterSchemaReady;
@@ -152,7 +153,8 @@ const offerLetterController = {
         await sendOfferLetter(req.tenantId, {
           candidateName,
           candidateEmail,
-          formData: normalizedFormData
+          formData: normalizedFormData,
+          pdfBase64: req.body.pdf_base64
         });
 
         if (offerId) {
@@ -283,13 +285,18 @@ const offerLetterController = {
       }
 
       const [existingEmail] = await pool.execute('SELECT id FROM users WHERE email = ?', [email]);
+      const employeeIdExists = await Employee.checkEmployeeIdExists(req.tenantId, new_employee_id);
+
+      const validationErrors = [];
+      if (employeeIdExists) {
+        validationErrors.push('Employee ID already exists');
+      }
       if (existingEmail.length > 0) {
-        return res.status(400).json({ message: 'Email already exists' });
+        validationErrors.push('Email already exists');
       }
 
-      const employeeIdExists = await Employee.checkEmployeeIdExists(req.tenantId, new_employee_id);
-      if (employeeIdExists) {
-        return res.status(400).json({ message: 'Employee ID already exists' });
+      if (validationErrors.length > 0) {
+        return res.status(400).json({ message: validationErrors.join(' and ') });
       }
 
       const candidateName = offer.candidate_name || formData.fullName || formData.employeeName || 'Candidate';
@@ -319,6 +326,23 @@ const offerLetterController = {
         is_active: true,
         status: 'active'
       };
+
+      const salaryDuringProbation = getMoney(formData, 'salaryDuringProbation');
+      const salaryAfterProbation = getMoney(formData, 'salaryAfterProbation');
+      
+      if (salaryDuringProbation) {
+        employeeData.salary_during_probation = salaryDuringProbation;
+        employeeData.salary_after_probation = salaryAfterProbation || employeeData.salary;
+        employeeData.is_on_probation = true;
+
+        if (employeeData.joining_date) {
+          const probationMonthsStr = await Settings.get(req.tenantId, 'probation_months');
+          const probationMonths = parseInt(probationMonthsStr, 10) || 4;
+          const joiningDateObj = new Date(employeeData.joining_date);
+          joiningDateObj.setMonth(joiningDateObj.getMonth() + probationMonths);
+          employeeData.probation_end_date = joiningDateObj.toISOString().split('T')[0];
+        }
+      }
 
       const result = await Employee.create(req.tenantId, employeeData);
 

@@ -1,8 +1,7 @@
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
-import fallbackLogo from '../assets/img/company.png';
-import fallbackStamp from '../assets/img/stamp.png';
 import { brandingAPI } from './brandingAPI';
+import api from './api';
 
 export const incrementPDFService = {
   generatePDFBlob: async (pdfData) => {
@@ -10,22 +9,29 @@ export const incrementPDFService = {
     
     try {
       let branding = {};
+      let salaryFormat = 'Monthly';
       try {
         const res = await brandingAPI.get();
         if (res.data?.success && res.data?.branding) {
           branding = res.data.branding;
         }
+        
+        const settingsRes = await api.get('/settings/salary_format');
+        if (settingsRes.data?.value) {
+          salaryFormat = settingsRes.data.value;
+        }
       } catch (err) { 
-        console.warn("Failed to load branding, using defaults", err); 
+        console.warn("Failed to load branding/settings, using defaults", err); 
       }
       
       const fullData = {
         ...pdfData,
         company: {
-          name: branding.company_name || "Arham IT Solution",
-          address: branding.company_address || "Ahmednagar, Maharashtra, 414001",
-          email: branding.company_email || "info@arhamit.com",
-          website: branding.company_website || "www.arhamit.com",
+          name: branding.company_name || "",
+          address: branding.company_address ? branding.company_address.replace(/\n/g, '<br />') : "",
+          salary_format: salaryFormat,
+          email: branding.company_email || "",
+          website: branding.company_website || "",
           phone: "+918580788923"
         },
         hr: {
@@ -33,8 +39,8 @@ export const incrementPDFService = {
           designation: branding.hr_designation || "Founder & CEO",
           signature: branding.signature_url ? brandingAPI.getImageUrl(branding.signature_url) : null
         },
-        logo: branding.logo_url ? brandingAPI.getImageUrl(branding.logo_url) : fallbackLogo,
-        stamp: branding.stamp_url ? brandingAPI.getImageUrl(branding.stamp_url) : fallbackStamp
+        logo: branding.logo_url ? brandingAPI.getImageUrl(branding.logo_url) : null,
+        stamp: branding.stamp_url ? brandingAPI.getImageUrl(branding.stamp_url) : null
       };
 
       const pdf = new jsPDF({
@@ -44,28 +50,26 @@ export const incrementPDFService = {
       });
       
       // Generate HTML for both pages
-      const page1HTML = generatePage1HTML(fullData);
-      const page2HTML = generatePage2HTML(fullData);
+      const pages = [generatePage1HTML(fullData)];
       
-      // Render Page 1
-      console.log('Rendering Page 1...');
-      const page1Canvas = await renderHTMLToCanvas(page1HTML);
-      const imgWidth = 210;
-      const imgHeight1 = (page1Canvas.height * imgWidth) / page1Canvas.width;
-      pdf.addImage(page1Canvas.toDataURL('image/jpeg', 1.0), 'JPEG', 0, 0, imgWidth, imgHeight1);
+      if (salaryFormat !== 'Monthly') {
+        pages.push(generatePage2HTML(fullData));
+      }
       
-      // Add Page 2
-      console.log('Adding Page 2...');
-      pdf.addPage();
-      
-      // Render Page 2
-      console.log('Rendering Page 2...');
-      const page2Canvas = await renderHTMLToCanvas(page2HTML);
-      const imgHeight2 = (page2Canvas.height * imgWidth) / page2Canvas.width;
-      pdf.addImage(page2Canvas.toDataURL('image/jpeg', 1.0), 'JPEG', 0, 0, imgWidth, imgHeight2);
+      for (let i = 0; i < pages.length; i++) {
+        console.log(`Rendering Page ${i + 1}...`);
+        const pageCanvas = await renderHTMLToCanvas(pages[i]);
+        const imgWidth = 210;
+        const imgHeight = (pageCanvas.height * imgWidth) / pageCanvas.width;
+        
+        if (i > 0) {
+          pdf.addPage();
+        }
+        pdf.addImage(pageCanvas.toDataURL('image/jpeg', 1.0), 'JPEG', 0, 0, imgWidth, imgHeight);
+      }
       
       const pdfBlob = pdf.output('blob');
-      console.log('PDF generated with 2 pages, Page 1 height:', imgHeight1, 'Page 2 height:', imgHeight2);
+      console.log(`PDF generated with ${pages.length} pages`);
       return pdfBlob;
       
     } catch (error) {
@@ -222,7 +226,7 @@ const generatePage1HTML = ({
   const formattedIssueDate = formatDateWithOrdinal(dateOfIssue);
   const formattedEffectiveDate = formatDateWithOrdinal(effectiveDate);
   
-  const companyName = company?.name || "Arham IT Solution";
+  const companyName = company?.name || "";
   const companyAddress = company?.address || "Ahmednagar, Maharashtra, 414001";
   const companyPhone = company?.phone || "+918580788923";
   const hrName = hr?.name || "Imran Shaikh";
@@ -294,7 +298,7 @@ const generatePage1HTML = ({
         
         <div class="content">
           <p>${finalPerformanceNote}</p>
-          <p>Effective from <strong>${formattedEffectiveDate}</strong>, your revised annual CTC will be <strong>${safeCurrency} ${safeRevisedCtc.toLocaleString()}</strong>.</p>
+          <p>Effective from <strong>${formattedEffectiveDate}</strong>, your revised ${company?.salary_format === 'Monthly' ? 'monthly salary' : 'annual CTC'} will be <strong>${safeCurrency} ${safeRevisedCtc.toLocaleString()}</strong>.</p>
           <p>We appreciate your efforts and hard work and hope the same will continue in the future as well.</p>
         </div>
         
@@ -321,7 +325,7 @@ const generatePage2HTML = ({ revisedCtc, currency, company }) => {
   const safeRevisedCtc = Number(revisedCtc) || 540000;
   const comp = calculateCompensationStructure(safeRevisedCtc);
   
-  const companyName = company?.name || "Arham IT Solution";
+  const companyName = company?.name || "";
   const companyAddress = company?.address || "Ahmednagar, Maharashtra, 414001";
   const companyPhone = company?.phone || "+918580788923";
   

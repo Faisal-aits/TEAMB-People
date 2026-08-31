@@ -196,10 +196,9 @@ const LeaveManagement = () => {
   const [selectedLeaveId, setSelectedLeaveId] = React.useState(null);
   const [selectedCategory, setSelectedCategory] = React.useState('');
 
-  const handleOpenApproveModal = (leaveId) => {
+  const handleOpenApproveModal = (leaveId, defaultCategory = '') => {
     setSelectedLeaveId(leaveId);
-    // Reset category selection when opening modal
-    setSelectedCategory('');
+    setSelectedCategory(defaultCategory);
     setIsApproveModalOpen(true);
   };
 
@@ -217,12 +216,9 @@ const LeaveManagement = () => {
   };
 
   // Replace quick approve usage
-  const handleQuickApprove = async (leaveId, e) => {
+  const handleQuickApprove = (leave, e) => {
     e.stopPropagation();
-    if (window.confirm('Are you sure you want to approve this leave request?')) {
-      // Open modal for category selection
-      handleOpenApproveModal(leaveId);
-    }
+    handleOpenApproveModal(leave.leave_id, leave.leave_type || '');
   };
 
   const handleQuickReject = (leave, e) => {
@@ -470,7 +466,7 @@ const LeaveManagement = () => {
                         {leave.status === 'Pending' && (
                           <>
                             <button
-                              onClick={(e) => handleQuickApprove(leave.leave_id, e)}
+                              onClick={(e) => handleQuickApprove(leave, e)}
                               className="leave-action-btn leave-approve-btn quick-action"
                               title="Approve Leave"
                             >
@@ -510,11 +506,23 @@ const LeaveManagement = () => {
                           ) : (
                             (() => {
                               const balances = employeeBalances[leave.employee_id] || [];
-                              const totalUsed = balances.reduce((sum, bal) => sum + (bal.used || 0), 0);
-                              const limitExceeded = totalUsed > 2;
+                              const relevantBalances = balances.filter(b => b.leave_type === 'PL' || b.leave_type === 'SPL' || b.leave_type === 'PSL');
+                              
+                              if (relevantBalances.length === 0) {
+                                return <div className="monthly-limit-note monthly-limit-ok">• No leave balances found for this year.</div>;
+                              }
+
                               return (
-                                <div className={limitExceeded ? "monthly-limit-note monthly-limit-exceeded" : "monthly-limit-note monthly-limit-ok"}>
-                                  Monthly leave limit (2 days): {limitExceeded ? `Exceeded (${totalUsed} days used)` : `Within limit (${totalUsed} days used)`}
+                                <div className="leave-balances-list">
+                                  {relevantBalances.map(b => {
+                                    const remaining = Math.max(0, b.allocated - b.used);
+                                    const isExceeded = remaining === 0;
+                                    return (
+                                      <div key={b.leave_type} className={isExceeded ? "monthly-limit-note monthly-limit-exceeded" : "monthly-limit-note monthly-limit-ok"} style={{ marginBottom: '4px' }}>
+                                        • {b.leave_type} Limit ({b.allocated} days): {isExceeded ? `Limit reached (${b.used} days used)` : `Within limit (${b.used} days used, ${remaining} remaining)`}
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               );
                             })()
@@ -569,7 +577,7 @@ const LeaveManagement = () => {
                 <button
                   type="button"
                   onClick={() => handleRejectLeave(selectedEmployee.leave_id)}
-                  className="leave-reject-btn"
+                  className="leave-modal-red-btn"
                 >
                   Reject Leave
                 </button>
@@ -606,7 +614,7 @@ const LeaveManagement = () => {
                 <button
                   type="button"
                   onClick={() => handleDeleteLeave(selectedEmployee.leave_id)}
-                  className="leave-delete-btn"
+                  className="leave-modal-red-btn"
                 >
                   Delete Leave
                 </button>

@@ -126,13 +126,86 @@ const Salary = {
         const startDate = new Date(year, month - 1, 1);
         const daysInMonth = getDaysInMonth(year, month);
         const endDate = new Date(year, month - 1, daysInMonth);
-        const monthlySalary = Math.round((parseFloat(annualSalary) || 0) / 12);
+        
+        const [settingsRows] = await pool.execute(
+            'SELECT setting_value FROM company_settings WHERE tenant_id = ? AND setting_key = ?',
+            [tenantId, 'salary_format']
+        );
+        const salaryFormat = settingsRows.length > 0 ? settingsRows[0].setting_value : 'Monthly';
+        
+        // Fetch employee probation status
+        const [empRows] = await pool.execute(
+            'SELECT is_on_probation, probation_end_date, salary_during_probation, salary_after_probation, salary FROM employee_details WHERE id = ? AND tenant_id = ?',
+            [employeeDetailId, tenantId]
+        );
+        
+        let monthlySalary = parseFloat(annualSalary) || 0;
+        
+        if (empRows.length > 0) {
+            const emp = empRows[0];
+            if (emp.is_on_probation && emp.probation_end_date) {
+                const probationEndDate = new Date(emp.probation_end_date);
+                const salaryDuring = parseFloat(emp.salary_during_probation) || 0;
+                const salaryAfter = parseFloat(emp.salary_after_probation) || parseFloat(emp.salary) || 0;
+                
+                let mDuring = salaryFormat === 'Monthly' ? salaryDuring : salaryDuring / 12;
+                let mAfter = salaryFormat === 'Monthly' ? salaryAfter : salaryAfter / 12;
+
+                if (endDate <= probationEndDate) {
+                    // Entire month is during probation
+                    monthlySalary = mDuring;
+                } else if (startDate > probationEndDate) {
+                    // Entire month is after probation
+                    monthlySalary = mAfter;
+                } else {
+                    // Transition month - Standard 30-day denominator base
+                    const probationDaysInMonth = probationEndDate.getDate();
+                    const postProbationDays = Math.max(0, 30 - probationDaysInMonth);
+                    monthlySalary = ((mDuring / 30) * probationDaysInMonth) + ((mAfter / 30) * postProbationDays);
+                }
+            } else {
+                if (salaryFormat !== 'Monthly') {
+                    monthlySalary = monthlySalary / 12;
+                }
+            }
+        } else {
+            if (salaryFormat !== 'Monthly') {
+                monthlySalary = monthlySalary / 12;
+            }
+        }
+        
+        monthlySalary = Math.round(monthlySalary);
 
         const holidays = await Salary.getHolidays(tenantId, month, year);
         const holidayDates = new Set(holidays.map((holiday) => formatDate(holiday.date)));
         const attendanceRecords = await Salary.getAttendanceForSalary(tenantId, employeeDetailId, month, year);
         const approvedLeaveDates = await Salary.getApprovedLeaveDates(tenantId, employeeDetailId, month, year);
         const leaveByDate = new Map(approvedLeaveDates.map((leaveDate) => [leaveDate.date, leaveDate]));
+
+        // Fetch employee probation info
+        const [empData] = await pool.execute(
+            'SELECT joining_date, is_on_probation, probation_end_date, salary_after_probation, salary_during_probation FROM employee_details WHERE id = ? AND tenant_id = ?',
+            [employeeDetailId, tenantId]
+        );
+
+        let probEndDateObj = null;
+        let isProbationEndMonth = false;
+        let probMonthly = 0;
+        let postProbMonthly = 0;
+
+        if (empData.length > 0) {
+            const emp = empData[0];
+            if (emp.probation_end_date) {
+                probEndDateObj = new Date(emp.probation_end_date);
+                isProbationEndMonth = (probEndDateObj.getMonth() + 1 === month) && (probEndDateObj.getFullYear() === year);
+                probMonthly = parseFloat(emp.salary_during_probation) || 0;
+                postProbMonthly = parseFloat(emp.salary_after_probation) || parseFloat(annualSalary) || 0;
+                if (salaryFormat !== 'Monthly') {
+                    probMonthly = Math.round(probMonthly / 12);
+                    postProbMonthly = Math.round(postProbMonthly / 12);
+                }
+            }
+        }
 
         let presentDays = 0;
         let halfDays = 0;
@@ -144,6 +217,8 @@ const Salary = {
         let weeklyOffDays = 0;
         let paidDays = 0;
         let deductionDays = 0;
+        let probationDeductionDays = 0;
+        let postProbationDeductionDays = 0;
         let attendanceDeductions = 0;
         const dailyBreakdown = [];
 
@@ -225,12 +300,20 @@ const Salary = {
                     deductionDays += 1;
                 }
 
-                if (attendance.should_deduct_salary) {
+                if (attendance.should_deduct_salary && attStatus !== 'delayed' && attStatus !== 'late') {
                     attendanceDeductions += parseFloat(attendance.deduction_amount) || 0;
                 }
             } else {
                 absentDays++;
                 deductionDays += 1;
+            }
+
+            if (deductionValue > 0) {
+                if (isProbationEndMonth && probEndDateObj && currentDate <= probEndDateObj) {
+                    probationDeductionDays += deductionValue;
+                } else {
+                    postProbationDeductionDays += deductionValue;
+                }
             }
 
             dailyBreakdown.push({
@@ -252,24 +335,68 @@ const Salary = {
         if (attendanceRecords.length === 0 && leaveByDate.size === 0) {
             paidDays = 0;
             deductionDays = daysInMonth;
+            if (isProbationEndMonth && probEndDateObj) {
+                const probationDays = probEndDateObj.getDate();
+                probationDeductionDays = probationDays;
+                postProbationDeductionDays = daysInMonth - probationDays;
+            } else {
+                postProbationDeductionDays = daysInMonth;
+            }
         }
 
-        // Cap paid leaves at 2 per month and deduct excess as unpaid days
-const paidLeaveCap = 2;
-const excessPaidLeaves = Math.max(0, paidLeaveDays - paidLeaveCap);
-if (excessPaidLeaves > 0) {
-    // Convert excess paid leaves to deduction days
-    deductionDays += excessPaidLeaves;
-    // Reduce paid days accordingly
-    paidDays -= excessPaidLeaves;
-}
+        let unemployedDays = 0;
+        if (empData.length > 0) {
+            const emp = empData[0];
+            if (emp.joining_date) {
+                const joiningDate = new Date(emp.joining_date);
+                const isJoiningMonth = (joiningDate.getMonth() + 1 === month) && (joiningDate.getFullYear() === year);
+                if (isJoiningMonth) {
+                    unemployedDays = joiningDate.getDate() - 1;
+                }
+            }
+        }
 
-const dailyRate = monthlySalary / daysInMonth;
-const leaveAndAbsenceDeduction = Math.round(dailyRate * deductionDays);
-const totalDeduction = Math.round(leaveAndAbsenceDeduction + attendanceDeductions);
-const netSalary = Math.max(0, Math.round(monthlySalary - totalDeduction));
-const roundedPaidDays = Math.round(paidDays * 10) / 10;
-const roundedDeductionDays = Math.round(deductionDays * 10) / 10;
+        let dailyRate = monthlySalary / 30;
+        let leaveAndAbsenceDeduction = 0;
+        let totalDeductionDays = Math.min(30, unemployedDays + deductionDays);
+
+        if (deductionDays >= daysInMonth) {
+            totalDeductionDays = 30;
+        }
+
+        if (isProbationEndMonth && probMonthly > 0 && postProbMonthly > 0) {
+            const probationDays = probEndDateObj.getDate();
+            const postProbationDays = Math.max(0, 30 - probationDays);
+
+            const probDailyRate = probMonthly / 30;
+            const postProbDailyRate = postProbMonthly / 30;
+
+            monthlySalary = Math.round(
+                (probDailyRate * probationDays) + (postProbDailyRate * postProbationDays)
+            );
+
+            let totalProbDeductionDays = probationDeductionDays + unemployedDays;
+            let totalPostDeductionDays = postProbationDeductionDays;
+
+            if (deductionDays >= daysInMonth) {
+                totalProbDeductionDays = probationDays;
+                totalPostDeductionDays = postProbationDays;
+            }
+
+            leaveAndAbsenceDeduction = Math.round(
+                (totalProbDeductionDays * probDailyRate) + (totalPostDeductionDays * postProbDailyRate)
+            );
+            dailyRate = postProbDailyRate;
+        } else {
+            leaveAndAbsenceDeduction = Math.round(dailyRate * totalDeductionDays);
+        }
+
+        const payableDays = Math.max(0, 30 - totalDeductionDays);
+        const totalDeduction = Math.round(leaveAndAbsenceDeduction + attendanceDeductions);
+        const netSalary = Math.max(0, Math.round(monthlySalary - totalDeduction));
+
+        const roundedPaidDays = Math.round(payableDays * 10) / 10;
+        const roundedDeductionDays = Math.round(totalDeductionDays * 10) / 10;
 
         const details = {
             present_days: presentDays,

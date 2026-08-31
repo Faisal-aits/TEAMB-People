@@ -3,8 +3,9 @@ import './Salary.css';
 import { salaryAPI } from '../../../services/salaryAPI';
 import { attendanceAPI } from '../../../services/attendanceAPI';
 import * as XLSX from 'xlsx';
-
-const SalaryManagement = () => {
+import axios from 'axios';
+import { salarySlipPDFService } from '../../../services/salarySlipPDFService';
+import { companySettingsAPI } from '../../../services/companySettingsAPI';const SalaryManagement = () => {
   const [salaryRecords, setSalaryRecords] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -21,6 +22,11 @@ const SalaryManagement = () => {
   const [calculatingSalary, setCalculatingSalary] = useState(false);
   const [attendanceSummary, setAttendanceSummary] = useState(null);
 
+  const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
+  const [genMonth, setGenMonth] = useState(new Date().getMonth() + 1);
+  const [genYear, setGenYear] = useState(new Date().getFullYear());
+  const [genEmployeeId, setGenEmployeeId] = useState('all');
+  const [generatingSlips, setGeneratingSlips] = useState(false);
   const [filters, setFilters] = useState({
     employee: '',
     department: '',
@@ -642,6 +648,112 @@ useEffect(() => {
     }
   };
 
+  const handleGenerateManualSlips = async () => {
+    setGeneratingSlips(true);
+    try {
+        const response = await salaryAPI.getSalaryRecords(genMonth, genYear);
+        if (!response.data.success) throw new Error('Failed to fetch salary records');
+        
+        let recordsToProcess = response.data.salaries || [];
+        if (recordsToProcess.length === 0) {
+            recordsToProcess = salaryRecords.filter(r => r.month === genMonth && r.year === genYear);
+        }
+
+        if (genEmployeeId !== 'all') {
+            recordsToProcess = recordsToProcess.filter(r => String(r.employee_id) === String(genEmployeeId));
+        }
+
+        if (recordsToProcess.length === 0) {
+            alert('No salary records found for the selected criteria.');
+            setGeneratingSlips(false);
+            return;
+        }
+
+        const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+        const authHeaders = { Authorization: `Bearer ${localStorage.getItem('token')}` };
+        
+        let brandingData = { logoUrl: null };
+        try {
+            const brandingResp = await companySettingsAPI.getBranding();
+            if (brandingResp.data.success && brandingResp.data.data) {
+                brandingData = brandingResp.data.data;
+            }
+        } catch(e) {}
+
+        let generatedCount = 0;
+
+        for (const record of recordsToProcess) {
+            let details = record.details || {};
+            if (typeof details === 'string') {
+                try { details = JSON.parse(details); } catch(e){}
+            }
+            
+            const allowances = record.allowances || { hra: 0, transport: 0, medical: 0, special: 0 };
+
+            const formData = {
+                fullName: `${record.first_name || ''} ${record.last_name || ''}`.trim() || record.employee_name || record.employee_id,
+                employeeId: record.employee_id,
+                designation: record.position || record.designation || '',
+                department: record.department || record.department_name || '',
+                dateOfJoining: record.joining_date || '',
+                month: record.month_number || record.month,
+                year: record.year,
+                bankAccountNo: record.bank_account_number || '',
+                pan: record.pan_number || '',
+                basicSalary: Math.round(record.basic_salary || 0),
+                grossSalary: Math.round(record.gross_salary || record.basic_salary || 0),
+                netSalary: Math.round(record.net_salary || 0),
+                deductionAmount: Math.round(record.deduction_amount || 0),
+                presentDays:     details.present_days      ?? '-',
+                absentDays:      details.absent_days       ?? '-',
+                halfDays:        details.half_days         ?? '-',
+                paidLeaveDays:   details.paid_leave_days   ?? '-',
+                unpaidLeaveDays: details.unpaid_leave_days ?? '-',
+                payableDays:     details.paid_days         ?? '-',
+                nonPayableDays:  details.deduction_days    ?? '-',
+                earnings: { 
+                    basic: Math.round(record.basic_salary || 0),
+                    hra: allowances.hra || 0,
+                    transport: allowances.transport || 0,
+                    medical: allowances.medical || 0,
+                    special: allowances.special || 0
+                }
+            };
+
+            const pdfBlob = await salarySlipPDFService.generatePDFBlob(formData, brandingData);
+            const monthName = new Date(2000, genMonth - 1).toLocaleString('default', { month: 'long' });
+            
+            const pdfFile = new File([pdfBlob], `Salary_Slip_${formData.fullName.replace(/\s+/g, '_')}_${monthName}_${genYear}.pdf`, { type: 'application/pdf' });
+            
+            const fData = new FormData();
+            fData.append('file', pdfFile);
+            fData.append('employee_id', record.employee_detail_id || record.id || record.employee_id);
+            fData.append('document_type', 'salary_slip');
+            fData.append('title', `${monthName} ${genYear}`);
+            fData.append('metadata', JSON.stringify({
+                month: genMonth,
+                year: genYear,
+                salary_record_id: record.id || record.salary_id
+            }));
+
+            try {
+                await axios.post(`${API_URL}/api/documents/upload`, fData, { headers: authHeaders });
+                generatedCount++;
+            } catch (err) {
+                console.error('Failed to upload document for', record.first_name, err);
+            }
+        }
+
+        alert(`Successfully generated ${generatedCount} salary slip document(s).`);
+        setIsGenerateModalOpen(false);
+    } catch (error) {
+        console.error('Error generating slips:', error);
+        alert('Error generating slips: ' + (error.response?.data?.message || error.message));
+    } finally {
+        setGeneratingSlips(false);
+    }
+  };
+
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({
       ...prev,
@@ -751,29 +863,23 @@ useEffect(() => {
         return;
       }
 
-      const exportData = filteredRecords.map(record => ({
-        'Employee ID': record.employee_id,
-        'Employee Name': record.employee_name,
-        'Department': record.department_name,
-        'Designation': record.designation,
-        'Month': record.month,
-        'Year': record.year,
-        'Basic Salary': record.basic_salary,
-        'HRA': record.allowances?.hra || 0,
-        'Transport': record.allowances?.transport || 0,
-        'Medical': record.allowances?.medical || 0,
-        'Special': record.allowances?.special || 0,
-        'Total Allowances': getTotalAllowances(record.allowances),
-        'Tax': record.deductions?.tax || 0,
-        'Provident Fund': record.deductions?.provident_fund || 0,
-        'Insurance': record.deductions?.insurance || 0,
-        'Loan': record.deductions?.loan || 0,
-        'Total Deductions': getTotalDeductions(record.deductions),
-        'Net Salary': record.net_salary,
-        'Payment Date': formatDate(record.payment_date),
-        'Payment Frequency': record.payment_frequency,
-        'Status': record.status.toUpperCase()
-      }));
+      const exportData = filteredRecords.map(record => {
+        // Find employee details to get bank info
+        const empId = record.employee_detail_id || record.id || record.employee_id;
+        const employeeDetails = employees.find(e => 
+          e.id === empId || e.employee_detail_id === empId || e.employee_id === record.employee_id
+        ) || {};
+
+        return {
+          'Month': record.month,
+          'Employee Name': record.employee_name,
+          'Department': record.department_name || record.department || '-',
+          'Monthly Salary': record.basic_salary,
+          'Net Salary( amount to pay)': record.net_salary,
+          'Account Number': employeeDetails.bank_account_number || '-',
+          'IFSC Code': employeeDetails.ifsc_code || '-'
+        };
+      });
 
       const worksheet = XLSX.utils.json_to_sheet(exportData);
       const workbook = XLSX.utils.book_new();
@@ -911,10 +1017,16 @@ useEffect(() => {
     <div className="salary-management-container">
       <div className="salary-management-header">
         <h2 className="salary-management-title">Salary Management</h2>
-        <button className="salary-add-record-btn" onClick={() => setIsModalOpen(true)}>
-          <span className="salary-btn-icon">+</span>
-          Add Salary Record
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button className="salary-add-record-btn" onClick={() => setIsGenerateModalOpen(true)} style={{ background: '#0ea5e9' }}>
+            <span className="salary-btn-icon">📄</span>
+            Generate Salary Slip
+          </button>
+          <button className="salary-add-record-btn" onClick={() => setIsModalOpen(true)}>
+            <span className="salary-btn-icon">+</span>
+            Add Salary Record
+          </button>
+        </div>
       </div>
 
       <div className="salary-dashboard-stats">
@@ -1493,6 +1605,53 @@ useEffect(() => {
           </div>
         </div>
       )}
+      {isGenerateModalOpen && (
+        <div className="salary-modal-overlay">
+          <div className="salary-modal-content" style={{ maxWidth: '400px' }}>
+            <div className="salary-modal-header">
+              <h3>Generate Salary Slip</h3>
+              <button className="salary-modal-close" onClick={() => setIsGenerateModalOpen(false)}>×</button>
+            </div>
+            <div className="salary-modal-body">
+              <div className="salary-form-group">
+                <label>Month</label>
+                <select value={genMonth} onChange={(e) => setGenMonth(parseInt(e.target.value))}>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                      <option key={m} value={m}>{new Date(2000, m - 1).toLocaleString('default', { month: 'long' })}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="salary-form-group">
+                <label>Year</label>
+                <select value={genYear} onChange={(e) => setGenYear(parseInt(e.target.value))}>
+                  {[2024, 2025, 2026].map(y => (
+                      <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="salary-form-group">
+                <label>Employee</label>
+                <select value={genEmployeeId} onChange={(e) => setGenEmployeeId(e.target.value)}>
+                  <option value="all">All Employees</option>
+                  {employees.map(emp => (
+                      <option key={emp.id} value={emp.id}>{emp.name}</option>
+                  ))}
+                </select>
+              </div>
+              <p style={{ fontSize: '0.875rem', color: '#64748b', marginTop: '10px' }}>
+                This will generate PDF salary slips based on existing records and add them directly to the employees' document records.
+              </p>
+            </div>
+            <div className="salary-modal-footer">
+              <button type="button" className="salary-btn-secondary" onClick={() => setIsGenerateModalOpen(false)}>Cancel</button>
+              <button type="button" className="salary-btn-primary" onClick={handleGenerateManualSlips} disabled={generatingSlips}>
+                {generatingSlips ? 'Generating...' : 'Generate Slip(s)'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

@@ -17,13 +17,17 @@ import BillingSettings from '../../pages/Accounts/BillingSettings';
 import DeliveryManagement from '../../pages/Accounts/DeliveryChallan';
 import ExpenseManagement from '../../pages/Accounts/ExpenseManagement';
 import QuotationManagement from '../../pages/Accounts/QuotationManagement';
-import ServiceManagement from '../../pages/services/ServiceManagement';
-import PTTMContainer from '../../pages/PTTM/PTTMContainer';
 import EmployeeAttendance from '../../pages/employees/EmployeeAttendance';
 import EmployeePersonalInfo from '../../pages/employees/EmployeePersonalInfo';
 import EmployeeLeave from '../../pages/employees/EmployeeLeave';
+import EmployeeBreak from '../../pages/employees/EmployeeBreak';
 import EmployeeExpense from '../../pages/employees/EmployeeExpense';
 import EmployeeProjects from '../../pages/employees/EmployeeProjects';
+import EmployeeRegularization from '../../pages/employees/EmployeeRegularization';
+import EmployeeReport from '../../pages/employees/EmployeeReport';
+import EmployeeSalarySlips from '../../pages/employees/EmployeeSalarySlips';
+import CompanyDocuments from '../../pages/CompanyDocuments/CompanyDocuments';
+
 const UserModuleContent = ({ activeTab, navigateToTab, DashboardComponent }) => {
   const { user } = useAuth();
   const { isReadOnly } = useModuleAccess();
@@ -44,8 +48,6 @@ const UserModuleContent = ({ activeTab, navigateToTab, DashboardComponent }) => 
   const canAccessDeliveryManagement = hasModuleAccess(user, 'delivery_management');
   const canAccessExpenseManagement = hasModuleAccess(user, 'expense_management');
   const canAccessQuotationManagement = hasModuleAccess(user, 'quotation_management');
-  const canAccessServiceManagement = hasModuleAccess(user, 'service_management');
-  const canAccessPttm = hasModuleAccess(user, 'pttm');
   const canAccessEmployeeAttendance = hasModuleAccess(user, 'employee_attendance');
   const canAccessEmployeeLeave = hasModuleAccess(user, 'employee_attendance');
   const canAccessEmployeeExpense = hasModuleAccess(user, 'employee_expense');
@@ -72,10 +74,6 @@ const UserModuleContent = ({ activeTab, navigateToTab, DashboardComponent }) => 
       {activeTab === 'delivery' && canAccessDeliveryManagement && <DeliveryManagement />}
       {activeTab === 'expenses' && canAccessExpenseManagement && <ExpenseManagement />}
       {activeTab === 'quotation' && canAccessQuotationManagement && <QuotationManagement />}
-      {activeTab === 'service' && canAccessServiceManagement && (
-        <ServiceManagement initialTab="services" />
-      )}
-      {activeTab === 'pttm' && canAccessPttm && <PTTMContainer />}
       {activeTab === 'personal-info' && (
         <EmployeePersonalInfo />
       )}
@@ -85,11 +83,26 @@ const UserModuleContent = ({ activeTab, navigateToTab, DashboardComponent }) => 
       {activeTab === 'employee-leave' && canAccessEmployeeLeave && (
         <EmployeeLeave />
       )}
+      {activeTab === 'employee-break' && canAccessEmployeeAttendance && (
+        <EmployeeBreak />
+      )}
       {activeTab === 'employee-expense' && canAccessEmployeeExpense && (
         <EmployeeExpense />
       )}
       {activeTab === 'employee-projects' && canAccessEmployeeProjects && (
         <EmployeeProjects />
+      )}
+      {activeTab === 'employee-regularization' && canAccessEmployeeAttendance && (
+        <EmployeeRegularization />
+      )}
+      {activeTab === 'employee-report' && (
+        <EmployeeReport />
+      )}
+      {activeTab === 'employee-salary' && (
+        <EmployeeSalarySlips />
+      )}
+      {activeTab === 'company-documents' && (
+        <CompanyDocuments />
       )}
     </main>
   );

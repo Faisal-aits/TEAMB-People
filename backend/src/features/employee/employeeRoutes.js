@@ -75,6 +75,12 @@ router.delete('/departments/:departmentId', requireModuleAccess('employee_manage
 // GET /api/employees/my-profile - Get current employee profile
 router.get('/my-profile', employeeController.getMyProfile);
 
+// PUT /api/employees/my-profile - Update current employee profile
+router.put('/my-profile', employeeController.updateMyProfile);
+
+// POST /api/employees/my-profile/reset-password - Reset employee password
+router.post('/my-profile/reset-password', employeeController.resetMyPassword);
+
 // GET /api/employees/positions/suggested - Get suggested positions
 router.get('/positions/suggested', requireModuleAccess('employee_management', 'read'), employeeController.getSuggestedPositions);
 

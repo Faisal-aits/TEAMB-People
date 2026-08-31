@@ -11,6 +11,7 @@ import {
   HiOutlineUsers
 } from 'react-icons/hi2';
 import dashboardAPI from '../../../services/dashboardAPI';
+import { employeeAPI } from '../../../services/employeeAPI';
 import './HRDashboard.css';
 
 const emptyOverview = {
@@ -38,6 +39,7 @@ const formatTimeAgo = (value) => {
 
 const HRDashboard = ({ navigateToTab }) => {
   const [overview, setOverview] = useState(emptyOverview);
+  const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
@@ -48,8 +50,22 @@ const HRDashboard = ({ navigateToTab }) => {
       else setLoading(true);
       setError('');
 
-      const response = await dashboardAPI.getHrOverview();
-      setOverview(response.data?.overview || emptyOverview);
+      const [resOverview, resEmployees] = await Promise.allSettled([
+        dashboardAPI.getHrOverview(),
+        employeeAPI.getAll()
+      ]);
+
+      if (resOverview.status === 'fulfilled') {
+        setOverview(resOverview.value.data?.overview || emptyOverview);
+      } else {
+        setError('Unable to load HR dashboard.');
+        setOverview(emptyOverview);
+      }
+
+      if (resEmployees.status === 'fulfilled') {
+        const empList = resEmployees.value.data?.employees || resEmployees.value.data || [];
+        setEmployees(Array.isArray(empList) ? empList : []);
+      }
     } catch (err) {
       console.error('Failed to load HR dashboard:', err);
       setError('Unable to load HR dashboard.');
@@ -70,6 +86,44 @@ const HRDashboard = ({ navigateToTab }) => {
   const totalMarked = present + absent + leave;
   const presentPercent = totalMarked ? Math.round((present / totalMarked) * 100) : 0;
   const profileGapCount = Number(overview.hr?.missingEmployeeProfiles || 0);
+
+  const cleanList = (list) => (Array.isArray(list) ? list.map((s) => String(s || '').trim()).filter(Boolean) : []);
+
+  const allEmployeeNames = useMemo(() => {
+    return employees.map((emp) => {
+      const name = `${emp.first_name || ''} ${emp.last_name || ''}`.trim();
+      return name || emp.full_name || emp.email || (emp.employee_id ? `Employee #${emp.employee_id}` : 'Employee');
+    }).map((s) => String(s || '').trim()).filter(Boolean);
+  }, [employees]);
+
+  const presentList = useMemo(() => {
+    const fromServer = cleanList(overview.hr?.presentEmployees);
+    if (fromServer.length) return fromServer;
+    if (present > 0) return Array.from({ length: present }, (_, i) => `Employee #${i + 1}`);
+    return [];
+  }, [overview.hr?.presentEmployees, present]);
+
+  const absentList = useMemo(() => {
+    const fromServer = cleanList(overview.hr?.absentEmployees);
+    if (fromServer.length) return fromServer;
+    if (absent > 0) return Array.from({ length: absent }, (_, i) => `Employee #${i + 1}`);
+    return [];
+  }, [overview.hr?.absentEmployees, absent]);
+
+  const leaveList = useMemo(() => {
+    const fromServer = cleanList(overview.hr?.leaveEmployees);
+    if (fromServer.length) return fromServer;
+    if (leave > 0) return Array.from({ length: leave }, (_, i) => `Employee #${i + 1}`);
+    return [];
+  }, [overview.hr?.leaveEmployees, leave]);
+
+  const halfDayList = useMemo(() => {
+    const fromServer = cleanList(overview.hr?.halfDayEmployees);
+    if (fromServer.length) return fromServer;
+    const halfDayCount = Number(overview.hr?.halfDayToday || 0);
+    if (halfDayCount > 0) return Array.from({ length: halfDayCount }, (_, i) => `Employee #${i + 1}`);
+    return [];
+  }, [overview.hr?.halfDayEmployees, overview.hr?.halfDayToday]);
 
   const hrActions = useMemo(
     () => (overview.actions || [])
@@ -93,22 +147,6 @@ const HRDashboard = ({ navigateToTab }) => {
       icon: <HiOutlineUsers />,
       tab: 'employee',
       tone: 'blue'
-    },
-    {
-      label: 'Present Today',
-      value: formatNumber(present),
-      note: `${formatNumber(overview.hr?.delayedToday)} delayed arrivals`,
-      icon: <HiOutlineCalendarDays />,
-      tab: 'attendance',
-      tone: 'green'
-    },
-    {
-      label: 'On Leave',
-      value: formatNumber(leave),
-      note: `${formatNumber(overview.hr?.pendingLeaves)} requests pending`,
-      icon: <HiOutlineClipboardDocumentList />,
-      tab: 'leave',
-      tone: 'amber'
     },
     {
       label: 'Salary Records',
@@ -149,7 +187,6 @@ const HRDashboard = ({ navigateToTab }) => {
     <div className="hr-dashboard">
       <header className="hr-dashboard-header">
         <div>
-          <span>HR Overview</span>
           <h1>HR Dashboard</h1>
         </div>
         <button type="button" className="hr-refresh-btn" onClick={() => loadOverview(true)} disabled={refreshing}>
@@ -160,23 +197,12 @@ const HRDashboard = ({ navigateToTab }) => {
 
       {error && <div className="hr-dashboard-alert">{error}</div>}
 
-      <section className="hr-summary-grid" aria-label="HR overview">
-        {summaryCards.map((card) => (
-          <button key={card.label} type="button" className={`hr-summary-card ${card.tone}`} onClick={() => navigateToTab?.(card.tab)}>
-            <span className="hr-summary-icon">{card.icon}</span>
-            <span>{card.label}</span>
-            <strong>{card.value}</strong>
-            <small>{card.note}</small>
-          </button>
-        ))}
-      </section>
-
       <section className="hr-dashboard-layout">
         <div className="hr-dashboard-main">
           <div className="hr-panel hr-attendance-panel">
             <div className="hr-panel-title">
               <div>
-                <h2>Today in Attendance</h2>
+                <h2>Attendance</h2>
                 <p>{presentPercent}% present across current attendance records</p>
               </div>
               <button type="button" onClick={() => navigateToTab?.('attendance')}>Open Attendance</button>
@@ -187,10 +213,93 @@ const HRDashboard = ({ navigateToTab }) => {
             </div>
 
             <div className="hr-metric-grid">
-              <div><span>Present</span><strong>{formatNumber(present)}</strong></div>
-              <div><span>Absent</span><strong>{formatNumber(absent)}</strong></div>
-              <div><span>On Leave</span><strong>{formatNumber(leave)}</strong></div>
-              <div><span>Half Day</span><strong>{formatNumber(overview.hr?.halfDayToday)}</strong></div>
+              <div className="hr-metric-card">
+                <span>Present</span>
+                <strong>{formatNumber(present)}</strong>
+                <div className="hr-tooltip">
+                  <div className="hr-tooltip-header">Present Employees</div>
+                  {presentList.length ? (
+                    <ul>
+                      {presentList.map((name, idx) => (
+                        <li key={idx}>{name}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="hr-tooltip-empty">No employees present</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="hr-metric-card">
+                <span>Absent</span>
+                <strong>{formatNumber(absent)}</strong>
+                <div className="hr-tooltip">
+                  <div className="hr-tooltip-header">Absent Employees</div>
+                  {absentList.length ? (
+                    <ul>
+                      {absentList.map((name, idx) => (
+                        <li key={idx}>{name}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="hr-tooltip-empty">No absent employees</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="hr-metric-card">
+                <span>On Leave</span>
+                <strong>{formatNumber(leave)}</strong>
+                <div className="hr-tooltip">
+                  <div className="hr-tooltip-header">Employees On Leave</div>
+                  {leaveList.length ? (
+                    <ul>
+                      {leaveList.map((name, idx) => (
+                        <li key={idx}>{name}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="hr-tooltip-empty">No employees on leave</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="hr-metric-card">
+                <span>Half Day</span>
+                <strong>{formatNumber(overview.hr?.halfDayToday)}</strong>
+                <div className="hr-tooltip">
+                  <div className="hr-tooltip-header">Half Day Employees</div>
+                  {halfDayList.length ? (
+                    <ul>
+                      {halfDayList.map((name, idx) => (
+                        <li key={idx}>{name}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="hr-tooltip-empty">No half day employees</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="hr-panel hr-summary-panel">
+            <div className="hr-panel-title">
+              <div>
+                <h2>Overview & Statistics</h2>
+                <p>Key metrics for active employees and salary records</p>
+              </div>
+            </div>
+
+            <div className="hr-summary-grid">
+              {summaryCards.map((card) => (
+                <button key={card.label} type="button" className={`hr-summary-card ${card.tone}`} onClick={() => navigateToTab?.(card.tab)}>
+                  <span className="hr-summary-icon">{card.icon}</span>
+                  <span>{card.label}</span>
+                  <strong>{card.value}</strong>
+                  <small>{card.note}</small>
+                </button>
+              ))}
             </div>
           </div>
 

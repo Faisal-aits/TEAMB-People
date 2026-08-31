@@ -35,7 +35,12 @@ const parseBoolean = (value) => {
   return null;
 };
 
-const validateEmployeeRows = (rows, departments, existingEmails, existingEmployeeIds) => {
+const validateEmployeeRows = (rows, departments, existingEmails, existingEmployeeIds, settings = {}) => {
+  const salaryFormat = settings.salary_format || 'Monthly';
+  const enableProbationValue = settings.enable_probation !== undefined ? settings.enable_probation : true;
+  const enableProbationStr = String(enableProbationValue).toLowerCase();
+  const enableProbation = enableProbationStr === 'true' || enableProbationStr === '1';
+  const settingsProbationMonths = parseInt(settings.probation_months !== undefined ? settings.probation_months : '4', 10) || 0;
   const errors = [];
   const validRows = [];
   const fileEmails = new Set();
@@ -197,9 +202,68 @@ const validateEmployeeRows = (rows, departments, existingEmails, existingEmploye
       employee_id: normalized.employee_id || null,
       is_active: parsedIsActive === null ? true : parsedIsActive,
       status: parsedIsActive === false ? 'inactive' : 'active',
+      is_on_probation: false,
+      probation_end_date: null,
+      salary_during_probation: null,
+      salary_after_probation: null,
       sourceRow: data,
       rowNumber
     };
+
+    const probationMonthsInput = String(data.probation_months || '').trim();
+    let finalProbationMonths = 0;
+
+    if (probationMonthsInput) {
+      const months = parseInt(probationMonthsInput, 10);
+      if (Number.isNaN(months) || months < 0) {
+        rowErrors.push('Probation Period (Months) must be a positive number');
+      } else {
+        finalProbationMonths = months;
+      }
+    } else if (enableProbation && salaryFormat === 'Monthly') {
+      finalProbationMonths = settingsProbationMonths;
+    }
+
+    if (finalProbationMonths > 0) {
+      cleanRow.is_on_probation = true;
+
+      if (cleanRow.joining_date) {
+        const joiningDateObj = new Date(cleanRow.joining_date);
+        joiningDateObj.setMonth(joiningDateObj.getMonth() + finalProbationMonths);
+        cleanRow.probation_end_date = joiningDateObj.toISOString().slice(0, 10);
+      }
+    }
+
+    if (enableProbation && salaryFormat === 'Monthly') {
+      const rawSalDuring = String(data.salary_during_probation || '').trim();
+      const rawSalAfter = String(data.salary_after_probation || '').trim();
+
+      if (!rawSalDuring) {
+        rowErrors.push('Salary During Probation is required when probation is enabled and salary format is Monthly');
+      }
+      if (!rawSalAfter) {
+        rowErrors.push('Salary After Probation is required when probation is enabled and salary format is Monthly');
+      }
+
+      const salDuring = parseMoney(rawSalDuring);
+      const salAfter = parseMoney(rawSalAfter);
+
+      if (rawSalDuring && salDuring < 0) rowErrors.push('Salary During Probation must be a positive number');
+      if (rawSalAfter && salAfter < 0) rowErrors.push('Salary After Probation must be a positive number');
+
+      cleanRow.salary_during_probation = salDuring;
+      cleanRow.salary_after_probation = salAfter;
+    } else if (probationMonthsInput && parseInt(probationMonthsInput, 10) > 0) {
+      // If probation is not globally enabled/monthly, but user provided probation months manually
+      const salDuring = parseMoney(String(data.salary_during_probation || '').trim());
+      const salAfter = parseMoney(String(data.salary_after_probation || '').trim());
+      
+      if (salDuring < 0) rowErrors.push('Salary During Probation must be a positive number');
+      if (salAfter < 0) rowErrors.push('Salary After Probation must be a positive number');
+      
+      cleanRow.salary_during_probation = salDuring;
+      cleanRow.salary_after_probation = salAfter;
+    }
 
     if (rowErrors.length > 0) {
       errors.push({

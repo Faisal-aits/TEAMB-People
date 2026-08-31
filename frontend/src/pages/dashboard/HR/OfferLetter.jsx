@@ -5,9 +5,11 @@ import companyLogo from "../../../assets/img/company.png";
 import stampPng from "../../../assets/img/stamp.png";
 import { TbWorld } from "react-icons/tb";
 import { TfiEmail } from "react-icons/tfi";
-import { HiOutlineDocumentText, HiOutlineUserGroup, HiOutlineBriefcase, HiOutlineArrowDownOnSquare, HiOutlineEye, HiOutlineArrowDownTray, HiOutlineClipboardDocumentList } from "react-icons/hi2";
+import { HiOutlineDocumentText, HiOutlineUserGroup, HiOutlineBriefcase, HiOutlineArrowDownOnSquare, HiOutlineEye, HiOutlineArrowDownTray, HiOutlineClipboardDocumentList, HiArrowLeft } from "react-icons/hi2";
 import offerLetterAPI from "../../../services/offerLetterAPI";
 import brandingAPI from "../../../services/brandingAPI";
+import BrandingValidationModal from "../../../components/BrandingValidationModal";
+import { useNavigate } from 'react-router-dom';
 
 // Helper function to convert number to words (Indian numbering system)
 const numberToWords = (num) => {
@@ -54,6 +56,7 @@ const calculateAnnualFromMonthly = (value) => {
 };
 
 const OfferLetter = () => {
+  const navigate = useNavigate();
   const [employees, setEmployees] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState("");
   const [selectedUserId, setSelectedUserId] = useState(null);
@@ -88,17 +91,19 @@ const OfferLetter = () => {
   });
 
   const [branding, setBranding] = useState({
-    company_name: "Arham IT Solution",
-    company_address: "Above Being Healthy Gym, Near Surbhi Hospital, Nagar Sambhajjnagar Road, Ahliyanagar 414003",
-    company_email: "info@arhamitsolution.in",
+    company_name: "",
+    company_address: "",
+    company_email: "",
     company_phone: "",
-    company_website: "www.arhamitsolution.in",
-    hr_name: "Sharjeel Iqbal",
-    hr_designation: "HR and BDE Executive",
-    logo_url: companyLogo,
-    stamp_url: stampPng,
+    company_website: "",
+    hr_name: "",
+    hr_designation: "",
+    logo_url: "",
+    stamp_url: "",
     signature_url: null
   });
+
+  const [isBrandingModalOpen, setIsBrandingModalOpen] = useState(false);
 
   // Fetch employees on mount
   useEffect(() => {
@@ -125,16 +130,19 @@ const OfferLetter = () => {
         const res = await brandingAPI.get();
         if (res.data?.success && res.data?.branding) {
           const b = res.data.branding;
+          if (!b.company_name) {
+            setIsBrandingModalOpen(true);
+          }
           setBranding({
-            company_name: b.company_name || "Arham IT Solution",
-            company_address: b.company_address || "Above Being Healthy Gym, Near Surbhi Hospital, Nagar Sambhajjnagar Road, Ahliyanagar 414003",
-            company_email: b.company_email || "info@arhamitsolution.in",
+            company_name: b.company_name || "",
+            company_address: b.company_address || "",
+            company_email: b.company_email || "",
             company_phone: b.company_phone || "",
-            company_website: b.company_website || "www.arhamitsolution.in",
-            hr_name: b.hr_name || "Sharjeel Iqbal",
-            hr_designation: b.hr_designation || "HR and BDE Executive",
-            logo_url: b.logo_url ? brandingAPI.getImageUrl(b.logo_url) : companyLogo,
-            stamp_url: b.stamp_url ? brandingAPI.getImageUrl(b.stamp_url) : stampPng,
+            company_website: b.company_website || "",
+            hr_name: b.hr_name || "",
+            hr_designation: b.hr_designation || "",
+            logo_url: b.logo_url ? brandingAPI.getImageUrl(b.logo_url) : "",
+            stamp_url: b.stamp_url ? brandingAPI.getImageUrl(b.stamp_url) : "",
             signature_url: b.signature_url ? brandingAPI.getImageUrl(b.signature_url) : null
           });
 
@@ -149,9 +157,12 @@ const OfferLetter = () => {
               console.error('Failed to parse default_terms from branding:', e);
             }
           }
+        } else {
+          setIsBrandingModalOpen(true);
         }
       } catch (err) {
         console.error("Error fetching branding:", err);
+        setIsBrandingModalOpen(true);
       }
     };
     fetchEmployees();
@@ -417,9 +428,47 @@ const OfferLetter = () => {
 
   return (
     <div style={{ padding: "20px", background: "#f4f7f6", minHeight: "100vh" }}>
+      <BrandingValidationModal isOpen={isBrandingModalOpen} onClose={() => setIsBrandingModalOpen(false)} />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "30px" }}>
-        <h1 style={{ margin: 0, color: "#2c3e50", fontSize: "28px" }}>Offer Letter Generator</h1>
+        <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
+          <button 
+            onClick={() => navigate(-1)}
+            style={{ 
+              background: "#fff", 
+              border: "1px solid #cbd5e1", 
+              borderRadius: "8px", 
+              padding: "10px", 
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
+            }}
+          >
+            <HiArrowLeft size={20} color="#475569" />
+          </button>
+          <h1 style={{ margin: 0, color: "#2c3e50", fontSize: "28px" }}>Offer Letter Generator</h1>
+        </div>
         <div style={{ display: "flex", gap: "12px" }}>
+          <button
+            onClick={() => navigate(-1)}
+            disabled={isGenerating}
+            style={{
+              padding: "12px 24px",
+              background: "#f1f5f9",
+              color: "#475569",
+              border: "1px solid #cbd5e1",
+              borderRadius: "8px",
+              cursor: "pointer",
+              fontWeight: "bold",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              transition: "all 0.3s ease",
+              boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
+            }}
+          >
+            Cancel
+          </button>
           <button
             onClick={handleSave}
             disabled={isGenerating}

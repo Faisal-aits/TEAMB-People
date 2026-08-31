@@ -1,23 +1,77 @@
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import fallbackLogo from '../assets/img/company.png';
-import fallbackStamp from '../assets/img/stamp.png';
 import { brandingAPI } from './brandingAPI';
+import api from './api';
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+/**
+ * Given formData, returns a human-readable "Month YYYY" string.
+ * Accepts month as a number (1–12), a month name string, or extracts from monthYear.
+ */
+const resolveMonthTitle = (data) => {
+  // If month number is provided
+  if (data.month && !isNaN(Number(data.month))) {
+    const idx = Number(data.month) - 1;
+    const name = MONTH_NAMES[idx] || data.month;
+    return `${name} ${data.year || ''}`.trim();
+  }
+  // If monthYear is already like "January 2026"
+  if (data.monthYear) {
+    const parts = data.monthYear.split(/[\s/,]+/);
+    // If first part is a number, convert
+    if (!isNaN(Number(parts[0]))) {
+      const idx = Number(parts[0]) - 1;
+      const name = MONTH_NAMES[idx] || parts[0];
+      return `${name} ${parts[1] || ''}`.trim();
+    }
+    return data.monthYear;
+  }
+  return '';
+};
 
 export const salarySlipPDFService = {
   downloadSalarySlip: async (formData) => {
     try {
       let branding = {};
+      let salaryFormat = 'Monthly';
       try {
         const res = await brandingAPI.get();
         if (res.data?.success && res.data?.branding) branding = res.data.branding;
-      } catch (err) { console.error("Failed to fetch branding data", err); }
+        
+        const settingsRes = await api.get('/settings/salary_format');
+        if (settingsRes.data?.value) salaryFormat = settingsRes.data.value;
+      } catch (err) { console.error("Failed to fetch branding/settings data", err); }
 
-      const html = generateSalarySlipHTML(formData, branding);
+      const html = generateSalarySlipHTML(formData, branding, salaryFormat);
       const pdf = await generatePDFFromHTML(html);
-      pdf.save(`SalarySlip_${formData.fullName.replace(/\s+/g, '_')}_${formData.monthYear.replace(/[\s,]+/g, '_')}.pdf`);
+      const monthTitle = resolveMonthTitle(formData).replace(/\s+/g, '_');
+      pdf.save(`SalarySlip_${(formData.fullName || '').replace(/\s+/g, '_')}_${monthTitle}.pdf`);
     } catch (error) {
       console.error('Error generating PDF:', error);
+      throw error;
+    }
+  },
+
+  generatePDFBlob: async (formData) => {
+    try {
+      let branding = {};
+      let salaryFormat = 'Monthly';
+      try {
+        const res = await brandingAPI.get();
+        if (res.data?.success && res.data?.branding) branding = res.data.branding;
+        const settingsRes = await api.get('/settings/salary_format');
+        if (settingsRes.data?.value) salaryFormat = settingsRes.data.value;
+      } catch (err) { console.error("Failed to fetch branding/settings data", err); }
+
+      const html = generateSalarySlipHTML(formData, branding, salaryFormat);
+      const pdf = await generatePDFFromHTML(html);
+      return pdf.output('blob');
+    } catch (error) {
+      console.error('Error generating PDF blob:', error);
       throw error;
     }
   },
@@ -25,17 +79,20 @@ export const salarySlipPDFService = {
   viewSalarySlip: async (formData) => {
     try {
       let branding = {};
+      let salaryFormat = 'Monthly';
       try {
         const res = await brandingAPI.get();
         if (res.data?.success && res.data?.branding) branding = res.data.branding;
-      } catch (err) { console.error("Failed to fetch branding data", err); }
+        const settingsRes = await api.get('/settings/salary_format');
+        if (settingsRes.data?.value) salaryFormat = settingsRes.data.value;
+      } catch (err) { console.error("Failed to fetch branding/settings data", err); }
 
-      const html = generateSalarySlipHTML(formData, branding);
+      const html = generateSalarySlipHTML(formData, branding, salaryFormat);
       const pdf = await generatePDFFromHTML(html);
       const blobUrl = pdf.output('bloburl');
       window.open(blobUrl, '_blank');
     } catch (error) {
-      console.error('Error viewing PDF:', error);
+      console.error('Error generating PDF blob URL:', error);
       throw error;
     }
   }
@@ -78,149 +135,190 @@ const generatePDFFromHTML = async (html) => {
 };
 
 const formatCurrency = (amt) => {
-  return new Intl.NumberFormat('en-IN').format(amt || 0);
+  return new Intl.NumberFormat('en-IN').format(Math.round(amt || 0));
 };
 
-const generateSalarySlipHTML = (data, branding) => {
-  const totalEarnings = Object.values(data.earnings).reduce((a, b) => a + Number(b), 0);
-  const totalDeductions = Object.values(data.deductions).reduce((a, b) => a + Number(b), 0);
-  const netPay = totalEarnings - totalDeductions;
+const numberToWords = (num) => {
+  // Ensure integer
+  num = Math.round(Number(num) || 0);
+  if (num === 0) return 'Zero';
 
-  const company_name = branding?.company_name || "Arham IT Solution";
-  const company_address = branding?.company_address ? branding.company_address.replace(/\n/g, '<br />') : "Above Being Healthy Gym, Near Surbhi Hospital, Nagar–Sambhaji Nagar Road,<br />Ahilyanagar, Maharashtra 414003";
-  const company_email = branding?.company_email || "info@arhamitsolution.in";
-  const company_website = branding?.company_website || "www.arhamitsolution.in";
-  const hr_name = branding?.hr_name || "Sharjeel Iqbal";
-  const hr_designation = branding?.hr_designation || "HR & BDE Executive";
-  
-  const logo_url = branding?.logo_url ? brandingAPI.getImageUrl(branding.logo_url) : fallbackLogo;
-  const stamp_url = branding?.stamp_url ? brandingAPI.getImageUrl(branding.stamp_url) : fallbackStamp;
-  const signature_url = branding?.signature_url ? brandingAPI.getImageUrl(branding.signature_url) : null;
+  const a = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+    'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen',
+    'Seventeen', 'Eighteen', 'Nineteen'];
+  const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+  const numStr = num.toString();
+  if (numStr.length > 9) return 'overflow';
+
+  const n = ('000000000' + num).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
+  if (!n) return 'Zero';
+
+  let str = '';
+  str += n[1] != 0 ? (a[Number(n[1])] || b[n[1][0]] + ' ' + a[n[1][1]]) + ' Crore ' : '';
+  str += n[2] != 0 ? (a[Number(n[2])] || b[n[2][0]] + ' ' + a[n[2][1]]) + ' Lakh ' : '';
+  str += n[3] != 0 ? (a[Number(n[3])] || b[n[3][0]] + ' ' + a[n[3][1]]) + ' Thousand ' : '';
+  str += n[4] != 0 ? (a[Number(n[4])] || b[n[4][0]] + ' ' + a[n[4][1]]) + ' Hundred ' : '';
+  str += n[5] != 0 ? ((str !== '') ? 'and ' : '') + (a[Number(n[5])] || b[n[5][0]] + ' ' + a[n[5][1]]) : '';
+  return str.trim();
+};
+
+const generateSalarySlipHTML = (data, branding, salaryFormat = 'Monthly') => {
+  // ── Salary figures: use pre-calculated values from salary management ──
+  const basicSalary = Math.round(data.earnings?.basic || data.basicSalary || 0);
+  // netSalary = the already-computed value from the DB (after deductions / pro-rata)
+  const netPay = Math.round(data.netSalary ?? data.earnings?.net ?? basicSalary);
+  const grossSalary = Math.round(data.grossSalary ?? basicSalary);
+  const deductionAmount = Math.round(data.deductionAmount ?? (grossSalary - netPay));
+
+  // ── Branding ──
+  const company_name = branding?.company_name || '';
+  const company_address = branding?.company_address ? branding.company_address.replace(/\n/g, ', ') : '';
+  const logo_url = branding?.logo_url ? brandingAPI.getImageUrl(branding.logo_url) : null;
+
+  // ── Month title ──
+  const monthTitle = resolveMonthTitle(data);
+
+  // ── Attendance breakdown ──
+  const presentDays    = data.presentDays    ?? data.present_days    ?? '-';
+  const absentDays     = data.absentDays     ?? data.absent_days     ?? '-';
+  const halfDays       = data.halfDays       ?? data.half_days       ?? '-';
+  const paidLeaveDays  = data.paidLeaveDays  ?? data.paid_leave_days ?? '-';
+  const unpaidLeaveDays= data.unpaidLeaveDays?? data.unpaid_leave_days?? '-';
+  const payableDays    = data.payableDays    ?? data.paid_days       ?? '-';
+  const nonPayableDays = data.nonPayableDays ?? data.deduction_days  ?? '-';
 
   return `
-    <div style="font-family: Arial, sans-serif; color: #000; width: 210mm; min-height: 297mm; background: #fff; display: flex; flex-direction: column; box-sizing: border-box;">
-      <!-- Header -->
-      <div style="width: 100%; border-bottom: 5px solid #000; padding: 10mm 20mm 5mm 20mm; box-sizing: border-box; display: table;">
-        <div style="display: table-cell; vertical-align: middle; text-align: left; padding-right: 15mm;">
-          ${logo_url ? `<img src="${logo_url}" alt="Logo" style="height: 100px; width: auto; max-width: 350px; display: block; object-fit: contain; padding: 0 2px;">` : ''}
-        </div>
-        <div style="display: table-cell; vertical-align: middle; text-align: left; line-height: 1.2;">
-          <div style="display: inline-block; text-align: left; font-size: 11pt; white-space: nowrap;">
-            <div style="display: table; margin-bottom: 8px;">
-               <div style="display: table-cell; vertical-align: middle;">
-                 <div style="background: #000; border-radius: 50%; width: 20pt; height: 20pt; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-right: 8pt;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 12pt; height: 12pt;">
-                      <circle cx="12" cy="12" r="9" />
-                      <line x1="3.6" y1="9" x2="20.4" y2="9" />
-                      <line x1="3.6" y1="15" x2="20.4" y2="15" />
-                      <path d="M11.5 3a17 17 0 0 0 0 18" />
-                      <path d="M12.5 3a17 17 0 0 1 0 18" />
-                    </svg>
-                 </div>
-               </div>
-               <div style="display: table-cell; vertical-align: middle; font-weight: bold;">
-                 ${company_website}
-               </div>
-            </div>
-            <div style="display: table;">
-               <div style="display: table-cell; vertical-align: middle;">
-                 <div style="background: #000; border-radius: 50%; width: 20pt; height: 20pt; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-right: 8pt;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 11pt; height: 11pt;">
-                      <rect x="3" y="5" width="18" height="14" rx="2" />
-                      <polyline points="3 7 12 13 21 7" />
-                    </svg>
-                 </div>
-               </div>
-               <div style="display: table-cell; vertical-align: middle; font-weight: bold;">
-                 ${company_email}
-               </div>
-            </div>
+    <div style="font-family: Arial, sans-serif; color: #000; width: 210mm; padding: 20mm 15mm; background: #fff; box-sizing: border-box; font-size: 9pt;">
+      
+      <!-- Top Block: Company Info & Payslip Title -->
+      <div style="border: 1px solid #000; margin-bottom: 5px; padding: 15px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+          <div style="width: 40%;">
+            ${logo_url ? `<img src="${logo_url}" alt="Logo" style="max-height: 80px; width: auto; object-fit: contain;">` : `<h2 style="margin:0; font-size:14pt;">${company_name}</h2>`}
           </div>
+          <div style="width: 60%; text-align: right;">
+             <h3 style="margin: 0 0 5px 0; font-size: 11pt; text-transform: uppercase;">${company_name}</h3>
+             <p style="margin: 0; line-height: 1.4; font-size: 9pt;">${company_address}</p>
+          </div>
+        </div>
+        <div style="text-align: center; margin-top: 15px;">
+           <p style="margin: 0; font-weight: bold; font-size: 10pt;">Payslip for ${monthTitle}</p>
         </div>
       </div>
 
-      <!-- Body -->
-      <div style="padding: 10mm 15mm 20mm 15mm; flex-grow: 1;">
-        <div style="text-align: center; font-size: 15pt; font-weight: bold; margin-bottom: 25px;">Employee Salary Slip</div>
-
-        <div style="font-size: 12pt; line-height: 1.8; margin-bottom: 30px;">
-          <p style="margin: 5px 0;"><strong>Employee Name:</strong> ${data.fullName}</p>
-          <p style="margin: 5px 0;"><strong>Month & Year:</strong> ${data.monthYear}</p>
-          <p style="margin: 5px 0;"><strong>Designation:</strong> ${data.designation}</p>
-          <p style="margin: 20px 0 10px 0;"><strong>Salary paid by ${data.paymentMode || 'Bank Transfer'}:</strong></p>
+      <!-- Employee Details Block -->
+      <div style="border: 1px solid #000; display: flex; margin-bottom: 5px;">
+        <!-- Left: Employee Info -->
+        <div style="width: 50%; border-right: 1px solid #000; padding: 10px;">
+          <table style="width: 100%; font-size: 9pt; border-collapse: collapse;">
+            <tr><td style="width: 45%; padding: 2px 0; color: #555;">Employee Name</td><td><strong>${data.fullName || '-'}</strong></td></tr>
+            <tr><td style="padding: 2px 0; color: #555;">Employee ID</td><td>${data.employeeId || '-'}</td></tr>
+            <tr><td style="padding: 2px 0; color: #555;">Designation</td><td>${data.designation || '-'}</td></tr>
+            <tr><td style="padding: 2px 0; color: #555;">Department</td><td>${data.department || '-'}</td></tr>
+            <tr><td style="padding: 2px 0; color: #555;">Date of Joining</td><td>${data.dateOfJoining || '-'}</td></tr>
+            <tr><td style="padding: 2px 0; color: #555;">Bank A/C No</td><td>${data.bankAccountNo || '-'}</td></tr>
+            <tr><td style="padding: 2px 0; color: #555;">PAN</td><td>${data.pan || '-'}</td></tr>
+          </table>
         </div>
-
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 40px; font-size: 11pt;">
-          <thead>
+        <!-- Right: Attendance Summary -->
+        <div style="width: 50%; padding: 10px;">
+          <p style="margin: 0 0 6px 0; font-weight: bold; font-size: 9pt; border-bottom: 1px solid #ccc; padding-bottom: 4px;">Attendance Summary</p>
+          <table style="width: 100%; font-size: 9pt; border-collapse: collapse;">
             <tr>
-              <th style="border: 1.5px solid #000; padding: 18px 10px; text-align: left; background: #f8fafc;">Earnings (₹)</th>
-              <th style="border: 1.5px solid #000; padding: 18px 10px; text-align: right; background: #f8fafc;">Amount (₹)</th>
-              <th style="border: 1.5px solid #000; padding: 18px 10px; text-align: left; background: #f8fafc;">Deductions (₹)</th>
-              <th style="border: 1.5px solid #000; padding: 18px 10px; text-align: right; background: #f8fafc;">Amount (₹)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style="border: 1.5px solid #000; padding: 15px 10px;">Basic Salary</td>
-              <td style="border: 1.5px solid #000; padding: 15px 10px; text-align: right;">₹ ${formatCurrency(data.earnings.basic)}</td>
-              <td style="border: 1.5px solid #000; padding: 15px 10px;">Provident Fund (PF)</td>
-              <td style="border: 1.5px solid #000; padding: 15px 10px; text-align: right;">₹ ${formatCurrency(data.deductions.pf)}</td>
+              <td style="width: 55%; padding: 2px 0; color: #555;">Present Days</td>
+              <td style="font-weight: 600; color: #1a6b1a;">${presentDays}</td>
             </tr>
             <tr>
-              <td style="border: 1.5px solid #000; padding: 15px 10px;">House Rent Allowance</td>
-              <td style="border: 1.5px solid #000; padding: 15px 10px; text-align: right;">₹ ${formatCurrency(data.earnings.hra)}</td>
-              <td style="border: 1.5px solid #000; padding: 15px 10px;">Professional Tax (PT)</td>
-              <td style="border: 1.5px solid #000; padding: 15px 10px; text-align: right;">₹ ${formatCurrency(data.deductions.pt)}</td>
+              <td style="padding: 2px 0; color: #555;">Absent Days</td>
+              <td style="font-weight: 600; color: #c0392b;">${absentDays}</td>
             </tr>
             <tr>
-              <td style="border: 1.5px solid #000; padding: 15px 10px;">Conveyance Allowance</td>
-              <td style="border: 1.5px solid #000; padding: 15px 10px; text-align: right;">₹ ${formatCurrency(data.earnings.conveyance)}</td>
-              <td style="border: 1.5px solid #000; padding: 15px 10px;">Income Tax (TDS)</td>
-              <td style="border: 1.5px solid #000; padding: 15px 10px; text-align: right;">₹ ${formatCurrency(data.deductions.tds)}</td>
+              <td style="padding: 2px 0; color: #555;">Half Days</td>
+              <td style="font-weight: 600;">${halfDays}</td>
             </tr>
             <tr>
-              <td style="border: 1.5px solid #000; padding: 15px 10px;">Medical Allowance</td>
-              <td style="border: 1.5px solid #000; padding: 15px 10px; text-align: right;">₹ ${formatCurrency(data.earnings.medical)}</td>
-              <td style="border: 1.5px solid #000; padding: 15px 10px; font-weight: bold;">Total Deductions</td>
-              <td style="border: 1.5px solid #000; padding: 15px 10px; text-align: right; font-weight: bold;">₹ ${formatCurrency(totalDeductions)}</td>
+              <td style="padding: 2px 0; color: #555;">Paid Leave (PL)</td>
+              <td style="font-weight: 600; color: #1a6b1a;">${paidLeaveDays}</td>
             </tr>
             <tr>
-              <td style="border: 1.5px solid #000; padding: 15px 10px;">Special Allowance</td>
-              <td style="border: 1.5px solid #000; padding: 15px 10px; text-align: right;">₹ ${formatCurrency(data.earnings.special)}</td>
-              <td colspan="2" style="border: 1.5px solid #000; padding: 15px 10px;"></td>
+              <td style="padding: 2px 0; color: #555;">Half Days</td>
+              <td style="font-weight: 600;">${halfDays}</td>
             </tr>
-            <tr style="background: #f1f5f9;">
-              <td style="border: 1.5px solid #000; padding: 18px 10px; font-weight: bold;">Total Earnings</td>
-              <td style="border: 1.5px solid #000; padding: 18px 10px; text-align: right; font-weight: bold;">₹ ${formatCurrency(totalEarnings)}</td>
-              <td style="border: 1.5px solid #000; padding: 18px 10px; font-weight: bold;">Net Pay (Take-home)</td>
-              <td style="border: 1.5px solid #000; padding: 18px 10px; text-align: right; font-weight: bold;">₹ ${formatCurrency(netPay)}</td>
+            <tr>
+              <td style="padding: 2px 0; color: #555;">Absent Days</td>
+              <td style="font-weight: 600; color: #c0392b;">${absentDays}</td>
             </tr>
-          </tbody>
-        </table>
-
-        <div style="margin-top: 100px; display: flex; justify-content: space-between; align-items: flex-end;">
-          <div style="text-align: center;">
-            <div style="height: 60px;"></div>
-            <div style="border-top: 1.5px solid #000; width: 180px; padding-top: 5px;">
-              <p style="font-size: 10pt; font-weight: bold; margin: 0;">Employee Signature</p>
-            </div>
-          </div>
-          <div style="text-align: right; position: relative;">
-            ${stamp_url ? `<img src="${stamp_url}" alt="Stamp" style="height: 90px; width: auto; max-width: 140px; position: absolute; right: 30px; top: -75px; opacity: 0.9; object-fit: contain;">` : ''}
-            <div style="position: relative; z-index: 2; display: flex; flex-direction: column; align-items: flex-end;">
-              ${signature_url ? `<img src="${signature_url}" alt="Signature" style="height: 45px; margin-bottom: 5px; object-fit: contain;">` : '<div style="height: 50px;"></div>'}
-              <p style="font-weight: bold; margin: 0;">Best Regards,</p>
-              <p style="font-weight: bold; margin: 0; font-size: 13pt;">${hr_name}</p>
-              <p style="font-size: 10pt; margin: 2px 0;">${hr_designation}</p>
-              <p style="font-weight: bold; margin: 0;">${company_name}</p>
-            </div>
-          </div>
+            <tr style="border-top: 1px solid #ccc; margin-top: 4px;">
+              <td style="padding: 4px 0 2px 0; color: #c0392b; font-weight: bold;">Total Deductive Days</td>
+              <td style="font-weight: bold; color: #c0392b;">${nonPayableDays}</td>
+            </tr>
+            <tr>
+              <td style="padding: 2px 0; color: #555; font-weight: bold;">Payable Days</td>
+              <td style="font-weight: bold; color: #1a4fa0;">${payableDays}</td>
+            </tr>
+          </table>
         </div>
       </div>
 
-      <div style="margin-top: auto; border-top: 3px solid #000; padding: 15px 20px; textAlign: center; font-size: 10pt; font-weight: bold; background: #fff; width: 100%; box-sizing: border-box; text-align: center;">
-        ${company_address}
+      <!-- Earnings and Deductions Table -->
+      <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; font-size: 9pt;">
+        <thead>
+          <tr style="border-bottom: 1px solid #000; background: #f0f0f0;">
+            <th colspan="2" style="border-right: 1px solid #000; padding: 6px; text-align: center;">Earnings</th>
+            <th colspan="2" style="padding: 6px; text-align: center;">Deductions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding: 5px;">Basic Salary</td>
+            <td style="padding: 5px; text-align: right; border-right: 1px solid #000;">${formatCurrency(basicSalary)}</td>
+            <td style="padding: 5px;">Absence / Leave Deductions ${nonPayableDays !== '-' ? `(${nonPayableDays} days)` : ''}</td>
+            <td style="padding: 5px; text-align: right;">${deductionAmount > 0 ? formatCurrency(deductionAmount) : '0.00'}</td>
+          </tr>
+          <tr>
+            <td style="padding: 5px;"></td>
+            <td style="padding: 5px; text-align: right; border-right: 1px solid #000;"></td>
+            <td style="padding: 5px;">Professional Tax</td>
+            <td style="padding: 5px; text-align: right;">0.00</td>
+          </tr>
+          <tr>
+            <td style="padding: 5px;"></td>
+            <td style="padding: 5px; text-align: right; border-right: 1px solid #000;"></td>
+            <td style="padding: 5px;">Health Insurance/ESI</td>
+            <td style="padding: 5px; text-align: right;">0.00</td>
+          </tr>
+          <tr>
+            <td style="padding: 5px; height: 30px;"></td>
+            <td style="padding: 5px; text-align: right; border-right: 1px solid #000;"></td>
+            <td style="padding: 5px;">Income Tax</td>
+            <td style="padding: 5px; text-align: right;">0.00</td>
+          </tr>
+          
+          <tr style="border-top: 1px solid #000; border-bottom: 1px solid #000; background: #fafafa;">
+            <td style="padding: 6px; font-weight: bold;">Gross Salary</td>
+            <td style="padding: 6px; text-align: right; font-weight: bold; border-right: 1px solid #000;">${formatCurrency(grossSalary)}</td>
+            <td style="padding: 6px; font-weight: bold;">Total Deduction</td>
+            <td style="padding: 6px; text-align: right; font-weight: bold;">${deductionAmount > 0 ? formatCurrency(deductionAmount) : '0.00'}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- NET SALARY PAYABLE BLOCK (ONE ROW & BELOW LAYOUT) -->
+      <div style="border: 1px solid #000; margin-top: 10px; background: #fff;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid #ddd; background: #e8f4e8;">
+          <span style="font-weight: bold; font-size: 10.5pt; color: #000;">NET SALARY PAYABLE:</span>
+          <span style="font-weight: bold; font-size: 12pt; color: #1a4fa0;">Rs. ${formatCurrency(netPay)}.00</span>
+        </div>
+        <div style="padding: 8px 12px; font-size: 9.5pt; background: #fafafa;">
+          <strong>Amount in words:</strong> ${numberToWords(netPay)} Rupees Only
+        </div>
       </div>
+
+      <div style="text-align: center; margin-top: 20px; font-size: 8pt; font-style: italic; color: #555;">
+         This is a system generated pay slip and does not require any stamp or signature
+      </div>
+
     </div>
   `;
 };

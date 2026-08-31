@@ -1,7 +1,5 @@
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
-import fallbackLogo from '../assets/img/company.png';
-import fallbackStamp from '../assets/img/stamp.png';
 import { brandingAPI } from './brandingAPI';
 
 export const experiencePDFService = {
@@ -38,8 +36,8 @@ export const experiencePDFService = {
           designation: branding.hr_designation || "Manager- HR",
           signature: branding.signature_url ? brandingAPI.getImageUrl(branding.signature_url) : null
         },
-        logo: branding.logo_url ? brandingAPI.getImageUrl(branding.logo_url) : fallbackLogo,
-        stamp: branding.stamp_url ? brandingAPI.getImageUrl(branding.stamp_url) : fallbackStamp
+        logo: branding.logo_url ? brandingAPI.getImageUrl(branding.logo_url) : null,
+        stamp: branding.stamp_url ? brandingAPI.getImageUrl(branding.stamp_url) : null
       };
 
       console.log('Generating HTML content...');
@@ -94,7 +92,7 @@ const formatDateWithOrdinal = (dateStr) => {
 };
 
 const commonHeader = (logo, website, email) => {
-  if (!logo) logo = fallbackLogo;
+
   return `
     <div style="width: 100%; border-bottom: 5px solid #000; padding: 10mm 20mm 5mm 20mm; box-sizing: border-box; display: flex; justify-content: space-between; align-items: center;">
       <div style="flex: 1;">

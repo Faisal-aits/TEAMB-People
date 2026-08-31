@@ -11,19 +11,19 @@ const BULK_UPLOAD_COLUMNS = [
   {
     key: 'full_name',
     label: 'Name Of Employees',
-    required: true,
+    required: false,
     aliases: ['name', 'employee name', 'employee_name', 'name of employee', 'name_of_employees']
   },
   {
     key: 'first_name',
     label: 'First Name',
-    required: false,
+    required: true,
     aliases: ['first name', 'firstname', 'first_name']
   },
   {
     key: 'last_name',
     label: 'Last Name',
-    required: false,
+    required: true,
     aliases: ['last name', 'lastname', 'last_name']
   },
   {
@@ -211,6 +211,18 @@ const BULK_UPLOAD_COLUMNS = [
     label: 'Is Active',
     required: false,
     aliases: ['is active', 'is_active', 'active', 'status']
+  },
+  {
+    key: 'salary_during_probation',
+    label: 'Salary During Probation (Monthly)',
+    required: false,
+    aliases: ['salary during probation', 'probation salary', 'salary during probation (monthly)']
+  },
+  {
+    key: 'salary_after_probation',
+    label: 'Salary After Probation (Monthly)',
+    required: false,
+    aliases: ['salary after probation', 'salary after probation (monthly)']
   }
 ];
 

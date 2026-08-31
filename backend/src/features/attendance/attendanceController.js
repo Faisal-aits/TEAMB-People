@@ -4,6 +4,7 @@ const Employee = require('../employee/employeeModel');
 // const FaceRecognition = require('../utils/faceRecognition');
 const Shift = require('../shift/shiftModel');
 const {pool} = require('../../config/db');
+const Salary = require('../salary/salaryModel');
 const { getIndiaDate, getIndiaDateTime } = require('../../utils/indiaTime');
 const { runAutoCheckout } = require('./autoCheckoutService');
 
@@ -43,10 +44,27 @@ const attendanceController = {
 
 
 
+            let holidays = [];
+            try {
+                const targetDateObj = new Date(targetDate);
+                holidays = await Salary.getHolidays(req.tenantId, targetDateObj.getMonth() + 1, targetDateObj.getFullYear());
+            } catch (err) {
+                console.error('Error fetching holidays:', err);
+            }
+            const holidayDates = new Set(holidays.map(h => h.date));
+            
+            attendanceData = attendanceData.map(record => {
+                if (holidayDates.has(record.date) && record.status === 'Absent') {
+                    record.status = 'Holiday';
+                }
+                return record;
+            });
+
             res.json({
                 success: true,
                 attendance: attendanceData || [],
-                statistics: stats
+                statistics: stats,
+                holidays: holidays
             });
         } catch (error) {
             console.error('Get attendance error:', error);
@@ -55,7 +73,8 @@ const attendanceController = {
                 success: false,
                 message: 'Error fetching attendance data',
                 attendance: [],
-                statistics: { total: 0, present: 0, delayed: 0, half_day: 0, on_leave: 0, absent: 0, pending: 0 }
+                statistics: { total: 0, present: 0, delayed: 0, half_day: 0, on_leave: 0, absent: 0, pending: 0 },
+                holidays: []
             });
         }
     },
@@ -64,9 +83,25 @@ const attendanceController = {
     getEmployeeHistory: async (req, res) => {
         try {
             const { employeeId } = req.params;
-            const history = await Attendance.getEmployeeHistory(req.tenantId, employeeId);
+            let history = await Attendance.getEmployeeHistory(req.tenantId, employeeId);
             const stats = await Attendance.getEmployeeHistoryStats(req.tenantId, employeeId);
-            res.json({ history: history, statistics: stats });
+            
+            let holidays = [];
+            try {
+                const today = new Date();
+                holidays = await Salary.getHolidays(req.tenantId, today.getMonth() + 1, today.getFullYear());
+                const holidayDates = new Set(holidays.map(h => h.date));
+                history = history.map(record => {
+                    if (holidayDates.has(record.date) && record.status === 'Absent') {
+                        record.status = 'Holiday';
+                    }
+                    return record;
+                });
+            } catch (err) {
+                console.error('Error fetching holidays for history:', err);
+            }
+            
+            res.json({ history: history, statistics: stats, holidays: holidays });
         } catch (error) {
             console.error('Get employee history error:', error);
             res.status(500).json({ message: 'Server error while fetching employee history' });
@@ -80,8 +115,8 @@ const attendanceController = {
             const userId = req.user.id;
 
             const [employees] = await pool.execute(
-                'SELECT id, employee_id FROM employee_details WHERE employee_id = ?',
-                [userId]
+                'SELECT id, employee_id FROM employee_details WHERE employee_id = ? AND tenant_id = ?',
+                [userId, req.tenantId]
             );
 
             if (employees.length === 0) {
@@ -109,8 +144,8 @@ const attendanceController = {
             const userId = req.user.id;
 
             const [employees] = await pool.execute(
-                'SELECT id, employee_id FROM employee_details WHERE employee_id = ?',
-                [userId]
+                'SELECT id, employee_id FROM employee_details WHERE employee_id = ? AND tenant_id = ?',
+                [userId, req.tenantId]
             );
 
             if (employees.length === 0) {
@@ -309,9 +344,24 @@ const attendanceController = {
             }
 
             const employeeId = employees[0].id;
-            const history = await Attendance.getEmployeeHistory(req.tenantId, employeeId);
+            let history = await Attendance.getEmployeeHistory(req.tenantId, employeeId);
 
-            res.json({ success: true, history: history });
+            let holidays = [];
+            try {
+                const today = new Date();
+                holidays = await Salary.getHolidays(req.tenantId, today.getMonth() + 1, today.getFullYear());
+                const holidayDates = new Set(holidays.map(h => h.date));
+                history = history.map(record => {
+                    if (holidayDates.has(record.date) && record.status === 'Absent') {
+                        record.status = 'Holiday';
+                    }
+                    return record;
+                });
+            } catch (err) {
+                console.error('Error fetching holidays for my history:', err);
+            }
+
+            res.json({ success: true, history: history, holidays: holidays });
         } catch (error) {
             console.error('Get my history error:', error);
             res.status(500).json({ success: false, message: error.message });
@@ -589,6 +639,31 @@ const attendanceController = {
         } catch (error) {
             console.error('Run auto checkout error:', error);
             res.status(500).json({ success: false, message: error.message });
+        }
+    },
+
+    markHalfDay: async (req, res) => {
+        try {
+            const { date, employee_id, mark_all, reason } = req.body;
+            const targetDate = date || getIndiaDate();
+            const adminUserId = req.user?.id || null;
+
+            const result = await Attendance.markHalfDay(req.tenantId, {
+                date: targetDate,
+                employeeId: employee_id,
+                markAll: Boolean(mark_all || employee_id === 'all'),
+                reason,
+                adminUserId
+            });
+
+            res.json({
+                success: true,
+                message: result.message,
+                count: result.count
+            });
+        } catch (error) {
+            console.error('Error marking half day:', error);
+            res.status(500).json({ success: false, message: error.message || 'Failed to mark half day' });
         }
     }
 };

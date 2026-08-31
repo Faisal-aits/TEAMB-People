@@ -31,10 +31,34 @@
   font-weight: 600;
 }
 
+.reports-export-btn {
+  background: #E6E6FA;
+  border: 1px solid #c7d2fe;
+  color: #000000;
+  padding: 0.75rem 1.5rem;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(138, 135, 201, 0.15);
+}
+
+.reports-export-btn:hover {
+  background: #dcdcfe;
+  color: #1e1b4b;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(138, 135, 201, 0.4);
+}
+
 .reports-add-btn {
-  background: linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%);
-  border: none;
-  color: white;
+  background: #E6E6FA;
+  border: 1px solid #c7d2fe;
+  color: #000000;
   padding: 0.75rem 1.5rem;
   border-radius: 10px;
   cursor: pointer;

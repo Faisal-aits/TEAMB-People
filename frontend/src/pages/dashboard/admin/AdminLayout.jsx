@@ -1,5 +1,7 @@
 // src/pages/dashboard/admin/AdminLayout.jsx
 import React, { useState, useEffect } from 'react';
+import worklyLogo from '../../../assets/img/workly-full-logo.png';
+import worklyShortLogo from '../../../assets/img/workly-logo.png';
 import { BsPersonCircle } from "react-icons/bs";
 import { useAuth } from '../../../contexts/AuthContext';
 import './AdminLayout.css';
@@ -32,7 +34,6 @@ import StudentAttendanceManagement from './StudentAttendanceManagement.jsx';
 // Hirirng Manager Module 
 import HRDashboard from './HRDashboard.jsx';
 import OfferLetter from '../HR/OfferLetter.jsx'; //Offer letter jsx HR Folder  
-import SalarySlip from '../HR/SalarySlip.jsx';
 import SalaryHistory from '../HR/SalaryHistory.jsx';
 import EmployeeDirectory from '../HR/EmployeeDirectory.jsx';
 import CompanyBranding from './CompanyBranding.jsx';
@@ -40,6 +41,8 @@ import ResignationRequests from '../HR/ResignationRequests.jsx';
 import ExperienceLetters from '../HR/ExperienceLetters.jsx';
 import IncrementLetters from '../HR/IncrementLetters.jsx';
 import DeclarationForm from '../HR/DeclarationForm.jsx';
+import CompanyDocuments from '../../CompanyDocuments/CompanyDocuments.jsx';
+
 const AdminLayout = () => {
   const [activeTab, setActiveTab] = useState(() => {
     return localStorage.getItem("activeTab") || "dashboard";
@@ -54,7 +57,7 @@ const AdminLayout = () => {
   useEffect(() => {
     localStorage.setItem("activeTab", activeTab);
   }, [activeTab]);
-  
+
   useEffect(() => {
     // Close all dropdowns first
     setManageOpen(false);
@@ -96,7 +99,6 @@ const AdminLayout = () => {
   const { user, logout } = useAuth();
   const isKosquOrganization = (user?.tenant_slug || '').toLowerCase() === 'kosqu';
   const restrictedHrTabsForKosqu = new Set([
-    'salary-slip',
     'salary-history',
     'hr-employee-directory',
     'resignation',
@@ -256,9 +258,9 @@ const AdminLayout = () => {
           <div className="sidebar-header">
             <div className="header-content">
               {sidebarOpen ? (
-                <h2 className="company-title-sidebar">Work Desk</h2>
+                <img src={worklyLogo} alt="Workly Logo" className="company-logo-sidebar" style={{ maxHeight: '40px', maxWidth: '100%', transform: 'scale(2.5)' }} />
               ) : (
-                <div className="company-icon">W</div>
+                <img src={worklyShortLogo} alt="W Logo" style={{ maxHeight: '52px', maxWidth: '52px', objectFit: 'contain', transform: 'scale(1.4)' }} />
               )}
             </div>
           </div>
@@ -354,7 +356,7 @@ const AdminLayout = () => {
                     </li>
 
 
-                      <li>
+                    <li>
                       <button onClick={() => navigateToTab('internship')}>
                         <span className="dropdown-text">Intership</span>
                       </button>
@@ -502,18 +504,20 @@ const AdminLayout = () => {
           {/* Hiring manager module  */}
           {activeTab === 'hr' && <HRDashboard setActiveTab={navigateToTab} />}
           {activeTab === 'offer-letter' && <OfferLetter />}
-          {activeTab === 'salary-slip' && <SalarySlip />}
           {activeTab === 'salary-history' && <SalaryHistory />}
           {activeTab === 'hr-employee-directory' && <EmployeeDirectory />}
           {activeTab === 'company-branding' && <CompanyBranding />}
           {activeTab === 'resignation' && <ResignationRequests />}
           {activeTab === 'experience-letter' && <ExperienceLetters />}
           {activeTab === 'increment-letter' && <IncrementLetters />}
-       {activeTab === 'declaration-form' && <DeclarationForm />}
+          {activeTab === 'declaration-form' && <DeclarationForm />}
+          {activeTab === 'company-documents' && <CompanyDocuments />}
         </main>
       </div>
     </div>
   );
 };
+
+export default AdminLayout;
 
 export default AdminLayout;

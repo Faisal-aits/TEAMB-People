@@ -151,18 +151,29 @@ const authController = {
         isAdmin
       );
 
-      const token = jwt.sign(
-        {
-          id: user.id,
-          email: user.email,
-          position: user.position,
-          first_name: user.first_name,
-          last_name: user.last_name,
-          tenant_id: tenant.id
-        },
-        process.env.JWT_SECRET || 'arham_simple_secret_2023',
-        { expiresIn: '24h' }
-      );
+        if (!process.env.JWT_SECRET) {
+          throw new Error('FATAL ERROR: JWT_SECRET is not defined');
+        }
+
+        const token = jwt.sign(
+          {
+            id: user.id,
+            email: user.email,
+            position: user.position,
+            first_name: user.first_name,
+            last_name: user.last_name,
+            tenant_id: tenant.id
+          },
+          process.env.JWT_SECRET,
+          { expiresIn: '24h' }
+        );
+
+        res.cookie('auth_token', token, {
+          maxAge: 24 * 60 * 60 * 1000,
+          httpOnly: false,
+          sameSite: 'lax',
+          path: '/'
+        });
 
       res.json({
         success: true,

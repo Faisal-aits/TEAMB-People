@@ -4,6 +4,7 @@ const multer = require('multer');
 const Attendance = require('./attendanceModel');
 const { pool } = require('../../config/db');
 const attendanceController = require('./attendanceController');
+const regularizationController = require('./regularizationController');
 const authMiddleware = require('../../middleware/auth.middleware');
 const requireModuleAccess = require('../../middleware/requireModuleAccess');
 // const AutoAbsentService = require('../services/autoAbsentService');
@@ -51,6 +52,9 @@ router.post('/:attendanceId/reject', requireModuleAccess('attendance_management'
 
 // POST /api/attendance/mark - Manual attendance marking
 router.post('/mark', requireModuleAccess('attendance_management', 'write'), attendanceController.markAttendance);
+
+// POST /api/attendance/mark-half-day - Mark half day for employee or all employees
+router.post('/mark-half-day', requireModuleAccess('attendance_management', 'write'), attendanceController.markHalfDay);
 
 // ==================== EMPLOYEE-SPECIFIC ROUTES ====================
 
@@ -101,4 +105,74 @@ router.get('/summary/:employeeId',
   requireModuleAccess('attendance_management', 'read'),
   attendanceController.getMonthlyAttendanceSummary
 );
+
+// ==================== REGULARIZATION ROUTES ====================
+
+// ── Admin: Settings ─────────────────────────────────────────────
+// GET  /api/attendance/regularization/settings
+router.get(
+  '/regularization/settings',
+  requireModuleAccess('attendance_management', 'read'),
+  regularizationController.getSettings
+);
+// PUT  /api/attendance/regularization/settings
+router.put(
+  '/regularization/settings',
+  requireModuleAccess('attendance_management', 'write'),
+  regularizationController.updateSettings
+);
+
+// ── Admin: Stats ─────────────────────────────────────────────────
+// GET  /api/attendance/regularization/stats
+router.get(
+  '/regularization/stats',
+  requireModuleAccess('attendance_management', 'read'),
+  regularizationController.getStats
+);
+
+// ── Employee: own usage ───────────────────────────────────────────
+// GET  /api/attendance/regularization/my/usage
+router.get('/regularization/my/usage', regularizationController.getMyMonthlyUsage);
+
+// ── Employee: own requests ────────────────────────────────────────
+// GET  /api/attendance/regularization/my
+router.get('/regularization/my', regularizationController.getMyRequests);
+
+// ── Employee: submit new request ──────────────────────────────────
+// POST /api/attendance/regularization
+router.post('/regularization', regularizationController.create);
+
+// ── Admin: list all requests ──────────────────────────────────────
+// GET  /api/attendance/regularization
+router.get(
+  '/regularization',
+  requireModuleAccess('attendance_management', 'read'),
+  regularizationController.getAll
+);
+
+// ── Admin: approve ────────────────────────────────────────────────
+// POST /api/attendance/regularization/:id/approve
+router.post(
+  '/regularization/:id/approve',
+  requireModuleAccess('attendance_management', 'write'),
+  regularizationController.approve
+);
+
+// ── Admin: reject ─────────────────────────────────────────────────
+// POST /api/attendance/regularization/:id/reject
+router.post(
+  '/regularization/:id/reject',
+  requireModuleAccess('attendance_management', 'write'),
+  regularizationController.reject
+);
+
+// ── Admin: delete ─────────────────────────────────────────────────
+// DELETE /api/attendance/regularization/:id
+router.delete(
+  '/regularization/:id',
+  requireModuleAccess('attendance_management', 'write'),
+  regularizationController.deleteRequest
+);
+
 module.exports = router;
+

@@ -4,6 +4,7 @@ const { pool } = require('../../config/db');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { processEmployeeBulkUpload } = require('./employeeBulkUploadService');
+const Settings = require('../settings/settingsModel');
 const { assertSmtpConfigured, sendEmployeeCredentials } = require('../../services/mailService');
 const { parseMoney } = require('./employeePayroll');
 // const { sendEmployeeCredentials } = require('../utils/emailService');
@@ -63,6 +64,58 @@ const employeeController = {
       res.json({ employee });
     } catch (error) {
       console.error('Get my profile error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  },
+
+  updateMyProfile: async (req, res) => {
+    try {
+      const employee = await Employee.getByUserId(req.tenantId, req.user.id);
+      if (!employee) {
+        return res.status(404).json({ message: 'Employee profile not found' });
+      }
+
+      const { bank_account_number, ifsc_code, pan_number, aadhar_number } = req.body;
+      
+      const updateData = {};
+      if (bank_account_number !== undefined) updateData.bank_account_number = bank_account_number;
+      if (ifsc_code !== undefined) updateData.ifsc_code = ifsc_code;
+      if (pan_number !== undefined) updateData.pan_number = pan_number;
+      if (aadhar_number !== undefined) updateData.aadhar_number = aadhar_number;
+
+      if (Object.keys(updateData).length > 0) {
+        await Employee.updateBankDetails(req.tenantId, employee.employee_id, updateData);
+      }
+
+      const updatedEmployee = await Employee.getByUserId(req.tenantId, req.user.id);
+      res.json({ success: true, employee: updatedEmployee });
+    } catch (error) {
+      console.error('Update my profile error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  },
+
+  resetMyPassword: async (req, res) => {
+    try {
+      const { new_password } = req.body;
+      if (!new_password) {
+        return res.status(400).json({ message: 'New password is required' });
+      }
+
+      const employee = await Employee.getByUserId(req.tenantId, req.user.id);
+      if (!employee) {
+        return res.status(404).json({ message: 'Employee not found' });
+      }
+
+      const password_hash = await bcrypt.hash(new_password, 10);
+      await pool.execute(
+        'UPDATE users SET password_hash = ? WHERE id = ? AND tenant_id = ?',
+        [password_hash, req.user.id, req.tenantId]
+      );
+
+      res.json({ success: true, message: 'Password reset successfully' });
+    } catch (error) {
+      console.error('Reset my password error:', error);
       res.status(500).json({ message: 'Server error' });
     }
   },
@@ -165,17 +218,15 @@ const employeeController = {
   // Create employee
   createEmployee: async (req, res) => {
     try {
-      return res.status(403).json({
-        success: false,
-        message: 'Employees must be created by sending and accepting an offer letter.'
-      });
+
 
       const {
         first_name, last_name, email, phone, department_id, position,
         employment_type, joining_date, last_working_date, date_of_birth, address, emergency_contact,
         bank_account_number, ifsc_code, pan_number, aadhar_number,
         employee_id, salary, salary_basic, salary_hra, salary_medical_allowance,
-        salary_travel_allowance, salary_other_allowance, is_active
+        salary_travel_allowance, salary_other_allowance, is_active,
+        is_on_probation, probation_end_date, salary_during_probation, salary_after_probation
       } = req.body;
 
       // Validate required fields
@@ -191,16 +242,29 @@ const employeeController = {
         return res.status(400).json({ message: payrollInputError });
       }
 
-      // Check if employee ID already exists
+      // Check for duplicate employee ID and email
+      const validationErrors = [];
+      
       if (employee_id) {
         if (String(employee_id).trim().length > 20) {
-          return res.status(400).json({ message: 'Employee ID must be 20 characters or less' });
+          validationErrors.push('Employee ID must be 20 characters or less');
+        } else {
+          const exists = await Employee.checkEmployeeIdExists(req.tenantId, employee_id);
+          if (exists) {
+            validationErrors.push('Employee ID already exists');
+          }
         }
+      }
 
-        const exists = await Employee.checkEmployeeIdExists(req.tenantId, employee_id);
-        if (exists) {
-          return res.status(400).json({ message: 'Employee ID already exists' });
+      if (email) {
+        const emailExists = await Employee.getExistingEmails([email]);
+        if (emailExists.size > 0) {
+          validationErrors.push('Email already exists');
         }
+      }
+
+      if (validationErrors.length > 0) {
+        return res.status(400).json({ message: validationErrors.join(' and ') });
       }
 
       // Generate temporary password
@@ -233,7 +297,11 @@ const employeeController = {
         aadhar_number: aadhar_number || null,
         employee_id: employee_id || null,
         is_active: is_active !== undefined ? is_active : true,
-        status: 'active'
+        status: 'active',
+        is_on_probation: is_on_probation || false,
+        probation_end_date: probation_end_date || null,
+        salary_during_probation: salary_during_probation || null,
+        salary_after_probation: salary_after_probation || null
       };
 
       const result = await Employee.create(req.tenantId, employeeData);
@@ -352,7 +420,11 @@ const employeeController = {
             aadhar_number: emp.aadhar_number || null,
             employee_id: emp.employee_id || null,
             is_active: true,
-            status: 'active'
+            status: 'active',
+            is_on_probation: emp.is_on_probation || false,
+            probation_end_date: emp.probation_end_date || null,
+            salary_during_probation: emp.salary_during_probation || null,
+            salary_after_probation: emp.salary_after_probation || null
           };
 
           const result = await Employee.create(req.tenantId, employeeData);
@@ -424,7 +496,8 @@ const employeeController = {
         });
       }
 
-      const result = await processEmployeeBulkUpload(req.tenantId, req.file);
+      const settings = await Settings.getAll(req.tenantId);
+      const result = await processEmployeeBulkUpload(req.tenantId, req.file, settings);
       const statusCode = result.insertedRows > 0 || result.totalRows > 0 ? 200 : 400;
       return res.status(statusCode).json(result);
     } catch (error) {

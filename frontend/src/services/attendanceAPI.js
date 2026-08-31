@@ -20,6 +20,8 @@ export const attendanceAPI = {
   
   mark: (attendanceData) => api.post('/attendance/mark', attendanceData),
 
+  markHalfDay: (data) => api.post('/attendance/mark-half-day', data),
+
   // Approve attendance
   approve: (attendanceId) => api.post(`/attendance/${attendanceId}/approve`),
 

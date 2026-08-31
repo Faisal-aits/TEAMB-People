@@ -1,58 +1,52 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { authAPI } from '../../services/api';
+import worklyFullLogo from '../../assets/img/workly-full-logo.png';
 import './Login.css';
 
 const ResetPassword = () => {
     const { token } = useParams();
-    const navigate = useNavigate();
-    const [formData, setFormData] = useState({
-        newPassword: '',
-        confirmPassword: ''
-    });
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
-
-    const handleInputChange = (e) => {
-        const { id, value } = e.target;
-        setFormData(prevState => ({
-            ...prevState,
-            [id]: value
-        }));
-        setError('');
-    };
+    const [error, setError] = useState('');
+    const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setLoading(true);
         setError('');
+        setSuccess('');
 
-        if (formData.newPassword !== formData.confirmPassword) {
-            setError('Passwords do not match');
-            setLoading(false);
+        if (!password || !confirmPassword) {
+            setError('Please fill in both password fields.');
             return;
         }
 
-        if (formData.newPassword.length < 6) {
-            setError('Password must be at least 6 characters long');
-            setLoading(false);
+        if (password.length < 6) {
+            setError('Password must be at least 6 characters.');
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            setError('Passwords do not match.');
+            return;
+        }
+
+        if (!token) {
+            setError('Invalid or missing reset token. Please request a new reset link.');
             return;
         }
 
         try {
-            const response = await authAPI.resetPassword(token, { newPassword: formData.newPassword });
-            setSuccess(response.data.message || 'Password has been safely reset!');
-            // clear form
-            setFormData({ newPassword: '', confirmPassword: '' });
-            
-            setTimeout(() => {
-                navigate('/login');
-            }, 3000);
-            
+            setLoading(true);
+            const res = await authAPI.resetPassword(token, { newPassword: password });
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            setSuccess(res.data.message || 'Password reset successfully!');
+            setTimeout(() => navigate('/login'), 2500);
         } catch (err) {
-            console.error('Reset password error:', err);
-            setError(err.response?.data?.message || 'Token is invalid or has expired.');
+            setError(err.response?.data?.message || 'Token is invalid or has expired. Please request a new reset link.');
         } finally {
             setLoading(false);
         }
@@ -62,10 +56,17 @@ const ResetPassword = () => {
         <div className="travel-login-container">
             <div className="company-content">
                 <div className="company-text">
-                    <h1 className="company-title">WORK DESK</h1>
-                    <div className="company-quote">
-                        <p className="quote-text">Create a secure new path</p>
-                    </div>
+                    <img
+                        src={worklyFullLogo}
+                        alt="Workly Logo"
+                        style={{
+                            maxWidth: '480px',
+                            width: '100%',
+                            height: 'auto',
+                            objectFit: 'contain',
+                            filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.3))'
+                        }}
+                    />
                 </div>
             </div>
 
@@ -93,11 +94,12 @@ const ResetPassword = () => {
                             <input
                                 type="password"
                                 id="newPassword"
-                                placeholder="********"
+                                placeholder="Min. 6 characters"
                                 className="form-input glass-input"
-                                value={formData.newPassword}
-                                onChange={handleInputChange}
-                                disabled={loading || success}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                disabled={loading || !!success}
+                                autoComplete="new-password"
                             />
                         </div>
 
@@ -108,23 +110,24 @@ const ResetPassword = () => {
                             <input
                                 type="password"
                                 id="confirmPassword"
-                                placeholder="********"
+                                placeholder="Re-enter password"
                                 className="form-input glass-input"
-                                value={formData.confirmPassword}
-                                onChange={handleInputChange}
-                                disabled={loading || success}
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                disabled={loading || !!success}
+                                autoComplete="new-password"
                             />
                         </div>
 
                         <button
                             type="submit"
                             className="submit-btn btn-travel"
-                            disabled={loading || success}
+                            disabled={loading || !!success}
                         >
                             {loading ? 'RESETTING...' : 'RESET PASSWORD'}
                         </button>
                     </form>
-                    
+
                     <div className="form-footer" style={{ marginTop: '20px', textAlign: 'center' }}>
                         <Link to="/login" className="forgot-link">
                             &larr; Back to Login

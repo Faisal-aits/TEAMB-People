@@ -22,9 +22,10 @@ import experienceLetterAPI from '../../services/experienceLetterAPI';
 import incrementLetterAPI from '../../services/incrementLetterAPI';
 import { leaveAPI } from '../../services/leaveAPI';
 import offerLetterAPI from '../../services/offerLetterAPI';
-import { projectAPI } from '../../services/projectAPI';
 import { reportAPI } from '../../services/reportAPI';
 import resignationAPI from '../../services/resignationAPI';
+import { breakAPI } from '../../services/breakAPI';
+import { getBrowserLocation } from '../../utils/location';
 import './EmployeeLayout.css';
 
 const MODULE_META = {
@@ -67,11 +68,6 @@ const MODULE_META = {
     title: 'Holiday Management',
     description: 'Maintain holidays and paid non-working days.',
     icon: <HiOutlineCalendarDays />,
-  },
-  ai_document_generator: {
-    title: 'AI Document Generator',
-    description: 'Create HR documents from approved templates.',
-    icon: <HiOutlineDocumentText />,
   },
   offer_letters: {
     title: 'Offer Letters',
@@ -133,42 +129,21 @@ const MODULE_META = {
     description: 'Create and manage customer quotations.',
     icon: <HiOutlineDocumentText />,
   },
-  services: {
-    title: 'Services Module',
-    description: 'Clients, projects, and service management.',
-    icon: <HiOutlineBriefcase />,
-  },
-  service_management: {
-    title: 'Service Management',
-    description: 'Manage clients, projects, and service work.',
-    icon: <HiOutlineBriefcase />,
-  },
-  pttm: {
-    title: 'PTTM',
-    description: 'Track planning, tasks, timelines, and project progress.',
-    icon: <HiOutlineClipboardDocumentList />,
-  },
   employee_attendance: {
     title: 'My Attendance',
     description: 'Check in, check out, and review attendance history.',
     icon: <HiOutlineCalendarDays />,
   },
   employee_expense: {
-    title: 'My Expense',
+    title: 'Reimbursements',
     description: 'Submit expenses and track reimbursement requests.',
     icon: <HiOutlineReceiptPercent />,
-  },
-  employee_projects: {
-    title: 'My Projects & Tasks',
-    description: 'Assigned projects, tasks, deadlines, and status.',
-    icon: <HiOutlineBriefcase />,
   },
 };
 
 const DEFAULT_EMPLOYEE_MODULES = [
   { module_key: 'employee_attendance', name: 'My Attendance', access: 'write' },
-  { module_key: 'employee_expense', name: 'My Expense', access: 'write' },
-  { module_key: 'employee_projects', name: 'My Projects & Tasks', access: 'write' },
+  { module_key: 'employee_expense', name: 'Reimbursements', access: 'write' },
 ];
 
 const numberFormat = new Intl.NumberFormat('en-IN');
@@ -191,24 +166,42 @@ const getArray = (response, keys) => {
   return [];
 };
 
-const getSafeValue = (result, fallback = null) => (result.status === 'fulfilled' ? result.value : fallback);
+const getSafeValue = (result, fallback = null) => (result && result.status === 'fulfilled' ? result.value : fallback);
 
 const formatDate = (value) => {
   if (!value) return '-';
   return new Date(value).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
-const formatTime = (value) => value || '--';
+const formatTime = (timeString) => {
+  if (!timeString || timeString === '-' || timeString === '--') return '--';
+  if (typeof timeString === 'string' && (timeString.includes('AM') || timeString.includes('PM'))) return timeString;
+  try {
+    const parts = String(timeString).split(':');
+    if (parts.length < 2) return timeString;
+    let hour = parseInt(parts[0], 10);
+    const minute = parseInt(parts[1], 10);
+    if (isNaN(hour) || isNaN(minute)) return timeString;
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    hour = hour % 12 || 12;
+    return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} ${ampm}`;
+  } catch (e) {
+    return timeString;
+  }
+};
 
 const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
   const currentUser = user || {};
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [error, setError] = useState('');
   const [dashboardData, setDashboardData] = useState({
     profile: null,
     todayAttendance: null,
+    todayBreak: null,
     attendanceHistory: [],
+    holidays: [],
     leaves: [],
     expenses: [],
     documents: {
@@ -217,8 +210,6 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
       incrementLetters: 0,
       resignations: 0,
     },
-    projects: [],
-    tasks: [],
     reports: [],
   });
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -248,9 +239,8 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
         experienceResult,
         incrementResult,
         resignationResult,
-        projectsResult,
-        tasksResult,
         reportResult,
+        breakResult,
       ] = await Promise.allSettled([
         employeeAPI.getMyProfile(),
         attendanceAPI.getMyTodayAttendance(),
@@ -261,9 +251,8 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
         experienceLetterAPI.getMyLetters(),
         incrementLetterAPI.getMyLetters(),
         resignationAPI.getMyRequests(),
-        projectAPI.getMyProjects(),
-        projectAPI.getMyTasks(),
         reportAPI.getMyReports(),
+        breakAPI.getMyTodayBreaks(),
       ]);
 
       const profileResponse = getSafeValue(profileResult);
@@ -275,14 +264,13 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
       const experienceResponse = getSafeValue(experienceResult);
       const incrementResponse = getSafeValue(incrementResult);
       const resignationResponse = getSafeValue(resignationResult);
-      const projectsResponse = getSafeValue(projectsResult);
-      const tasksResponse = getSafeValue(tasksResult);
       const reportResponse = getSafeValue(reportResult);
 
       setDashboardData({
         profile: profileResponse?.data?.employee || null,
         todayAttendance: todayResponse?.data?.attendance || null,
         attendanceHistory: getArray(historyResponse, ['history', 'attendance']),
+        holidays: getArray(historyResponse, ['holidays']),
         leaves: getArray(leavesResponse, ['leaves']),
         expenses: getArray(expensesResponse, ['expenses']),
         documents: {
@@ -291,9 +279,8 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
           incrementLetters: getArray(incrementResponse, ['data', 'letters']).length,
           resignations: getArray(resignationResponse, ['data', 'requests']).length,
         },
-        projects: getArray(projectsResponse, ['projects']),
-        tasks: getArray(tasksResponse, ['tasks']),
-        reports: getArray(reportResponse, ['reports']),
+        reports: getArray(reportResponse, ['reports', 'data']),
+        todayBreak: getSafeValue(breakResult)?.data?.data || null,
       });
     } catch (err) {
       console.error('Failed to load employee dashboard:', err);
@@ -341,7 +328,6 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
       services: 'service',
       employee_attendance: 'employee-attendance',
       employee_expense: 'employee-expense',
-      employee_projects: 'employee-projects',
     };
     const defaultTab = moduleDefaults[mod.module_key] || MODULE_DEFAULT_TAB[mod.module_key];
 
@@ -353,54 +339,86 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
   };
 
   const handleAttendanceAction = async (type) => {
-    const markAttendance = async (location = {}) => {
-      try {
-        const attendanceData = {
-          type,
-          date: getIndiaDate(),
-          ...location,
-        };
-        await attendanceAPI.markMyAttendance(attendanceData);
-        await loadDashboard(true);
-      } catch (err) {
-        setError(err.response?.data?.message || `Unable to ${type === 'check_in' ? 'check in' : 'check out'}.`);
+    if (attendanceLoading) return;
+    setAttendanceLoading(true);
+    setError('');
+    try {
+      const location = await getBrowserLocation();
+      if (!location || !location.latitude || !location.longitude) {
+        setError('Could not get your location. Please try again. Location is required to check in or out.');
+        return;
       }
-    };
+      const attendanceData = {
+        type,
+        date: getIndiaDate(),
+        latitude: location.latitude,
+        longitude: location.longitude,
+      };
+      await attendanceAPI.markMyAttendance(attendanceData);
+      await loadDashboard(true);
+    } catch (err) {
+      console.error(`Error during ${type}:`, err);
+      setError(err.message || err.response?.data?.message || `Unable to ${type === 'check_in' ? 'check in' : 'check out'}.`);
+    } finally {
+      setAttendanceLoading(false);
+    }
+  };
 
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          markAttendance({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          });
-        },
-        (error) => {
-          console.error('Geolocation error:', error);
-          setError('Could not get your location. Please try again. Location is required to check in or out.');
-        },
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-      );
-    } else {
-      setError('Geolocation is not supported by this browser. Location is required to check in or out.');
+  const handleBreakAction = async (type) => {
+    try {
+      if (type === 'break_in') {
+        await breakAPI.breakIn();
+        alert('Break started successfully.');
+      } else {
+        await breakAPI.breakOut();
+        alert('Break ended successfully.');
+      }
+      loadDashboard(true);
+    } catch (err) {
+      setError(err.response?.data?.message || `Unable to ${type === 'break_in' ? 'start break' : 'end break'}.`);
     }
   };
 
   const attendanceSummary = useMemo(() => {
-    const month = new Date().getMonth();
-    const year = new Date().getFullYear();
+    const today = new Date();
+    const month = today.getMonth();
+    const year = today.getFullYear();
     const currentMonthRecords = dashboardData.attendanceHistory.filter((record) => {
       const date = new Date(record.date);
       return date.getMonth() === month && date.getFullYear() === year;
     });
 
+    // Calculate working days passed this month (excluding Sundays)
+    let workingDaysPassed = 0;
+    let d = new Date(year, month, 1);
+    while (d <= today) {
+      if (d.getDay() !== 0) workingDaysPassed++;
+      d.setDate(d.getDate() + 1);
+    }
+
+    // Subtract holidays that have passed this month
+    const passedHolidaysThisMonth = (dashboardData.holidays || []).filter(h => {
+      const hDate = new Date(h.date);
+      return hDate.getMonth() === month && hDate.getFullYear() === year && hDate <= today;
+    }).length;
+
+    workingDaysPassed -= passedHolidaysThisMonth;
+    if (workingDaysPassed < 0) workingDaysPassed = 0;
+
+    const presentCount = currentMonthRecords.filter((record) => ['Present', 'Delayed', 'Half Day'].includes(record.status)).length;
+    const delayedCount = currentMonthRecords.filter((record) => ['Delayed', 'Half Day'].includes(record.status)).length;
+    
+    // Absent is working days passed minus the days they were present (including delayed/half day)
+    let absentCount = workingDaysPassed - presentCount;
+    if (absentCount < 0) absentCount = 0;
+
     return {
-      present: currentMonthRecords.filter((record) => ['Present', 'Delayed', 'Half Day'].includes(record.status)).length,
-      delayed: currentMonthRecords.filter((record) => ['Delayed', 'Half Day'].includes(record.status)).length,
-      absent: currentMonthRecords.filter((record) => record.status === 'Absent').length,
-      total: currentMonthRecords.length,
+      present: presentCount,
+      delayed: delayedCount,
+      absent: absentCount,
+      total: presentCount + absentCount, // Total days accounted for
     };
-  }, [dashboardData.attendanceHistory]);
+  }, [dashboardData.attendanceHistory, dashboardData.holidays]);
 
   const leaveSummary = useMemo(() => ({
     pending: dashboardData.leaves.filter((leave) => leave.status === 'Pending').length,
@@ -420,26 +438,6 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
     };
   }, [dashboardData.expenses]);
 
-  const projectSummary = useMemo(() => {
-    const activeTasks = dashboardData.tasks.filter((task) => String(task.status || '').toLowerCase() !== 'completed');
-    const overdueTasks = activeTasks.filter((task) => {
-      const dueValue = task.due_date || task.date;
-      if (!dueValue) return false;
-      const dueDate = new Date(dueValue);
-      if (Number.isNaN(dueDate.getTime())) return false;
-      dueDate.setHours(0, 0, 0, 0);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      return dueDate < today;
-    });
-
-    return {
-      projectCount: dashboardData.projects.length,
-      activeTasks: activeTasks.length,
-      overdueTasks: overdueTasks.length,
-    };
-  }, [dashboardData.projects, dashboardData.tasks]);
-
   const profile = dashboardData.profile || {};
   const todayAttendance = dashboardData.todayAttendance || {};
   const isCheckedIn = Boolean(todayAttendance.check_in_time);
@@ -448,7 +446,6 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
   const moduleDescriptions = {
     employee_attendance: `${todayAttendance.status || 'Not checked in'} today, ${formatNumber(attendanceSummary.total)} records this month`,
     employee_expense: `${formatNumber(expenseSummary.pendingCount)} pending, ${formatCurrency(expenseSummary.pendingAmount)}`,
-    employee_projects: `${formatNumber(projectSummary.projectCount)} projects, ${formatNumber(projectSummary.activeTasks)} active tasks`,
   };
 
   const summaryCards = [
@@ -476,14 +473,6 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
       tone: 'amber',
       tab: 'employee-leave',
     },
-    {
-      label: 'Pending Expenses',
-      value: formatCurrency(expenseSummary.pendingAmount),
-      note: `${formatNumber(expenseSummary.pendingCount)} waiting reimbursement`,
-      icon: <HiOutlineReceiptPercent />,
-      tone: 'emerald',
-      tab: 'employee-expense',
-    },
   ];
 
   if (loading) {
@@ -498,7 +487,6 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
     <div className="employee-dashboard">
       <header className="employee-home-header">
         <div>
-          <span>Employee Overview</span>
           <h1>Welcome, {currentUser.first_name || 'User'}</h1>
           <p>{profile.position || profile.designation || 'Employee'}{profile.department_name ? `, ${profile.department_name}` : ''}</p>
         </div>
@@ -507,20 +495,9 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
             <HiOutlineArrowPath />
             {refreshing ? 'Refreshing' : 'Refresh'}
           </button>
-          <button 
-            type="button" 
-            className="employee-ticket-btn" 
-            onClick={() => {
-              localStorage.setItem('openRaiseTicketModal', 'true');
-              navigateToTab?.('employee-tickets');
-            }}
-          >
-            <HiOutlineExclamationTriangle />
-            Report Problem
-          </button>
           <button type="button" className="employee-report-btn" onClick={() => setReportModalOpen(true)}>
             <HiOutlinePencilSquare />
-            Report
+            Notify
           </button>
         </div>
       </header>
@@ -555,14 +532,26 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
               </div>
               <div>
                 <h3>{todayAttendance.status || 'Not Checked In'}</h3>
-                <p>Check in: {formatTime(todayAttendance.check_in_time)} - Check out: {formatTime(todayAttendance.check_out_time)}</p>
+                <p>
+                  Check in: {formatTime(todayAttendance.check_in_time)} - Check out: {formatTime(todayAttendance.check_out_time)}
+                  <br />
+                  {dashboardData.todayBreak?.totalDuration > 0 && <strong>Total Break Today: {dashboardData.todayBreak?.totalDuration} mins</strong>}
+                </p>
               </div>
-              <div className="employee-attendance-actions">
-                <button type="button" onClick={() => handleAttendanceAction('check_in')} disabled={isCheckedIn}>
-                  Check In
+              <div className="employee-attendance-actions" style={{ marginTop: '10px' }}>
+                <button type="button" onClick={() => handleAttendanceAction('check_in')} disabled={attendanceLoading || isCheckedIn}>
+                  {attendanceLoading ? 'Processing...' : 'Check In'}
                 </button>
-                <button type="button" onClick={() => handleAttendanceAction('check_out')} disabled={!isCheckedIn || isCheckedOut}>
-                  Check Out
+                <button type="button" onClick={() => handleAttendanceAction('check_out')} disabled={attendanceLoading || !isCheckedIn || isCheckedOut}>
+                  {attendanceLoading ? 'Processing...' : 'Check Out'}
+                </button>
+              </div>
+              <div className="employee-attendance-actions" style={{ marginTop: '10px' }}>
+                <button type="button" onClick={() => handleBreakAction('break_in')} disabled={!isCheckedIn || isCheckedOut || dashboardData.todayBreak?.isOnBreak}>
+                  Take Break
+                </button>
+                <button type="button" onClick={() => handleBreakAction('break_out')} disabled={!dashboardData.todayBreak?.isOnBreak}>
+                  End Break
                 </button>
               </div>
             </div>
@@ -600,14 +589,14 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
 
             <div className="employee-action-list">
               {!isCheckedIn && (
-                <button type="button" className="warning" onClick={() => handleAttendanceAction('check_in')}>
-                  <span>Check in for today</span>
+                <button type="button" className="warning" disabled={attendanceLoading} onClick={() => handleAttendanceAction('check_in')}>
+                  <span>{attendanceLoading ? 'Checking in...' : 'Check in for today'}</span>
                   <HiOutlineClock />
                 </button>
               )}
               {isCheckedIn && !isCheckedOut && (
-                <button type="button" className="info" onClick={() => handleAttendanceAction('check_out')}>
-                  <span>Check out before leaving</span>
+                <button type="button" className="info" disabled={attendanceLoading} onClick={() => handleAttendanceAction('check_out')}>
+                  <span>{attendanceLoading ? 'Checking out...' : 'Check out before leaving'}</span>
                   <HiOutlineClock />
                 </button>
               )}
@@ -619,7 +608,7 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
               )}
               {expenseSummary.pendingCount > 0 && (
                 <button type="button" className="warning" onClick={() => navigateToTab?.('employee-expense')}>
-                  <span>{formatNumber(expenseSummary.pendingCount)} expense pending</span>
+                  <span>{formatNumber(expenseSummary.pendingCount)} reimbursement pending</span>
                   <HiOutlineReceiptPercent />
                 </button>
               )}
@@ -643,8 +632,8 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
                 <strong>{leaveSummary.latest ? `${leaveSummary.latest.status} - ${formatDate(leaveSummary.latest.start_date)}` : 'No leave requests'}</strong>
               </button>
               <button type="button" onClick={() => navigateToTab?.('employee-expense')}>
-                <span>Latest expense</span>
-                <strong>{expenseSummary.latest ? `${formatCurrency(expenseSummary.latest.amount)} - ${expenseSummary.latest.payment_status || 'pending'}` : 'No expenses submitted'}</strong>
+                <span>Latest reimbursement</span>
+                <strong>{expenseSummary.latest ? `${formatCurrency(expenseSummary.latest.amount)} - ${expenseSummary.latest.payment_status || 'pending'}` : 'No reimbursements submitted'}</strong>
               </button>
             </div>
           </div>
@@ -700,7 +689,7 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
               <div className="employee-report-form-actions">
                 <span>{reportText.length}/3000</span>
                 <button type="submit" disabled={reportSubmitting}>
-                  {reportSubmitting ? 'Submitting...' : 'Submit Report'}
+                  {reportSubmitting ? 'Submitting...' : 'Notify'}
                 </button>
               </div>
             </form>

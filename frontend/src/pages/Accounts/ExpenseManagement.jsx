@@ -579,17 +579,50 @@ const ExpenseManagement = () => {
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
           <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '600', color: '#2d3748' }}>
-            Expense Management
+            Reimbursements
           </h1>
           
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <input
+              className="table-search-input"
+              type="search"
+              placeholder="Search employee, category, description..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                padding: '0.6rem 1rem',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                width: '260px',
+                fontSize: '0.9rem'
+              }}
+            />
+
+            <select 
+              value={paymentFilter}
+              onChange={(e) => setPaymentFilter(e.target.value)}
+              style={{
+                padding: '0.6rem 1rem',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                background: 'white',
+                fontSize: '0.9rem',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="all">All Payment Status</option>
+              <option value="pending">Pending</option>
+              <option value="paid">Paid</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+
             <button
               onClick={() => setIsAddModalOpen(true)}
               style={{
-                background: 'linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%)',
-                border: 'none',
-                color: 'white',
-                padding: '0.75rem 1.5rem',
+                background: '#E6E6FA',
+                color: '#000000',
+                border: '1px solid #c7d2fe',
+                padding: '0.6rem 1.25rem',
                 borderRadius: '10px',
                 cursor: 'pointer',
                 fontFamily: 'inherit',
@@ -603,35 +636,10 @@ const ExpenseManagement = () => {
               }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 6V12M12 12V18M12 12H18M12 12H6" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M12 6V12M12 12V18M12 12H18M12 12H6" stroke="black" strokeWidth="2" strokeLinecap="round"/>
               </svg>
-              Add Expense
+              + Add Reimbursement
             </button>
-
-            <select 
-              value={paymentFilter}
-              onChange={(e) => setPaymentFilter(e.target.value)}
-              style={{
-                padding: '0.5rem 1rem',
-                border: '1px solid #e2e8f0',
-                borderRadius: '6px',
-                background: 'white',
-                fontSize: '0.9rem',
-                cursor: 'pointer'
-              }}
-            >
-              <option value="all">All Payment Status</option>
-              <option value="pending">Pending</option>
-              <option value="paid">Paid</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-            <input
-              className="table-search-input"
-              type="search"
-              placeholder="Search employee, category, description, status..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
           </div>
         </div>
 

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { attendanceAPI, getIndiaDate } from '../../services/attendanceAPI';
 import { leaveAPI } from '../../services/leaveAPI';
+import { getBrowserLocation } from '../../utils/location';
 import * as XLSX from 'xlsx';
 import { useTableControls } from '../../hooks/useTableControls';
 import '../../styles/tableControls.css';
@@ -9,6 +10,23 @@ import './EmployeeAttendance.css';
 
 const ATTENDANCE_SEARCH_FIELDS = ['date', 'checkIn', 'checkOut', 'status', 'remarks'];
 const LEAVE_SEARCH_FIELDS = ['created_at', 'description', 'start_date', 'end_date', 'total_days', 'status', 'leave_id'];
+
+const formatTime = (timeString) => {
+  if (!timeString || timeString === '-' || timeString === '--') return '--';
+  if (typeof timeString === 'string' && (timeString.includes('AM') || timeString.includes('PM'))) return timeString;
+  try {
+    const parts = String(timeString).split(':');
+    if (parts.length < 2) return timeString;
+    let hour = parseInt(parts[0], 10);
+    const minute = parseInt(parts[1], 10);
+    if (isNaN(hour) || isNaN(minute)) return timeString;
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    hour = hour % 12 || 12;
+    return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} ${ampm}`;
+  } catch (e) {
+    return timeString;
+  }
+};
 
 const EmployeeAttendance = () => {
   // ==================== ATTENDANCE STATES ====================
@@ -27,6 +45,7 @@ const EmployeeAttendance = () => {
     shift: null,
     saving: false
   });
+  const [actionLoading, setActionLoading] = useState(false);
 
   // ==================== LEAVE STATES ====================
   const [leaves, setLeaves] = useState([]);
@@ -55,8 +74,8 @@ const EmployeeAttendance = () => {
         const transformedData = response.data.history.map(record => ({
           id: record.history_id,
           date: record.date,
-          checkIn: record.check_in_time || '--',
-          checkOut: record.check_out_time || '--',
+          checkIn: formatTime(record.check_in_time),
+          checkOut: formatTime(record.check_out_time),
           status: record.status === 'Half Day' ? 'Delayed' : record.status,
           employee: record.employee_name || 'Current User',
           remarks: record.remarks || ''
@@ -131,43 +150,33 @@ const EmployeeAttendance = () => {
   };
 
   const handleQuickCheckIn = async (type) => {
-    const markAttendance = async (location = {}) => {
-      try {
-        const attendanceData = {
-          type: type,
-          date: getIndiaDate(),
-          ...location
-        };
-        const response = await attendanceAPI.markMyAttendance(attendanceData);
-        if (response.data.success) {
-          await fetchAttendanceHistory();
-          await fetchTodayAttendance();
-          alert(`${type === 'check_in' ? 'Check-in' : 'Check-out'} successful!`);
-        } else {
-          alert(response.data.message || `Failed to ${type}`);
-        }
-      } catch (err) {
-        console.error(`Error during ${type}:`, err);
-        alert(err.response?.data?.message || `Error during ${type}`);
+    if (actionLoading) return;
+    setActionLoading(true);
+    try {
+      const location = await getBrowserLocation();
+      if (!location || !location.latitude || !location.longitude) {
+        alert('Could not get your location. Please try again. Location is required to check in or out.');
+        return;
       }
-    };
-
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          markAttendance({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude
-          });
-        },
-        (error) => {
-          console.error('Geolocation error:', error);
-          alert('Could not get your location. Please try again. Location is required to check in or out.');
-        },
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-      );
-    } else {
-      alert('Geolocation is not supported by this browser. Location is required to check in or out.');
+      const attendanceData = {
+        type: type,
+        date: getIndiaDate(),
+        latitude: location.latitude,
+        longitude: location.longitude
+      };
+      const response = await attendanceAPI.markMyAttendance(attendanceData);
+      if (response.data.success) {
+        await fetchAttendanceHistory();
+        await fetchTodayAttendance();
+        alert(`${type === 'check_in' ? 'Check-in' : 'Check-out'} successful!`);
+      } else {
+        alert(response.data.message || `Failed to ${type}`);
+      }
+    } catch (err) {
+      console.error(`Error during ${type}:`, err);
+      alert(err.message || err.response?.data?.message || `Error during ${type}`);
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -338,6 +347,7 @@ const EmployeeAttendance = () => {
       'Delayed': 'status-pending',
       'Late': 'status-pending',
       'Absent': 'status-rejected',
+      'Holiday': 'status-holiday',
       'On Leave': 'status-rejected',
       'Pending': 'status-pending',
       'Not Checked In': 'status-pending'
@@ -464,21 +474,22 @@ const EmployeeAttendance = () => {
               />
               <span>Auto Check Out</span>
               {autoCheckout.shift?.check_out_time && (
-                <small>{autoCheckout.shift.shift_name || 'Shift'} ends {autoCheckout.shift.check_out_time}</small>
+                <small>{autoCheckout.shift.shift_name || 'Shift'} ends {formatTime(autoCheckout.shift.check_out_time)}</small>
               )}
             </label>
             <button
               className="check-in-btn"
               onClick={() => handleQuickCheckIn('check_in')}
+              disabled={actionLoading || todayStatus.isCheckedIn}
             >
-              Check In
+              {actionLoading ? 'Processing...' : 'Check In'}
             </button>
             <button
               className="check-out-btn"
               onClick={() => handleQuickCheckIn('check_out')}
-              disabled={!todayStatus.isCheckedIn}
+              disabled={actionLoading || !todayStatus.isCheckedIn || todayStatus.isCheckedOut}
             >
-              Check Out
+              {actionLoading ? 'Processing...' : 'Check Out'}
             </button>
           </div>
         </div>
@@ -506,6 +517,7 @@ const EmployeeAttendance = () => {
                 <option value="Delayed">Delayed</option>
                 <option value="Late">Late</option>
                 <option value="Absent">Absent</option>
+                <option value="Holiday">Holiday</option>
               </select>
               <button
                 className="refresh-btn"

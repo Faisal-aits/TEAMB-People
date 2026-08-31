@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import PrivateRoute from './components/common/PrivateRoute';
 import LoadingSpinner from './components/common/LoadingSpinner';
+import GlobalAlert from './components/common/GlobalAlert';
 
 const Login = React.lazy(() => import('./pages/auth/Login'));
 const ForgotPassword = React.lazy(() => import('./pages/auth/ForgotPassword'));
@@ -45,9 +46,7 @@ const AppContent = () => {
         />
         <Route
           path="/reset-password/:token"
-          element={
-            user ? <Navigate to={getDashboardPath(user)} replace /> : <ResetPassword />
-          }
+          element={<ResetPassword />}
         />
 
         <Route
@@ -95,6 +94,7 @@ function App() {
     <Router>
       <AuthProvider>
         <div className="App">
+          <GlobalAlert />
           <AppContent />
         </div>
       </AuthProvider>

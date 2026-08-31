@@ -53,37 +53,38 @@
 }
 
 .employee-tab-btn.active {
-  background: white;
-  color: var(--color-primary, #4f46e5);
+  background: #E6E6FA;
+  border: 1px solid #c7d2fe;
+  color: #000000;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .add-employee-btn {
   flex: 0 0 225px;
   width: 225px;
-  background: var(--gradient-brand);
-  border: none;
-  color: var(--color-text-inverse);
-  padding: 0 1.15rem;
-  min-height: 46px;
+  background: #E6E6FA;
+  border: 1px solid #c7d2fe;
+  color: #000000;
+  padding: 0.75rem 1.5rem;
   border-radius: 12px;
   cursor: pointer;
   font-family: inherit;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 0.9rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
   transition: all 0.3s ease;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
   white-space: nowrap;
   justify-content: center;
 }
 
 .add-employee-btn:hover {
-  background: var(--gradient-brand-hover);
+  background: #dcdcfe;
+  color: #000000;
   transform: translateY(-2px);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
 }
 
 .btn-icon {
@@ -1276,9 +1277,9 @@
   flex: 0 0 225px;
   width: 225px;
   min-height: 46px;
-  background-color: #10b981;
-  color: white;
-  border: none;
+  background: #E6E6FA;
+  border: 1px solid #c7d2fe;
+  color: #000000;
   border-radius: 12px;
   padding: 0 1rem;
   font-size: 0.9rem;
@@ -1293,7 +1294,8 @@
 }
 
 .import-btn:hover {
-  background-color: #059669;
+  background: #dcdcfe;
+  color: #000000;
   transform: translateY(-1px);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }

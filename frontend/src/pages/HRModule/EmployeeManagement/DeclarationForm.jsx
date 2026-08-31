@@ -20,6 +20,7 @@ import './DeclarationForm.css';
 import pfDeclarationPDFService from '../../../services/pfDeclarationPDFService';
 import brandingAPI from '../../../services/brandingAPI';
 import declarationFormAPI from '../../../services/declarationFormAPI';
+import BrandingValidationModal from '../../../components/BrandingValidationModal';
 
 const getEmployeeSelectId = (employee) => employee?.employee_id || employee?.id || employee?.user_id || "";
 const getEmployeeName = (employee) => {
@@ -80,16 +81,18 @@ const DeclarationForm = ({ initialEmployee = null, onBack = null }) => {
   });
 
   const [branding, setBranding] = useState({
-    company_name: "Arham IT Solution",
-    company_address: "Above Being Healthy Gym",
-    company_email: "info@arhamitsolution.in",
-    company_website: "www.arhamitsolution.in",
-    hr_name: "Sharjeel Iqbal",
-    hr_designation: "HR and BDE Executive",
-    logo_url: companyLogo,
-    stamp_url: stampPng,
+    company_name: "",
+    company_address: "",
+    company_email: "",
+    company_website: "",
+    hr_name: "",
+    hr_designation: "",
+    logo_url: "",
+    stamp_url: "",
     signature_url: null
   });
+
+  const [isBrandingModalOpen, setIsBrandingModalOpen] = useState(false);
 
   const currentEmployeeName = routedEmployee ? getEmployeeName(routedEmployee) : null;
 
@@ -190,17 +193,22 @@ const DeclarationForm = ({ initialEmployee = null, onBack = null }) => {
         
         if (brandingRes.data?.success && brandingRes.data?.branding) {
           const b = brandingRes.data.branding;
+          if (!b.company_name) {
+            setIsBrandingModalOpen(true);
+          }
           setBranding(prev => ({
             ...prev,
-            company_name: b.company_name || prev.company_name,
-            company_address: b.company_address || prev.company_address,
-            company_email: b.company_email || prev.company_email,
-            company_website: b.company_website || prev.company_website,
-            hr_name: b.hr_name || prev.hr_name,
-            hr_designation: b.hr_designation || prev.hr_designation,
-            logo_url: b.logo_url ? brandingAPI.getImageUrl(b.logo_url) : prev.logo_url,
-            stamp_url: b.stamp_url ? brandingAPI.getImageUrl(b.stamp_url) : prev.stamp_url
+            company_name: b.company_name || "",
+            company_address: b.company_address || "",
+            company_email: b.company_email || "",
+            company_website: b.company_website || "",
+            hr_name: b.hr_name || "",
+            hr_designation: b.hr_designation || "",
+            logo_url: b.logo_url ? brandingAPI.getImageUrl(b.logo_url) : "",
+            stamp_url: b.stamp_url ? brandingAPI.getImageUrl(b.stamp_url) : ""
           }));
+        } else {
+          setIsBrandingModalOpen(true);
         }
         
         // Load forms
@@ -417,7 +425,8 @@ const DeclarationForm = ({ initialEmployee = null, onBack = null }) => {
 
  
   return (
-    <div style={{ padding: "30px", background: "#f8fafc", minHeight: "100vh" }}>
+    <div className="declaration-container" style={{ background: "#f8fafc", minHeight: "100vh" }}>
+      <BrandingValidationModal isOpen={isBrandingModalOpen} onClose={() => setIsBrandingModalOpen(false)} />
       {/* Header with Back Button */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "10px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>

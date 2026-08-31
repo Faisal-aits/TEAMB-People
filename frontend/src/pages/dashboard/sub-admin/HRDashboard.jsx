@@ -115,20 +115,6 @@ const HRDashboard = ({ setActiveTab }) => {
 
         {!isKosquOrganization && (
           <>
-            {/* Salary Slip Card */}
-            <div className="hr-tool-card" onClick={() => setActiveTab('salary-slip')}>
-              <div className="tool-icon-wrapper cash">
-                <HiOutlineCurrencyDollar />
-              </div>
-              <div className="tool-info">
-                <h3>Salary Slip</h3>
-                <p>Manage and generate monthly employee salary slips for {companyName}.</p>
-              </div>
-              <div className="tool-action">
-                <HiOutlineArrowRight />
-              </div>
-            </div>
-
 
             {/* Resignation Card */}
             <div className="hr-tool-card" onClick={() => setActiveTab('resignation')}>

@@ -4,6 +4,7 @@ import html2canvas from 'html2canvas';
 
 // Import your images
 import companyLogo from '../../src/assets/img/company.png';
+import brandingAPI from './brandingAPI';
 
 export const invoicePDFService = {
   downloadInvoicePDF: async (invoice) => {
@@ -12,43 +13,48 @@ export const invoicePDFService = {
       const serviceBankDetails = invoice.service_bank_details || {};
       const serviceGstDetails = invoice.service_gst_details || {};
       
+      let branding = {};
+      try {
+        const res = await brandingAPI.get();
+        if (res.data?.success && res.data?.branding) branding = res.data.branding;
+      } catch (err) { console.error("Failed to load branding", err); }
+
       // Create invoice data
       const invoiceData = {
         invoice: {
           id: invoice.id,
           invoice_no: invoice.invoice_no,
           invoice_date: invoice.invoice_date,
+          due_date: invoice.due_date,
           ref_no: invoice.ref_no,
           buyer_gstin: invoice.buyer_gstin,
-          // buyer_code: invoice.buyer_code, // Removed
           party_address: invoice.party_address,
           items: invoice.items,
-          total_before_discount: invoice.total_before_discount,
-          discount: invoice.discount,
+          total_before_discount: parseFloat(invoice.total_before_discount) || 0,
+          discount: parseFloat(invoice.discount) || 0,
           gst_details: invoice.gst_details,
-          round_off: invoice.round_off,
+          round_off: parseFloat(invoice.round_off) || 0,
           total_after_tax: invoice.total_after_tax,
-          // Include service settings
-          service_bank_details: serviceBankDetails,
+          service_bank_details: invoice.service_bank_details,
           service_gst_details: serviceGstDetails
         },
         company: {
-          name: "Arham IT Solution",
-          address: "Above Being Healthy Gym, Near Surbhi Hospital,<br> Nagar Sambhajjnagar Road, Ahliyanagar 414003",
-          email: "arhamitsolution@gmail.com",
-          phone: "9322195628",
-          gstn: serviceGstDetails.gstin || "27EGFPS7476H127", // Use service settings if available
-          bank: {
-            name: serviceBankDetails.bank_name || "Bandhan Bank",
-            branch: serviceBankDetails.branch || "Ahliyanagar, Ahmadnagar",
-            account: serviceBankDetails.account_number || "20100058168945",
-            ifsc: serviceBankDetails.ifsc_code || "BDBL0001940",
-            account_holder: serviceBankDetails.account_holder || "Arham IT Solution"
+          name: branding.company_name || "",
+          address: branding.company_address || "",
+          email: branding.company_email || "",
+          phone: branding.company_phone || "",
+          gstin: serviceGstDetails.gstin || "",
+          pan: branding.pan_number || "",
+          bankDetails: {
+            bank_name: serviceBankDetails.bank_name || "",
+            account_number: serviceBankDetails.account_number || "",
+            ifsc_code: serviceBankDetails.ifsc_code || "",
+            branch_name: serviceBankDetails.branch_name || "",
+            account_holder: serviceBankDetails.account_holder || ""
           }
         },
-        // Pass imported images
         images: {
-          logo: companyLogo
+          logo: branding.logo_url ? brandingAPI.getImageUrl(branding.logo_url) : companyLogo
         }
       };
 
@@ -261,17 +267,13 @@ const numberToWords = (num) => {
   const gstBreakdown = calculateGSTBreakdown();
   const taxableAmount = (invoice.total_before_discount || 0) - (invoice.discount || 0);
 
-  // Use service GST details if available
-  const companyGSTN = invoice.service_gst_details?.gstin || company.gstn;
-
   return `
     <div style="padding: 12mm; height: 267mm; position: relative; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
       <!-- Header -->
       <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 2px solid #2c3e50;">
         <div style="width: 30%; text-align: left;">
           <!-- Company Logo -->
-          <img src="${images.logo}" alt="Arham IT Solution Logo" 
-            style="width: 180px; height: 50px; object-fit: contain; padding: 5px;">
+          <img src="${images.logo}" alt="Logo" style="height: 100px; width: auto; max-width: 350px; display: block; object-fit: contain; padding: 0 2px;">
         </div>
         <div style="width: 65%; text-align: right;">
           <div style="font-size: 22px; font-weight: bold; margin-bottom: 6px; color: #2c3e50; text-transform: uppercase;">
@@ -391,7 +393,7 @@ const numberToWords = (num) => {
           <!-- Blank space for company signature -->
           <div style="height: 80px; margin-bottom: 10px; width: 100%;"></div>
           <div style="width: 70%; height: 1px; background-color: #2c3e50; margin: 10px auto 10px;"></div>
-          <div style="font-weight: bold; margin-top: 5px; font-size: 14px;">For Arham IT Solution</div>
+          <div style="font-weight: bold; margin-top: 5px; font-size: 14px;">For ${company.name}</div>
           <div style="font-weight: bold; margin-top: 5px; font-size: 12px;">Authorized Signatory</div>
         </div>
       </div>

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { serviceSettingAPI } from '../../services/serviceSettingAPI';
+import { useAuth } from '../../contexts/AuthContext.jsx';
 import './SmtpConfig.css';
 
 const emptyForm = {
   host: '',
-  port: '',
+  port: '587',
   username: '',
   password: '',
   from_email: '',
@@ -15,6 +16,7 @@ const emptyForm = {
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const SmtpConfig = () => {
+  const { user } = useAuth();
   const [form, setForm] = useState(emptyForm);
   const [testEmail, setTestEmail] = useState('');
   const [loading, setLoading] = useState(true);
@@ -29,18 +31,27 @@ const SmtpConfig = () => {
         setLoading(true);
         const response = await serviceSettingAPI.getSmtpDetails();
         const smtp = response.data.smtp;
+        const loginEmail = user?.email || '';
         if (smtp) {
           setForm({
             host: smtp.host || '',
             port: smtp.port || '',
-            username: smtp.username || '',
+            username: smtp.username || loginEmail,
             password: '',
-            from_email: smtp.from_email || '',
+            from_email: smtp.from_email || loginEmail,
             from_name: smtp.from_name || '',
             encryption: smtp.encryption || 'tls',
           });
           setHasPassword(Boolean(smtp.has_password));
-          setTestEmail(smtp.from_email || '');
+          setTestEmail(smtp.from_email || loginEmail);
+        } else {
+          // No config saved yet — pre-fill with logged-in admin's email
+          setForm((prev) => ({
+            ...prev,
+            username: loginEmail,
+            from_email: loginEmail,
+          }));
+          setTestEmail(loginEmail);
         }
       } catch (error) {
         setMessage({ type: 'error', text: error.response?.data?.message || 'Failed to load SMTP settings' });
@@ -54,7 +65,14 @@ const SmtpConfig = () => {
 
   const updateField = (event) => {
     const { name, value } = event.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setForm((prev) => {
+      const updated = { ...prev, [name]: value };
+      // Auto-sync From Email with SMTP Username
+      if (name === 'username') {
+        updated.from_email = value;
+      }
+      return updated;
+    });
   };
 
   const validateForm = () => {
@@ -143,15 +161,30 @@ const SmtpConfig = () => {
             <label>SMTP Username *</label>
             <input name="username" value={form.username} onChange={updateField} placeholder="user@example.com" />
           </div>
-          <div className="form-group">
+          <div className="form-group smtp-password-group">
             <label>SMTP Password {hasPassword ? '' : '*'}</label>
             <input
               name="password"
               type="password"
               value={form.password}
               onChange={updateField}
-              placeholder={hasPassword ? 'Leave blank to keep existing password' : 'SMTP password'}
+              placeholder={hasPassword ? 'Leave blank to keep existing password' : 'Enter App Password (not your email password)'}
+              autoComplete="new-password"
             />
+            <div className="smtp-password-hint">
+              <div className="smtp-hint-title">⚠️ This is NOT your regular email password</div>
+              <div className="smtp-hint-body">
+                Gmail and Outlook require an <strong>App Password</strong> — a special 16-character code generated from your account security settings.
+              </div>
+              <div className="smtp-hint-links">
+                <span>📌 How to get it:</span>
+                <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">Gmail App Password ↗</a>
+                <a href="https://account.microsoft.com/security" target="_blank" rel="noreferrer">Outlook App Password ↗</a>
+              </div>
+              <div className="smtp-hint-steps">
+                <strong>Gmail steps:</strong> Google Account → Security → 2-Step Verification → App Passwords → Select app → Generate
+              </div>
+            </div>
           </div>
           <div className="form-group">
             <label>From Email *</label>
@@ -159,7 +192,7 @@ const SmtpConfig = () => {
           </div>
           <div className="form-group">
             <label>From Name *</label>
-            <input name="from_name" value={form.from_name} onChange={updateField} placeholder="Work Desk" />
+            <input name="from_name" value={form.from_name} onChange={updateField} placeholder="TEAM B People" />
           </div>
           <div className="form-group">
             <label>Encryption *</label>

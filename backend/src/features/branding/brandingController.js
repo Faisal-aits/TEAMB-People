@@ -137,6 +137,11 @@ const brandingController = {
             }
 
             // Build relative URL for storage
+            const { compressDiskFileIfNeeded } = require('../../utils/fileCompressor');
+            if (req.file && req.file.path) {
+                await compressDiskFileIfNeeded(req.file.path);
+            }
+
             const imageUrl = `/uploads/branding/${tenantId}/${req.file.filename}`;
             await brandingModel.updateImageUrl(tenantId, fieldToColumn[field], imageUrl);
 

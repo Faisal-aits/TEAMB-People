@@ -35,9 +35,9 @@
 }
 
 .leave-add-btn {
-  background: linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%);
-  border: none;
-  color: white;
+  background: #E6E6FA;
+  border: 1px solid #c7d2fe;
+  color: #000000;
   padding: 0.75rem 1.5rem;
   border-radius: 10px;
   cursor: pointer;

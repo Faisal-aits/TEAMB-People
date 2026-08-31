@@ -111,7 +111,7 @@ body {
   font-weight: bold;
   background: linear-gradient(135deg,
       #5a5799 0%,
-      #b469b2 33%,
+      #E6E6FA 33%,
       #d45a9b 66%,
       #f0b6d4 100%);
   background-clip: text;
@@ -129,7 +129,7 @@ body {
   border-radius: 8px;
   background: linear-gradient(135deg,
       #5a5799 0%,
-      #b469b2 33%,
+      #E6E6FA 33%,
       #d45a9b 66%,
       #f0b6d4 100%);
   display: flex;
@@ -518,7 +518,7 @@ body {
 }
 
 .view-profile-btn:hover {
-  background: linear-gradient(135deg, #5a5799, #b469b2);
+  background: linear-gradient(135deg, #5a5799, #E6E6FA);
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(109, 106, 184, 0.3);
 }

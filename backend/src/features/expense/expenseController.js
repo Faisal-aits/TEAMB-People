@@ -97,16 +97,16 @@ const expenseController = {
             let imagePath = null;
 
             if (req.file) {
-                const fileName = `expense_${Date.now()}_${req.file.originalname}`;
-                const uploadDir = path.join(__dirname, '../uploads/expenses');
-                
-                if (!fs.existsSync(uploadDir)) {
-                    fs.mkdirSync(uploadDir, { recursive: true });
-                }
-                
-                const filePath = path.join(uploadDir, fileName);
-                fs.writeFileSync(filePath, req.file.buffer);
-                imagePath = `/uploads/expenses/${fileName}`;
+                const { saveCompressedFile } = require('../../utils/fileCompressor');
+                const uploadDir = path.join(__dirname, '../../../uploads/expenses');
+                const saved = await saveCompressedFile({
+                    buffer: req.file.buffer,
+                    originalname: req.file.originalname,
+                    mimetype: req.file.mimetype,
+                    destinationDir: uploadDir,
+                    filenamePrefix: `expense_${req.user.id}`
+                });
+                imagePath = `/uploads/expenses/${saved.filename}`;
             }
 
             if (!category_id || !amount || !description) {

@@ -132,24 +132,41 @@ const fetchDocs = async () => {
     fetchDocs();
   }, [slipFilters]);
 
-  const mapRecordToFormData = (record) => ({
-    fullName: record.employee_name,
-    designation: record.designation,
-    monthYear: `${record.month} ${record.year}`,
-    paymentMode: record.payment_mode || "Bank Transfer",
-    earnings: {
-      basic: record.basic_salary,
-      hra: record.allowances?.hra || 0,
-      conveyance: record.allowances?.transport || 0,
-      medical: record.allowances?.medical || 0,
-      special: record.allowances?.special || 0
-    },
-    deductions: {
-      pf: record.deductions?.provident_fund || 0,
-      pt: record.deductions?.professional_tax || 0,
-      tds: record.deductions?.tax || 0
-    }
-  });
+  const mapRecordToFormData = (record) => {
+    // Pull attendance from details JSON if available
+    const details = (typeof record.details === 'string' ? JSON.parse(record.details || '{}') : record.details) || {};
+    return {
+      fullName: record.employee_name,
+      employeeId: record.employee_id,
+      designation: record.designation || record.position || '',
+      department: record.department || record.department_name || '',
+      dateOfJoining: record.joining_date || record.date_of_joining || '',
+      monthYear: `${record.month} ${record.year}`,
+      month: record.month_number || record.month,
+      year: record.year,
+      bankAccountNo: record.bank_account_number || record.bank_account_no || '',
+      pan: record.pan_number || record.pan || '',
+      uan: record.uan || '',
+      // Salary figures — use pre-calculated values from DB
+      basicSalary: Math.round(record.basic_salary || 0),
+      grossSalary: Math.round(record.gross_salary || record.basic_salary || 0),
+      netSalary: Math.round(record.net_salary || record.basic_salary || 0),
+      deductionAmount: Math.round(record.deduction_amount || 0),
+      // Attendance breakdown
+      presentDays:     details.present_days      ?? record.present_days     ?? '-',
+      absentDays:      details.absent_days       ?? record.absent_days      ?? '-',
+      halfDays:        details.half_days         ?? record.half_days        ?? '-',
+      paidLeaveDays:   details.paid_leave_days   ?? record.paid_leave_days  ?? '-',
+      unpaidLeaveDays: details.unpaid_leave_days ?? record.unpaid_leave_days ?? '-',
+      payableDays:     details.paid_days         ?? record.paid_days        ?? '-',
+      nonPayableDays:  details.deduction_days    ?? record.deduction_days   ?? '-',
+      // Legacy earnings shape kept for backward compatibility
+      earnings: {
+        basic: Math.round(record.basic_salary || 0),
+      },
+    };
+  };
+
 
 const handleDocAction = async (type, action, doc) => {
   try {

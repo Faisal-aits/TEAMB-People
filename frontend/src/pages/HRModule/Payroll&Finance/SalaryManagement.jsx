@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
+import { salarySlipPDFService } from '../../../services/salarySlipPDFService';
 import { useTableControls } from '../../../hooks/useTableControls';
+import * as XLSX from 'xlsx';
 import '../../../styles/tableControls.css';
 import './SalaryManagement.css';
 
@@ -20,6 +22,7 @@ const SALARY_SEARCH_FIELDS = [
 
 const SalaryManagement = () => {
     const [salaries, setSalaries] = useState([]);
+    const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -40,6 +43,25 @@ const SalaryManagement = () => {
     const [loadingDetails, setLoadingDetails] = useState(false);
     const [loadingAttendance, setLoadingAttendance] = useState(false);
     const [availableMonths, setAvailableMonths] = useState([]);
+    
+    // Custom Confirm Modal State
+    const [confirmModal, setConfirmModal] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        onConfirm: null,
+        confirmText: 'Confirm',
+        cancelText: 'Cancel',
+        isDanger: false
+    });
+
+    const [payEmailModal, setPayEmailModal] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        onConfirmYes: null,
+        onConfirmNo: null
+    });
 
     // Pagination states
     const [currentPage, setCurrentPage] = useState(1);
@@ -55,8 +77,7 @@ const SalaryManagement = () => {
     const token = localStorage.getItem('token');
 
     const authHeaders = useMemo(() => ({
-        Authorization: `Bearer ${token}`,
-        'x-tenant-id': '1'
+        Authorization: `Bearer ${token}`
     }), [token]);
 
     const getMonthName = (monthNumber) => {
@@ -88,7 +109,10 @@ const SalaryManagement = () => {
                 headers: authHeaders
             });
 
-            const activeEmployees = (employeesResponse.data.employees || []).filter(emp => {
+            const fetchedEmployees = employeesResponse.data.employees || [];
+            setEmployees(fetchedEmployees);
+
+            const activeEmployees = fetchedEmployees.filter(emp => {
 
                 const isActive = emp.is_active === true || emp.is_active === 1 || emp.is_active === '1';
 
@@ -181,10 +205,13 @@ const SalaryManagement = () => {
         };
 
         loadCustomHolidays();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedYear, selectedMonth]);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         loadSalaries();
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         loadAvailableMonths();
     }, [selectedMonth, selectedYear, loadSalaries, loadAvailableMonths]);
 
@@ -265,32 +292,107 @@ const SalaryManagement = () => {
     };
 
     const handleGenerateAllSalaries = async () => {
-        if (!window.confirm(`Generate salaries for all employees for ${getMonthName(selectedMonth)} ${selectedYear}?`)) {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Generate Salaries',
+            message: `Generate salaries for all employees for ${getMonthName(selectedMonth)} ${selectedYear}?`,
+            confirmText: 'Generate',
+            cancelText: 'Cancel',
+            onConfirm: async () => {
+                try {
+                    setGenerating(true);
+                    const customCount = await getHolidayCountForMonth(selectedYear, selectedMonth);
+                    const sundays = getSundaysCount(selectedMonth, selectedYear);
+                    const totalHolidays = customCount + sundays;
+
+                    const response = await axios.post(`${API_URL}/api/salary/generate-all`, {
+                        month: selectedMonth,
+                        year: selectedYear,
+                        holiday_count: totalHolidays
+                    }, { headers: authHeaders });
+
+                    if (response.data.success) {
+                        alert(response.data.message);
+                        loadSalaries();
+                        loadAvailableMonths();
+                    } else {
+                        alert('Failed to generate salaries');
+                    }
+                } catch (error) {
+                    console.error('Error generating salaries:', error);
+                    alert(error.response?.data?.message || 'Failed to generate salaries');
+                } finally {
+                    setGenerating(false);
+                }
+            }
+        });
+    };
+
+    const handlePayAllSalaries = async () => {
+        const pendingCount = salaries.filter(s => s.payment_status !== 'paid').length;
+        if (pendingCount === 0) {
+            alert(`All salaries are already paid for ${getMonthName(selectedMonth)} ${selectedYear}.`);
             return;
         }
+        
+        setPayEmailModal({
+            isOpen: true,
+            title: 'Pay Salaries',
+            message: `Do you want to send salary slip on email for ${pendingCount} pending employees?`,
+            onConfirmYes: () => executePayBulk(true),
+            onConfirmNo: () => executePayBulk(false)
+        });
+    };
 
+    const executePayBulk = async (sendEmail) => {
         try {
             setGenerating(true);
-            const customCount = await getHolidayCountForMonth(selectedYear, selectedMonth);
-            const sundays = getSundaysCount(selectedMonth, selectedYear);
-            const totalHolidays = customCount + sundays;
-
-            const response = await axios.post(`${API_URL}/api/salary/generate-all`, {
+            const response = await axios.post(`${API_URL}/api/salary/pay-bulk`, {
                 month: selectedMonth,
                 year: selectedYear,
-                holiday_count: totalHolidays
+                send_email: sendEmail
+            }, { headers: authHeaders });
+            
+            if (response.data.success) {
+                alert(response.data.message || `Successfully paid salaries for ${response.data.paid || 'multiple'} employees.`);
+                loadSalaries();
+            } else {
+                alert('Failed to pay salaries');
+            }
+        } catch (error) {
+            console.error('Error paying salaries:', error);
+            alert(error.response?.data?.message || 'Error paying salaries');
+        } finally {
+            setGenerating(false);
+        }
+    };
+
+    const promptPaySingleSalary = (salary) => {
+        setPayEmailModal({
+            isOpen: true,
+            title: `Pay Salary - ${salary.first_name || ''} ${salary.last_name || ''}`.trim() || salary.employee_id,
+            message: `Do you want to send salary slip on email to ${salary.first_name || ''} ${salary.last_name || ''}?`,
+            onConfirmYes: () => executePaySingle(salary.id, true),
+            onConfirmNo: () => executePaySingle(salary.id, false)
+        });
+    };
+
+    const executePaySingle = async (salaryId, sendEmail) => {
+        try {
+            setGenerating(true);
+            const response = await axios.post(`${API_URL}/api/salary/pay/${salaryId}`, {
+                send_email: sendEmail
             }, { headers: authHeaders });
 
             if (response.data.success) {
-                alert(response.data.message);
+                alert(response.data.message || 'Salary paid successfully!');
                 loadSalaries();
-                loadAvailableMonths();
             } else {
-                alert('Failed to generate salaries');
+                alert('Failed to pay salary');
             }
         } catch (error) {
-            console.error('Error generating salaries:', error);
-            alert(error.response?.data?.message || 'Failed to generate salaries');
+            console.error('Error paying single salary:', error);
+            alert(error.response?.data?.message || 'Error paying salary');
         } finally {
             setGenerating(false);
         }
@@ -321,13 +423,17 @@ const SalaryManagement = () => {
     const handleInlineEdit = (salaryId, currentAmount) => {
         const newAmount = prompt('Edit Net Salary Amount:', currentAmount);
         if (newAmount && !isNaN(newAmount) && parseFloat(newAmount) >= 0) {
-            const confirmUpdate = window.confirm(
-                `Change net salary from ${formatCurrency(currentAmount)} to ${formatCurrency(parseFloat(newAmount))}?\n\n` +
-                `Note: This will NOT record any payment. Use PAY button for payments.`
-            );
-            if (confirmUpdate) {
-                handleUpdateSalary(salaryId, parseFloat(newAmount));
-            }
+            setConfirmModal({
+                isOpen: true,
+                title: 'Update Net Salary',
+                message: `Change net salary from ${formatCurrency(currentAmount)} to ${formatCurrency(parseFloat(newAmount))}?\n\nNote: This will NOT record any payment. Use PAY button for payments.`,
+                confirmText: 'Update Salary',
+                cancelText: 'Cancel',
+                isDanger: true,
+                onConfirm: () => {
+                    handleUpdateSalary(salaryId, parseFloat(newAmount));
+                }
+            });
         } else if (newAmount) {
             alert('Please enter a valid amount');
         }
@@ -361,6 +467,59 @@ const SalaryManagement = () => {
                 const newPaidAmount = selectedSalary.paid_amount + roundedAmount;
                 const newBalance = selectedSalary.net_salary - newPaidAmount;
                 const newStatus = newBalance <= 0 ? 'paid' : (newPaidAmount > 0 ? 'partial' : 'pending');
+
+                // If fully paid, generate payslip PDF and email it to the employee
+                if (newStatus === 'paid') {
+                    try {
+                        const details = (typeof selectedSalary.details === 'string'
+                            ? JSON.parse(selectedSalary.details || '{}')
+                            : selectedSalary.details) || {};
+
+                        const formData = {
+                            fullName: `${selectedSalary.first_name || ''} ${selectedSalary.last_name || ''}`.trim() || selectedSalary.employee_name || selectedSalary.employee_id,
+                            employeeId: selectedSalary.employee_id,
+                            designation: selectedSalary.position || selectedSalary.designation || '',
+                            department: selectedSalary.department || selectedSalary.department_name || '',
+                            dateOfJoining: selectedSalary.joining_date || '',
+                            month: selectedSalary.month_number,
+                            year: selectedSalary.year,
+                            bankAccountNo: selectedSalary.bank_account_number || '',
+                            pan: selectedSalary.pan_number || '',
+                            // Salary (pre-calculated)
+                            basicSalary: Math.round(selectedSalary.basic_salary || 0),
+                            grossSalary: Math.round(selectedSalary.gross_salary || selectedSalary.basic_salary || 0),
+                            netSalary: Math.round(selectedSalary.net_salary || 0),
+                            deductionAmount: Math.round(selectedSalary.deduction_amount || 0),
+                            // Attendance from details
+                            presentDays:     details.present_days      ?? '-',
+                            absentDays:      details.absent_days       ?? '-',
+                            halfDays:        details.half_days         ?? '-',
+                            paidLeaveDays:   details.paid_leave_days   ?? '-',
+                            unpaidLeaveDays: details.unpaid_leave_days ?? '-',
+                            payableDays:     details.paid_days         ?? '-',
+                            nonPayableDays:  details.deduction_days    ?? '-',
+                            earnings: { basic: Math.round(selectedSalary.basic_salary || 0) }
+                        };
+
+                        const pdfBlob = await salarySlipPDFService.generatePDFBlob(formData);
+                        const reader = new FileReader();
+                        reader.onloadend = async () => {
+                            const base64 = reader.result.split(',')[1];
+                            try {
+                                await axios.post(`${API_URL}/api/salary/send-payslip/${selectedSalary.id}`,
+                                    { pdf_base64: base64 },
+                                    { headers: authHeaders }
+                                );
+                                console.log('Payslip emailed successfully');
+                            } catch (emailErr) {
+                                console.warn('Payslip email failed (SMTP may not be configured):', emailErr.message);
+                            }
+                        };
+                        reader.readAsDataURL(pdfBlob);
+                    } catch (pdfErr) {
+                        console.warn('Could not generate/send payslip PDF:', pdfErr.message);
+                    }
+                }
 
                 alert(`Payment of ${formatCurrency(roundedAmount)} recorded successfully!\nStatus: ${newStatus.toUpperCase()}`);
                 setIsPaymentModalOpen(false);
@@ -446,6 +605,42 @@ const SalaryManagement = () => {
     const selectedCalculation = selectedAttendanceData?.calculation || {};
     const selectedTotalHolidayCount = selectedCalculation.total_holidays ?? totalHolidayCount;
 
+    const handleExport = () => {
+        try {
+            if (visibleSalaries.length === 0) {
+                alert('No salary records to export!');
+                return;
+            }
+      
+            const exportData = visibleSalaries.map(record => {
+                // Find employee details to get bank info
+                const empId = record.employee_detail_id || record.id || record.employee_id;
+                const employeeDetails = employees.find(e => 
+                    e.id === empId || e.employee_detail_id === empId || e.employee_id === record.employee_id
+                ) || {};
+      
+                return {
+                    'Month': record.month,
+                    'Employee Name': record.employee_name || `${record.first_name || ''} ${record.last_name || ''}`.trim() || 'Unknown',
+                    'Department': record.department_name || record.department || '-',
+                    'Monthly Salary': record.basic_salary,
+                    'Net Salary( amount to pay)': record.net_salary,
+                    'Account Number': employeeDetails.bank_account_number || '-',
+                    'IFSC Code': employeeDetails.ifsc_code || '-'
+                };
+            });
+      
+            const worksheet = XLSX.utils.json_to_sheet(exportData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Salary Records');
+            const fileName = `Salary_Records_${new Date().toISOString().split('T')[0]}.xlsx`;
+            XLSX.writeFile(workbook, fileName);
+        } catch (error) {
+            console.error('Error exporting data:', error);
+            alert('Error exporting data. Please try again.');
+        }
+    };
+
     return (
         <div className="salary-management">
             <div className="salary-header">
@@ -526,9 +721,29 @@ const SalaryManagement = () => {
                         </div>
 
 
-                        <button className="btn-generate-small" onClick={handleGenerateAllSalaries}>
-                            Generate Salaries
-                        </button>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button className="btn-generate-small" onClick={handleGenerateAllSalaries} disabled={generating}>
+                                    {generating ? 'Generating...' : 'Generate Salaries'}
+                                </button>
+                                <button 
+                                    className="btn-generate-small" 
+                                    onClick={handlePayAllSalaries} 
+                                    disabled={generating || salaries.filter(s => s.payment_status !== 'paid').length === 0}
+                                    style={{ backgroundColor: '#28a745', borderColor: '#28a745' }}
+                                >
+                                    Pay Salaries
+                                </button>
+                            </div>
+                            <button 
+                                className="btn-generate-small" 
+                                onClick={handleExport} 
+                                disabled={generating || visibleSalaries.length === 0}
+                                style={{ backgroundColor: '#6366f1', borderColor: '#6366f1', color: 'white', alignSelf: 'flex-start' }}
+                            >
+                                Export to Excel
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -587,10 +802,11 @@ const SalaryManagement = () => {
                                                     </div>
                                                     {salary.details && (
                                                         <div className="attendance-summary-below">
-                                                            <span>P:{salary.details.present_days || 0}</span>
-                                                            <span>H:{salary.details.half_days || 0}</span>
-                                                            <span>L:{salary.details.late_days || 0}</span>
-                                                            <span>A:{salary.details.absent_days || 0}</span>
+                                                            <span title="Present (Including Late/Delayed)">P:{(salary.details.present_days || 0) + (salary.details.late_days || 0)}</span>
+                                                            <span title="Half Day">H:{salary.details.half_days || 0}</span>
+                                                            <span title="Absent">A:{salary.details.absent_days || 0}</span>
+                                                            <span title="Paid Leave">PL:{salary.details.paid_leave_days || 0}</span>
+                                                            <span title="Unpaid Leave">UL:{salary.details.unpaid_leave_days || 0}</span>
                                                         </div>
                                                     )}
                                                 </td>
@@ -605,19 +821,10 @@ const SalaryManagement = () => {
                                                     <div className="action-buttons">
                                                         <button
                                                             className="btn-pay"
-                                                            onClick={() => {
-                                                                setSelectedSalary(salary);
-                                                                setPaymentForm({
-                                                                    amount: remainingAmount.toString(),
-                                                                    payment_method: 'bank_transfer',
-                                                                    transaction_id: '',
-                                                                    notes: ''
-                                                                });
-                                                                setIsPaymentModalOpen(true);
-                                                            }}
-                                                            title="Record payment (Does NOT change net salary)"
+                                                            onClick={() => promptPaySingleSalary(salary)}
+                                                            title="Process Payment and Generate Salary Slip"
                                                         >
-                                                            <i className="fa-solid fa-indian-rupee-sign"></i>{remainingAmount > 0 ? formatCurrency(remainingAmount) : ''}
+                                                            <i className="fa-solid fa-indian-rupee-sign"></i> Pay
                                                         </button>
 
                                                         <button
@@ -1005,6 +1212,85 @@ const SalaryManagement = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+            {/* Custom Confirm Modal */}
+            {confirmModal.isOpen && (
+                <div className="modal-overlay" style={{ zIndex: 1100 }}>
+                    <div className="modal-content confirm-modal" style={{ maxWidth: '400px' }}>
+                        <div className="modal-header" style={{ backgroundColor: confirmModal.isDanger ? '#dc2626' : '#6d6ab8' }}>
+                            <h3 style={{ fontSize: '1.2rem', margin: 0 }}>{confirmModal.title || 'Confirm'}</h3>
+                            <button className="close-btn" onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })}>×</button>
+                        </div>
+                        <div className="modal-body" style={{ padding: '1.5rem', fontSize: '1rem', color: '#374151', textAlign: 'center', lineHeight: '1.5' }}>
+                            {confirmModal.message.split('\n').map((line, i) => (
+                                <React.Fragment key={i}>
+                                    {line}
+                                    {i !== confirmModal.message.split('\n').length - 1 && <br />}
+                                </React.Fragment>
+                            ))}
+                        </div>
+                        <div className="form-actions" style={{ justifyContent: 'center', padding: '1rem 1.5rem', borderTop: '1px solid #e2e8f0', gap: '1rem' }}>
+                            <button 
+                                className="btn-cancel" 
+                                onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                            >
+                                {confirmModal.cancelText || 'Cancel'}
+                            </button>
+                            <button 
+                                className="btn-submit" 
+                                style={confirmModal.isDanger ? { backgroundColor: '#dc2626' } : {}}
+                                onClick={() => {
+                                    setConfirmModal({ ...confirmModal, isOpen: false });
+                                    if (confirmModal.onConfirm) confirmModal.onConfirm();
+                                }}
+                            >
+                                {confirmModal.confirmText || 'Confirm'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Pay Email Options Modal */}
+            {payEmailModal.isOpen && (
+                <div className="modal-overlay" style={{ zIndex: 1150 }}>
+                    <div className="modal-content confirm-modal" style={{ maxWidth: '450px' }}>
+                        <div className="modal-header" style={{ backgroundColor: '#2563eb' }}>
+                            <h3 style={{ fontSize: '1.2rem', margin: 0, color: '#ffffff' }}>{payEmailModal.title || 'Process Salary Payment'}</h3>
+                            <button className="close-btn" onClick={() => setPayEmailModal({ ...payEmailModal, isOpen: false })}>×</button>
+                        </div>
+                        <div className="modal-body" style={{ padding: '1.5rem', fontSize: '1rem', color: '#374151', textAlign: 'center', lineHeight: '1.5' }}>
+                            {payEmailModal.message}
+                        </div>
+                        <div className="form-actions" style={{ justifyContent: 'center', padding: '1rem 1.5rem', borderTop: '1px solid #e2e8f0', gap: '0.75rem', flexWrap: 'wrap' }}>
+                            <button 
+                                className="btn-cancel" 
+                                onClick={() => setPayEmailModal({ ...payEmailModal, isOpen: false })}
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                className="btn-submit" 
+                                style={{ backgroundColor: '#64748b' }}
+                                onClick={() => {
+                                    setPayEmailModal({ ...payEmailModal, isOpen: false });
+                                    if (payEmailModal.onConfirmNo) payEmailModal.onConfirmNo();
+                                }}
+                            >
+                                No, Only Generate/Pay
+                            </button>
+                            <button 
+                                className="btn-submit" 
+                                style={{ backgroundColor: '#2563eb' }}
+                                onClick={() => {
+                                    setPayEmailModal({ ...payEmailModal, isOpen: false });
+                                    if (payEmailModal.onConfirmYes) payEmailModal.onConfirmYes();
+                                }}
+                            >
+                                Yes, Send Email
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

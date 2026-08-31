@@ -34,6 +34,10 @@ const superAdminController = {
                 });
             }
 
+            if (!process.env.JWT_SECRET) {
+                throw new Error('FATAL ERROR: JWT_SECRET is not defined');
+            }
+
             const token = jwt.sign(
                 {
                     id: admin.id,
@@ -42,9 +46,16 @@ const superAdminController = {
                     last_name: admin.last_name,
                     is_super_admin: true
                 },
-                process.env.JWT_SECRET || 'arham_simple_secret_2023',
-                { expiresIn: '12h' }
+                process.env.JWT_SECRET,
+                { expiresIn: '24h' }
             );
+
+            res.cookie('auth_token', token, {
+                maxAge: 24 * 60 * 60 * 1000,
+                httpOnly: false,
+                sameSite: 'lax',
+                path: '/'
+            });
 
             res.json({
                 success: true,
@@ -169,22 +180,46 @@ const superAdminController = {
                     message: 'Name, slug, and email are required' 
                 });
             }
-            if (!admin_first_name || !admin_last_name || !admin_email) {
-                return res.status(400).json({ 
-                    success: false,
-                    message: 'Admin name and email are required' 
-                });
-            }
+
+            const finalAdminEmail = admin_email || email;
+            const finalAdminFirstName = admin_first_name || 'Admin';
+            const finalAdminLastName = admin_last_name || name;
+            const rawPassword = (admin_password && admin_password.trim()) 
+                ? admin_password.trim() 
+                : `Pass@${Math.floor(100000 + Math.random() * 900000)}`;
 
             await connection.beginTransaction();
 
-            // Check slug uniqueness
-            const existingTenant = await Tenant.getBySlug(slug);
-            if (existingTenant) {
+            // Check email and slug uniqueness in tenants table
+            const [existingTenant] = await connection.execute(
+                'SELECT id, email, slug FROM tenants WHERE LOWER(email) = LOWER(?) OR LOWER(email) = LOWER(?) OR LOWER(slug) = LOWER(?)',
+                [email, finalAdminEmail, slug]
+            );
+            if (existingTenant.length > 0) {
+                await connection.rollback();
+                const matched = existingTenant[0];
+                if (matched.slug?.toLowerCase() === slug.toLowerCase()) {
+                    return res.status(400).json({ 
+                        success: false,
+                        message: 'An organization already exists with this URL slug. Please use a different slug.' 
+                    });
+                }
+                return res.status(400).json({ 
+                    success: false,
+                    message: 'An organization already exists with this email. Please use a different email address.' 
+                });
+            }
+
+            // Check if admin email already exists in users table
+            const [existingUser] = await connection.execute(
+                'SELECT id FROM users WHERE LOWER(email) = LOWER(?)',
+                [finalAdminEmail]
+            );
+            if (existingUser.length > 0) {
                 await connection.rollback();
                 return res.status(400).json({ 
                     success: false,
-                    message: 'Tenant slug already exists' 
+                    message: 'An organization already exists with this email. Please use a different email address.' 
                 });
             }
 
@@ -195,28 +230,51 @@ const superAdminController = {
             }, connection);
 
             // Create the first tenant user as a system admin.
-            let passwordHash = null;
-            if (admin_password) {
-                passwordHash = await bcrypt.hash(admin_password, 10);
-            }
+            const passwordHash = await bcrypt.hash(rawPassword, 10);
 
             await connection.execute(
                 `INSERT INTO users (tenant_id, first_name, last_name, email, password_hash, position, is_active) 
                  VALUES (?, ?, ?, ?, ?, 'admin', 1)`,
-                [tenantId, admin_first_name, admin_last_name, admin_email, passwordHash]
+                [tenantId, finalAdminFirstName, finalAdminLastName, finalAdminEmail, passwordHash]
             );
 
             await connection.commit();
 
+
+            // Send Welcome Email (optional — org is created regardless)
+            let emailSent = false;
+            try {
+                const { sendOrganizationWelcomeEmail } = require('../../services/mailService');
+                console.log(`[createTenant] Sending welcome email to: ${finalAdminEmail}`);
+                const mailResult = await sendOrganizationWelcomeEmail({
+                    tenantId,
+                    orgName: name,
+                    slug,
+                    adminName: `${finalAdminFirstName} ${finalAdminLastName}`.trim(),
+                    adminEmail: finalAdminEmail,
+                    adminPassword: rawPassword,
+                    plan: subscription_plan || 'Free',
+                    maxEmployees: max_employees || 'Unlimited'
+                });
+                console.log(`[createTenant] Welcome email result:`, JSON.stringify(mailResult?.envelope || mailResult));
+                emailSent = true;
+            } catch (mailErr) {
+                console.warn('[createTenant] Welcome email skipped:', mailErr.message);
+            }
+
             res.status(201).json({
                 success: true,
-                message: 'Tenant created successfully',
+                message: emailSent
+                    ? `Organization created! Welcome email sent to ${finalAdminEmail}`
+                    : `Organization created! Admin: ${finalAdminEmail} | Password: ${rawPassword}`,
                 tenant: {
                     id: tenantId,
                     name,
                     slug,
-                    email,
-                    subscription_plan: subscription_plan || 'free'
+                    email: finalAdminEmail,
+                    subscription_plan: subscription_plan || 'free',
+                    admin_email: finalAdminEmail,
+                    generated_password: rawPassword
                 }
             });
         } catch (error) {
@@ -274,6 +332,116 @@ const superAdminController = {
                 success: false,
                 message: 'Server error' 
             });
+        }
+    },
+
+    getSmtpConfig: async (req, res) => {
+        try {
+            const ServiceSetting = require('../servicesetting/serviceSettingModel');
+            const row = await ServiceSetting.getSetting(0, 'super_admin_smtp');
+            let config = ServiceSetting.toPublicSmtpConfig(row);
+
+            if (!config || !config.host) {
+                config = {
+                    host: 'smtp.gmail.com',
+                    port: 587,
+                    username: 'kf94482@gmail.com',
+                    from_email: 'kf94482@gmail.com',
+                    from_name: 'TEAM B People',
+                    encryption: 'tls',
+                    has_password: false
+                };
+            }
+
+            res.json({ success: true, smtp: config });
+        } catch (error) {
+            console.error('Get super admin SMTP config error:', error);
+            res.status(500).json({ success: false, message: 'Server error' });
+        }
+    },
+
+    updateSmtpConfig: async (req, res) => {
+        try {
+            const { host, port, username, password, from_email, from_name, encryption } = req.body;
+            const ServiceSetting = require('../servicesetting/serviceSettingModel');
+
+            const row = await ServiceSetting.getSetting(0, 'super_admin_smtp');
+            let passwordValue = row?.smtp_password || null;
+
+            if (password) {
+                passwordValue = ServiceSetting.encryptSecret(password);
+            }
+
+            const finalHost = host || 'smtp.gmail.com';
+            const finalPort = Number(port) || 587;
+            const finalUser = username || 'kf94482@gmail.com';
+            const finalFromEmail = from_email || finalUser;
+            const finalFromName = from_name || 'TEAM B People';
+            const finalEncryption = encryption || 'tls';
+
+            await ServiceSetting.upsertSetting(0, 'super_admin_smtp', {
+                smtp_host: finalHost,
+                smtp_port: finalPort,
+                smtp_user: finalUser,
+                smtp_password: passwordValue,
+                smtp_from_email: finalFromEmail,
+                smtp_from_name: finalFromName,
+                smtp_encryption: finalEncryption,
+                smtp_secure: finalEncryption === 'ssl' || finalPort === 465 ? 1 : 0
+            });
+
+            res.json({ success: true, message: 'Super Admin Gmail App Password saved successfully' });
+        } catch (error) {
+            console.error('Update super admin SMTP config error:', error);
+            res.status(500).json({ success: false, message: 'Failed to save SMTP configuration: ' + error.message });
+        }
+    },
+
+    testSmtpConfig: async (req, res) => {
+        try {
+            const { to } = req.body;
+            if (!to) {
+                return res.status(400).json({ success: false, message: 'Recipient email is required' });
+            }
+
+            const ServiceSetting = require('../servicesetting/serviceSettingModel');
+            const row = await ServiceSetting.getSetting(0, 'super_admin_smtp');
+            const config = ServiceSetting.toPrivateSmtpConfig(row);
+
+            if (!config || !config.host || !config.username || !config.password) {
+                return res.status(400).json({ success: false, message: 'Super Admin SMTP is not configured or missing password' });
+            }
+
+            const nodemailer = require('nodemailer');
+            const port = Number(config.port || 587);
+            const isSecure = config.encryption === 'ssl' || port === 465;
+
+            const transporter = nodemailer.createTransport({
+                host: config.host,
+                port,
+                secure: isSecure,
+                auth: {
+                    user: config.username,
+                    pass: config.password
+                },
+                tls: { rejectUnauthorized: false }
+            });
+
+            const fromName = config.from_name || 'TEAM B People';
+            const fromEmail = config.from_email || config.username;
+
+            await transporter.sendMail({
+                from: `"${fromName.replace(/"/g, '\\"')}" <${fromEmail}>`,
+                to,
+                subject: 'TEAM B People Super Admin SMTP Test',
+                html: `<div style="font-family: Arial, sans-serif; max-width: 600px; padding: 20px; color: #111827;"><h2 style="color: #4f46e5;">🎉 Super Admin SMTP Test Successful!</h2><p>Your Super Admin SMTP configuration is working properly.</p></div>`,
+                text: 'Your Super Admin SMTP configuration is working properly.'
+            });
+
+            res.json({ success: true, message: `Test email sent successfully to ${to}` });
+        } catch (error) {
+            console.error('Test super admin SMTP error:', error);
+            res.status(400).json({ success: false, message: 'SMTP Test Failed: ' + error.message });
         }
     }
 };

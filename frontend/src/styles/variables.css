@@ -72,8 +72,11 @@
   --color-info-soft: #eff6ff;
   --color-info-text: #1e40af;
 
-  --gradient-brand: linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%);
-  --gradient-brand-hover: linear-gradient(135deg, #7a77b9 0%, #c493c2 33%, #d883b0 66%, #e8c1d8 100%);
+  --color-accent: #E6E6FA;
+  --color-accent-soft: #f4f4fe;
+
+  --gradient-brand: #E6E6FA;
+  --gradient-brand-hover: #dcdcfe;
 
   --page-padding: 24px;
   --control-height: 40px;

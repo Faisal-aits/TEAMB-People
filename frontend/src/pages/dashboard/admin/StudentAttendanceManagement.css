@@ -29,9 +29,9 @@
 }
 
 .btn-bulk-mark, .btn-export, .btn-refresh {
- background: linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%);
-  border: none;
-  color: white;
+ background: #E6E6FA;
+ color: #000000;
+ border: 1px solid #c7d2fe;
   padding: 0.75rem 1.5rem;
   border-radius: 10px;
   cursor: pointer;
@@ -46,25 +46,28 @@
 }
 
 .btn-bulk-mark {
-  background: linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%);
-  color: white;
+  background: #E6E6FA;
+ color: #000000;
+ border: 1px solid #c7d2fe;
   box-shadow: 0 4px 12px rgba(138, 135, 201, 0.3);
 }
 
 .btn-bulk-mark:hover {
-  background: linear-gradient(135deg, #7a77b9 0%, #c493c2 33%, #d883b0 66%, #e8c1d8 100%);
+  background: #dcdcfe;
+  color: #000000;
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(138, 135, 201, 0.4);
 }
 
 .btn-export {
-  background: linear-gradient(135deg,#7a77b9 0%, #c493c2 33%, #d883b0 66%, #e8c1d8 100%);
-  color: white;
+  background: #E6E6FA;
+  color: #000000;
   box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
 }
 
 .btn-export:hover {
-  background: linear-gradient(135deg, #38a169 0%, #58c483 33%, #8ad6a4 66%, #b6e6c5 100%);
+  background: #dcdcfe;
+  color: #000000;
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(72, 187, 120, 0.4);
 }

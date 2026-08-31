@@ -263,10 +263,9 @@ const Reports = () => {
               onClick={handleExport}
               style={{
                 padding: '8px 16px',
-                background: 'linear-gradient(135deg, #8a87c9 0%, #d4a3d2 33%, #e893c0 66%, #f8d1e8 100%)',
-                border: '1px solid #e0e0e0',
-                borderRadius: '6px',
-                color: 'white',
+                background: '#E6E6FA',
+                color: '#000000',
+                border: '1px solid #c7d2fe',
                 fontSize: '13px',
                 fontWeight: '500',
                 cursor: 'pointer',
