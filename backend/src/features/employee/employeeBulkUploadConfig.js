@@ -47,7 +47,7 @@ const BULK_UPLOAD_COLUMNS = [
   {
     key: 'department',
     label: 'Department',
-    required: true,
+    required: false,
     aliases: ['department', 'department name', 'department_name']
   },
   {

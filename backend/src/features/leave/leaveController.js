@@ -222,8 +222,41 @@ const leaveController = {
     deleteLeave: async (req, res) => {
         try {
             const { leaveId } = req.params;
+            const user_id = req.user.id;
+            const tenantId = req.tenantId;
+            const Leave = require('./leaveModel');
+            const { pool } = require('../../config/db');
 
-            await Leave.delete(req.tenantId, leaveId);
+            const leaveData = await Leave.getById(tenantId, leaveId);
+            if (!leaveData) {
+                return res.status(404).json({ message: 'Leave request not found' });
+            }
+
+            const [employeeRows] = await pool.execute(
+                "SELECT ed.id as employee_id FROM employee_details ed WHERE ed.employee_id = ? AND ed.tenant_id = ?",
+                [user_id, tenantId]
+            );
+            const userEmployeeId = employeeRows.length > 0 ? employeeRows[0].employee_id : null;
+
+            const isOwner = userEmployeeId === leaveData.employee_code || userEmployeeId === leaveData.employee_id;
+
+            if (!isOwner) {
+                const [accessRows] = await pool.execute(
+                    "SELECT can_write FROM user_module_access WHERE user_id = ? AND tenant_id = ? AND module_name = 'leave_management'",
+                    [user_id, tenantId]
+                );
+                const hasAdminAccess = req.user.role === 'admin' || (accessRows.length > 0 && accessRows[0].can_write);
+                
+                if (!hasAdminAccess) {
+                    return res.status(403).json({ message: 'Forbidden. You do not have permission to delete this leave.' });
+                }
+            } else {
+                if (leaveData.status !== 'Pending') {
+                    return res.status(400).json({ message: 'You can only delete pending leave requests.' });
+                }
+            }
+
+            await Leave.delete(tenantId, leaveId);
 
             res.json({ message: 'Leave request deleted successfully!' });
         } catch (error) {

@@ -5,8 +5,9 @@ import { useTableControls } from '../../../hooks/useTableControls';
 import * as XLSX from 'xlsx';
 import '../../../styles/tableControls.css';
 import './SalaryManagement.css';
+import { API_BASE_URL } from '../../../services/api';
 
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+const API_URL = API_BASE_URL;
 
 const SALARY_SEARCH_FIELDS = [
     'employee_id',

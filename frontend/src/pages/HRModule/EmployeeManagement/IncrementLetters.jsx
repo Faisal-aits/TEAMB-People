@@ -4,7 +4,8 @@ import { incrementPDFService } from "../../../services/incrementPDFService";
 import { employeeAPI } from "../../../services/employeeAPI";
 import { API_BASE_URL } from "../../../services/api";
 import { useLocation } from "react-router-dom";
-import { HiOutlineArrowLeft, HiOutlineDocumentText, HiOutlineEye, HiOutlinePlus, HiOutlineTrash } from "react-icons/hi2";
+import { HiOutlineArrowLeft, HiOutlineDocumentText, HiOutlineEye, HiOutlinePlus, HiOutlineTrash } from 'react-icons/hi2';
+import { HiOutlineDownload } from 'react-icons/hi';
 
 const getEmployeeSelectId = (employee) => employee?.employee_id || employee?.id || employee?.user_id || "";
 const getEmployeeCode = (employee) => employee?.employee_code || employee?.employee_id || employee?.id || "";
@@ -36,6 +37,8 @@ const IncrementLetters = ({ initialEmployee = null, onBack = null }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState(null);
+  const [pdfPreviewTitle, setPdfPreviewTitle] = useState("Document Preview");
   
   const [formData, setFormData] = useState({
     employee_id: "",
@@ -141,6 +144,29 @@ const IncrementLetters = ({ initialEmployee = null, onBack = null }) => {
     return "0.00";
   };
 
+
+  const handleDownloadPDF = async () => {
+    if (!pdfPreviewUrl) return;
+    try {
+      let downloadUrl = pdfPreviewUrl;
+      if (!pdfPreviewUrl.startsWith('blob:')) {
+        const response = await fetch(pdfPreviewUrl);
+        const blob = await response.blob();
+        downloadUrl = window.URL.createObjectURL(blob);
+      }
+      const fileName = `${(pdfPreviewTitle || 'Document').replace(/[^a-zA-Z0-9_\- ]/g, '_')}.pdf`;
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error('Failed to download PDF:', err);
+      window.open(pdfPreviewUrl, '_blank');
+    }
+  };
+
   const handlePreview = async () => {
     if (!formData.employee_id) {
       alert("Please select an employee");
@@ -167,8 +193,8 @@ const IncrementLetters = ({ initialEmployee = null, onBack = null }) => {
     try {
       const pdfBlob = await incrementPDFService.generatePDFBlob(pdfData);
       const blobUrl = URL.createObjectURL(pdfBlob);
-      window.open(blobUrl, '_blank');
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      setPdfPreviewTitle(`Preview - ${pdfData.employeeName}`);
+      setPdfPreviewUrl(blobUrl);
     } catch (err) {
       console.error("Preview error:", err);
       alert("Failed to preview letter: " + err.message);
@@ -255,9 +281,11 @@ const IncrementLetters = ({ initialEmployee = null, onBack = null }) => {
     }
   };
 
-  const viewLetter = (url) => {
-    if (url) {
-      window.open(url.startsWith('http') ? url : `${API_BASE_URL}${url}`, "_blank");
+  const viewLetter = (letter) => {
+    if (letter.letter_url) {
+      const url = letter.letter_url;
+      setPdfPreviewTitle(`Increment Letter - ${letter.first_name || ""} ${letter.last_name || ""}`);
+      setPdfPreviewUrl(url.startsWith("http") ? url : `${API_BASE_URL}${url}`);
     }
   };
 
@@ -349,7 +377,7 @@ const IncrementLetters = ({ initialEmployee = null, onBack = null }) => {
                   <td style={{ padding: "16px", color: "#64748b" }}>{letter.increment_percentage}%</td>
                   <td style={{ padding: "16px", textAlign: "center" }}>
                     <div style={{ display: "flex", justifyContent: "center", gap: "8px" }}>
-                      <button onClick={() => viewLetter(letter.letter_url)} title="View" style={{ padding: "6px", background: "#f1f5f9", border: "none", borderRadius: "4px", cursor: "pointer", color: "#4f46e5" }}>
+                      <button onClick={() => viewLetter(letter)} title="View" style={{ padding: "6px", background: "#f1f5f9", border: "none", borderRadius: "4px", cursor: "pointer", color: "#4f46e5" }}>
                         <HiOutlineEye size={18} />
                       </button>
                       <button onClick={() => handleDelete(letter.id)} title="Revoke" style={{ padding: "6px", background: "#f1f5f9", border: "none", borderRadius: "4px", cursor: "pointer", color: "#b91c1c" }}>
@@ -619,8 +647,30 @@ const IncrementLetters = ({ initialEmployee = null, onBack = null }) => {
           </div>
         </div>
       )}
-    </div>
-  );
+        {/* PDF Preview Modal */}
+        {pdfPreviewUrl && (
+          <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", zIndex: 9999, display: "flex", justifyContent: "center", alignItems: "center" }}>
+            <div style={{ width: "90%", maxWidth: "1000px", height: "90vh", display: "flex", flexDirection: "column", backgroundColor: "white", borderRadius: "8px", overflow: "hidden" }}>
+              <div style={{ padding: "15px 20px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <h2 style={{ margin: 0, fontSize: "1.25rem", color: "#1e293b" }}>{pdfPreviewTitle}</h2>
+                <div style={{ display: "flex", gap: "10px" }}>
+                  <button onClick={handleDownloadPDF} style={{ display: "inline-flex", alignItems: "center", gap: "5px", padding: "8px 16px", background: "#2563eb", color: "white", borderRadius: "6px", border: "none", cursor: "pointer", fontWeight: "500" }}>
+                    <HiOutlineDownload /> Download
+                  </button>
+                  <button onClick={() => setPdfPreviewUrl(null)} style={{ background: "none", border: "none", fontSize: "24px", cursor: "pointer", color: "#64748b" }}>
+                    &times;
+                  </button>
+                </div>
+              </div>
+              <div style={{ flex: 1, width: "100%", background: "#e2e8f0" }}>
+                <iframe src={`${pdfPreviewUrl}#toolbar=0`} style={{ width: "100%", height: "100%", border: "none" }} title="Document Preview" />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
 };
 
 export default IncrementLetters;
+

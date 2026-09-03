@@ -247,6 +247,56 @@ const formatDate = (dateString) => {
   }).replace(/\//g, '-');
 };
 
+const numberToWords = (num) => {
+  if (!num) return '';
+  const clean = String(num).replace(/,/g, '').trim();
+  const val = parseInt(clean, 10);
+  if (isNaN(val) || val <= 0) return '';
+
+  const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
+  const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+  const nStr = ('000000000' + val).slice(-9);
+  const n = nStr.match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
+  if (!n) return '';
+
+  let str = '';
+  str += (Number(n[1]) !== 0) ? (a[Number(n[1])] || b[Number(n[1][0])] + ' ' + a[Number(n[1][1])]) + 'Crore ' : '';
+  str += (Number(n[2]) !== 0) ? (a[Number(n[2])] || b[Number(n[2][0])] + ' ' + a[Number(n[2][1])]) + 'Lakh ' : '';
+  str += (Number(n[3]) !== 0) ? (a[Number(n[3])] || b[Number(n[3][0])] + ' ' + a[Number(n[3][1])]) + 'Thousand ' : '';
+  str += (Number(n[4]) !== 0) ? (a[Number(n[4])] || b[Number(n[4][0])] + ' ' + a[Number(n[4][1])]) + 'Hundred ' : '';
+  str += (Number(n[5]) !== 0) ? ((str !== '') ? 'and ' : '') + (a[Number(n[5])] || b[Number(n[5][0])] + ' ' + a[Number(n[5][1])]) : '';
+
+  const trimmed = str.replace(/\s+/g, ' ').trim();
+  return trimmed ? trimmed + ' Rupees Only' : '';
+};
+
+const renderSalaryHTML = (formData) => {
+  const hasProbation = Boolean(formData.salaryDuringProbation || formData.salaryAfterProbation);
+  const probationMonths = formData.probationMonths || formData.probation_months || 3;
+
+  if (hasProbation) {
+    const duringSalary = formData.salaryDuringProbation || '';
+    const duringWords = (duringSalary ? numberToWords(duringSalary) : '') || formData.salaryDuringProbationInWords || '';
+    const afterSalary = formData.salaryAfterProbation || duringSalary;
+    const afterWords = (afterSalary ? numberToWords(afterSalary) : '') || formData.salaryAfterProbationInWords || '';
+
+    return `During the probation period of <strong>${probationMonths} month${Number(probationMonths) !== 1 ? 's' : ''}</strong>, your monthly in-hand salary will be <strong>Rs. ${duringSalary}</strong>${duringWords ? ` (<strong>${duringWords}</strong>)` : ''}. Upon successful completion of probation, your monthly in-hand salary will be revised to <strong>Rs. ${afterSalary}</strong>${afterWords ? ` (<strong>${afterWords}</strong>)` : ''}.`;
+  }
+
+  if (formData.salary_format === 'Monthly' || formData.monthlySalary) {
+    const salary = formData.monthlySalary || formData.ctc || '';
+    const words = (salary ? numberToWords(salary) : '') || formData.monthlySalaryInWords || formData.ctcInWords || '';
+    const wordsSnippet = words ? ` (<strong>${words}</strong>)` : '';
+    return `Your monthly in-hand salary will be <strong>Rs. ${salary}</strong>${wordsSnippet} per month, subject to statutory deductions.`;
+  }
+
+  const ctc = formData.ctc || formData.monthlySalary || '';
+  const words = (ctc ? numberToWords(ctc) : '') || formData.ctcInWords || formData.monthlySalaryInWords || '';
+  const wordsSnippet = words ? ` (<strong>${words}</strong>)` : '';
+  return `Your annual compensation (CTC) will be <strong>Rs. ${ctc}</strong>${wordsSnippet} per annum, subject to statutory deductions.`;
+};
+
 const generatePage1HTML = ({ formData, company, hr, logo, stamp }) => `
   <div style="font-family: Arial, sans-serif; color: #000; line-height: 1.6; min-height: 297mm; display: flex; flex-direction: column;">
     ${commonHeader(logo, company)}
@@ -269,7 +319,7 @@ const generatePage1HTML = ({ formData, company, hr, logo, stamp }) => `
       <div style="text-align: justify; font-size: 11pt; font-family: 'Times New Roman', Times, serif; margin-top: 30px;">
         <p>Congratulations!</p>
         <p>We are pleased to offer you the position of <strong>${formData.designation || '[Designation]'}</strong> with the Company. The effective date of your appointment is agreed as <strong>${formatDate(formData.joiningDate) || '[Joining Date]'}</strong>.</p>
-        <p>Your ${formData.salary_format === 'Monthly' ? 'monthly salary' : 'annual compensation (CTC)'} will be <strong>Rs. ${formData.ctc} (${formData.ctcInWords} only)</strong> per ${formData.salary_format === 'Monthly' ? 'month' : 'annum'}, subject to statutory deductions. Performance assessment will be conducted periodically.</p>
+        <p>${renderSalaryHTML(formData)} Performance assessment will be conducted periodically.</p>
         <p>Your continued employment is contingent upon your satisfactorily meeting the Company's expectations.</p>
         <p>On your first day of work, you will be required to sign the <strong>Employment Agreement</strong>, which will contain detailed terms and conditions of your employment with the Company. You are expected to follow the policies, rules, and regulations laid out by the Company. On your first day of employment, you will be given additional information about the Company, its procedures, policies, benefit programs, and more.</p>
         <p>Any female employee who has conceived prior to joining the Company is expected to inform the Company of her pregnancy before signing the Offer Letter and the Employee Agreement.</p>

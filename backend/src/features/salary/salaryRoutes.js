@@ -26,10 +26,10 @@ const canWriteHoliday = requireModuleAccess('holiday_management', 'write');
 
 // ==================== HOLIDAY ROUTES ====================
 router.post('/holidays', canWriteHoliday, holidayController.createHoliday);
-router.get('/holidays', canReadHoliday, holidayController.getHolidays);
+router.get('/holidays', holidayController.getHolidays);
 // Specific routes MUST come before /:id wildcard to avoid route shadowing
-router.get('/holidays/year/:year/month/:month', canReadHoliday, holidayController.getHolidaysByYearMonth);
-router.get('/holidays/month/:month/:year', canReadHoliday, holidayController.getHolidaysByMonth);
+router.get('/holidays/year/:year/month/:month', holidayController.getHolidaysByYearMonth);
+router.get('/holidays/month/:month/:year', holidayController.getHolidaysByMonth);
 router.post('/holidays/bulk-delete', canWriteHoliday, holidayController.bulkDeleteHolidays);
 router.get('/holidays/:id', canReadHoliday, holidayController.getHolidayById);
 router.put('/holidays/:id', canWriteHoliday, holidayController.updateHoliday);

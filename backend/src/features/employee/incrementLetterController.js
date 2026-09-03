@@ -60,6 +60,73 @@ const incrementLetterController = {
                 [tenantId, employee_id, date_of_issue, effective_date, previous_ctc, revised_ctc, currency || 'INR', designation, department, performance_note || null, letter_url, ref_number, generated_by]
             );
 
+            await pool.execute(
+                `INSERT INTO employee_documents (tenant_id, employee_id, document_type, title, file_url) 
+                 VALUES (?, ?, ?, ?, ?)`,
+                [tenantId, employee_id, 'increment_letter', `Increment Letter - ${effective_date}`, letter_url]
+            );
+
+            // Update salary immediately if effective_date <= today
+            const effDate = new Date(effective_date);
+            const today = new Date();
+            effDate.setHours(0, 0, 0, 0);
+            today.setHours(0, 0, 0, 0);
+            
+            if (effDate <= today) {
+                const [empRows] = await pool.execute(
+                    `SELECT salary, salary_basic, salary_hra, salary_medical_allowance, salary_travel_allowance, salary_other_allowance 
+                     FROM employee_details WHERE id = ? AND tenant_id = ?`,
+                    [employee_id, tenantId]
+                );
+                
+                if (empRows.length > 0) {
+                    const emp = empRows[0];
+                    const oldSalary = Number(emp.salary) || 1;
+                    const newSalary = Number(revised_ctc);
+                    const ratio = newSalary / oldSalary;
+                    
+                    let newBasic = newSalary;
+                    let newHra = 0;
+                    let newMedical = 0;
+                    let newTravel = 0;
+                    let newOther = 0;
+
+                    const { calculatePayroll } = require('./employeePayroll');
+                    const payroll = calculatePayroll({
+                        salary_basic: newBasic,
+                        salary_hra: newHra,
+                        salary_medical_allowance: newMedical,
+                        salary_travel_allowance: newTravel,
+                        salary_other_allowance: newOther
+                    });
+
+                    await pool.execute(
+                        `UPDATE employee_details 
+                         SET salary = ?, salary_after_probation = ?, salary_basic = ?, salary_hra = ?, salary_medical_allowance = ?, salary_travel_allowance = ?, salary_other_allowance = ?,
+                             salary_gross = ?, salary_pf = ?, salary_esic = ?, salary_professional_tax = ?, salary_lwf = ?, salary_total_deduction = ?, salary_net = ?, employer_pf = ?, employer_esic = ?
+                         WHERE id = ? AND tenant_id = ?`,
+                        [
+                            newSalary, newSalary, newBasic, newHra, newMedical, newTravel, newOther,
+                            payroll.salary_gross, payroll.salary_pf, payroll.salary_esic, payroll.salary_professional_tax, payroll.salary_lwf, payroll.salary_total_deduction, payroll.salary_net, payroll.employer_pf, payroll.employer_esic,
+                            employee_id, tenantId
+                        ]
+                    );
+                }
+            }
+
+            const [userRow] = await pool.execute(`SELECT employee_id FROM employee_details WHERE id = ? AND tenant_id = ?`, [employee_id, tenantId]);
+            if (userRow.length > 0) {
+                const Notification = require('../notifications/notificationModel');
+                await Notification.create(
+                    tenantId,
+                    userRow[0].employee_id,
+                    'increment_letter',
+                    'New Increment Letter',
+                    'A new salary increment letter has been generated for you.',
+                    null
+                );
+            }
+
             res.status(201).json({ success: true, message: 'Increment letter generated and saved successfully.', letter_url });
         } catch (error) {
             console.error('Generate increment letter error:', error);

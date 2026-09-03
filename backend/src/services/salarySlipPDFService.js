@@ -27,35 +27,40 @@ const generateSalarySlipPDF = (salarySlip, branding) => {
       }
 
       // Company Details (Right side)
-      doc.font('Helvetica-Bold').fontSize(16).text(branding?.company_name || 'Company Name', 200, 40, { align: 'right' });
-      doc.font('Helvetica').fontSize(10);
+      doc.font('Helvetica-Bold').fontSize(15).fillColor('#000000')
+         .text(branding?.company_name || 'Company Name', 200, 36, { align: 'right', width: 355 });
       
-      let y = 60;
+      doc.font('Helvetica').fontSize(9).fillColor('#333333');
+      
+      let curY = doc.y + 4;
       if (branding?.company_address) {
-        doc.text(branding.company_address, 200, y, { align: 'right' });
-        y += 15;
+        doc.text(branding.company_address, 200, curY, { align: 'right', width: 355, lineGap: 2 });
+        curY = doc.y + 3;
       }
       if (branding?.company_phone) {
-        doc.text(`Phone: ${branding.company_phone}`, 200, y, { align: 'right' });
-        y += 15;
+        doc.text(`Phone: ${branding.company_phone}`, 200, curY, { align: 'right', width: 355, lineGap: 2 });
+        curY = doc.y + 3;
       }
       if (branding?.company_email) {
-        doc.text(`Email: ${branding.company_email}`, 200, y, { align: 'right' });
-        y += 15;
+        doc.text(`Email: ${branding.company_email}`, 200, curY, { align: 'right', width: 355, lineGap: 2 });
+        curY = doc.y + 3;
       }
       if (branding?.company_website) {
-        doc.text(`Website: ${branding.company_website}`, 200, y, { align: 'right' });
+        doc.text(`Website: ${branding.company_website}`, 200, curY, { align: 'right', width: 355, lineGap: 2 });
+        curY = doc.y + 3;
       }
 
-      // Divider Line
-      doc.moveTo(40, 130).lineTo(555, 130).lineWidth(1).strokeColor('#dddddd').stroke();
+      // Divider Line (Dynamically positioned below all header text)
+      const dividerY = Math.max(curY + 10, 125);
+      doc.moveTo(40, dividerY).lineTo(555, dividerY).lineWidth(1).strokeColor('#dddddd').stroke();
 
       // --- TITLE ---
       const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
       const monthName = monthNames[salarySlip.month_number - 1];
       
-      doc.font('Helvetica-Bold').fontSize(14).fillColor('#333333')
-         .text(`Salary Slip for ${monthName} ${salarySlip.year}`, 40, 150, { align: 'center' });
+      const titleY = dividerY + 15;
+      doc.font('Helvetica-Bold').fontSize(13).fillColor('#333333')
+         .text(`Salary Slip for ${monthName} ${salarySlip.year}`, 40, titleY, { align: 'center' });
 
       // --- EMPLOYEE DETAILS & ATTENDANCE BREAKDOWN ---
       let detailsObj = salarySlip.details || {};
@@ -71,7 +76,7 @@ const generateSalarySlipPDF = (salarySlip, branding) => {
       const payableDays = detailsObj.paid_days ?? detailsObj.attendance?.paid_days ?? salarySlip.paid_days ?? '-';
       const totalDays = detailsObj.total_days ?? detailsObj.attendance?.total_days ?? 31;
 
-      const detailsY = 175;
+      const detailsY = titleY + 24;
       doc.font('Helvetica').fontSize(9).fillColor('#000000');
       
       const formatVal = (val) => (val !== undefined && val !== null && val !== '') ? String(val) : '-';
@@ -122,7 +127,7 @@ const generateSalarySlipPDF = (salarySlip, branding) => {
       doc.font('Helvetica-Bold').fillColor('#c0392b').text(formatVal(deductionDays), 495, detailsY + 58, { align: 'right', width: 52 });
 
       // --- EARNINGS & DEDUCTIONS TABLE ---
-      const tableY = 265;
+      const tableY = detailsY + 86;
       doc.rect(40, tableY, 515, 22).fill('#f5f5f5');
       doc.fillColor('#000000').font('Helvetica-Bold').fontSize(9.5);
       
@@ -132,7 +137,7 @@ const generateSalarySlipPDF = (salarySlip, branding) => {
       doc.text('Amount (Rs)', 460, tableY + 6, { width: 80, align: 'right' });
       
       // Box for table body
-      const tableHeight = 160;
+      const tableHeight = 150;
       doc.rect(40, tableY, 515, tableHeight).strokeColor('#000000').lineWidth(1).stroke();
       doc.moveTo(297, tableY).lineTo(297, tableY + tableHeight).stroke(); // Center vertical line
       
@@ -188,9 +193,12 @@ const generateSalarySlipPDF = (salarySlip, branding) => {
       doc.text(totalDeductions.toFixed(2), 460, totalY + 6, { width: 80, align: 'right' });
 
       // --- NET SALARY PAYABLE & AMOUNT IN WORDS (ONE ROW & BELOW LAYOUT) ---
-      const netY = totalY + 30;
+      const netY = totalY + 22;
       const netSalary = parseFloat(salarySlip.net_salary || 0);
-      const amountInWords = `${numberToWords(Math.round(netSalary))} Rupees Only`;
+      const rawWords = numberToWords(Math.round(netSalary));
+      const amountInWords = String(rawWords || '').toLowerCase().includes('rupees only')
+        ? rawWords
+        : `${rawWords} Rupees Only`;
       
       // Outer border box for Net Salary + Words
       doc.rect(40, netY, 515, 52).strokeColor('#000000').lineWidth(1).stroke();
@@ -212,7 +220,7 @@ const generateSalarySlipPDF = (salarySlip, branding) => {
 
       // --- FOOTER ---
       doc.font('Helvetica').fontSize(9).fillColor('#666666')
-         .text('This is a computer-generated document and does not require a signature.', 40, 720, { align: 'center' });
+         .text('This is a computer-generated document and does not require a signature.', 40, netY + 68, { align: 'center' });
       
       doc.end();
     } catch (err) {

@@ -26,6 +26,16 @@ const ExpenseTable = () => {
     receipt_image: null
   });
 
+  const getInitialExpenseFormData = () => {
+    const defaultCat = categories.find(c => String(c.name || '').trim().toLowerCase() === 'food') || categories[0];
+    return {
+      category_id: defaultCat ? defaultCat.id : '',
+      amount: '',
+      description: '',
+      receipt_image: null
+    };
+  };
+
   // Get current user from localStorage
   const getCurrentUser = () => {
     const userData = localStorage.getItem('user');
@@ -136,7 +146,13 @@ const ExpenseTable = () => {
     
 
     setCategories(categoriesData);
-   
+    const defaultCat = categoriesData.find(c => String(c.name || '').trim().toLowerCase() === 'food') || categoriesData[0];
+    if (defaultCat) {
+      setFormData(prev => ({
+        ...prev,
+        category_id: prev.category_id || defaultCat.id
+      }));
+    }
   } catch (error) {
     console.error('=== Error Loading Categories ===');
     console.error('Error:', error);
@@ -216,11 +232,7 @@ const ExpenseTable = () => {
   
     
     // Reset form
-    setFormData({
-      category_id: '',
-      amount: '',
-      description: ''
-    });
+    setFormData(getInitialExpenseFormData());
     setReceiptImage(null);
     setImagePreview(null);
     setIsModalOpen(false);
@@ -306,7 +318,12 @@ const ExpenseTable = () => {
         <h2>Reimbursement Management</h2>
         <button 
           className="add-expense-btn"
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setFormData(getInitialExpenseFormData());
+            setReceiptImage(null);
+            setImagePreview(null);
+            setIsModalOpen(true);
+          }}
         >
           <span className="btn-icon">+</span>
           Add Reimbursement
@@ -420,7 +437,12 @@ const ExpenseTable = () => {
             </p>
             {filterPayment === 'All' && (
               <button
-                onClick={() => setIsModalOpen(true)}
+                onClick={() => {
+                  setFormData(getInitialExpenseFormData());
+                  setReceiptImage(null);
+                  setImagePreview(null);
+                  setIsModalOpen(true);
+                }}
                 className="add-first-btn"
               >
                 Submit First Reimbursement

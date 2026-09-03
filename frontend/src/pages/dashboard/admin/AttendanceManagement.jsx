@@ -5,6 +5,15 @@ import { employeeAPI } from '../../../services/employeeAPI';
 import * as XLSX from 'xlsx';
 import './Attendance.css';
 
+const getTodayIST = () => {
+  return new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }).split(' ')[0];
+};
+
+const getMonthStartIST = () => {
+  const today = getTodayIST();
+  return `${today.substring(0, 7)}-01`;
+};
+
 const AttendanceManagement = () => {
   // ==================== REAL ATTENDANCE DATA ====================
   const [attendanceData, setAttendanceData] = useState([]);
@@ -18,8 +27,8 @@ const AttendanceManagement = () => {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportData, setReportData] = useState([]);
   const [reportFilters, setReportFilters] = useState({
-    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
+    startDate: getMonthStartIST(),
+    endDate: getTodayIST(),
     department: '',
     status: ''
   });

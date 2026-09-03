@@ -11,13 +11,14 @@ import {
   HiOutlineClock
 } from 'react-icons/hi';
 import './EmployeeSalarySlips.css';
+import { API_BASE_URL, getFileUrl } from '../../services/api';
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+const API_URL = API_BASE_URL;
 
 const EmployeeSalarySlips = () => {
   const [salaries, setSalaries] = useState([]);
@@ -323,7 +324,7 @@ const EmployeeSalarySlips = () => {
               </div>
               <div className="modal-header-actions">
                 {selectedSlip.doc_file_url ? (
-                  <button className="btn-print" onClick={() => triggerFileDownload(`${API_URL}${selectedSlip.doc_file_url}`, `${selectedSlip.title || 'Salary_Slip'}.pdf`)}>
+                  <button className="btn-print" onClick={() => triggerFileDownload(getFileUrl(selectedSlip.doc_file_url), `${selectedSlip.title || 'Salary_Slip'}.pdf`)}>
                     <HiOutlinePrinter /> Download
                   </button>
                 ) : (
@@ -343,7 +344,7 @@ const EmployeeSalarySlips = () => {
               ) : selectedSlip.doc_file_url ? (
                 <div style={{ width: '100%', height: '550px' }}>
                   <iframe
-                    src={`${API_URL}${selectedSlip.doc_file_url}#toolbar=0`}
+                    src={`${getFileUrl(selectedSlip.doc_file_url)}#toolbar=0`}
                     style={{ width: '100%', height: '100%', border: 'none', borderRadius: '8px' }}
                     title="Salary Slip Document"
                   />

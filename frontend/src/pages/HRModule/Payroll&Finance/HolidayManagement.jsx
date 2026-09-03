@@ -17,9 +17,10 @@ import {
     FaFileUpload
 } from 'react-icons/fa';
 import { employeeAPI } from '../../../services/employeeAPI';
+import { API_BASE_URL } from '../../../services/api';
 import './HolidayManagement.css';
 
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+const API_URL = API_BASE_URL;
 
 const normalizeDate = (value) => {
     if (!value) return '';

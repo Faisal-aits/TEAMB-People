@@ -92,6 +92,30 @@ const getMoney = (formData, field, fallback = '') => {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 };
 
+const numberToWords = (num) => {
+  if (!num) return '';
+  const clean = String(num).replace(/,/g, '').trim();
+  const val = parseInt(clean, 10);
+  if (isNaN(val) || val <= 0) return '';
+
+  const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
+  const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+  const nStr = ('000000000' + val).slice(-9);
+  const n = nStr.match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
+  if (!n) return '';
+
+  let str = '';
+  str += (Number(n[1]) !== 0) ? (a[Number(n[1])] || b[Number(n[1][0])] + ' ' + a[Number(n[1][1])]) + 'Crore ' : '';
+  str += (Number(n[2]) !== 0) ? (a[Number(n[2])] || b[Number(n[2][0])] + ' ' + a[Number(n[2][1])]) + 'Lakh ' : '';
+  str += (Number(n[3]) !== 0) ? (a[Number(n[3])] || b[Number(n[3][0])] + ' ' + a[Number(n[3][1])]) + 'Thousand ' : '';
+  str += (Number(n[4]) !== 0) ? (a[Number(n[4])] || b[Number(n[4][0])] + ' ' + a[Number(n[4][1])]) + 'Hundred ' : '';
+  str += (Number(n[5]) !== 0) ? ((str !== '') ? 'and ' : '') + (a[Number(n[5])] || b[Number(n[5][0])] + ' ' + a[Number(n[5][1])]) : '';
+
+  const trimmed = str.replace(/\s+/g, ' ').trim();
+  return trimmed ? trimmed + ' Rupees Only' : '';
+};
+
 const shapeOffer = (row) => ({
   ...row,
   form_data: parseJson(row.form_data)
@@ -104,8 +128,8 @@ const offerLetterController = {
 
       const { employee_id, candidate_name, candidate_email, form_data, issue_date } = req.body;
 
-      if (!form_data || !issue_date) {
-        return res.status(400).json({ message: 'Offer letter details and issue date are required' });
+      if (!form_data || typeof form_data !== 'object') {
+        return res.status(400).json({ message: 'Offer letter details are required' });
       }
 
       const candidateName = String(candidate_name || form_data.fullName || form_data.employeeName || '').trim();
@@ -121,7 +145,11 @@ const offerLetterController = {
       const normalizedFormData = {
         ...form_data,
         fullName: form_data.fullName || form_data.employeeName || candidateName,
-        email: candidateEmail
+        email: candidateEmail,
+        ctcInWords: form_data.ctc ? numberToWords(form_data.ctc) : (form_data.ctcInWords || ''),
+        monthlySalaryInWords: form_data.monthlySalary ? numberToWords(form_data.monthlySalary) : (form_data.monthlySalaryInWords || ''),
+        salaryDuringProbationInWords: form_data.salaryDuringProbation ? numberToWords(form_data.salaryDuringProbation) : (form_data.salaryDuringProbationInWords || ''),
+        salaryAfterProbationInWords: form_data.salaryAfterProbation ? numberToWords(form_data.salaryAfterProbation) : (form_data.salaryAfterProbationInWords || '')
       };
 
       let offerId;
@@ -174,6 +202,20 @@ const offerLetterController = {
           message: 'Offer letter saved and emailed successfully'
         });
       } catch (emailError) {
+        const isSmtpMissing = emailError.code === 'SMTP_NOT_CONFIGURED' ||
+          emailError.message?.includes('SMTP_NOT_CONFIGURED') ||
+          emailError.message?.includes('SMTP configuration not found') ||
+          emailError.message?.includes('SMTP configuration is incomplete');
+
+        if (isSmtpMissing) {
+          return res.status(428).json({
+            success: false,
+            code: 'SMTP_NOT_CONFIGURED',
+            smtp_not_configured: true,
+            message: 'Your organization has not configured email (SMTP) settings yet. Please configure SMTP in Settings → SMTP Config to send offer letters.'
+          });
+        }
+
         return res.status(502).json({
           success: false,
           message: 'Offer letter was saved, but the email could not be sent: ' + emailError.message
@@ -305,6 +347,15 @@ const offerLetterController = {
       const passwordHash = await bcrypt.hash(rawPassword, 10);
 
       const ctc = getMoney(formData, 'ctc');
+      const monthlySalary = getMoney(formData, 'monthlySalary');
+      const salaryDuringProbation = getMoney(formData, 'salaryDuringProbation');
+      const salaryAfterProbation = getMoney(formData, 'salaryAfterProbation');
+      const effectiveSalary = ctc || (monthlySalary ? monthlySalary * 12 : (salaryAfterProbation ? salaryAfterProbation * 12 : (salaryDuringProbation ? salaryDuringProbation * 12 : null)));
+
+      const basicSalary = getMoney(formData, 'basicSalary') || (effectiveSalary ? Math.round((effectiveSalary / 12) * 0.5) : 0);
+      const hra = getMoney(formData, 'hra') || (effectiveSalary ? Math.round((effectiveSalary / 12) * 0.3) : 0);
+      const otherAllowance = getMoney(formData, 'specialAllowance') || (effectiveSalary ? Math.round((effectiveSalary / 12) * 0.2) : 0);
+
       const employeeData = {
         employee_id: new_employee_id,
         first_name: firstName,
@@ -315,21 +366,18 @@ const offerLetterController = {
         department_id,
         position: formData.designation || 'employee',
         employment_type,
-        salary: ctc || null,
-        salary_basic: getMoney(formData, 'basicSalary'),
-        salary_hra: getMoney(formData, 'hra'),
+        salary: effectiveSalary,
+        salary_basic: basicSalary,
+        salary_hra: hra,
         salary_medical_allowance: getMoney(formData, 'medicalAllowance'),
         salary_travel_allowance: getMoney(formData, 'conveyanceAllowance'),
-        salary_other_allowance: getMoney(formData, 'specialAllowance'),
+        salary_other_allowance: otherAllowance,
         joining_date: formData.joiningDate || null,
         address: formData.address || null,
         is_active: true,
         status: 'active'
       };
 
-      const salaryDuringProbation = getMoney(formData, 'salaryDuringProbation');
-      const salaryAfterProbation = getMoney(formData, 'salaryAfterProbation');
-      
       if (salaryDuringProbation) {
         employeeData.salary_during_probation = salaryDuringProbation;
         employeeData.salary_after_probation = salaryAfterProbation || employeeData.salary;
@@ -391,6 +439,65 @@ const offerLetterController = {
         return res.status(400).json({ message: 'Employee ID or email already exists' });
       }
       return res.status(500).json({ message: 'Server error: ' + error.message });
+    }
+  },
+
+  resendOfferLetter: async (req, res) => {
+    try {
+      await ensureOfferLetterSchema();
+      const { id } = req.params;
+
+      const [rows] = await pool.execute(
+        'SELECT * FROM offer_letters WHERE id = ? AND tenant_id = ?',
+        [id, req.tenantId]
+      );
+
+      if (rows.length === 0) {
+        return res.status(404).json({ message: 'Offer letter not found' });
+      }
+
+      const offer = rows[0];
+      const formData = parseJson(offer.form_data);
+      const candidateName = offer.candidate_name || formData.fullName || 'Candidate';
+      const candidateEmail = offer.candidate_email || formData.email;
+
+      if (!candidateEmail) {
+        return res.status(400).json({ message: 'Candidate email address is missing' });
+      }
+
+      await sendOfferLetter(req.tenantId, {
+        candidateName,
+        candidateEmail,
+        formData,
+        pdfBase64: req.body.pdf_base64
+      });
+
+      await pool.execute(
+        "UPDATE offer_letters SET status = 'Sent', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ?",
+        [id, req.tenantId]
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: `Offer letter emailed successfully to ${candidateEmail}`
+      });
+    } catch (error) {
+      console.error('Resend offer letter error:', error);
+      const isSmtpMissing = error.code === 'SMTP_NOT_CONFIGURED' ||
+        error.message?.includes('SMTP_NOT_CONFIGURED') ||
+        error.message?.includes('SMTP configuration not found') ||
+        error.message?.includes('SMTP configuration is incomplete');
+
+      if (isSmtpMissing) {
+        return res.status(428).json({
+          success: false,
+          code: 'SMTP_NOT_CONFIGURED',
+          smtp_not_configured: true,
+          message: 'Your organization has not configured email (SMTP) settings yet. Please configure SMTP in Settings → SMTP Config to send offer letters.'
+        });
+      }
+
+      return res.status(500).json({ message: 'Failed to send offer letter email: ' + error.message });
     }
   }
 };

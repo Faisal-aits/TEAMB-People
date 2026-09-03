@@ -138,7 +138,7 @@ CREATE TABLE `attendance_history` (
   KEY `idx_attendance_history_tenant` (`tenant_id`),
   CONSTRAINT `attendance_history_ibfk_1` FOREIGN KEY (`employee_id`) REFERENCES `employee_details` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_attendance_history_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -180,7 +180,7 @@ CREATE TABLE `attendance_regularization_requests` (
   KEY `idx_reg_date` (`request_date`),
   CONSTRAINT `fk_reg_requests_employee` FOREIGN KEY (`employee_id`) REFERENCES `employee_details` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_reg_requests_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -221,79 +221,6 @@ LOCK TABLES `attendance_regularization_settings` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `client_interactions`
---
-
-DROP TABLE IF EXISTS `client_interactions`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `client_interactions` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `tenant_id` int DEFAULT NULL,
-  `client_id` int NOT NULL,
-  `type` varchar(50) DEFAULT NULL,
-  `date` date DEFAULT NULL,
-  `title` varchar(255) DEFAULT NULL,
-  `description` text,
-  `participants` text,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_client_interactions_tenant` (`tenant_id`),
-  KEY `fk_client_interactions_client` (`client_id`),
-  CONSTRAINT `fk_client_interactions_client` FOREIGN KEY (`client_id`) REFERENCES `clients` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_client_interactions_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `client_interactions`
---
-
-LOCK TABLES `client_interactions` WRITE;
-/*!40000 ALTER TABLE `client_interactions` DISABLE KEYS */;
-/*!40000 ALTER TABLE `client_interactions` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `clients`
---
-
-DROP TABLE IF EXISTS `clients`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `clients` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `tenant_id` int NOT NULL,
-  `name` varchar(255) NOT NULL,
-  `industry` varchar(100) DEFAULT NULL,
-  `contact_person` varchar(255) DEFAULT NULL,
-  `contact_email` varchar(255) DEFAULT NULL,
-  `contact_phone` varchar(50) DEFAULT NULL,
-  `location` varchar(255) DEFAULT NULL,
-  `assigned_manager` varchar(255) DEFAULT NULL,
-  `status` enum('active','prospective','inactive') DEFAULT 'prospective',
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `company` varchar(255) DEFAULT NULL,
-  `assigned_manager_user_id` int DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `idx_clients_manager_user` (`assigned_manager_user_id`),
-  KEY `fk_clients_tenant` (`tenant_id`),
-  CONSTRAINT `fk_clients_assigned_manager_user` FOREIGN KEY (`assigned_manager_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_clients_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `clients`
---
-
-LOCK TABLES `clients` WRITE;
-/*!40000 ALTER TABLE `clients` DISABLE KEYS */;
-/*!40000 ALTER TABLE `clients` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `company_settings`
 --
 
@@ -323,124 +250,6 @@ LOCK TABLES `company_settings` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `delivery_challan_history`
---
-
-DROP TABLE IF EXISTS `delivery_challan_history`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `delivery_challan_history` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `tenant_id` int DEFAULT NULL,
-  `challan_id` int NOT NULL,
-  `date` date NOT NULL,
-  `action` varchar(100) NOT NULL,
-  `user` varchar(100) NOT NULL,
-  `follow_up` text,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_challan_id` (`challan_id`),
-  KEY `idx_date` (`date`),
-  KEY `idx_delivery_history_tenant` (`tenant_id`),
-  CONSTRAINT `delivery_challan_history_ibfk_1` FOREIGN KEY (`challan_id`) REFERENCES `delivery_challans` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_delivery_history_challan` FOREIGN KEY (`challan_id`) REFERENCES `delivery_challans` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_delivery_history_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `delivery_challan_history`
---
-
-LOCK TABLES `delivery_challan_history` WRITE;
-/*!40000 ALTER TABLE `delivery_challan_history` DISABLE KEYS */;
-/*!40000 ALTER TABLE `delivery_challan_history` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `delivery_challan_items`
---
-
-DROP TABLE IF EXISTS `delivery_challan_items`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `delivery_challan_items` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `tenant_id` int DEFAULT NULL,
-  `challan_id` int NOT NULL,
-  `sr_no` int NOT NULL,
-  `description` text NOT NULL,
-  `quantity` decimal(10,2) NOT NULL DEFAULT '1.00',
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_challan_id` (`challan_id`),
-  KEY `idx_delivery_items_tenant` (`tenant_id`),
-  CONSTRAINT `delivery_challan_items_ibfk_1` FOREIGN KEY (`challan_id`) REFERENCES `delivery_challans` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_delivery_items_challan` FOREIGN KEY (`challan_id`) REFERENCES `delivery_challans` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_delivery_items_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `delivery_challan_items`
---
-
-LOCK TABLES `delivery_challan_items` WRITE;
-/*!40000 ALTER TABLE `delivery_challan_items` DISABLE KEYS */;
-/*!40000 ALTER TABLE `delivery_challan_items` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `delivery_challans`
---
-
-DROP TABLE IF EXISTS `delivery_challans`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `delivery_challans` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `tenant_id` int DEFAULT NULL,
-  `client_id` int DEFAULT NULL,
-  `project_id` int DEFAULT NULL,
-  `service_id` int DEFAULT NULL,
-  `challan_no` varchar(50) NOT NULL,
-  `challan_date` date NOT NULL,
-  `destination` varchar(255) NOT NULL,
-  `dispatched_through` varchar(100) DEFAULT 'By Hand',
-  `to_address` text NOT NULL,
-  `from_address` text,
-  `contact_info` text,
-  `payment_info` varchar(100) DEFAULT NULL,
-  `created_by` int DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `challan_no` (`challan_no`),
-  KEY `idx_challan_date` (`challan_date`),
-  KEY `idx_destination` (`destination`),
-  KEY `idx_challan_no` (`challan_no`),
-  KEY `idx_delivery_challans_tenant` (`tenant_id`),
-  KEY `idx_delivery_challans_client` (`client_id`),
-  KEY `idx_delivery_challans_project` (`project_id`),
-  KEY `idx_delivery_challans_service` (`service_id`),
-  KEY `fk_delivery_challans_created_by` (`created_by`),
-  CONSTRAINT `fk_delivery_challans_client` FOREIGN KEY (`client_id`) REFERENCES `clients` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_delivery_challans_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_delivery_challans_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_delivery_challans_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `delivery_challans`
---
-
-LOCK TABLES `delivery_challans` WRITE;
-/*!40000 ALTER TABLE `delivery_challans` DISABLE KEYS */;
-/*!40000 ALTER TABLE `delivery_challans` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `departments`
 --
 
@@ -458,7 +267,7 @@ CREATE TABLE `departments` (
   PRIMARY KEY (`id`),
   KEY `idx_departments_tenant` (`tenant_id`),
   CONSTRAINT `fk_departments_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -494,7 +303,6 @@ CREATE TABLE `employee_departments` (
 
 LOCK TABLES `employee_departments` WRITE;
 /*!40000 ALTER TABLE `employee_departments` DISABLE KEYS */;
-INSERT INTO `employee_departments` VALUES ('TEAM01',3,30,'2026-08-31 13:16:40'),('TEAMB02',2,2,'2026-08-22 06:28:09'),('TEAMB03',2,2,'2026-08-22 09:52:38');
 /*!40000 ALTER TABLE `employee_departments` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -587,7 +395,7 @@ CREATE TABLE `employee_documents` (
   PRIMARY KEY (`id`),
   KEY `idx_emp_docs_employee` (`tenant_id`,`employee_id`),
   KEY `idx_emp_docs_type` (`document_type`)
-) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -621,7 +429,7 @@ CREATE TABLE `employee_reports` (
   KEY `idx_employee_reports_tenant_date` (`tenant_id`,`report_date`),
   KEY `idx_employee_reports_user_date` (`user_id`,`report_date`),
   KEY `idx_employee_reports_tenant_user` (`tenant_id`,`user_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -630,81 +438,7 @@ CREATE TABLE `employee_reports` (
 
 LOCK TABLES `employee_reports` WRITE;
 /*!40000 ALTER TABLE `employee_reports` DISABLE KEYS */;
-INSERT INTO `employee_reports` VALUES (1,2,6,'2026-08-22','hi i have completed landscape today','ok we will continue the remaining work on monday',2,'2026-08-22 16:32:59','2026-08-22 16:22:56','2026-08-22 16:32:59'),(2,2,6,'2026-08-29','hi Faisal this side','kjsdlfkksd',2,'2026-08-29 16:18:54','2026-08-29 13:15:14','2026-08-29 16:18:54');
 /*!40000 ALTER TABLE `employee_reports` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `expense_categories`
---
-
-DROP TABLE IF EXISTS `expense_categories`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `expense_categories` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `tenant_id` int DEFAULT NULL,
-  `name` varchar(100) NOT NULL,
-  `description` text,
-  `limit_amount` decimal(10,2) DEFAULT '0.00',
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_expense_categories_tenant` (`tenant_id`),
-  CONSTRAINT `fk_expense_categories_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `expense_categories`
---
-
-LOCK TABLES `expense_categories` WRITE;
-/*!40000 ALTER TABLE `expense_categories` DISABLE KEYS */;
-/*!40000 ALTER TABLE `expense_categories` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `expenses`
---
-
-DROP TABLE IF EXISTS `expenses`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `expenses` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `tenant_id` int DEFAULT NULL,
-  `user_id` int NOT NULL,
-  `category_id` int NOT NULL,
-  `amount` decimal(10,2) NOT NULL,
-  `description` text NOT NULL,
-  `image` varchar(500) DEFAULT NULL,
-  `receipt_url` varchar(500) DEFAULT NULL,
-  `status` enum('pending','approved','rejected') DEFAULT 'pending',
-  `payment_status` enum('paid','pending','cancelled') DEFAULT 'pending',
-  `submitted_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `approved_by` int DEFAULT NULL,
-  `approved_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `user_id` (`user_id`),
-  KEY `category_id` (`category_id`),
-  KEY `approved_by` (`approved_by`),
-  KEY `idx_expenses_tenant` (`tenant_id`),
-  CONSTRAINT `expenses_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `expenses_ibfk_2` FOREIGN KEY (`category_id`) REFERENCES `expense_categories` (`id`) ON DELETE RESTRICT,
-  CONSTRAINT `expenses_ibfk_3` FOREIGN KEY (`approved_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_expenses_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `expenses`
---
-
-LOCK TABLES `expenses` WRITE;
-/*!40000 ALTER TABLE `expenses` DISABLE KEYS */;
-/*!40000 ALTER TABLE `expenses` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -750,34 +484,6 @@ LOCK TABLES `experience_letters` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `gst_details`
---
-
-DROP TABLE IF EXISTS `gst_details`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `gst_details` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `invoice_id` int NOT NULL,
-  `tax_type` varchar(50) DEFAULT NULL,
-  `percentage` decimal(8,2) NOT NULL DEFAULT '0.00',
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_gst_details_invoice` (`invoice_id`),
-  CONSTRAINT `fk_gst_details_invoice` FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `gst_details`
---
-
-LOCK TABLES `gst_details` WRITE;
-/*!40000 ALTER TABLE `gst_details` DISABLE KEYS */;
-/*!40000 ALTER TABLE `gst_details` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `increment_letters`
 --
 
@@ -787,7 +493,7 @@ DROP TABLE IF EXISTS `increment_letters`;
 CREATE TABLE `increment_letters` (
   `id` int NOT NULL AUTO_INCREMENT,
   `tenant_id` int DEFAULT NULL,
-  `employee_id` int DEFAULT NULL,
+  `employee_id` varchar(50) DEFAULT NULL,
   `date_of_issue` date DEFAULT NULL,
   `effective_date` date DEFAULT NULL,
   `previous_ctc` decimal(10,2) DEFAULT NULL,
@@ -811,32 +517,6 @@ CREATE TABLE `increment_letters` (
 LOCK TABLES `increment_letters` WRITE;
 /*!40000 ALTER TABLE `increment_letters` DISABLE KEYS */;
 /*!40000 ALTER TABLE `increment_letters` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `industries`
---
-
-DROP TABLE IF EXISTS `industries`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `industries` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `tenant_id` int NOT NULL,
-  `name` varchar(120) NOT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_industries_tenant_name` (`tenant_id`,`name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `industries`
---
-
-LOCK TABLES `industries` WRITE;
-/*!40000 ALTER TABLE `industries` DISABLE KEYS */;
-/*!40000 ALTER TABLE `industries` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -875,118 +555,6 @@ LOCK TABLES `integration_audit_logs` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `invoice_history`
---
-
-DROP TABLE IF EXISTS `invoice_history`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `invoice_history` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `invoice_id` int NOT NULL,
-  `date` date DEFAULT NULL,
-  `action` varchar(255) DEFAULT NULL,
-  `user` varchar(255) DEFAULT NULL,
-  `follow_up` text,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_invoice_history_invoice` (`invoice_id`),
-  CONSTRAINT `fk_invoice_history_invoice` FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `invoice_history`
---
-
-LOCK TABLES `invoice_history` WRITE;
-/*!40000 ALTER TABLE `invoice_history` DISABLE KEYS */;
-/*!40000 ALTER TABLE `invoice_history` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `invoice_items`
---
-
-DROP TABLE IF EXISTS `invoice_items`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `invoice_items` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `invoice_id` int NOT NULL,
-  `sr_no` int DEFAULT NULL,
-  `description` text,
-  `hsn_code` varchar(50) DEFAULT NULL,
-  `quantity` decimal(12,2) NOT NULL DEFAULT '0.00',
-  `rate` decimal(12,2) NOT NULL DEFAULT '0.00',
-  `total_amount` decimal(12,2) NOT NULL DEFAULT '0.00',
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_invoice_items_invoice` (`invoice_id`),
-  CONSTRAINT `fk_invoice_items_invoice` FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `invoice_items`
---
-
-LOCK TABLES `invoice_items` WRITE;
-/*!40000 ALTER TABLE `invoice_items` DISABLE KEYS */;
-/*!40000 ALTER TABLE `invoice_items` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `invoices`
---
-
-DROP TABLE IF EXISTS `invoices`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `invoices` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `tenant_id` int NOT NULL,
-  `client_id` int DEFAULT NULL,
-  `project_id` int DEFAULT NULL,
-  `service_id` int DEFAULT NULL,
-  `invoice_no` varchar(100) NOT NULL,
-  `invoice_date` date NOT NULL,
-  `ref_no` varchar(100) DEFAULT NULL,
-  `buyer_gstin` varchar(50) DEFAULT NULL,
-  `party_address` text,
-  `total_before_discount` decimal(12,2) NOT NULL DEFAULT '0.00',
-  `round_off` decimal(12,2) NOT NULL DEFAULT '0.00',
-  `total_after_tax` decimal(12,2) NOT NULL DEFAULT '0.00',
-  `status` varchar(50) NOT NULL DEFAULT 'draft',
-  `created_by` int DEFAULT NULL,
-  `service_bank_details` json DEFAULT NULL,
-  `service_gst_details` json DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_invoices_tenant_no` (`tenant_id`,`invoice_no`),
-  KEY `idx_invoices_tenant` (`tenant_id`),
-  KEY `idx_invoices_client` (`client_id`),
-  KEY `idx_invoices_project` (`project_id`),
-  KEY `idx_invoices_service` (`service_id`),
-  KEY `fk_invoices_created_by` (`created_by`),
-  CONSTRAINT `fk_invoices_client` FOREIGN KEY (`client_id`) REFERENCES `clients` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_invoices_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_invoices_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_invoices_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `invoices`
---
-
-LOCK TABLES `invoices` WRITE;
-/*!40000 ALTER TABLE `invoices` DISABLE KEYS */;
-/*!40000 ALTER TABLE `invoices` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `leave_balances`
 --
 
@@ -1007,7 +575,7 @@ CREATE TABLE `leave_balances` (
   KEY `fk_leave_balances_employee` (`employee_id`),
   CONSTRAINT `fk_leave_balances_employee` FOREIGN KEY (`employee_id`) REFERENCES `employee_details` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_leave_balances_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1047,7 +615,7 @@ CREATE TABLE `leave_requests` (
   CONSTRAINT `fk_leave_requests_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
   CONSTRAINT `leave_requests_ibfk_1` FOREIGN KEY (`employee_id`) REFERENCES `employee_details` (`id`) ON DELETE CASCADE,
   CONSTRAINT `leave_requests_ibfk_2` FOREIGN KEY (`approved_by`) REFERENCES `employee_details` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1078,7 +646,7 @@ CREATE TABLE `leave_types` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_leave_type_tenant_name` (`tenant_id`,`name`),
   CONSTRAINT `fk_leave_types_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1087,6 +655,7 @@ CREATE TABLE `leave_types` (
 
 LOCK TABLES `leave_types` WRITE;
 /*!40000 ALTER TABLE `leave_types` DISABLE KEYS */;
+INSERT INTO `leave_types` VALUES (17,33,'PL',3,'Quarterly',1,1,'2026-09-02 05:12:24'),(18,33,'PSL',5,'Yearly',1,1,'2026-09-02 05:12:24');
 /*!40000 ALTER TABLE `leave_types` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1104,7 +673,7 @@ CREATE TABLE `modules` (
   `sort_order` int NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_module_key` (`module_key`)
-) ENGINE=InnoDB AUTO_INCREMENT=10144 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=109 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1113,7 +682,7 @@ CREATE TABLE `modules` (
 
 LOCK TABLES `modules` WRITE;
 /*!40000 ALTER TABLE `modules` DISABLE KEYS */;
-INSERT INTO `modules` VALUES (1,'hr','HR Module',10),(2,'accounts','Accounts Module',40),(3,'services','Services Module',60),(533,'hr_dashboard','HR Dashboard',11),(534,'employee_management','Employee Management',12),(535,'attendance_management','Attendance Management',13),(536,'leave_management','Leave Management',14),(537,'shift_management','Shift Management',15),(538,'salary_management','Salary Management',16),(539,'holiday_management','Holiday Management',17),(540,'ai_document_generator','AI Document Generator',18),(541,'offer_letters','Offer Letters',19),(542,'declarations','Declaration Forms',20),(543,'resignations','Resignation Requests',21),(544,'salary_slips','Salary Slips',22),(545,'experience_letters','Experience Letters',23),(546,'increment_letters','Increment Letters',24),(548,'billing_management','Billing Management',41),(549,'delivery_management','Delivery Management',42),(550,'expense_management','Expense Management',43),(551,'billing_settings','Billing Settings',44),(552,'quotation_management','Quotation Management',45),(554,'service_management','Service Management',61),(555,'pttm','PTTM',80),(556,'employee_attendance','My Attendance & Leave',100),(557,'employee_expense','My Expense',101),(558,'employee_projects','My Projects & Tasks',102);
+INSERT INTO `modules` VALUES (1,'hr','HR Module',10),(2,'hr_dashboard','HR Dashboard',11),(3,'employee_management','Employee Management',12),(4,'attendance_management','Attendance Management',13),(5,'leave_management','Leave Management',14),(6,'shift_management','Shift Management',15),(7,'salary_management','Salary Management',16),(8,'holiday_management','Holiday Management',17),(9,'ai_document_generator','AI Document Generator',18),(10,'offer_letters','Offer Letters',19),(11,'declarations','Declaration Forms',20),(12,'resignations','Resignation Requests',21),(13,'salary_slips','Salary Slips',22),(14,'experience_letters','Experience Letters',23),(15,'increment_letters','Increment Letters',24),(16,'accounts','Accounts Module',40),(17,'billing_management','Billing Management',41),(18,'delivery_management','Delivery Management',42),(19,'expense_management','Expense Management',43),(20,'billing_settings','Billing Settings',44),(21,'quotation_management','Quotation Management',45),(22,'services','Services Module',60),(23,'service_management','Service Management',61),(24,'pttm','PTTM',80),(25,'employee_attendance','My Attendance & Leave',100),(26,'employee_expense','My Expense',101),(27,'employee_projects','My Projects & Tasks',102);
 /*!40000 ALTER TABLE `modules` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1137,7 +706,7 @@ CREATE TABLE `notifications` (
   PRIMARY KEY (`id`),
   KEY `idx_notifications_user` (`tenant_id`,`user_id`,`is_read`),
   KEY `idx_notifications_created` (`created_at`)
-) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1146,7 +715,6 @@ CREATE TABLE `notifications` (
 
 LOCK TABLES `notifications` WRITE;
 /*!40000 ALTER TABLE `notifications` DISABLE KEYS */;
-INSERT INTO `notifications` VALUES (11,2,6,'salary_slip','Salary Slip Available','Your salary slip for July 2026 is now available in My Documents.','14',1,'2026-08-29 08:12:48'),(12,2,14,'salary_slip','Salary Slip Available','Your salary slip for July 2026 is now available in My Documents.','15',0,'2026-08-29 08:12:52'),(13,2,6,'salary_slip','Salary Slip Available','Your salary slip for July 2026 is now available in My Documents.','17',1,'2026-08-29 13:14:03'),(14,2,14,'salary_slip','Salary Slip Available','Your salary slip for July 2026 is now available in My Documents.','18',0,'2026-08-29 13:14:07'),(15,2,6,'salary_slip','Salary Slip Available','Your salary slip for July 2026 is now available in My Documents.','19',1,'2026-08-29 13:18:06'),(16,2,14,'salary_slip','Salary Slip Available','Your salary slip for July 2026 is now available in My Documents.','20',0,'2026-08-29 13:18:06');
 /*!40000 ALTER TABLE `notifications` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1171,7 +739,7 @@ CREATE TABLE `offer_letters` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `employee_id` (`employee_id`),
   CONSTRAINT `offer_letters_ibfk_1` FOREIGN KEY (`employee_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1180,7 +748,6 @@ CREATE TABLE `offer_letters` (
 
 LOCK TABLES `offer_letters` WRITE;
 /*!40000 ALTER TABLE `offer_letters` DISABLE KEYS */;
-INSERT INTO `offer_letters` VALUES (1,NULL,'{\"ctc\": \"\", \"hra\": \"\", \"tds\": \"\", \"email\": \"kf94482@gmail.com\", \"phone\": \"+91 9595426797\", \"terms\": [\"The employee shall abide by all company policies, rules, and regulations.\", \"This offer is contingent upon satisfactory background verification and reference checks.\", \"The first three months shall be a probationary period, during which either party may terminate employment with one week\'s notice.\", \"The company reserves the right to modify terms with prior notice.\", \"Confidentiality of company information must be maintained during and after employment.\", \"All intellectual property created during employment shall belong to the company.\", \"The employee agrees not to engage in any competing business during employment and for six months after termination.\", \"Employment may be terminated by either party with one month\'s notice or payment in lieu thereof.\"], \"netPay\": \"\", \"address\": \"CIV colony near maharaj masjid, mukundnagar,Ahmednagar 414001\", \"fullName\": \"Sahil Sayyed\", \"issueDate\": \"2026-08-20\", \"ctcInWords\": \"\", \"employerPf\": \"\", \"salutation\": \"Mr.\", \"basicSalary\": \"\", \"designation\": \"BIM Modeler\", \"employerEsi\": \"\", \"joiningDate\": \"2025-12-15\", \"totalEarning\": \"\", \"monthlySalary\": \"\", \"salary_format\": \"Monthly\", \"professionalTax\": \"\", \"medicalAllowance\": \"\", \"specialAllowance\": \"\", \"conveyanceAllowance\": \"\", \"monthlySalaryInWords\": \"\", \"salaryAfterProbation\": \"35000\", \"salaryDuringProbation\": \"30000\", \"salaryAfterProbationInWords\": \"Thirty Five Thousand Rupees Only\", \"salaryDuringProbationInWords\": \"Thirty Thousand Rupees Only\"}','2026-08-20','2026-08-20 08:03:26','2026-08-20 09:43:32',2,'Sahil Sayyed','kf94482@gmail.com','Rejected'),(2,NULL,'{\"ctc\": \"\", \"hra\": \"\", \"tds\": \"\", \"email\": \"kf94482@gmail.com\", \"phone\": \"+91 9595426797\", \"terms\": [\"The employee shall abide by all company policies, rules, and regulations.\", \"This offer is contingent upon satisfactory background verification and reference checks.\", \"The first three months shall be a probationary period, during which either party may terminate employment with one week\'s notice.\", \"The company reserves the right to modify terms with prior notice.\", \"Confidentiality of company information must be maintained during and after employment.\", \"All intellectual property created during employment shall belong to the company.\", \"The employee agrees not to engage in any competing business during employment and for six months after termination.\", \"Employment may be terminated by either party with one month\'s notice or payment in lieu thereof.\"], \"netPay\": \"\", \"address\": \"\", \"fullName\": \"Sahil Sayyed\", \"issueDate\": \"2026-08-20\", \"ctcInWords\": \"\", \"employerPf\": \"\", \"salutation\": \"Mr.\", \"basicSalary\": \"\", \"designation\": \"BIM Modeler\", \"employerEsi\": \"\", \"joiningDate\": \"\", \"totalEarning\": \"\", \"monthlySalary\": \"\", \"salary_format\": \"Monthly\", \"professionalTax\": \"\", \"medicalAllowance\": \"\", \"specialAllowance\": \"\", \"conveyanceAllowance\": \"\", \"monthlySalaryInWords\": \"\", \"salaryAfterProbation\": \"35000\", \"salaryDuringProbation\": \"15000\", \"salaryAfterProbationInWords\": \"Fifteen Thousand Rupees Only\", \"salaryDuringProbationInWords\": \"Fifteen Thousand Rupees Only\"}','2026-08-20','2026-08-20 09:59:00','2026-08-20 10:18:40',2,'Sahil Sayyed','kf94482@gmail.com','Rejected'),(5,NULL,'{\"ctc\": \"\", \"hra\": \"\", \"tds\": \"\", \"email\": \"kf94482@gmail.com\", \"phone\": \"91 8080669609\", \"terms\": [\"The employee shall abide by all company policies, rules, and regulations.\", \"This offer is contingent upon satisfactory background verification and reference checks.\", \"The first three months shall be a probationary period, during which either party may terminate employment with one week\'s notice.\", \"The company reserves the right to modify terms with prior notice.\", \"Confidentiality of company information must be maintained during and after employment.\", \"All intellectual property created during employment shall belong to the company.\", \"The employee agrees not to engage in any competing business during employment and for six months after termination.\", \"Employment may be terminated by either party with one month\'s notice or payment in lieu thereof.\"], \"netPay\": \"\", \"address\": \"\", \"fullName\": \"Sahil Sayyed\", \"issueDate\": \"2026-08-22\", \"ctcInWords\": \"\", \"employerPf\": \"\", \"salutation\": \"Mr.\", \"basicSalary\": \"\", \"designation\": \"BIM Modeler\", \"employerEsi\": \"\", \"joiningDate\": \"\", \"totalEarning\": \"\", \"monthlySalary\": \"\", \"salary_format\": \"Monthly\", \"professionalTax\": \"\", \"medicalAllowance\": \"\", \"specialAllowance\": \"\", \"conveyanceAllowance\": \"\", \"monthlySalaryInWords\": \"\", \"salaryAfterProbation\": \"20000\", \"salaryDuringProbation\": \"15000\", \"salaryAfterProbationInWords\": \"\", \"salaryDuringProbationInWords\": \"\"}','2026-08-22','2026-08-22 10:08:55','2026-08-22 10:09:03',2,'Sahil Sayyed','kf94482@gmail.com','Rejected'),(6,NULL,'{\"ctc\": \"\", \"hra\": \"\", \"tds\": \"\", \"email\": \"kf8846874@gmail.com\", \"phone\": \"91 8080669609\", \"terms\": [\"The employee shall abide by all company policies, rules, and regulations.\", \"This offer is contingent upon satisfactory background verification and reference checks.\", \"The first three months shall be a probationary period, during which either party may terminate employment with one week\'s notice.\", \"The company reserves the right to modify terms with prior notice.\", \"Confidentiality of company information must be maintained during and after employment.\", \"All intellectual property created during employment shall belong to the company.\", \"The employee agrees not to engage in any competing business during employment and for six months after termination.\", \"Employment may be terminated by either party with one month\'s notice or payment in lieu thereof.\"], \"netPay\": \"\", \"address\": \"\", \"fullName\": \"Sahil Sayyed\", \"issueDate\": \"2026-08-22\", \"ctcInWords\": \"\", \"employerPf\": \"\", \"salutation\": \"Mr.\", \"basicSalary\": \"\", \"designation\": \"BIM Modeler\", \"employerEsi\": \"\", \"joiningDate\": \"\", \"totalEarning\": \"\", \"monthlySalary\": \"\", \"salary_format\": \"Monthly\", \"professionalTax\": \"\", \"medicalAllowance\": \"\", \"specialAllowance\": \"\", \"conveyanceAllowance\": \"\", \"monthlySalaryInWords\": \"\", \"salaryAfterProbation\": \"20000\", \"salaryDuringProbation\": \"15000\", \"salaryAfterProbationInWords\": \"\", \"salaryDuringProbationInWords\": \"\"}','2026-08-22','2026-08-22 10:10:16','2026-08-22 10:12:01',2,'Sahil Sayyed','kf8846874@gmail.com','Rejected');
 /*!40000 ALTER TABLE `offer_letters` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1208,7 +775,6 @@ CREATE TABLE `projects` (
   PRIMARY KEY (`id`),
   KEY `idx_projects_tenant` (`tenant_id`),
   KEY `idx_projects_client` (`client_id`),
-  CONSTRAINT `fk_projects_client` FOREIGN KEY (`client_id`) REFERENCES `clients` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_projects_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -1220,158 +786,6 @@ CREATE TABLE `projects` (
 LOCK TABLES `projects` WRITE;
 /*!40000 ALTER TABLE `projects` DISABLE KEYS */;
 /*!40000 ALTER TABLE `projects` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `quotation_gst_details`
---
-
-DROP TABLE IF EXISTS `quotation_gst_details`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `quotation_gst_details` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `tenant_id` int DEFAULT NULL,
-  `quotation_id` int DEFAULT NULL,
-  `tax_type` enum('CGST','SGST','IGST') DEFAULT NULL,
-  `percentage` decimal(5,2) DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `quotation_id` (`quotation_id`),
-  KEY `idx_quotation_gst_tenant` (`tenant_id`),
-  CONSTRAINT `fk_quotation_gst_details_quotation` FOREIGN KEY (`quotation_id`) REFERENCES `quotations` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_quotation_gst_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `quotation_gst_details_ibfk_1` FOREIGN KEY (`quotation_id`) REFERENCES `quotations` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `quotation_gst_details`
---
-
-LOCK TABLES `quotation_gst_details` WRITE;
-/*!40000 ALTER TABLE `quotation_gst_details` DISABLE KEYS */;
-/*!40000 ALTER TABLE `quotation_gst_details` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `quotation_history`
---
-
-DROP TABLE IF EXISTS `quotation_history`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `quotation_history` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `tenant_id` int DEFAULT NULL,
-  `quotation_id` int DEFAULT NULL,
-  `date` date DEFAULT NULL,
-  `action` varchar(100) DEFAULT NULL,
-  `user` varchar(100) DEFAULT NULL,
-  `follow_up` text,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `quotation_id` (`quotation_id`),
-  KEY `idx_quotation_history_tenant` (`tenant_id`),
-  CONSTRAINT `fk_quotation_history_quotation` FOREIGN KEY (`quotation_id`) REFERENCES `quotations` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_quotation_history_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `quotation_history_ibfk_1` FOREIGN KEY (`quotation_id`) REFERENCES `quotations` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `quotation_history`
---
-
-LOCK TABLES `quotation_history` WRITE;
-/*!40000 ALTER TABLE `quotation_history` DISABLE KEYS */;
-/*!40000 ALTER TABLE `quotation_history` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `quotation_items`
---
-
-DROP TABLE IF EXISTS `quotation_items`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `quotation_items` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `tenant_id` int DEFAULT NULL,
-  `quotation_id` int DEFAULT NULL,
-  `sr_no` int DEFAULT NULL,
-  `description` text,
-  `quantity` decimal(10,2) DEFAULT NULL,
-  `rate` decimal(15,2) DEFAULT NULL,
-  `total_amount` decimal(15,2) DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `quotation_id` (`quotation_id`),
-  KEY `idx_quotation_items_tenant` (`tenant_id`),
-  CONSTRAINT `fk_quotation_items_quotation` FOREIGN KEY (`quotation_id`) REFERENCES `quotations` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_quotation_items_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `quotation_items_ibfk_1` FOREIGN KEY (`quotation_id`) REFERENCES `quotations` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `quotation_items`
---
-
-LOCK TABLES `quotation_items` WRITE;
-/*!40000 ALTER TABLE `quotation_items` DISABLE KEYS */;
-/*!40000 ALTER TABLE `quotation_items` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `quotations`
---
-
-DROP TABLE IF EXISTS `quotations`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `quotations` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `tenant_id` int DEFAULT NULL,
-  `client_id` int DEFAULT NULL,
-  `project_id` int DEFAULT NULL,
-  `service_id` int DEFAULT NULL,
-  `quotation_no` varchar(50) NOT NULL,
-  `quotation_date` date NOT NULL,
-  `ref_no` varchar(100) DEFAULT NULL,
-  `buyer_gstin` varchar(15) DEFAULT NULL,
-  `buyer_code` varchar(50) DEFAULT NULL,
-  `party_address` text,
-  `total_before_discount` decimal(15,2) DEFAULT '0.00',
-  `discount` decimal(15,2) DEFAULT '0.00',
-  `round_off` decimal(15,2) DEFAULT '0.00',
-  `total_after_tax` decimal(15,2) DEFAULT '0.00',
-  `status` enum('draft','sent','accepted','rejected','expired') DEFAULT 'draft',
-  `valid_until` date DEFAULT NULL,
-  `created_by` int DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `service_bank_details` json DEFAULT NULL,
-  `service_gst_details` json DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `quotation_no` (`quotation_no`),
-  KEY `idx_quotations_tenant` (`tenant_id`),
-  KEY `idx_quotations_client` (`client_id`),
-  KEY `idx_quotations_project` (`project_id`),
-  KEY `idx_quotations_service` (`service_id`),
-  KEY `fk_quotations_created_by` (`created_by`),
-  CONSTRAINT `fk_quotations_client` FOREIGN KEY (`client_id`) REFERENCES `clients` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_quotations_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_quotations_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_quotations_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `quotations`
---
-
-LOCK TABLES `quotations` WRITE;
-/*!40000 ALTER TABLE `quotations` DISABLE KEYS */;
-/*!40000 ALTER TABLE `quotations` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -1455,9 +869,13 @@ CREATE TABLE `service_settings` (
   `smtp_secure` tinyint(1) NOT NULL DEFAULT '0',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `mail_provider` varchar(50) NOT NULL DEFAULT 'outlook_graph',
+  `azure_tenant_id` varchar(255) DEFAULT NULL,
+  `azure_client_id` varchar(255) DEFAULT NULL,
+  `azure_client_secret` varchar(1024) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_service_settings_tenant_type` (`tenant_id`,`setting_type`)
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1466,7 +884,6 @@ CREATE TABLE `service_settings` (
 
 LOCK TABLES `service_settings` WRITE;
 /*!40000 ALTER TABLE `service_settings` DISABLE KEYS */;
-INSERT INTO `service_settings` VALUES (8,0,'super_admin_smtp',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,NULL,NULL,NULL,'smtp.gmail.com',587,'kf94482@gmail.com','v1:quWp3f/kWkmb2maH:HTtm7ktMeKeuE4ACZ6FGQw==:tZiezxjAi9GsOUaG4fCTxFG4VA==','kf94482@gmail.com','Work Desk Platform','tls',0,'2026-08-31 11:07:02','2026-08-31 11:07:02');
 /*!40000 ALTER TABLE `service_settings` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1537,6 +954,7 @@ CREATE TABLE `tb_attendance` (
   `check_out_latitude` decimal(10,8) DEFAULT NULL,
   `check_out_longitude` decimal(11,8) DEFAULT NULL,
   `regularization_status` varchar(20) DEFAULT NULL,
+  `leave_type` varchar(50) DEFAULT NULL,
   PRIMARY KEY (`attendance_id`),
   UNIQUE KEY `unique_employee_date` (`employee_id`,`date`),
   KEY `shift_id` (`shift_id`),
@@ -1546,7 +964,7 @@ CREATE TABLE `tb_attendance` (
   CONSTRAINT `tb_attendance_ibfk_1` FOREIGN KEY (`employee_id`) REFERENCES `employee_details` (`id`) ON DELETE CASCADE,
   CONSTRAINT `tb_attendance_ibfk_2` FOREIGN KEY (`shift_id`) REFERENCES `tb_shifts` (`shift_id`) ON DELETE RESTRICT,
   CONSTRAINT `tb_attendance_ibfk_3` FOREIGN KEY (`approved_by`) REFERENCES `employee_details` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=90 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1578,7 +996,7 @@ CREATE TABLE `tb_breaks` (
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_tenant_employee_date` (`tenant_id`,`employee_id`,`break_date`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1587,7 +1005,6 @@ CREATE TABLE `tb_breaks` (
 
 LOCK TABLES `tb_breaks` WRITE;
 /*!40000 ALTER TABLE `tb_breaks` DISABLE KEYS */;
-INSERT INTO `tb_breaks` VALUES (1,2,'TEAMB02','2026-08-24','2026-08-24 13:08:51',NULL,0,'Active','2026-08-24 07:38:51','2026-08-24 07:38:51'),(2,2,'TEAMB02','2026-08-29','2026-08-29 16:29:05','2026-08-29 16:35:39',7,'Completed','2026-08-29 10:59:05','2026-08-29 11:05:39'),(3,2,'TEAMB02','2026-08-31','2026-08-31 12:26:51','2026-08-31 12:27:33',1,'Completed','2026-08-31 06:56:51','2026-08-31 06:57:33');
 /*!40000 ALTER TABLE `tb_breaks` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1613,7 +1030,7 @@ CREATE TABLE `tb_company_documents` (
   PRIMARY KEY (`id`),
   KEY `uploaded_by` (`uploaded_by`),
   CONSTRAINT `tb_company_documents_ibfk_1` FOREIGN KEY (`uploaded_by`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1768,7 +1185,7 @@ CREATE TABLE `tb_salary_records` (
   KEY `idx_status` (`payment_status`),
   CONSTRAINT `fk_tb_salary_records_employee` FOREIGN KEY (`employee_id`) REFERENCES `employee_details` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_tb_salary_records_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1800,7 +1217,7 @@ CREATE TABLE `tb_shifts` (
   PRIMARY KEY (`shift_id`),
   KEY `idx_shifts_tenant` (`tenant_id`),
   CONSTRAINT `fk_shifts_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1841,7 +1258,7 @@ CREATE TABLE `tenant_branding` (
   PRIMARY KEY (`id`),
   KEY `tenant_id` (`tenant_id`),
   CONSTRAINT `fk_branding_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1875,7 +1292,7 @@ CREATE TABLE `tenants` (
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `slug` (`slug`)
-) ENGINE=InnoDB AUTO_INCREMENT=31 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2030,7 +1447,7 @@ CREATE TABLE `users` (
   KEY `tenant_id` (`tenant_id`),
   KEY `idx_users_password_reset_token` (`password_reset_token_hash`),
   CONSTRAINT `users_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=45 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2051,4 +1468,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-08-31 19:05:40
+-- Dump completed on 2026-09-03 17:28:15

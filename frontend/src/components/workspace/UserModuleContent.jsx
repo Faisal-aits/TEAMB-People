@@ -21,6 +21,7 @@ import EmployeeAttendance from '../../pages/employees/EmployeeAttendance';
 import EmployeePersonalInfo from '../../pages/employees/EmployeePersonalInfo';
 import EmployeeLeave from '../../pages/employees/EmployeeLeave';
 import EmployeeBreak from '../../pages/employees/EmployeeBreak';
+import EmployeeHoliday from '../../pages/employees/EmployeeHoliday';
 import EmployeeExpense from '../../pages/employees/EmployeeExpense';
 import EmployeeProjects from '../../pages/employees/EmployeeProjects';
 import EmployeeRegularization from '../../pages/employees/EmployeeRegularization';
@@ -85,6 +86,9 @@ const UserModuleContent = ({ activeTab, navigateToTab, DashboardComponent }) => 
       )}
       {activeTab === 'employee-break' && canAccessEmployeeAttendance && (
         <EmployeeBreak />
+      )}
+      {activeTab === 'employee-holiday' && (
+        <EmployeeHoliday />
       )}
       {activeTab === 'employee-expense' && canAccessEmployeeExpense && (
         <EmployeeExpense />

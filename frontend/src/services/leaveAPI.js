@@ -25,6 +25,14 @@ export const leaveAPI = {
   // Get employee attendance history (admin)
   getEmployeeAttendanceHistory: (employeeId) => api.get(`/leaves/history/${employeeId}`),
 
+  
+  // Get all employee balances (admin)
+  getAllEmployeeBalances: (year = new Date().getFullYear()) => api.get(`/leaves/balances/all?year=${year}`),
+
+  // Update employee balances (admin)
+  updateEmployeeBalances: (employeeId, balances, year = new Date().getFullYear()) => 
+    api.put(`/leaves/balances/${employeeId}`, { balances, year }),
+
   // Get leave balances for a specific employee (admin)
   getBalances: (employeeId, year = new Date().getFullYear()) => 
     api.get(`/leaves/balances/${employeeId}?year=${year}`),

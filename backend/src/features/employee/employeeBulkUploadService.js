@@ -2,7 +2,8 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const Employee = require('./employeeModel');
 const { parseEmployeeUploadFile } = require('./employeeBulkUploadParser');
-const { sendEmployeeCredentials } = require('../../services/mailService');
+const { pool } = require('../../config/db');
+const { sendBulkEmployeeCredentials } = require('../../services/mailService');
 const {
   validateEmployeeRows,
   normalizeEmail,
@@ -73,21 +74,37 @@ const processEmployeeBulkUpload = async (tenantId, file, settings = {}) => {
   if (validRows.length > 0) {
     const rowsWithPasswords = await hashRows(validRows);
     inserted = await Employee.bulkCreate(tenantId, rowsWithPasswords);
-    const passwordByEmail = new Map(rowsWithPasswords.map((row) => [row.email, row.temporary_password]));
 
-    try {
-      for (const employee of inserted) {
-        const sourceRow = rowsWithPasswords.find((row) => row.email === employee.email);
-        await sendEmployeeCredentials(tenantId, {
-          employeeName: `${sourceRow.first_name} ${sourceRow.last_name}`.trim(),
-          email: employee.email,
-          password: passwordByEmail.get(employee.email)
-        });
+    // Build a lowercase-keyed Map for safe lookup (bulkCreate may return original-case email)
+    const passwordMap = new Map(
+      rowsWithPasswords.map((row) => [row.email.toLowerCase(), row])
+    );
+
+    // Fire-and-forget background job for emails to prevent HTTP blocking
+    const employeesForEmail = inserted.map(employee => {
+      const sourceRow = passwordMap.get(employee.email.toLowerCase());
+      return {
+        rowNumber: employee.rowNumber,
+        employeeName: `${sourceRow.first_name} ${sourceRow.last_name}`.trim(),
+        email: employee.email,
+        password: sourceRow.temporary_password
+      };
+    });
+
+    setTimeout(async () => {
+      try {
+        console.log(`[Background Job] Starting bulk credentials email for ${employeesForEmail.length} employees...`);
+        const emailResults = await sendBulkEmployeeCredentials(tenantId, employeesForEmail);
+        const failed = emailResults.filter(r => !r.success);
+        if (failed.length > 0) {
+          console.warn(`[Background Job] ${failed.length} credential emails failed to send.`, failed);
+        } else {
+          console.log(`[Background Job] Successfully sent all ${employeesForEmail.length} credential emails.`);
+        }
+      } catch (bulkEmailErr) {
+        console.error('[Background Job] Bulk email sending crashed entirely:', bulkEmailErr);
       }
-    } catch (emailError) {
-      await Promise.allSettled(inserted.map((employee) => Employee.hardDelete(tenantId, employee.employee_id)));
-      throw new Error('Bulk upload was rolled back because credential email could not be sent: ' + emailError.message);
-    }
+    }, 0);
   }
 
   return {
@@ -101,7 +118,7 @@ const processEmployeeBulkUpload = async (tenantId, file, settings = {}) => {
       employee_id: employee.employee_id,
       email: employee.email
     })),
-    message: `Processed ${parsedFile.rows.length} rows. ${inserted.length} inserted, ${errors.length} failed.`
+    message: `Processed ${parsedFile.rows.length} rows. ${inserted.length} inserted. Use the email button in the employee list to send login credentials.`
   };
 };
 

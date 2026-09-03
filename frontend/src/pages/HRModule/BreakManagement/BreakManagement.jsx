@@ -5,6 +5,15 @@ import { employeeAPI } from '../../../services/employeeAPI';
 import * as XLSX from 'xlsx';
 import './BreakManagement.css';
 
+const getTodayIST = () => {
+  return new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }).split(' ')[0];
+};
+
+const getMonthStartIST = () => {
+  const today = getTodayIST();
+  return `${today.substring(0, 7)}-01`;
+};
+
 const BreakManagement = () => {
   const [users, setUsers] = useState([]);
   const [breaks, setBreaks] = useState([]);
@@ -15,7 +24,7 @@ const BreakManagement = () => {
   const [error, setError] = useState(null);
 
   const [filters, setFilters] = useState({
-    date: new Date().toISOString().split('T')[0],
+    date: getTodayIST(),
   });
 
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -27,8 +36,8 @@ const BreakManagement = () => {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
   const [reportFilters, setReportFilters] = useState({
-    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
+    startDate: getMonthStartIST(),
+    endDate: getTodayIST(),
     department: ''
   });
   const [reportData, setReportData] = useState([]);

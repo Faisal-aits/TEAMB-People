@@ -101,6 +101,7 @@ const combineKYCDocuments = async (frontInput, backInput, docTitle) => {
 };
 
 const EmployeePersonalInfo = () => {
+  const hrDocumentTypes = ['increment_letter', 'offer_letter', 'experience_letter', 'resignation_letter', 'resignation', 'salary_slip', 'epf_declaration'];
   const [profile, setProfile] = useState(null);
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -110,6 +111,17 @@ const EmployeePersonalInfo = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showResetPasswordForm, setShowResetPasswordForm] = useState(false);
   const [viewDocumentsModalOpen, setViewDocumentsModalOpen] = useState(false);
+  const [documentTab, setDocumentTab] = useState('kyc'); // 'kyc' or 'hr'
+  
+  // Resignation State
+  const [showResignationModal, setShowResignationModal] = useState(false);
+  const [resignationData, setResignationData] = useState({
+    requested_last_day: '',
+    reason: '',
+    additional_note: ''
+  });
+  const [resignationSubmitting, setResignationSubmitting] = useState(false);
+
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState(null);
   const [pdfPreviewTitle, setPdfPreviewTitle] = useState('Document');
 
@@ -348,6 +360,26 @@ const EmployeePersonalInfo = () => {
       ...prev,
       [name]: value
     }));
+  };
+
+  const handleResignationSubmit = async (e) => {
+    e.preventDefault();
+    setResignationSubmitting(true);
+    try {
+      const res = await axios.post(`${API_URL}/api/resignation-requests`, resignationData, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (res.data.success) {
+        alert('Resignation request submitted successfully.');
+        setShowResignationModal(false);
+        setResignationData({ requested_last_day: '', reason: '', additional_note: '' });
+      }
+    } catch (err) {
+      console.error('Error submitting resignation:', err);
+      alert(err.response?.data?.message || 'Failed to submit resignation request.');
+    } finally {
+      setResignationSubmitting(false);
+    }
   };
 
   const handleEditSubmit = async (e) => {
@@ -712,20 +744,44 @@ const EmployeePersonalInfo = () => {
         <div className="modal-overlay">
           <div className="modal-content1 documents-modal" style={{ maxWidth: '650px' }}>
             <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2><i className="fas fa-id-card"></i> My KYC & Profile Documents</h2>
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowUploadKycForm(!showUploadKycForm)}
-                  style={{ padding: '6px 14px', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}
+              <div style={{ display: 'flex', gap: '20px' }}>
+                <h2 
+                  onClick={() => { setDocumentTab('kyc'); setShowUploadKycForm(false); }}
+                  style={{ cursor: 'pointer', margin: 0, paddingBottom: '5px', borderBottom: documentTab === 'kyc' ? '2px solid #2563eb' : 'none', color: documentTab === 'kyc' ? '#2563eb' : '#64748b' }}
                 >
-                  {showUploadKycForm ? 'View Documents' : '+ Upload KYC Document'}
-                </button>
-                <button className="close-btn" onClick={() => setViewDocumentsModalOpen(false)}>×</button>
+                  <i className="fas fa-id-card"></i> KYC Documents
+                </h2>
+                <h2 
+                  onClick={() => { setDocumentTab('hr'); setShowUploadKycForm(false); }}
+                  style={{ cursor: 'pointer', margin: 0, paddingBottom: '5px', borderBottom: documentTab === 'hr' ? '2px solid #2563eb' : 'none', color: documentTab === 'hr' ? '#2563eb' : '#64748b' }}
+                >
+                  <i className="fas fa-file-signature"></i> HR Documents
+                </h2>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                {documentTab === 'kyc' && (
+                  <button
+                    type="button"
+                    onClick={() => setShowUploadKycForm(!showUploadKycForm)}
+                    style={{ padding: '6px 14px', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}
+                  >
+                    {showUploadKycForm ? 'View Documents' : '+ Upload KYC Document'}
+                  </button>
+                )}
+                {documentTab === 'hr' && (
+                  <button
+                    type="button"
+                    onClick={() => setShowResignationModal(true)}
+                    style={{ padding: '6px 14px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}
+                  >
+                    + Apply Resignation
+                  </button>
+                )}
+                <button className="close-btn" onClick={() => setViewDocumentsModalOpen(false)}>x</button>
               </div>
             </div>
             
-            {showUploadKycForm ? (
+            {showUploadKycForm && documentTab === 'kyc' ? (
               <form onSubmit={handleUploadKycSubmit} style={{ padding: '20px' }}>
                 <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', color: '#1e293b' }}>Upload & Combine KYC Document</h3>
                 
@@ -856,16 +912,33 @@ const EmployeePersonalInfo = () => {
               </form>
             ) : (
               <div className="documents-grid" style={{ padding: '20px' }}>
-                {documents.filter(doc => doc.document_type !== 'salary_slip').length > 0 ? (
+                {documentTab === 'kyc' && documents.filter(doc => !hrDocumentTypes.includes(doc.document_type)).length > 0 ? (
                   documents
-                    .filter(doc => doc.document_type !== 'salary_slip')
+                    .filter(doc => !hrDocumentTypes.includes(doc.document_type))
                     .map(doc => (
                       <div className="document-card" key={doc.id} onClick={() => handleViewDocument(doc)} style={{ cursor: 'pointer' }}>
                         <div className="document-icon">
                           <i className="fas fa-file-pdf"></i>
                         </div>
                         <div className="document-info">
-                          <h3 style={{ textTransform: 'capitalize' }}>{doc.document_type.replace('_', ' ')}</h3>
+                          <h3 style={{ textTransform: 'capitalize' }}>{doc.document_type.replace(/_/g, ' ')}</h3>
+                          <p>{doc.title} - {formatDate(doc.created_at)}</p>
+                        </div>
+                        <div className="document-arrow">
+                          <i className="fas fa-eye"></i>
+                        </div>
+                      </div>
+                    ))
+                ) : documentTab === 'hr' && documents.filter(doc => hrDocumentTypes.includes(doc.document_type)).length > 0 ? (
+                  documents
+                    .filter(doc => hrDocumentTypes.includes(doc.document_type))
+                    .map(doc => (
+                      <div className="document-card" key={doc.id} onClick={() => handleViewDocument(doc)} style={{ cursor: 'pointer' }}>
+                        <div className="document-icon">
+                          <i className="fas fa-file-pdf"></i>
+                        </div>
+                        <div className="document-info">
+                          <h3 style={{ textTransform: 'capitalize' }}>{doc.document_type.replace(/_/g, ' ')}</h3>
                           <p>{doc.title} - {formatDate(doc.created_at)}</p>
                         </div>
                         <div className="document-arrow">
@@ -875,7 +948,7 @@ const EmployeePersonalInfo = () => {
                     ))
                 ) : (
                   <div className="no-documents-msg" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '20px' }}>
-                     <p>No KYC or Profile documents uploaded yet.</p>
+                     <p>No {documentTab === 'kyc' ? 'KYC' : 'HR'} documents available.</p>
                   </div>
                 )}
               </div>
@@ -883,6 +956,55 @@ const EmployeePersonalInfo = () => {
             <div className="modal-footer" style={{ padding: '0 20px 20px' }}>
               <button className="cancel-btn footer-btn" onClick={() => setViewDocumentsModalOpen(false)} style={{ marginLeft: 'auto' }}>Close</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Resignation Modal */}
+      {showResignationModal && (
+        <div className="modal-overlay" style={{ zIndex: 9990 }}>
+          <div className="modal-content1" style={{ maxWidth: '500px', width: '90%' }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ margin: 0, color: '#dc2626' }}><i className="fas fa-sign-out-alt"></i> Apply for Resignation</h2>
+              <button className="close-btn" onClick={() => setShowResignationModal(false)}>x</button>
+            </div>
+            <form onSubmit={handleResignationSubmit} style={{ padding: '20px' }}>
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: 'bold' }}>Requested Last Working Day *</label>
+                <input 
+                  type="date" 
+                  value={resignationData.requested_last_day}
+                  onChange={(e) => setResignationData({...resignationData, requested_last_day: e.target.value})}
+                  required 
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }} 
+                />
+              </div>
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: 'bold' }}>Reason for Resignation *</label>
+                <textarea 
+                  value={resignationData.reason}
+                  onChange={(e) => setResignationData({...resignationData, reason: e.target.value})}
+                  required 
+                  rows="3"
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                />
+              </div>
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: 'bold' }}>Additional Note (Optional)</label>
+                <textarea 
+                  value={resignationData.additional_note}
+                  onChange={(e) => setResignationData({...resignationData, additional_note: e.target.value})}
+                  rows="2"
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button type="button" onClick={() => setShowResignationModal(false)} style={{ padding: '8px 16px', borderRadius: '6px', background: '#f1f5f9', color: '#475569', border: 'none', cursor: 'pointer' }}>Cancel</button>
+                <button type="submit" disabled={resignationSubmitting} style={{ padding: '8px 16px', borderRadius: '6px', background: '#dc2626', color: 'white', border: 'none', cursor: 'pointer' }}>
+                  {resignationSubmitting ? 'Submitting...' : 'Submit Resignation'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

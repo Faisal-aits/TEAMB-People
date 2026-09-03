@@ -134,6 +134,109 @@ const Tenant = {
         }
     },
 
+    // Permanent hard delete tenant and all related data
+    hardDelete: async (id) => {
+        const connection = await pool.getConnection();
+        try {
+            await connection.beginTransaction();
+
+            // Temporarily disable foreign key checks to prevent cascade order deadlocks
+            await connection.execute('SET FOREIGN_KEY_CHECKS = 0');
+
+            const tablesToPurge = [
+                'attendance_history',
+                'tb_attendance',
+                'tb_breaks',
+                'tb_regularizations',
+                'attendance_regularizations',
+                'tb_employee_shifts',
+                'tb_shifts',
+                'tb_holidays',
+                'leave_balances',
+                'leave_requests',
+                'leave_types',
+                'tb_salary_payments',
+                'tb_salary_records',
+                'salary_records',
+                'offer_letters',
+                'experience_letters',
+                'increment_letters',
+                'resignation_requests',
+                'employee_documents',
+                'company_documents',
+                'ai_generated_documents',
+                'ai_document_generator',
+                'expenses',
+                'expense_claims',
+                'expense_categories',
+                'tickets',
+                'ticket_comments',
+                'ticket_attachments',
+                'projects',
+                'project_phases',
+                'project_team_members',
+                'project_history',
+                'tasks',
+                'clients',
+                'client_documents',
+                'client_interactions',
+                'client_projects',
+                'services',
+                'service_types',
+                'service_status',
+                'service_team_members',
+                'service_history',
+                'service_settings',
+                'company_settings',
+                'tenant_branding',
+                'branding',
+                'invoices',
+                'invoice_items',
+                'invoice_history',
+                'gst_details',
+                'quotations',
+                'quotation_items',
+                'quotation_gst_details',
+                'quotation_history',
+                'delivery_challans',
+                'delivery_challan_items',
+                'delivery_challan_history',
+                'module_access',
+                'employee_details',
+                'users',
+                'departments',
+                'roles',
+                'tenants'
+            ];
+
+            for (const table of tablesToPurge) {
+                try {
+                    if (table === 'tenants') {
+                        await connection.execute('DELETE FROM tenants WHERE id = ?', [id]);
+                    } else {
+                        await connection.execute(`DELETE FROM ${table} WHERE tenant_id = ?`, [id]);
+                    }
+                } catch (tableErr) {
+                    // Ignore non-existent tables or tables without tenant_id column
+                    if (tableErr.code !== 'ER_NO_SUCH_TABLE' && tableErr.code !== 'ER_BAD_FIELD_ERROR') {
+                        console.warn(`[Tenant.hardDelete] Note on table ${table}:`, tableErr.message);
+                    }
+                }
+            }
+
+            await connection.execute('SET FOREIGN_KEY_CHECKS = 1');
+            await connection.commit();
+            return true;
+        } catch (error) {
+            await connection.execute('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
+            await connection.rollback();
+            console.error('Error in Tenant.hardDelete:', error);
+            throw error;
+        } finally {
+            connection.release();
+        }
+    },
+
     // Get platform-wide dashboard stats
     getDashboardStats: async () => {
         try {

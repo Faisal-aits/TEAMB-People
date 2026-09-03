@@ -13,6 +13,7 @@ import brandingAPI from '../../../services/brandingAPI';
 import companyLogo from '../../../assets/img/company.png';
 import stampPng from '../../../assets/img/stamp.png';
 import BrandingValidationModal from '../../../components/BrandingValidationModal';
+import { API_BASE_URL, getFileUrl } from '../../../services/api';
 
 const emptyForm = {
   employee_id: '',
@@ -46,7 +47,7 @@ const emptyForm = {
   salary_after_probation: ''
 };
 
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+const API_URL = API_BASE_URL;
 const EMPLOYMENT_TYPES = ['Full-time', 'Part-time', 'Intern', 'Contract', 'Consultant', 'Temporary'];
 
 const parseAmount = (value) => {
@@ -456,12 +457,29 @@ const EmployeeManagement = () => {
   }, [authHeaders]);
 
   // Load departments
+  const getInitialFormData = useCallback(() => {
+    const defaultDept = departments.find(d => ['bim', 'beam'].includes(String(d.name || '').toLowerCase())) || departments[0];
+    return {
+      ...emptyForm,
+      probation_months: companySettings.probation_months || '',
+      department_ids: defaultDept ? [defaultDept.id] : []
+    };
+  }, [departments, companySettings.probation_months]);
+
   const loadDepartments = useCallback(async () => {
     try {
       const response = await axios.get(`${API_URL}/api/employees/departments`, {
         headers: authHeaders
       });
-      setDepartments(response.data.departments || []);
+      const depts = response.data.departments || [];
+      setDepartments(depts);
+      const defaultDept = depts.find(d => ['bim', 'beam'].includes(String(d.name || '').toLowerCase())) || depts[0];
+      if (defaultDept) {
+        setFormData(prev => ({
+          ...prev,
+          department_ids: prev.department_ids?.length ? prev.department_ids : [defaultDept.id]
+        }));
+      }
     } catch (error) {
       console.error('Failed to load departments:', error);
     }
@@ -727,7 +745,7 @@ const EmployeeManagement = () => {
         alert(response.data.message);
       }
       
-      setFormData(emptyForm);
+      setFormData(getInitialFormData());
       setIsModalOpen(false);
       await loadEmployees();
     } catch (error) {
@@ -843,6 +861,32 @@ const EmployeeManagement = () => {
     } catch (error) {
       console.error('Update error:', error.response?.data);
       handleRequestError(error, 'Failed to update employee');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSendCredentials = async (employee) => {
+    if (!window.confirm(`Send login credentials email to ${employee.first_name} ${employee.last_name} (${employee.email})?`)) {
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await axios.post(`${API_URL}/api/employees/${employee.employee_id}/send-credentials`, {}, {
+        headers: authHeaders
+      });
+      // Remove the pending flag from local state so the button disappears immediately
+      setEmployees(prev => prev.map(emp =>
+        emp.employee_id === employee.employee_id
+          ? { ...emp, has_pending_credentials: false }
+          : emp
+      ));
+      alert(`✅ Login credentials sent successfully to ${employee.email}`);
+    } catch (error) {
+      console.error('Send credentials error:', error.response?.data);
+      const msg = error.response?.data?.message || 'Failed to send credentials email';
+      alert('❌ ' + msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -1495,7 +1539,7 @@ const EmployeeManagement = () => {
             <option value="inactive">Inactive</option>
           </select>
           <button className="add-employee-btn" onClick={() => { 
-            setFormData({ ...emptyForm, probation_months: companySettings.probation_months }); 
+            setFormData(getInitialFormData()); 
             setIsModalOpen(true); 
           }}>
             <i className="fas fa-plus"></i> Add Employee
@@ -1515,7 +1559,7 @@ const EmployeeManagement = () => {
               <p className="no-data-subtext">Add employees manually, via bulk upload, or convert from Offer Letters.</p>
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
                 <button className="add-first-btn" onClick={() => { 
-                  setFormData({ ...emptyForm, probation_months: companySettings.probation_months }); 
+                  setFormData(getInitialFormData()); 
                   setIsModalOpen(true); 
                 }} style={{ backgroundColor: 'var(--primary-color)', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '5px', cursor: 'pointer' }}>
                   <i className="fas fa-plus"></i> Add Employee
@@ -1558,6 +1602,7 @@ const EmployeeManagement = () => {
                       <td>{employee.department_names?.join(', ') || '-'}</td>
                       <td className="position-cell">{employee.position || '-'}</td>
                       <td className="actions-cell" onClick={stopRowClick}>
+
                         <button
                           type="button"
                           className="viewedit-btn"
@@ -2293,12 +2338,12 @@ const EmployeeManagement = () => {
                   <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '20px', color: '#64748b' }}>
                     Loading employee documents...
                   </div>
-                ) : adminKycDocs.filter(d => d.document_type !== 'salary_slip').length > 0 ? (
+                ) : adminKycDocs.filter(d => !['increment_letter', 'offer_letter', 'experience_letter', 'resignation_letter', 'resignation', 'salary_slip', 'epf_declaration'].includes(d.document_type)).length > 0 ? (
                   adminKycDocs
-                    .filter(d => d.document_type !== 'salary_slip')
+                    .filter(d => !['increment_letter', 'offer_letter', 'experience_letter', 'resignation_letter', 'resignation', 'salary_slip', 'epf_declaration'].includes(d.document_type))
                     .map(doc => (
                       <div className="document-card" key={doc.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, cursor: 'pointer' }} onClick={() => { setAdminPdfPreviewTitle(doc.title); setAdminPdfPreviewUrl(`${API_URL}${doc.file_url}`); }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, cursor: 'pointer' }} onClick={() => { setAdminPdfPreviewTitle(doc.title); setAdminPdfPreviewUrl(getFileUrl(doc.file_url)); }}>
                           <div className="document-icon">
                             <i className="fas fa-file-pdf"></i>
                           </div>
@@ -2311,7 +2356,7 @@ const EmployeeManagement = () => {
                         <div style={{ display: 'flex', gap: '6px' }}>
                           <button
                             type="button"
-                            onClick={() => { setAdminPdfPreviewTitle(doc.title); setAdminPdfPreviewUrl(`${API_URL}${doc.file_url}`); }}
+                            onClick={() => { setAdminPdfPreviewTitle(doc.title); setAdminPdfPreviewUrl(getFileUrl(doc.file_url)); }}
                             style={{ padding: '6px 10px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
                             title="View Document"
                           >
@@ -2319,7 +2364,7 @@ const EmployeeManagement = () => {
                           </button>
                           <button
                             type="button"
-                            onClick={() => triggerFileDownload(`${API_URL}${doc.file_url}`, `${doc.title || doc.document_type}.pdf`)}
+                            onClick={() => triggerFileDownload(getFileUrl(doc.file_url), `${doc.title || doc.document_type}.pdf`)}
                             style={{ padding: '6px 10px', background: '#059669', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
                             title="Download Document"
                           >

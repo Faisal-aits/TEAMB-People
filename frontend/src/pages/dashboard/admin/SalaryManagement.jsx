@@ -5,7 +5,10 @@ import { attendanceAPI } from '../../../services/attendanceAPI';
 import * as XLSX from 'xlsx';
 import axios from 'axios';
 import { salarySlipPDFService } from '../../../services/salarySlipPDFService';
-import { companySettingsAPI } from '../../../services/companySettingsAPI';const SalaryManagement = () => {
+import { companySettingsAPI } from '../../../services/companySettingsAPI';
+import { API_BASE_URL } from '../../../services/api';
+
+const SalaryManagement = () => {
   const [salaryRecords, setSalaryRecords] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -669,7 +672,7 @@ useEffect(() => {
             return;
         }
 
-        const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+        const API_URL = API_BASE_URL;
         const authHeaders = { Authorization: `Bearer ${localStorage.getItem('token')}` };
         
         let brandingData = { logoUrl: null };

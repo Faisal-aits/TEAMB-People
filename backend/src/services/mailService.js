@@ -237,7 +237,7 @@ const sendMail = async (tenantId, { to, subject, html, text }) => {
 
 const sendEmployeeCredentials = async (tenantId, employee) => sendMail(tenantId, {
   to: employee.email,
-  subject: `Your ${APP_NAME} Login Credentials`,
+  subject: `Welcome to ${APP_NAME} - Login Credentials for ${employee.employeeName || employee.email} (${new Date().toLocaleTimeString()})`,
   html: buildCredentialsTemplate(employee),
   text: [
     `Hello ${employee.employeeName},`,
@@ -413,7 +413,137 @@ const sendOrganizationWelcomeEmail = async ({ tenantId, orgName, slug, adminName
   });
 };
 
+
+const sendBulkEmployeeCredentials = async (tenantId, employeesArray) => {
+  if (!tenantId || !employeesArray || employeesArray.length === 0) return [];
+
+  const config = await ServiceSetting.getPrivateSmtpConfig(tenantId);
+  if (!config) {
+    throw new Error('SMTP_NOT_CONFIGURED: Your organization has not configured email settings yet.');
+  }
+
+  const results = [];
+
+  // 1. Microsoft 365 (Modern Auth / Graph API)
+  if (config.provider === 'outlook_graph') {
+    const tenantIdStr = config.azure_tenant_id;
+    const clientId = config.azure_client_id;
+    const clientSecret = config.azure_client_secret;
+    const senderEmail = config.from_email || config.username;
+    const senderName = config.from_name || APP_NAME;
+
+    if (!tenantIdStr || !clientId || !clientSecret || !senderEmail) {
+      throw new Error('SMTP_NOT_CONFIGURED: Microsoft 365 configuration is incomplete.');
+    }
+
+    // Get Token ONCE for all bulk emails
+    const tokenUrl = `https://login.microsoftonline.com/${encodeURIComponent(tenantIdStr)}/oauth2/v2.0/token`;
+    const tokenParams = new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      scope: 'https://graph.microsoft.com/.default',
+      grant_type: 'client_credentials'
+    });
+
+    let tokenRes;
+    try {
+      tokenRes = await fetch(tokenUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: tokenParams.toString()
+      });
+    } catch (netErr) {
+      throw new Error(`Failed to connect to Microsoft Login service: ${netErr.message}`);
+    }
+
+    const tokenData = await tokenRes.json().catch(() => ({}));
+    if (!tokenRes.ok) {
+      const desc = tokenData.error_description || tokenData.error || 'Failed to authenticate with Microsoft 365';
+      throw new Error(`Microsoft 365 Authentication Failed: ${desc}`);
+    }
+    const accessToken = tokenData.access_token;
+
+    // Send emails concurrently
+    const sendPromises = employeesArray.map(async (employee) => {
+      const sendUrl = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(senderEmail)}/sendMail`;
+      const html = buildCredentialsTemplate(employee);
+      
+      const payload = {
+        message: {
+          subject: `Welcome to ${APP_NAME} - Login Credentials for ${employee.employeeName || employee.email} (${new Date().toLocaleTimeString()})`,
+          body: { contentType: 'HTML', content: html },
+          toRecipients: [{ emailAddress: { address: employee.email } }],
+          from: { emailAddress: { name: senderName, address: senderEmail } }
+        },
+        saveToSentItems: true
+      };
+
+      try {
+        const sendRes = await fetch(sendUrl, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+        if (!sendRes.ok) throw new Error(`Graph API returned ${sendRes.status}`);
+        results.push({ email: employee.email, success: true });
+        // 3 second delay for Graph API as well
+        await new Promise(r => setTimeout(r, 3000));
+      } catch (err) {
+        results.push({ email: employee.email, success: false, error: err.message });
+      }
+    });
+
+    await Promise.all(sendPromises);
+    return results;
+  }
+
+  // 2. Standard SMTP (Gmail / Custom SMTP)
+  if (!config.host || !config.username || !config.password) {
+    throw new Error('SMTP_NOT_CONFIGURED: Your organization has not configured email (SMTP) settings yet.');
+  }
+
+  // Create transporter ONCE
+  const transporterOptions = buildTransportOptions(config);
+  // Optional: add connection pooling for efficiency in bulk operations
+  transporterOptions.pool = true; 
+  transporterOptions.maxConnections = 3;
+  transporterOptions.maxMessages = 100;
+
+  const transporter = nodemailer.createTransport(transporterOptions);
+  const fromName = config.from_name || APP_NAME;
+  const fromEmail = config.from_email || config.username;
+
+  try {
+    for (const employee of employeesArray) {
+      try {
+        const html = buildCredentialsTemplate(employee);
+        await transporter.sendMail({
+          from: `"${fromName.replace(/"/g, '\\"')}" <${fromEmail}>`,
+          to: employee.email,
+          subject: `Welcome to ${APP_NAME} - Login Credentials for ${employee.employeeName || employee.email} (${new Date().toLocaleTimeString()})`,
+          html,
+          text: `Your ${APP_NAME} employee account has been created. Login Email: ${employee.email}`
+        });
+        results.push({ email: employee.email, success: true });
+        
+        // Small delay to prevent SMTP throttling
+        await new Promise(r => setTimeout(r, 3000)); // 3 second delay to fully bypass rate limits
+      } catch (err) {
+        results.push({ email: employee.email, success: false, error: err.message });
+      }
+    }
+  } finally {
+    transporter.close();
+  }
+
+  return results;
+};
+
 module.exports = {
+  sendBulkEmployeeCredentials,
   assertSmtpConfigured,
   sendEmployeeCredentials,
   sendOfferLetter,

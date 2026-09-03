@@ -1,6 +1,6 @@
 // src/pages/Tenants.jsx
 import React, { useState, useEffect } from 'react';
-import { HiPlus, HiXMark, HiPencilSquare } from 'react-icons/hi2';
+import { HiPlus, HiXMark, HiPencilSquare, HiTrash, HiExclamationTriangle } from 'react-icons/hi2';
 import { superAdminAPI } from '../services/api';
 import './Tenants.css';
 
@@ -18,6 +18,8 @@ const Tenants = () => {
   const [showModal, setShowModal] = useState(false);
   const [editTenant, setEditTenant] = useState(null); // tenant object being edited
   const [editFormData, setEditFormData] = useState({});
+  const [deleteTargetTenant, setDeleteTargetTenant] = useState(null); // tenant object to be permanently deleted
+  const [deleting, setDeleting] = useState(false);
   const [alert, setAlert] = useState(null);
   const [formData, setFormData] = useState(EMPTY_FORM);
 
@@ -117,6 +119,22 @@ const Tenants = () => {
       );
     } catch {
       showAlert('error', 'Failed to update status');
+    }
+  };
+
+  // ── Permanently delete tenant and all database records ──────────────────────
+  const handlePermanentDelete = async () => {
+    if (!deleteTargetTenant) return;
+    try {
+      setDeleting(true);
+      const res = await superAdminAPI.deleteTenant(deleteTargetTenant.id);
+      showAlert('success', res.data?.message || `${deleteTargetTenant.name} and all associated data permanently deleted.`);
+      setDeleteTargetTenant(null);
+      fetchTenants();
+    } catch (error) {
+      showAlert('error', error.response?.data?.message || 'Failed to delete organization');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -273,6 +291,15 @@ const Tenants = () => {
                   >
                     {tenant.is_active ? 'Deactivate' : 'Restore'}
                   </button>
+                  {!tenant.is_active && (
+                    <button
+                      className="btn-delete-permanent"
+                      title="Permanently delete organization"
+                      onClick={(e) => { e.stopPropagation(); setDeleteTargetTenant(tenant); }}
+                    >
+                      <HiTrash size={15} /> Delete
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -545,6 +572,71 @@ const Tenants = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Confirm Permanent Delete Modal ── */}
+      {deleteTargetTenant && (
+        <div className="modal-overlay" onClick={() => !deleting && setDeleteTargetTenant(null)}>
+          <div className="modal modal-danger" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header modal-header-danger">
+              <div className="modal-title-with-icon">
+                <div className="danger-icon-badge">
+                  <HiExclamationTriangle size={24} />
+                </div>
+                <div>
+                  <h2 style={{ color: '#ef4444' }}>Delete Organization Permanently</h2>
+                  <p className="modal-subtitle">This action cannot be undone</p>
+                </div>
+              </div>
+              <button
+                className="modal-close"
+                onClick={() => !deleting && setDeleteTargetTenant(null)}
+                disabled={deleting}
+              >
+                <HiXMark />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <div className="delete-warning-box">
+                <p style={{ margin: 0, fontSize: '14px' }}>
+                  Are you sure you want to permanently delete <strong>{deleteTargetTenant.name}</strong> (<code>/{deleteTargetTenant.slug}</code>)?
+                </p>
+                <div className="delete-consequences">
+                  <p>⚠️ The following data will be permanently wiped from the database:</p>
+                  <ul>
+                    <li>All employee records, profiles, bank &amp; KYC details</li>
+                    <li>All tenant user accounts and login credentials</li>
+                    <li>All attendance logs, breaks, and shift records</li>
+                    <li>All payroll records, salary slips, and payment logs</li>
+                    <li>All leave requests, quotas, and holiday calendars</li>
+                    <li>All department structures, designations, and roles</li>
+                    <li>All uploaded documents, templates, and branding</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setDeleteTargetTenant(null)}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-danger-confirm"
+                onClick={handlePermanentDelete}
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting All Data...' : 'Yes, Delete Permanently'}
+              </button>
+            </div>
           </div>
         </div>
       )}

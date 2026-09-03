@@ -105,7 +105,7 @@ const EmployeeLayout = () => {
   const getMainModuleFromTab = (tab) => {
     const hrTabs = ['hrdashboard', 'employee', 'attendance', 'leave', 'shift', 'salary', 'holiday', 'aiDocumentGenerator'];
     const ticketsTabs = ['employee-leave', 'employee-regularization', 'employee-expense', 'employee-report'];
-    const attendanceTabs = ['employee-attendance', 'employee-break'];
+    const attendanceTabs = ['employee-attendance', 'employee-break', 'employee-holiday'];
 
     if (hrTabs.includes(tab)) return 'hr';
     if (ticketsTabs.includes(tab)) return 'tickets';
@@ -144,7 +144,7 @@ const EmployeeLayout = () => {
     else if (moduleName === 'employee_salary') navigateToTab('employee-salary');
     else if (moduleName === 'attendance_module') {
       setSecondarySidebarOpen(true);
-      const attendanceTabs = ['employee-attendance', 'employee-break'];
+      const attendanceTabs = ['employee-attendance', 'employee-break', 'employee-holiday'];
       if (!attendanceTabs.includes(activeTab)) {
         navigateToTab('employee-attendance');
       }
@@ -243,6 +243,10 @@ useEffect(() => {
   }
   if (moduleKey === 'employee_break') {
     navigateToTab('employee-break');
+    return;
+  }
+  if (moduleKey === 'employee_holiday') {
+    navigateToTab('employee-holiday');
     return;
   }
   if (moduleKey === 'employee_projects') {
@@ -388,6 +392,11 @@ useEffect(() => {
                       <li className={activeTab === 'employee-break' ? 'active' : ''}>
                         <button onClick={() => navigateToTab('employee-break')}>
                           <span className="dropdown-text">Breaks</span>
+                        </button>
+                      </li>
+                      <li className={activeTab === 'employee-holiday' ? 'active' : ''}>
+                        <button onClick={() => navigateToTab('employee-holiday')}>
+                          <span className="dropdown-text">Holidays</span>
                         </button>
                       </li>
                     </>

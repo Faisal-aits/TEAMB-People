@@ -6,22 +6,32 @@ import offerLetterPDFService from '../../../services/offerLetterPDFService';
 import './Employee.css';
 import './OfferLetterBuilder.css';
 import brandingAPI from '../../../services/brandingAPI';
+import { serviceSettingAPI } from '../../../services/serviceSettingAPI';
 import BrandingValidationModal from '../../../components/BrandingValidationModal';
 
 
 const numberToWords = (num) => {
+  if (!num) return '';
+  const clean = String(num).replace(/,/g, '').trim();
+  const val = parseInt(clean, 10);
+  if (isNaN(val) || val <= 0) return '';
+
   const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
   const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
 
-  if ((num = num.toString()).length > 9) return 'overflow';
-  const n = ('000000000' + num).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
-  if (!n) return; var str = '';
-  str += (n[1] != 0) ? (a[Number(n[1])] || b[n[1][0]] + ' ' + a[n[1][1]]) + 'Crore ' : '';
-  str += (n[2] != 0) ? (a[Number(n[2])] || b[n[2][0]] + ' ' + a[n[2][1]]) + 'Lakh ' : '';
-  str += (n[3] != 0) ? (a[Number(n[3])] || b[n[3][0]] + ' ' + a[n[3][1]]) + 'Thousand ' : '';
-  str += (n[4] != 0) ? (a[Number(n[4])] || b[n[4][0]] + ' ' + a[n[4][1]]) + 'Hundred ' : '';
-  str += (n[5] != 0) ? ((str != '') ? 'and ' : '') + (a[Number(n[5])] || b[n[5][0]] + ' ' + a[n[5][1]]) : '';
-  return str.trim() ? str.trim() + ' Rupees Only' : '';
+  const nStr = ('000000000' + val).slice(-9);
+  const n = nStr.match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
+  if (!n) return '';
+
+  let str = '';
+  str += (Number(n[1]) !== 0) ? (a[Number(n[1])] || b[Number(n[1][0])] + ' ' + a[Number(n[1][1])]) + 'Crore ' : '';
+  str += (Number(n[2]) !== 0) ? (a[Number(n[2])] || b[Number(n[2][0])] + ' ' + a[Number(n[2][1])]) + 'Lakh ' : '';
+  str += (Number(n[3]) !== 0) ? (a[Number(n[3])] || b[Number(n[3][0])] + ' ' + a[Number(n[3][1])]) + 'Thousand ' : '';
+  str += (Number(n[4]) !== 0) ? (a[Number(n[4])] || b[Number(n[4][0])] + ' ' + a[Number(n[4][1])]) + 'Hundred ' : '';
+  str += (Number(n[5]) !== 0) ? ((str !== '') ? 'and ' : '') + (a[Number(n[5])] || b[Number(n[5][0])] + ' ' + a[Number(n[5][1])]) : '';
+
+  const trimmed = str.replace(/\s+/g, ' ').trim();
+  return trimmed ? trimmed + ' Rupees Only' : '';
 };
 
 const defaultTerms = [
@@ -41,7 +51,7 @@ const OfferLetter = ({ companySettings = { salary_format: 'Monthly', probation_m
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAcceptModalOpen, setIsAcceptModalOpen] = useState(false);
   const [selectedOfferLetter, setSelectedOfferLetter] = useState(null);
-  const [acceptFormData, setAcceptFormData] = useState({ employee_id: '', department_id: '', employment_type: '' });
+  const [acceptFormData, setAcceptFormData] = useState({ employee_id: '', department_id: '', employment_type: 'Full-time' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [departments, setDepartments] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -147,11 +157,53 @@ const OfferLetter = ({ companySettings = { salary_format: 'Monthly', probation_m
     }
   };
 
+  const [isSmtpConfigModalOpen, setIsSmtpConfigModalOpen] = useState(false);
+  const [isSmtpConfigured, setIsSmtpConfigured] = useState(null);
+
+  const checkSmtpStatus = useCallback(async () => {
+    try {
+      const res = await serviceSettingAPI.getSmtpDetails();
+      const smtp = res.data?.smtp;
+      const isOutlookConfigured = Boolean(
+        smtp &&
+        smtp.provider === 'outlook_graph' &&
+        smtp.azure_tenant_id &&
+        smtp.azure_client_id &&
+        smtp.has_azure_client_secret &&
+        smtp.from_email
+      );
+      const isStandardSmtpConfigured = Boolean(
+        smtp &&
+        smtp.provider !== 'outlook_graph' &&
+        smtp.host &&
+        smtp.username &&
+        smtp.has_password &&
+        smtp.from_email
+      );
+      const configured = Boolean(isOutlookConfigured || isStandardSmtpConfigured);
+      setIsSmtpConfigured(configured);
+      return configured;
+    } catch (err) {
+      console.warn("Error fetching SMTP status:", err);
+      return false;
+    }
+  }, []);
+
+  const handleOpenNewOfferModal = async () => {
+    const configured = isSmtpConfigured !== null ? isSmtpConfigured : await checkSmtpStatus();
+    if (!configured) {
+      setIsSmtpConfigModalOpen(true);
+      return;
+    }
+    setIsModalOpen(true);
+  };
+
   useEffect(() => {
     loadOfferLetters();
     loadDepartments();
     loadBranding();
-  }, [loadOfferLetters]);
+    checkSmtpStatus();
+  }, [loadOfferLetters, checkSmtpStatus]);
 
   const totalPages = Math.ceil(offerLetters.length / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -200,27 +252,42 @@ const OfferLetter = ({ companySettings = { salary_format: 'Monthly', probation_m
     setFormData({ ...formData, terms: [...defaultTerms] });
   };
 
+  const [resendingId, setResendingId] = useState(null);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       setIsSubmitting(true);
 
+      const completeFormData = {
+        ...formData,
+        salary_format: companySettings?.salary_format || salaryFormat || 'Monthly',
+        probationMonths,
+        ctcInWords: formData.ctc ? numberToWords(formData.ctc) : (formData.ctcInWords || ''),
+        monthlySalaryInWords: formData.monthlySalary ? numberToWords(formData.monthlySalary) : (formData.monthlySalaryInWords || ''),
+        salaryDuringProbationInWords: formData.salaryDuringProbation ? numberToWords(formData.salaryDuringProbation) : (formData.salaryDuringProbationInWords || ''),
+        salaryAfterProbationInWords: formData.salaryAfterProbation ? numberToWords(formData.salaryAfterProbation) : (formData.salaryAfterProbationInWords || '')
+      };
+
+      let pdfBase64 = null;
+      try {
+        pdfBase64 = await offerLetterPDFService.getBase64OfferLetter(completeFormData);
+      } catch (pdfErr) {
+        console.warn('Could not generate PDF base64 client-side, sending without it:', pdfErr);
+      }
+
       const payload = {
         candidate_name: formData.fullName,
         candidate_email: formData.email,
         issue_date: formData.issueDate,
-        form_data: { ...formData, salary_format: companySettings.salary_format }
+        form_data: completeFormData,
+        pdf_base64: pdfBase64
       };
 
-      // Show success and close modal immediately to avoid loading wait
-      alert('Offer letter generation started! It will be generated and emailed shortly.');
+      const response = await offerLetterAPI.save(payload);
+      alert(response.data?.message || 'Offer letter saved and emailed successfully!');
       setIsModalOpen(false);
-      setIsSubmitting(false);
 
-      // Save form data in a local variable for the background task
-      const formDataForPdf = { ...formData };
-
-      // Reset form
       setFormData({
         issueDate: new Date().toISOString().slice(0, 10),
         salutation: 'Mr.', fullName: '', address: '', phone: '', email: '',
@@ -233,22 +300,66 @@ const OfferLetter = ({ companySettings = { salary_format: 'Monthly', probation_m
         terms: [...defaultTerms]
       });
 
-      // Run generation and API call in background
-      (async () => {
-        try {
-          const pdfBase64 = await offerLetterPDFService.getBase64OfferLetter(formDataForPdf);
-          payload.pdf_base64 = pdfBase64;
-          await offerLetterAPI.save(payload);
-          loadOfferLetters();
-        } catch (err) {
-          console.error('Failed to generate/save offer letter in background:', err);
-        }
-      })();
-
+      loadOfferLetters();
     } catch (error) {
       console.error('Failed to process offer letter:', error);
-      alert('Failed to process offer letter');
+      const isSmtpMissing = error.response?.status === 428 ||
+        error.response?.data?.code === 'SMTP_NOT_CONFIGURED' ||
+        error.response?.data?.smtp_not_configured ||
+        error.response?.data?.message?.includes('SMTP_NOT_CONFIGURED') ||
+        error.message?.includes('SMTP_NOT_CONFIGURED');
+
+      if (isSmtpMissing) {
+        setIsModalOpen(false);
+        setIsSmtpConfigModalOpen(true);
+        return;
+      }
+
+      const msg = error.response?.data?.message || error.message || 'Failed to process offer letter';
+      alert(msg);
+    } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleResendEmail = async (offer) => {
+    const candidateEmail = offer.candidate_email || offer.form_data?.email;
+    if (!candidateEmail) {
+      alert('Candidate email address is missing');
+      return;
+    }
+
+    if (!window.confirm(`Resend offer letter email to ${candidateEmail}?`)) return;
+
+    try {
+      setResendingId(offer.id);
+      let pdfBase64 = null;
+      try {
+        pdfBase64 = await offerLetterPDFService.getBase64OfferLetter(offer.form_data);
+      } catch (pdfErr) {
+        console.warn('PDF generation for resend failed:', pdfErr);
+      }
+
+      const res = await offerLetterAPI.resendEmail(offer.id, { pdf_base64: pdfBase64 });
+      alert(res.data?.message || `Offer letter emailed successfully to ${candidateEmail}`);
+      loadOfferLetters();
+    } catch (error) {
+      console.error('Failed to resend offer letter:', error);
+      const isSmtpMissing = error.response?.status === 428 ||
+        error.response?.data?.code === 'SMTP_NOT_CONFIGURED' ||
+        error.response?.data?.smtp_not_configured ||
+        error.response?.data?.message?.includes('SMTP_NOT_CONFIGURED') ||
+        error.message?.includes('SMTP_NOT_CONFIGURED');
+
+      if (isSmtpMissing) {
+        setIsSmtpConfigModalOpen(true);
+        return;
+      }
+
+      const msg = error.response?.data?.message || error.message || 'Failed to resend offer letter email';
+      alert(msg);
+    } finally {
+      setResendingId(null);
     }
   };
 
@@ -256,7 +367,7 @@ const OfferLetter = ({ companySettings = { salary_format: 'Monthly', probation_m
     if (status === 'Accepted') {
       const offer = offerLetters.find(o => o.id === id);
       setSelectedOfferLetter(offer);
-      setAcceptFormData({ employee_id: '', department_id: '', employment_type: '' });
+      setAcceptFormData({ employee_id: '', department_id: '', employment_type: 'Full-time' });
       setIsAcceptModalOpen(true);
       return;
     }
@@ -344,7 +455,7 @@ const OfferLetter = ({ companySettings = { salary_format: 'Monthly', probation_m
       <div className="employee-table-container glass-form">
         <div className="table-header employee-management-header">
           <h3 style={{ margin: 0 }}>Offer Letters Tracking</h3>
-          <button className="add-employee-btn" onClick={() => setIsModalOpen(true)}>
+          <button className="add-employee-btn" onClick={handleOpenNewOfferModal}>
             <i className="fas fa-plus"></i> New Offer Letter
           </button>
         </div>
@@ -380,6 +491,15 @@ const OfferLetter = ({ companySettings = { salary_format: 'Monthly', probation_m
                     <td className="actions-cell">
                       <button className="viewedit-btn" title="View PDF" onClick={() => handleViewPDF(offer)}>
                         <i className="fas fa-eye"></i>
+                      </button>
+                      <button 
+                        className="viewedit-btn" 
+                        title="Resend Email to Candidate" 
+                        onClick={() => handleResendEmail(offer)}
+                        disabled={resendingId === offer.id}
+                        style={{ marginLeft: '4px', background: '#3b82f6', color: 'white' }}
+                      >
+                        <i className={`fas ${resendingId === offer.id ? 'fa-spinner fa-spin' : 'fa-paper-plane'}`}></i>
                       </button>
                       {canActOnOffer(offer.status) && (
                         <>
@@ -511,8 +631,8 @@ const OfferLetter = ({ companySettings = { salary_format: 'Monthly', probation_m
                         <input type="number" name="monthlySalary" value={formData.monthlySalary} onChange={handleInputChange} placeholder="e.g. 20000" />
                       </div>
                       <div className="form-group-builder">
-                        <label>Salary in Words</label>
-                        <input type="text" name="monthlySalaryInWords" value={formData.monthlySalaryInWords} onChange={handleInputChange} placeholder="Auto generated" />
+                        <label>Salary in Words (Auto)</label>
+                        <input type="text" name="monthlySalaryInWords" value={formData.monthlySalaryInWords} readOnly style={{ backgroundColor: '#f8fafc', color: '#334155', cursor: 'default', fontWeight: '500' }} placeholder="Auto generated" />
                       </div>
                     </div>
                   )}
@@ -525,7 +645,7 @@ const OfferLetter = ({ companySettings = { salary_format: 'Monthly', probation_m
                         </div>
                         <div className="form-group-builder">
                           <label>In Words (Auto)</label>
-                          <input type="text" name="salaryDuringProbationInWords" value={formData.salaryDuringProbationInWords} onChange={handleInputChange} placeholder="Auto generated" />
+                          <input type="text" name="salaryDuringProbationInWords" value={formData.salaryDuringProbationInWords} readOnly style={{ backgroundColor: '#f8fafc', color: '#334155', cursor: 'default', fontWeight: '500' }} placeholder="Auto generated" />
                         </div>
                       </div>
                       <div className="row-2">
@@ -535,7 +655,7 @@ const OfferLetter = ({ companySettings = { salary_format: 'Monthly', probation_m
                         </div>
                         <div className="form-group-builder">
                           <label>In Words (Auto)</label>
-                          <input type="text" name="salaryAfterProbationInWords" value={formData.salaryAfterProbationInWords} onChange={handleInputChange} placeholder="Auto generated" />
+                          <input type="text" name="salaryAfterProbationInWords" value={formData.salaryAfterProbationInWords} readOnly style={{ backgroundColor: '#f8fafc', color: '#334155', cursor: 'default', fontWeight: '500' }} placeholder="Auto generated" />
                         </div>
                       </div>
                     </>
@@ -550,7 +670,7 @@ const OfferLetter = ({ companySettings = { salary_format: 'Monthly', probation_m
                         </div>
                         <div className="form-group-builder">
                           <label>CTC in Words (Auto)</label>
-                          <input type="text" name="ctcInWords" value={formData.ctcInWords} onChange={handleInputChange} placeholder="Auto generated" />
+                          <input type="text" name="ctcInWords" value={formData.ctcInWords} readOnly style={{ backgroundColor: '#f8fafc', color: '#334155', cursor: 'default', fontWeight: '500' }} placeholder="Auto generated" />
                         </div>
                       </div>
                       <div className="row-2">
@@ -560,7 +680,7 @@ const OfferLetter = ({ companySettings = { salary_format: 'Monthly', probation_m
                         </div>
                         <div className="form-group-builder">
                           <label>In Words (Auto)</label>
-                          <input type="text" name="salaryDuringProbationInWords" value={formData.salaryDuringProbationInWords} onChange={handleInputChange} placeholder="Auto generated" />
+                          <input type="text" name="salaryDuringProbationInWords" value={formData.salaryDuringProbationInWords} readOnly style={{ backgroundColor: '#f8fafc', color: '#334155', cursor: 'default', fontWeight: '500' }} placeholder="Auto generated" />
                         </div>
                       </div>
                       <div className="row-2">
@@ -570,7 +690,7 @@ const OfferLetter = ({ companySettings = { salary_format: 'Monthly', probation_m
                         </div>
                         <div className="form-group-builder">
                           <label>In Words (Auto)</label>
-                          <input type="text" name="salaryAfterProbationInWords" value={formData.salaryAfterProbationInWords} onChange={handleInputChange} placeholder="Auto generated" />
+                          <input type="text" name="salaryAfterProbationInWords" value={formData.salaryAfterProbationInWords} readOnly style={{ backgroundColor: '#f8fafc', color: '#334155', cursor: 'default', fontWeight: '500' }} placeholder="Auto generated" />
                         </div>
                       </div>
                     </>
@@ -862,16 +982,23 @@ const OfferLetter = ({ companySettings = { salary_format: 'Monthly', probation_m
       )}
 
       {isAcceptModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content1">
+        <div className="modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+          <div className="modal-content1 convert-employee-modal">
             <div className="modal-header">
-              <h2>Convert to Employee</h2>
+              <h2>
+                <i className="fas fa-user-check" style={{ color: '#10b981' }}></i>
+                Convert to Employee
+              </h2>
               <button className="close-btn" onClick={() => setIsAcceptModalOpen(false)}>×</button>
             </div>
             <div className="modal-body">
-              <p style={{ marginBottom: '20px' }}>Please provide an Employee ID, Department, and Employee Type to convert the candidate into an employee.</p>
-              <form onSubmit={handleAcceptSubmit} className="employee-form">
-                <div className="form-group" style={{ marginBottom: '15px' }}>
+              <div className="convert-modal-desc">
+                <div>Candidate: <strong>{selectedOfferLetter?.candidate_name || selectedOfferLetter?.form_data?.fullName || 'Candidate'}</strong></div>
+                <div>Email: <strong>{selectedOfferLetter?.candidate_email || selectedOfferLetter?.form_data?.email || '-'}</strong></div>
+                <div style={{ fontSize: '12px', marginTop: '4px', color: '#64748b' }}>Provide an Employee ID, Department, and Employment Type to activate their employee profile and send welcome credentials.</div>
+              </div>
+              <form onSubmit={handleAcceptSubmit} className="employee-form" style={{ padding: 0 }}>
+                <div className="form-group" style={{ marginBottom: '16px' }}>
                   <label>Employee ID *</label>
                   <input
                     type="text"
@@ -881,7 +1008,7 @@ const OfferLetter = ({ companySettings = { salary_format: 'Monthly', probation_m
                     required
                   />
                 </div>
-                <div className="form-group" style={{ marginBottom: '15px' }}>
+                <div className="form-group" style={{ marginBottom: '16px' }}>
                   <label>Department *</label>
                   <select
                     value={acceptFormData.department_id}
@@ -894,14 +1021,13 @@ const OfferLetter = ({ companySettings = { salary_format: 'Monthly', probation_m
                     ))}
                   </select>
                 </div>
-                <div className="form-group">
+                <div className="form-group" style={{ marginBottom: '16px' }}>
                   <label>Employee Type *</label>
                   <select
                     value={acceptFormData.employment_type}
                     onChange={(e) => setAcceptFormData({ ...acceptFormData, employment_type: e.target.value })}
                     required
                   >
-                    <option value="">Select Type</option>
                     <option value="Full-time">Full-time</option>
                     <option value="Part-time">Part-time</option>
                     <option value="Intern">Intern</option>
@@ -910,10 +1036,22 @@ const OfferLetter = ({ companySettings = { salary_format: 'Monthly', probation_m
                     <option value="Temporary">Temporary</option>
                   </select>
                 </div>
-                <div className="form-actions" style={{ marginTop: '25px' }}>
-                  <button type="button" onClick={() => setIsAcceptModalOpen(false)} className="cancel-btn">Cancel</button>
+                <div className="convert-form-actions">
+                  <button type="button" onClick={() => setIsAcceptModalOpen(false)} className="convert-cancel-btn">
+                    Cancel
+                  </button>
                   <button type="submit" className="c-to-e-btn" disabled={isSubmitting}>
-                    {isSubmitting ? 'Saving...' : 'Accept & Create'}
+                    {isSubmitting ? (
+                      <>
+                        <i className="fas fa-spinner fa-spin"></i>
+                        <span>Creating Employee...</span>
+                      </>
+                    ) : (
+                      <>
+                        <i className="fas fa-check"></i>
+                        <span>Accept & Create</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </form>
@@ -936,6 +1074,62 @@ const OfferLetter = ({ companySettings = { salary_format: 'Monthly', probation_m
                 title="Offer Letter Preview" 
                 style={{ width: '100%', height: '100%', border: 'none' }}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SMTP Configuration Required Modal */}
+      {isSmtpConfigModalOpen && (
+        <div className="modal-overlay" style={{ zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="modal-content" style={{ maxWidth: '480px', width: '90%', textAlign: 'center', padding: '32px 24px', borderRadius: '16px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)' }}>
+            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#fef3c7', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: '28px' }}>
+              <i className="fas fa-envelope"></i>
+            </div>
+            <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111827', margin: '0 0 10px' }}>
+              SMTP Email Setup Required
+            </h2>
+            <p style={{ fontSize: '14px', color: '#6b7280', lineHeight: '1.6', margin: '0 0 24px' }}>
+              Your organization has not configured email (SMTP) settings yet. Before creating or emailing offer letters, you must configure your company SMTP credentials so emails can be sent to candidates.
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button
+                type="button"
+                onClick={() => setIsSmtpConfigModalOpen(false)}
+                style={{
+                  padding: '10px 20px',
+                  background: '#f3f4f6',
+                  color: '#4b5563',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSmtpConfigModalOpen(false);
+                  localStorage.setItem("activeTab", "smtpconfig");
+                  window.location.href = '/admin?tab=smtpconfig';
+                }}
+                style={{
+                  padding: '10px 22px',
+                  background: '#4f46e5',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <i className="fas fa-cog"></i> Go to SMTP Config
+              </button>
             </div>
           </div>
         </div>

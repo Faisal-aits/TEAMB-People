@@ -642,16 +642,19 @@ const attendanceController = {
         }
     },
 
-    markHalfDay: async (req, res) => {
+    changeAttendanceStatus: async (req, res) => {
         try {
-            const { date, employee_id, mark_all, reason } = req.body;
+            const { date, employee_id, mark_all, status, check_in_time, check_out_time, reason } = req.body;
             const targetDate = date || getIndiaDate();
             const adminUserId = req.user?.id || null;
 
-            const result = await Attendance.markHalfDay(req.tenantId, {
+            const result = await Attendance.changeAttendanceStatus(req.tenantId, {
                 date: targetDate,
                 employeeId: employee_id,
                 markAll: Boolean(mark_all || employee_id === 'all'),
+                status: status || 'Present',
+                checkInTime: check_in_time,
+                checkOutTime: check_out_time,
                 reason,
                 adminUserId
             });
@@ -662,9 +665,13 @@ const attendanceController = {
                 count: result.count
             });
         } catch (error) {
-            console.error('Error marking half day:', error);
-            res.status(500).json({ success: false, message: error.message || 'Failed to mark half day' });
+            console.error('Error changing attendance status:', error);
+            res.status(500).json({ success: false, message: error.message || 'Failed to change attendance status' });
         }
+    },
+
+    markHalfDay: async (req, res) => {
+        return attendanceController.changeAttendanceStatus(req, res);
     }
 };
 

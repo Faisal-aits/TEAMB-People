@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import axios from 'axios';
+import { API_BASE_URL } from '../../services/api';
 import {
   HiOutlineArrowPath,
   HiOutlineBanknotes,
@@ -134,15 +136,33 @@ const MODULE_META = {
     description: 'Check in, check out, and review attendance history.',
     icon: <HiOutlineCalendarDays />,
   },
+  employee_holiday: {
+    title: 'Holidays',
+    description: 'View upcoming company holidays.',
+    icon: <HiOutlineCalendarDays />,
+  },
   employee_expense: {
     title: 'Reimbursements',
     description: 'Submit expenses and track reimbursement requests.',
     icon: <HiOutlineReceiptPercent />,
   },
+  employee_leave: {
+    title: 'My Leave',
+    description: 'View and request leave balances.',
+    icon: <HiOutlineCalendarDays />,
+  },
+  employee_report: {
+    title: 'Tickets',
+    description: 'Submit and track support tickets.',
+    icon: <HiOutlineClipboardDocumentList />,
+  }
 };
 
 const DEFAULT_EMPLOYEE_MODULES = [
   { module_key: 'employee_attendance', name: 'My Attendance', access: 'write' },
+  { module_key: 'employee_leave', name: 'My Leave', access: 'write' },
+  { module_key: 'employee_report', name: 'Tickets', access: 'write' },
+  { module_key: 'employee_holiday', name: 'Holidays', access: 'read' },
   { module_key: 'employee_expense', name: 'Reimbursements', access: 'write' },
 ];
 
@@ -193,6 +213,8 @@ const formatTime = (timeString) => {
 const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
   const currentUser = user || {};
   const [loading, setLoading] = useState(true);
+  const [breakData, setBreakData] = useState(null);
+  const [upcomingHoliday, setUpcomingHoliday] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [error, setError] = useState('');
@@ -282,6 +304,25 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
         reports: getArray(reportResponse, ['reports', 'data']),
         todayBreak: getSafeValue(breakResult)?.data?.data || null,
       });
+
+      // Fetch upcoming holiday
+      try {
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        const holRes = await axios.get(`${API_BASE_URL}/api/salary/holidays`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (holRes.data?.success && holRes.data.holidays?.length > 0) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const upcoming = holRes.data.holidays
+            .filter(h => new Date(h.date) >= today)
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+          if (upcoming.length > 0) {
+            setUpcomingHoliday(upcoming[0]);
+          }
+        }
+      } catch (e) { console.error('Error fetching holidays', e); }
+
     } catch (err) {
       console.error('Failed to load employee dashboard:', err);
       setError('Unable to load employee dashboard.');
@@ -328,6 +369,9 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
       services: 'service',
       employee_attendance: 'employee-attendance',
       employee_expense: 'employee-expense',
+      employee_leave: 'employee-leave',
+      employee_report: 'employee-report',
+      employee_holiday: 'employee-holiday',
     };
     const defaultTab = moduleDefaults[mod.module_key] || MODULE_DEFAULT_TAB[mod.module_key];
 
@@ -452,7 +496,9 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
     {
       label: 'Today Status',
       value: todayAttendance.status || 'Not Checked In',
-      note: `${formatTime(todayAttendance.check_in_time)} in / ${formatTime(todayAttendance.check_out_time)} out`,
+      note: todayAttendance.status === 'Half Day' 
+        ? '' 
+        : `${formatTime(todayAttendance.check_in_time)} in / ${formatTime(todayAttendance.check_out_time)} out`,
       icon: <HiOutlineClock />,
       tone: isCheckedIn ? 'green' : 'amber',
       tab: 'employee-attendance',
@@ -473,7 +519,17 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
       tone: 'amber',
       tab: 'employee-leave',
     },
+    {
+      label: 'Shift Timing',
+      value: dashboardData.profile?.shift_name || 'Standard Shift',
+      note: dashboardData.profile?.shift_start ? `${formatTime(dashboardData.profile.shift_start)} - ${formatTime(dashboardData.profile.shift_end)}` : 'Not assigned',
+      icon: <HiOutlineClock />,
+      tone: 'blue',
+      tab: 'employee-attendance',
+    }
   ];
+
+
 
   if (loading) {
     return (
@@ -533,8 +589,9 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
               <div>
                 <h3>{todayAttendance.status || 'Not Checked In'}</h3>
                 <p>
-                  Check in: {formatTime(todayAttendance.check_in_time)} - Check out: {formatTime(todayAttendance.check_out_time)}
-                  <br />
+                  {todayAttendance.status !== 'Half Day' && (
+                    <>Check in: {formatTime(todayAttendance.check_in_time)} - Check out: {formatTime(todayAttendance.check_out_time)}<br /></>
+                  )}
                   {dashboardData.todayBreak?.totalDuration > 0 && <strong>Total Break Today: {dashboardData.todayBreak?.totalDuration} mins</strong>}
                 </p>
               </div>
@@ -573,10 +630,16 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
             </div>
 
             <div className="employee-record-grid">
-              <div><HiOutlineUserCircle /><span>Employee ID</span><strong>{profile.id || currentUser.employee_id || '-'}</strong></div>
+              <div><HiOutlineUserCircle /><span>Employee ID</span><strong>{profile.employee_id || currentUser.employee_id || '-'}</strong></div>
               <div><HiOutlineDocumentText /><span>Documents</span><strong>{formatNumber(totalDocuments)}</strong></div>
               <div><HiOutlineBriefcase /><span>Joining Date</span><strong>{formatDate(profile.joining_date)}</strong></div>
-              <div><HiOutlineBanknotes /><span>Paid Expenses</span><strong>{formatCurrency(expenseSummary.paidAmount)}</strong></div>
+              <div>
+                <HiOutlineCalendarDays />
+                <span>Upcoming Holiday</span>
+                <strong title={upcomingHoliday ? formatDate(upcomingHoliday.date) : ''}>
+                  {upcomingHoliday ? upcomingHoliday.name : 'None'}
+                </strong>
+              </div>
             </div>
           </div>
         </div>

@@ -33,6 +33,6 @@ router.post('/:leaveId/approve', requireModuleAccess('leave_management', 'write'
 router.post('/:leaveId/reject', requireModuleAccess('leave_management', 'write'), leaveController.rejectLeave);
 
 // DELETE /api/leaves/:leaveId - Delete leave request
-router.delete('/:leaveId', requireModuleAccess('leave_management', 'write'), leaveController.deleteLeave);
+router.delete('/:leaveId', leaveController.deleteLeave);
 
 module.exports = router;

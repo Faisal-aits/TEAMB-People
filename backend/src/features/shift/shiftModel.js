@@ -94,10 +94,9 @@ const Shift = {
                     s.is_default,
                     s.created_at,
                     s.updated_at,
-                    COUNT(DISTINCT es.employee_id) as employee_count
+                    COUNT(DISTINCT ed.id) as employee_count
                 FROM tb_shifts s
-                LEFT JOIN tb_employee_shifts es ON s.shift_id = es.shift_id 
-                    AND DATE(es.assigned_date) = CURDATE()
+                LEFT JOIN employee_details ed ON s.shift_id = ed.default_shift_id 
                 WHERE s.tenant_id = ?
                 GROUP BY s.shift_id
                 ORDER BY s.is_default DESC, s.shift_name
@@ -170,6 +169,14 @@ const Shift = {
                 }
             }
 
+            // Assign permanently to all employees if flag is set
+            if (shiftData.assignAllPermanently) {
+                await connection.execute(
+                    'UPDATE employee_details SET default_shift_id = ? WHERE tenant_id = ?',
+                    [shiftId, tenantId]
+                );
+            }
+
             await connection.commit();
             return shiftId;
         } catch (error) {
@@ -226,6 +233,14 @@ const Shift = {
                         [employeeId, shiftId, tenantId]
                     );
                 }
+            }
+
+            // Assign permanently to all employees if flag is set
+            if (shiftData.assignAllPermanently) {
+                await connection.execute(
+                    'UPDATE employee_details SET default_shift_id = ? WHERE tenant_id = ?',
+                    [shiftId, tenantId]
+                );
             }
 
             await connection.commit();
@@ -296,23 +311,20 @@ const Shift = {
             
             const query = `
                 SELECT 
-                    es.employee_id,
+                    ed.id as employee_id,
                     ed.id,
                     u.first_name,
                     u.last_name,
                     CONCAT(u.first_name, ' ', u.last_name) as employee_name
-                FROM tb_employee_shifts es
-                JOIN employee_details ed ON es.employee_id = ed.id
+                FROM employee_details ed
                 JOIN users u ON ed.employee_id = u.id
-                WHERE es.shift_id = ? 
-                    AND DATE(es.assigned_date) = CURDATE()
-                    AND es.tenant_id = ?
+                WHERE ed.default_shift_id = ? 
                     AND ed.tenant_id = ?
                     AND u.tenant_id = ?
                 ORDER BY employee_name
             `;
             
-            const [rows] = await pool.execute(query, [shiftId, tenantId, tenantId, tenantId]);
+            const [rows] = await pool.execute(query, [shiftId, tenantId, tenantId]);
             
             console.log(`✅ Found ${rows.length} employees for shift ${shiftId}`);
             return rows;

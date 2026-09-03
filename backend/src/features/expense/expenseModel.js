@@ -151,10 +151,21 @@ const Expense = {
 
     // Get all expense categories
     getCategories: async (tenantId) => {
-        const [rows] = await pool.execute(
+        let [rows] = await pool.execute(
             'SELECT * FROM expense_categories WHERE tenant_id = ? ORDER BY name', 
             [tenantId]
         );
+        const hasFood = rows.some(r => String(r.name || '').trim().toLowerCase() === 'food');
+        if (!hasFood) {
+            await pool.execute(
+                'INSERT INTO expense_categories (tenant_id, name, limit_amount, description) VALUES (?, ?, ?, ?)',
+                [tenantId, 'Food', 2000, 'Food & Meals reimbursement']
+            );
+            [rows] = await pool.execute(
+                'SELECT * FROM expense_categories WHERE tenant_id = ? ORDER BY name', 
+                [tenantId]
+            );
+        }
         return rows;
     },
 

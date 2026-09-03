@@ -6,7 +6,7 @@ import { salarySlipPDFService } from '../../../services/salarySlipPDFService';
 import { resignationAPI } from '../../../services/resignationAPI';
 import { experienceLetterAPI } from '../../../services/experienceLetterAPI';
 import { incrementLetterAPI } from '../../../services/incrementLetterAPI';
-import { API_BASE_URL } from '../../../services/api';
+import { API_BASE_URL, getFileUrl } from '../../../services/api';
 
 import { 
   HiOutlineDocumentText, 
@@ -187,10 +187,7 @@ const handleDocAction = async (type, action, doc) => {
         return;
       }
       
-      let backendBaseUrl = API_BASE_URL?.replace('/api', '') || 'http://localhost:8000';
-      let finalUrl = pdfUrl.startsWith('http') ? pdfUrl : backendBaseUrl + (pdfUrl.startsWith('/') ? pdfUrl : '/' + pdfUrl);
-      
-  
+      let finalUrl = getFileUrl(pdfUrl);
       window.open(finalUrl, "_blank");
     }
   } catch (err) {

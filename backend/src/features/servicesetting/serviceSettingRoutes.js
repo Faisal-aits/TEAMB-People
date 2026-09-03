@@ -11,19 +11,31 @@ router.use(verifyToken);
 const canReadBillingSettings = requireModuleAccess('billing_settings', 'read');
 const canWriteBillingSettings = requireModuleAccess('billing_settings', 'write');
 
-const validateSmtpConfig = (data, requirePassword = false) => {
+const validateSmtpConfig = (data, current = null) => {
   const errors = [];
-  const port = Number(data.port);
+  const provider = data.provider || 'outlook_graph';
 
-  if (!String(data.host || '').trim()) errors.push('SMTP Host is required');
-  if (!Number.isInteger(port) || port < 1 || port > 65535) errors.push('SMTP Port must be between 1 and 65535');
-  if (!String(data.username || '').trim()) errors.push('SMTP Username is required');
-  if (requirePassword && !String(data.password || '').trim()) errors.push('SMTP Password is required');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(data.from_email || '').trim())) {
-    errors.push('From Email must be valid');
+    errors.push('From / Sender Email must be a valid email address');
   }
-  if (!String(data.from_name || '').trim()) errors.push('From Name is required');
-  if (!['none', 'tls', 'ssl'].includes(data.encryption)) errors.push('Encryption type must be None, TLS, or SSL');
+  if (!String(data.from_name || '').trim()) {
+    errors.push('From Name is required');
+  }
+
+  if (provider === 'outlook_graph') {
+    if (!String(data.azure_tenant_id || '').trim()) errors.push('Azure Directory (tenant) ID is required');
+    if (!String(data.azure_client_id || '').trim()) errors.push('Azure Application (client) ID is required');
+    if (!current?.has_azure_client_secret && !String(data.azure_client_secret || '').trim()) {
+      errors.push('Azure Client Secret is required');
+    }
+  } else {
+    const port = Number(data.port);
+    if (!String(data.host || '').trim()) errors.push('SMTP Host is required');
+    if (!Number.isInteger(port) || port < 1 || port > 65535) errors.push('SMTP Port must be between 1 and 65535');
+    if (!String(data.username || '').trim()) errors.push('SMTP Username is required');
+    if (!current?.has_password && !String(data.password || '').trim()) errors.push('SMTP Password is required');
+    if (!['none', 'tls', 'ssl'].includes(data.encryption)) errors.push('Encryption type must be None, TLS, or SSL');
+  }
 
   return errors;
 };
@@ -93,7 +105,7 @@ router.get('/smtp', canReadBillingSettings, async (req, res) => {
 router.put('/smtp', canWriteBillingSettings, async (req, res) => {
   try {
     const current = await ServiceSetting.getSmtpConfig(req.tenantId);
-    const errors = validateSmtpConfig(req.body, !current?.has_password);
+    const errors = validateSmtpConfig(req.body, current);
     if (errors.length > 0) {
       return res.status(400).json({ success: false, message: errors.join(', ') });
     }

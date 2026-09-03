@@ -41,7 +41,15 @@ const AddExpenseModal = ({ isOpen, onClose, onExpenseAdded }) => {
   const loadCategories = async () => {
     try {
       const response = await expenseAPI.getCategories();
-      setCategories(response.data.categories);
+      const catList = response.data?.categories || [];
+      setCategories(catList);
+      const defaultCat = catList.find(c => String(c.name || '').trim().toLowerCase() === 'food') || catList[0];
+      if (defaultCat) {
+        setFormData(prev => ({
+          ...prev,
+          category_id: prev.category_id || defaultCat.id
+        }));
+      }
     } catch (error) {
       console.error('Error loading categories:', error);
     }

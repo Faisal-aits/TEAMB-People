@@ -260,7 +260,9 @@ const AdminLayout = () => {
               {sidebarOpen ? (
                 <img src={worklyLogo} alt="Workly Logo" className="company-logo-sidebar" style={{ maxHeight: '40px', maxWidth: '100%', transform: 'scale(2.5)' }} />
               ) : (
-                <img src={worklyShortLogo} alt="W Logo" style={{ maxHeight: '52px', maxWidth: '52px', objectFit: 'contain', transform: 'scale(1.4)' }} />
+                <div style={{ background: '#ffffff', borderRadius: '8px', padding: '4px 8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <img src={worklyShortLogo} alt="TEAM B People Logo" style={{ maxHeight: '28px', maxWidth: '44px', objectFit: 'contain' }} />
+                </div>
               )}
             </div>
           </div>

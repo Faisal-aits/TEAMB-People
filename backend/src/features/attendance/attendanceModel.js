@@ -826,7 +826,235 @@ getByEmployeeAndDate: async (tenantId, employeeId, date) => {
             }
         },
 
-        markHalfDay: async (tenantId, { date, employeeId, markAll, reason, adminUserId }) => {
+        
+    changeAttendanceStatus: async (tenantId, { date, employeeId, markAll, status = 'Present', checkInTime, checkOutTime, reason, adminUserId }) => {
+        const connection = await pool.getConnection();
+        try {
+            await connection.beginTransaction();
+
+            let targetEmployeeIds = [];
+            const isBulkAll = Boolean(markAll || employeeId === 'all' || !employeeId);
+
+            if (isBulkAll) {
+                const [empRows] = await connection.execute(
+                    `SELECT id FROM employee_details 
+                     WHERE tenant_id = ? AND status = 'active'`,
+                    [tenantId]
+                );
+                targetEmployeeIds = empRows.map(r => r.id);
+            } else {
+                const [empRows] = await connection.execute(
+                    `SELECT id FROM employee_details 
+                     WHERE tenant_id = ? AND (id = ? OR employee_id = ?)`,
+                    [tenantId, employeeId, employeeId]
+                );
+                if (empRows.length > 0) {
+                    targetEmployeeIds = [empRows[0].id];
+                } else {
+                    targetEmployeeIds = [employeeId];
+                }
+            }
+
+            if (targetEmployeeIds.length === 0) {
+                await connection.rollback();
+                return { count: 0, message: isBulkAll ? 'No active employees found' : 'Employee not found' };
+            }
+
+            let approverEmpId = null;
+            if (adminUserId) {
+                const [appRows] = await connection.execute(
+                    `SELECT id FROM employee_details WHERE tenant_id = ? AND employee_id = ?`,
+                    [tenantId, adminUserId]
+                );
+                if (appRows.length > 0) {
+                    approverEmpId = appRows[0].id;
+                }
+            }
+
+            let updatedCount = 0;
+            let insertedCount = 0;
+            
+            const rawStatus = String(status || 'Present').trim().toLowerCase();
+            let finalStatus = 'Present';
+            let finalLeaveType = null;
+            let isHalfDay = 0;
+            let isLate = 0;
+            let workedHours = 9.0;
+            
+                        const formatTime = (t, def) => {
+                let timeStr = t || def;
+                if (!timeStr) return null;
+                
+                let hour = 0, minute = 0, second = 0;
+                const ampmMatch = timeStr.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+                if (ampmMatch) {
+                    hour = parseInt(ampmMatch[1], 10);
+                    minute = parseInt(ampmMatch[2], 10);
+                    if (ampmMatch[3]) {
+                        const ampm = ampmMatch[3].toUpperCase();
+                        if (ampm === 'PM' && hour < 12) hour += 12;
+                        if (ampm === 'AM' && hour === 12) hour = 0;
+                    }
+                }
+                const hh = String(hour).padStart(2, '0');
+                const mm = String(minute).padStart(2, '0');
+                return `${date} ${hh}:${mm}:00`;
+            };
+
+            let checkIn = checkInTime ? formatTime(checkInTime) : formatTime('09:30:00');
+            let checkOut = checkOutTime ? formatTime(checkOutTime) : formatTime('18:30:00');
+
+                        if (rawStatus === 'half day' || rawStatus === 'half-day') {
+                finalStatus = 'Half Day';
+                isHalfDay = 1;
+                workedHours = 4.0;
+                if (!checkOutTime) checkOut = formatTime('13:30:00');
+            } else if (rawStatus === 'delayed' || rawStatus === 'late') {
+                finalStatus = 'Delayed';
+                isLate = 1;
+                workedHours = 8.0;
+                if (!checkInTime) checkIn = formatTime('10:30:00');
+            } else if (rawStatus === 'absent') {
+                finalStatus = 'Absent';
+                workedHours = 0.0;
+                checkIn = null;
+                checkOut = null;
+            } else if (rawStatus === 'leave_pl') {
+                finalStatus = 'On Leave';
+                finalLeaveType = 'PL';
+                workedHours = 0.0;
+                checkIn = null;
+                checkOut = null;
+            } else if (rawStatus === 'leave_psl') {
+                finalStatus = 'On Leave';
+                finalLeaveType = 'PSL';
+                workedHours = 0.0;
+                checkIn = null;
+                checkOut = null;
+            } else if (rawStatus === 'on leave' || rawStatus === 'leave') {
+                finalStatus = 'On Leave';
+                workedHours = 0.0;
+                checkIn = null;
+                checkOut = null;
+            }
+            
+            const remarks = reason || `Marked ${finalStatus} by Admin`;
+
+            for (const empId of targetEmployeeIds) {
+                // --- NEW LEAVE BALANCE CHECK ---
+                if (finalLeaveType) {
+                    const year = date.split('-')[0];
+                    const [balanceRows] = await connection.execute(
+                        `SELECT allocated, used, pending FROM leave_balances 
+                         WHERE tenant_id = ? AND employee_id = ? AND year = ? AND leave_type = ?`,
+                        [tenantId, empId, year, finalLeaveType]
+                    );
+                    if (balanceRows.length === 0) {
+                        throw new Error(`Employee ID ${empId} does not have any ${finalLeaveType} balance initialized.`);
+                    }
+                    const b = balanceRows[0];
+                    const remaining = b.allocated - b.used;
+                    if (remaining < 1) {
+                        throw new Error(`Employee ID ${empId} does not have enough ${finalLeaveType} balance (Remaining: ${remaining}).`);
+                    }
+
+                    // -- NEW: APPROVE OVERLAPPING PENDING LEAVE REQUEST --
+                    const [pendingReqs] = await connection.execute(
+                        `SELECT leave_id FROM leave_requests WHERE tenant_id = ? AND employee_id = ? AND status = 'Pending' AND leave_type = ? AND start_date = ? AND end_date = ?`,
+                        [tenantId, empId, finalLeaveType, date, date]
+                    );
+                    if (pendingReqs.length > 0) {
+                        await connection.execute(
+                            `UPDATE leave_requests SET status = 'Approved', approved_by = ?, approved_at = NOW() WHERE leave_id = ?`,
+                            [approverEmpId, pendingReqs[0].leave_id]
+                        );
+                        // Decrease pending by 1 since it's approved. 
+                        // (The +1 to used will happen normally in the loop below)
+                        await connection.execute(
+                            `UPDATE leave_balances SET pending = GREATEST(0, pending - 1) WHERE tenant_id = ? AND employee_id = ? AND year = ? AND leave_type = ?`,
+                            [tenantId, empId, year, finalLeaveType]
+                        );
+                    }
+                }
+                
+                const [existing] = await connection.execute(
+                    `SELECT attendance_id, status, leave_type FROM tb_attendance WHERE (tenant_id = ? OR tenant_id IS NULL) AND employee_id = ? AND date = ?`,
+                    [tenantId, empId, date]
+                );
+
+                let prevLeaveType = null;
+                if (existing.length > 0) {
+                    prevLeaveType = existing[0].leave_type;
+                }
+
+                // --- LEAVE BALANCE ADJUSTMENT ---
+                if (finalLeaveType !== prevLeaveType) {
+                    const year = date.split('-')[0];
+                    if (finalLeaveType) {
+                        await connection.execute(
+                            `UPDATE leave_balances SET used = used + 1 WHERE tenant_id = ? AND employee_id = ? AND year = ? AND leave_type = ?`,
+                            [tenantId, empId, year, finalLeaveType]
+                        );
+                        const [existingReqs] = await connection.execute(
+                            `SELECT leave_id FROM leave_requests WHERE tenant_id = ? AND employee_id = ? AND leave_type = ? AND start_date <= ? AND end_date >= ? AND status = 'Approved'`,
+                            [tenantId, empId, finalLeaveType, date, date]
+                        );
+                        if (existingReqs.length === 0) {
+                            await connection.execute(
+                                `INSERT INTO leave_requests (tenant_id, employee_id, leave_type, is_paid, description, start_date, end_date, status, approved_by, approved_at, created_at, updated_at)
+                                 VALUES (?, ?, ?, 1, 'Marked On Leave by Admin from Attendance', ?, ?, 'Approved', ?, NOW(), NOW(), NOW())`,
+                                [tenantId, empId, finalLeaveType, date, date, approverEmpId]
+                            );
+                        }
+                    }
+                    if (prevLeaveType) {
+                        await connection.execute(
+                            `UPDATE leave_balances SET used = GREATEST(0, used - 1) WHERE tenant_id = ? AND employee_id = ? AND year = ? AND leave_type = ?`,
+                            [tenantId, empId, year, prevLeaveType]
+                        );
+                        await connection.execute(
+                            `DELETE FROM leave_requests WHERE tenant_id = ? AND employee_id = ? AND leave_type = ? AND start_date = ? AND end_date = ? AND status = 'Approved'`,
+                            [tenantId, empId, prevLeaveType, date, date]
+                        );
+                    }
+                }
+
+                if (existing.length > 0) {
+                    await connection.execute(
+                        `UPDATE tb_attendance 
+                         SET status = ?, is_half_day = ?, is_late = ?, worked_hours = ?, 
+                             check_in = ?, check_out = ?, remarks = ?, approved_by = ?, leave_type = ?, updated_at = NOW()
+                         WHERE attendance_id = ?`,
+                        [finalStatus, isHalfDay, isLate, workedHours, checkIn, checkOut, remarks, approverEmpId, finalLeaveType, existing[0].attendance_id]
+                    );
+                    updatedCount++;
+                                    } else {
+                    const shift = await getEmployeeShiftForDateHelper(connection, tenantId, empId, date);
+                    const shiftId = shift ? shift.shift_id : 1;
+
+                    await connection.execute(
+                        `INSERT INTO tb_attendance 
+                         (tenant_id, employee_id, shift_id, date, status, is_half_day, is_late, worked_hours, 
+                          check_in, check_out, remarks, approved_by, leave_type, created_at, updated_at) 
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+                        [tenantId, empId, shiftId, date, finalStatus, isHalfDay, isLate, workedHours, checkIn, checkOut, remarks, approverEmpId, finalLeaveType]
+                    );
+                    insertedCount++;
+                }
+            }
+
+            await connection.commit();
+            return { count: updatedCount + insertedCount, message: `Successfully updated attendance for ${updatedCount + insertedCount} employee(s)` };
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
+        }
+    },
+
+
+    markHalfDay: async (tenantId, { date, employeeId, markAll, reason, adminUserId }) => {
             const connection = await pool.getConnection();
             try {
                 await connection.beginTransaction();

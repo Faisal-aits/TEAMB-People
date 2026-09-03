@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { companyDocumentAPI } from '../../services/companyDocumentAPI';
+import { getFileUrl } from '../../services/api';
 import { HiOutlineDocumentText, HiOutlineLink, HiOutlineTrash, HiOutlinePlus, HiOutlineDownload, HiOutlineExternalLink, HiOutlineSearch } from 'react-icons/hi';
 import './CompanyDocuments.css';
 
@@ -127,10 +128,7 @@ const CompanyDocuments = () => {
   };
 
   const getFullUrl = (path) => {
-    if (!path) return '#';
-    if (path.startsWith('http')) return path;
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-    return `${baseUrl}/${path}`;
+    return getFileUrl(path);
   };
 
   const filteredDocs = documents.filter(doc => 

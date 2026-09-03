@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FaExclamationTriangle, FaCamera, FaCheckCircle, FaSync, FaFileExport, FaPrint, FaClock } from 'react-icons/fa';
+import { FaExclamationTriangle, FaCamera, FaCheckCircle, FaSync, FaFileExport, FaPrint, FaClock, FaUserClock } from 'react-icons/fa';
 import { attendanceAPI } from '../../../services/attendanceAPI';
 import { employeeAPI } from '../../../services/employeeAPI';
 import { leaveAPI } from '../../../services/leaveAPI';
@@ -10,6 +10,15 @@ import '../../../styles/tableControls.css';
 
 const ATTENDANCE_SEARCH_FIELDS = ['name', 'department', 'position', 'email', 'employee_id', 'user_id'];
 
+const getTodayIST = () => {
+  return new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }).split(' ')[0];
+};
+
+const getMonthStartIST = () => {
+  const today = getTodayIST();
+  return `${today.substring(0, 7)}-01`;
+};
+
 const AttendanceManagement = () => {
   const [attendanceData, setAttendanceData] = useState([]);
   const [attendanceHistory, setAttendanceHistory] = useState([]);
@@ -18,17 +27,20 @@ const AttendanceManagement = () => {
   const [error, setError] = useState(null);
   const [autoMarkStatus, setAutoMarkStatus] = useState(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-  const [isHalfDayModalOpen, setIsHalfDayModalOpen] = useState(false);
-  const [halfDayLoading, setHalfDayLoading] = useState(false);
-  const [halfDayForm, setHalfDayForm] = useState({
-    date: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }).split(' ')[0],
+  const [isChangeAttendanceModalOpen, setIsChangeAttendanceModalOpen] = useState(false);
+  const [changeAttendanceLoading, setChangeAttendanceLoading] = useState(false);
+  const [changeAttendanceForm, setChangeAttendanceForm] = useState({
+    date: getTodayIST(),
     employee_id: 'all',
+    status: 'Present',
+    check_in_time: '',
+    check_out_time: '',
     reason: ''
   });
   const [reportData, setReportData] = useState([]);
   const [reportFilters, setReportFilters] = useState({
-    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
+    startDate: getMonthStartIST(),
+    endDate: getTodayIST(),
     department: '',
     status: ''
   });
@@ -46,10 +58,6 @@ const AttendanceManagement = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'present', 'absent', 'delayed'
-
-   const getTodayIST = () => {
-    return new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }).split(' ')[0];
-  };
 
   const getYesterdayIST = () => {
     const today = getTodayIST();
@@ -92,34 +100,44 @@ const AttendanceManagement = () => {
     setCurrentPage(1);
   };
 
-  const handleMarkHalfDaySubmit = async (e) => {
+  const handleChangeAttendanceSubmit = async (e) => {
     e.preventDefault();
-    if (!halfDayForm.date) {
+    if (!changeAttendanceForm.date) {
       alert('Please select a date');
       return;
     }
     try {
-      setHalfDayLoading(true);
+      setChangeAttendanceLoading(true);
       const payload = {
-        date: halfDayForm.date,
-        employee_id: halfDayForm.employee_id,
-        mark_all: halfDayForm.employee_id === 'all',
-        reason: halfDayForm.reason
+        date: changeAttendanceForm.date,
+        employee_id: changeAttendanceForm.employee_id,
+        mark_all: changeAttendanceForm.employee_id === 'all',
+        status: changeAttendanceForm.status,
+        check_in_time: changeAttendanceForm.check_in_time,
+        check_out_time: changeAttendanceForm.check_out_time,
+        reason: changeAttendanceForm.reason
       };
-      const response = await attendanceAPI.markHalfDay(payload);
+      const response = await attendanceAPI.changeStatus(payload);
       if (response.data?.success) {
-        alert(response.data.message || 'Half day marked successfully');
-        setIsHalfDayModalOpen(false);
-        setHalfDayForm({ date: getTodayIST(), employee_id: 'all', reason: '' });
+        alert(response.data.message || 'Attendance status updated successfully');
+        setIsChangeAttendanceModalOpen(false);
+        setChangeAttendanceForm({
+          date: getTodayIST(),
+          employee_id: 'all',
+          status: 'Present',
+          check_in_time: '09:30 AM',
+          check_out_time: '06:30 PM',
+          reason: ''
+        });
         await handleRefresh();
       } else {
-        alert(response.data?.message || 'Failed to mark half day');
+        alert(response.data?.message || 'Failed to update attendance');
       }
     } catch (err) {
-      console.error('Mark half day error:', err);
-      alert(err.response?.data?.message || 'Failed to mark half day');
+      console.error('Change attendance error:', err);
+      alert(err.response?.data?.message || 'Failed to update attendance');
     } finally {
-      setHalfDayLoading(false);
+      setChangeAttendanceLoading(false);
     }
   };
 
@@ -634,10 +652,47 @@ const getUserAttendance = (user) => {
           }
         });
 
-        const getLeaveCode = (leave) => {
-          const leaveType = String(leave?.leave_type || '').trim().toLowerCase();
-          if (leaveType === 'casual' || leaveType === 'sick') return 'PSL';
-          if (leaveType === 'unpaid') return 'UL';
+        const getLeaveCode = (leave, attendance) => {
+          const leaveType = String(
+            leave?.leave_type ||
+            leave?.type ||
+            attendance?.leave_type ||
+            attendance?.remarks ||
+            attendance?.description ||
+            ''
+          ).trim().toLowerCase();
+
+          if (
+            leaveType === 'psl' ||
+            leaveType.includes('sick') ||
+            leaveType.includes('casual') ||
+            leaveType.includes('paid sick')
+          ) {
+            return 'PSL';
+          }
+
+          if (
+            leaveType === 'ul' ||
+            leaveType === 'lwp' ||
+            leaveType.includes('unpaid') ||
+            leaveType.includes('without pay')
+          ) {
+            return 'UL';
+          }
+
+          if (leaveType === 'spl' || leaveType.includes('special')) {
+            return 'SPL';
+          }
+
+          if (
+            leaveType === 'pl' ||
+            leaveType.includes('privilege') ||
+            leaveType.includes('annual') ||
+            leaveType.includes('paid')
+          ) {
+            return 'PL';
+          }
+
           return 'PL';
         };
 
@@ -702,7 +757,7 @@ const getUserAttendance = (user) => {
                 return;
               }
               if (status === 'on leave' || status === 'leave') {
-                const leaveCode = getLeaveCode(leave);
+                const leaveCode = getLeaveCode(leave, attendance);
                 row[header] = leaveCode;
                 if (leaveCode === 'PSL') casualLeaveDays += 1;
                 else if (leaveCode === 'UL') lwpDays += 1;
@@ -713,7 +768,7 @@ const getUserAttendance = (user) => {
             }
 
             if (leave) {
-              const leaveCode = getLeaveCode(leave);
+              const leaveCode = getLeaveCode(leave, attendance);
               row[header] = leaveCode;
               if (leaveCode === 'PSL') casualLeaveDays += 1;
               else if (leaveCode === 'UL') lwpDays += 1;
@@ -1033,10 +1088,10 @@ const getUserAttendance = (user) => {
         <div className="attendance-header-actions">
           <button
             type="button"
-            className="attendance-action-btn mark-halfday-btn"
-            onClick={() => setIsHalfDayModalOpen(true)}
+            className="attendance-action-btn change-attendance-btn"
+            onClick={() => setIsChangeAttendanceModalOpen(true)}
           >
-            <FaClock /> Mark Half Day
+            <FaUserClock /> Change Attendance
           </button>
           <button
             type="button"
@@ -1282,91 +1337,159 @@ const getUserAttendance = (user) => {
         </div>
       )}
 
-      {/* Mark Half Day Modal */}
-      {isHalfDayModalOpen && (
+      {/* Change Attendance Modal */}
+      {isChangeAttendanceModalOpen && (
         <div className="attendance-modal-overlay" style={{ zIndex: 9999 }}>
-          <div className="attendance-modal-content" style={{ maxWidth: '500px', width: '90%', padding: '24px', borderRadius: '12px', background: '#ffffff' }}>
+          <div className="attendance-modal-content" style={{ maxWidth: '540px', width: '90%', padding: '24px', borderRadius: '12px', background: '#ffffff', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
-              <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#1e293b', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <FaClock style={{ color: '#d97706' }} /> Mark Half Day
+              <h3 style={{ margin: 0, fontSize: '1.25rem', color: '#1e293b', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FaUserClock style={{ color: '#2563eb' }} /> Change Attendance Status
               </h3>
               <button
                 type="button"
                 className="attendance-close-btn"
-                onClick={() => setIsHalfDayModalOpen(false)}
+                onClick={() => setIsChangeAttendanceModalOpen(false)}
                 style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#64748b' }}
               >
                 &times;
               </button>
             </div>
 
-            <form onSubmit={handleMarkHalfDaySubmit}>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', fontSize: '0.88rem', color: '#334155' }}>
-                  Select Date <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <input
-                  type="date"
-                  value={halfDayForm.date}
-                  onChange={(e) => setHalfDayForm({ ...halfDayForm, date: e.target.value })}
-                  required
-                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', outline: 'none' }}
-                />
-                <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', display: 'block' }}>
-                  You can select present, past, or future dates.
-                </span>
+            <form onSubmit={handleChangeAttendanceSubmit}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', fontSize: '0.88rem', color: '#334155' }}>
+                    Select Date <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={changeAttendanceForm.date}
+                    onChange={(e) => setChangeAttendanceForm({ ...changeAttendanceForm, date: e.target.value })}
+                    required
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', outline: 'none' }}
+                  />
+                  <span style={{ fontSize: '0.73rem', color: '#64748b', marginTop: '4px', display: 'block' }}>
+                    Past, today, or future dates.
+                  </span>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', fontSize: '0.88rem', color: '#334155' }}>
+                    Select Employee <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <select
+                    value={changeAttendanceForm.employee_id}
+                    onChange={(e) => setChangeAttendanceForm({ ...changeAttendanceForm, employee_id: e.target.value })}
+                    required
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', outline: 'none', backgroundColor: '#ffffff' }}
+                  >
+                    <option value="all">-- All Active Employees --</option>
+                    {users.map((u) => {
+                      const empId = u.employee_id || u.id;
+                      const name = `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.name || `Employee #${empId}`;
+                      return (
+                        <option key={u.id || empId} value={empId}>
+                          {name} ({empId})
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <span style={{ fontSize: '0.73rem', color: '#64748b', marginTop: '4px', display: 'block' }}>
+                    Feed one-by-one or all.
+                  </span>
+                </div>
               </div>
 
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', fontSize: '0.88rem', color: '#334155' }}>
-                  Select Employee <span style={{ color: '#ef4444' }}>*</span>
+                  Attendance Status to Mark <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <select
-                  value={halfDayForm.employee_id}
-                  onChange={(e) => setHalfDayForm({ ...halfDayForm, employee_id: e.target.value })}
+                  value={changeAttendanceForm.status}
+                  onChange={(e) => {
+                    const newStatus = e.target.value;
+                    let newCheckIn = '';
+                    let newCheckOut = '';
+                    setChangeAttendanceForm({
+                      ...changeAttendanceForm,
+                      status: newStatus,
+                      check_in_time: newCheckIn,
+                      check_out_time: newCheckOut
+                    });
+                  }}
                   required
-                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', outline: 'none', backgroundColor: '#ffffff' }}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.92rem', outline: 'none', backgroundColor: '#ffffff', fontWeight: '600', color: '#1e293b' }}
                 >
-                  <option value="all">-- All Active Employees --</option>
-                  {users.map((u) => {
-                    const empId = u.employee_id || u.id;
-                    const name = `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.name || `Employee #${empId}`;
-                    return (
-                      <option key={u.id || empId} value={empId}>
-                        {name} ({empId})
-                      </option>
-                    );
-                  })}
+                  <option value="Present">🟢 Present (Full Day Paid)</option>
+                  <option value="Half Day">🟡 Half Day (0.5 Day Paid)</option>
+                  <option value="Delayed">🟠 Delayed / Late (Full Day Paid)</option>
+                  <option value="Absent">🔴 Absent (Unpaid / Deduction)</option>
+                  <option value="Leave_PL">🏖️ On Leave - PL (Paid Privilege Leave)</option>
+                  <option value="Leave_PSL">🤒 On Leave - PSL (Paid Sick Leave)</option>
                 </select>
               </div>
 
-              <div style={{ marginBottom: '24px' }}>
+              {['Present', 'Half Day', 'Delayed'].includes(changeAttendanceForm.status) && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', fontSize: '0.85rem', color: '#334155' }}>
+                      Check-In Time
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 09:30 AM"
+                      value={changeAttendanceForm.check_in_time}
+                      onChange={(e) => setChangeAttendanceForm({ ...changeAttendanceForm, check_in_time: e.target.value })}
+                      style={{ width: '100%', padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', outline: 'none' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', fontSize: '0.85rem', color: '#334155' }}>
+                      Check-Out Time
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 06:30 PM"
+                      value={changeAttendanceForm.check_out_time}
+                      onChange={(e) => setChangeAttendanceForm({ ...changeAttendanceForm, check_out_time: e.target.value })}
+                      style={{ width: '100%', padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', outline: 'none' }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div style={{ marginBottom: '18px' }}>
                 <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', fontSize: '0.88rem', color: '#334155' }}>
                   Reason / Notes (Optional)
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Approved Half Day Leave, Early Exit"
-                  value={halfDayForm.reason}
-                  onChange={(e) => setHalfDayForm({ ...halfDayForm, reason: e.target.value })}
+                  placeholder="e.g. Manual Attendance Entry, Approved Correction"
+                  value={changeAttendanceForm.reason}
+                  onChange={(e) => setChangeAttendanceForm({ ...changeAttendanceForm, reason: e.target.value })}
                   style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', outline: 'none' }}
                 />
+              </div>
+
+              {/* Salary Impact Info Banner */}
+              <div style={{ marginBottom: '20px', padding: '10px 14px', borderRadius: '8px', background: '#eff6ff', border: '1px solid #bfdbfe', fontSize: '0.8rem', color: '#1e40af' }}>
+                💡 <strong>Payroll Impact:</strong> This change updates the official attendance record in the database and will directly reflect in monthly salary calculations.
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
                 <button
                   type="button"
-                  onClick={() => setIsHalfDayModalOpen(false)}
+                  onClick={() => setIsChangeAttendanceModalOpen(false)}
                   style={{ padding: '9px 18px', border: '1px solid #cbd5e1', borderRadius: '8px', background: '#f8fafc', color: '#475569', fontWeight: '600', cursor: 'pointer' }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={halfDayLoading}
-                  style={{ padding: '9px 20px', border: 'none', borderRadius: '8px', background: '#d97706', color: '#ffffff', fontWeight: '600', cursor: halfDayLoading ? 'not-allowed' : 'pointer' }}
+                  disabled={changeAttendanceLoading}
+                  style={{ padding: '9px 22px', border: 'none', borderRadius: '8px', background: '#2563eb', color: '#ffffff', fontWeight: '600', cursor: changeAttendanceLoading ? 'not-allowed' : 'pointer' }}
                 >
-                  {halfDayLoading ? 'Saving...' : 'Mark Half Day'}
+                  {changeAttendanceLoading ? 'Updating Attendance...' : 'Update Attendance'}
                 </button>
               </div>
             </form>

@@ -4,7 +4,7 @@ const { pool } = require('../../config/db');
 const Leave = {
     // Default leave types setup
     DEFAULT_LEAVE_TYPES: [
-        { name: 'PL', max_days: 12, allocation_frequency: 'Quarterly', is_paid: 1 },
+        { name: 'PL', max_days: 3, allocation_frequency: 'Quarterly', is_paid: 1 },
         { name: 'PSL', max_days: 5, allocation_frequency: 'Yearly', is_paid: 1 }
     ],
 
@@ -26,6 +26,14 @@ const Leave = {
                         [tenantId, type.name, type.max_days, type.allocation_frequency, type.is_paid]
                     );
                 }
+            } else {
+                // If PL was previously initialized with 12 for Quarterly, update to 3 (3 per quarter)
+                await connection.execute(
+                    `UPDATE leave_types 
+                     SET max_days = 3 
+                     WHERE tenant_id = ? AND name = 'PL' AND allocation_frequency = 'Quarterly' AND max_days = 12`,
+                    [tenantId]
+                );
             }
         } catch (error) {
             console.error('Error initializing leave types:', error);
@@ -262,6 +270,62 @@ const Leave = {
     },
 
     // Get balances for an employee
+        getAllEmployeeBalances: async (tenantId, year) => {
+        try {
+            const [employees] = await pool.execute(
+                'SELECT id FROM employee_details WHERE tenant_id = ? AND status = ?',
+                [tenantId, 'active']
+            );
+            
+            const connection = await pool.getConnection();
+            try {
+                for (let emp of employees) {
+                    await Leave.initBalances(connection, tenantId, emp.id, year);
+                }
+            } finally {
+                connection.release();
+            }
+
+            const [rows] = await pool.execute(
+                `SELECT e.id as employee_id, u.first_name, u.last_name, e.employee_id as employee_code,
+                        lb.leave_type, lb.allocated, lb.used, lb.pending
+                 FROM employee_details e
+                 JOIN users u ON e.employee_id = u.id AND e.tenant_id = u.tenant_id
+                 JOIN leave_balances lb ON e.id = lb.employee_id AND lb.tenant_id = ? AND lb.year = ?
+                 WHERE e.tenant_id = ? AND e.status = 'active'
+                 ORDER BY u.first_name, u.last_name, lb.leave_type`,
+                [tenantId, year, tenantId]
+            );
+            return rows;
+        } catch (error) {
+            console.error('Error in Leave.getAllEmployeeBalances:', error);
+            throw error;
+        }
+    },
+
+    updateEmployeeBalances: async (tenantId, employeeId, year, balancesData) => {
+        const connection = await pool.getConnection();
+        try {
+            await connection.beginTransaction();
+            for (let b of balancesData) {
+                await connection.execute(
+                    `UPDATE leave_balances 
+                     SET pending = ?, allocated = ?, used = ?
+                     WHERE tenant_id = ? AND employee_id = ? AND year = ? AND leave_type = ?`,
+                    [b.pending, b.allocated, b.used, tenantId, employeeId, year, b.leave_type]
+                );
+            }
+            await connection.commit();
+            return true;
+        } catch (error) {
+            await connection.rollback();
+            console.error('Error in Leave.updateEmployeeBalances:', error);
+            throw error;
+        } finally {
+            connection.release();
+        }
+    },
+
     getBalances: async (tenantId, employeeId, year) => {
         try {
             const connection = await pool.getConnection();

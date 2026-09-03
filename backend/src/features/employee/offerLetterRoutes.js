@@ -19,4 +19,7 @@ router.get('/all', verifyToken, canReadOfferLetters, offerLetterController.getAl
 // HR: update letter status, and create employee when accepted
 router.put('/:id/status', verifyToken, canWriteOfferLetters, offerLetterController.updateOfferStatus);
 
+// HR: resend offer letter email
+router.post('/:id/resend', verifyToken, canWriteOfferLetters, offerLetterController.resendOfferLetter);
+
 module.exports = router;

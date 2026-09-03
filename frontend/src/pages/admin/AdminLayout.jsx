@@ -30,7 +30,6 @@ import AdminProfile from '../Settings/AdminProfile.jsx';
 import CompanySettings from '../Settings/CompanySettings.jsx';
 import CompanyDocuments from '../CompanyDocuments/CompanyDocuments.jsx';
 import LeavePolicy from '../Settings/LeavePolicy.jsx';
-import { HiOutlineWrenchScrewdriver } from 'react-icons/hi2';
 
 import NotificationBell from '../../components/NotificationBell.jsx';
 
@@ -107,9 +106,20 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab');
+    if (tabParam) return tabParam;
     if (initialTab) return initialTab;
     return localStorage.getItem("activeTab") || "dashboard";
   });
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tabParam = params.get('tab');
+    if (tabParam) {
+      setActiveTab(tabParam);
+    }
+  }, [location.search]);
   const [navigationState, setNavigationState] = useState(initialState);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [manageOpen, setManageOpen] = useState(false);
@@ -332,7 +342,7 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
             <ul>
               {/* Dashboard */}
               <li className={activeMainModule === 'dashboard' ? 'active' : ''}>
-                <button onMouseEnter={() => handleMainModuleHover('dashboard')} onClick={() => handleMainModuleClick('dashboard')} title="Dashboard">
+                <button onClick={() => handleMainModuleClick('dashboard')} title="Dashboard">
                   <span className="nav-icon"><DashboardIcon /></span>
                   <span className="nav-text">Dashboard</span>
                 </button>
@@ -341,7 +351,7 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
               {/* HR Module */}
               {canAccessHr && (
                 <li className={activeMainModule === 'hr' ? 'active' : ''}>
-                  <button onMouseEnter={() => handleMainModuleHover('hr')} onClick={() => handleMainModuleClick('hr')} title="HR Module">
+                  <button onClick={() => handleMainModuleClick('hr')} title="HR Module">
                     <span className="nav-icon"><BsFillPersonLinesFill /></span>
                     <span className="nav-text">HR Module</span>
                   </button>
@@ -350,7 +360,7 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
 
               {/* Tickets Module */}
               <li className={activeMainModule === 'tickets' ? 'active' : ''}>
-                <button onMouseEnter={() => handleMainModuleHover('tickets')} onClick={() => handleMainModuleClick('tickets')} title="Tickets Module">
+                <button onClick={() => handleMainModuleClick('tickets')} title="Tickets Module">
                   <span className="nav-icon"><TicketsIcon /></span>
                   <span className="nav-text">Tickets</span>
                 </button>
@@ -358,7 +368,7 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
 
               {/* Company Documents Module */}
               <li className={activeMainModule === 'company-documents' ? 'active' : ''}>
-                <button onMouseEnter={() => handleMainModuleHover('company-documents')} onClick={() => handleMainModuleClick('company-documents')} title="Company Documents">
+                <button onClick={() => handleMainModuleClick('company-documents')} title="Company Documents">
                   <span className="nav-icon"><FolderIcon /></span>
                   <span className="nav-text">Documents</span>
                 </button>
@@ -367,7 +377,7 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
               {/* Settings Dropdown - Admin only */}
               {isAdmin && (
                 <li className={activeMainModule === 'settings' ? 'active' : ''}>
-                  <button onMouseEnter={() => handleMainModuleHover('settings')} onClick={() => handleMainModuleClick('settings')} title="Settings">
+                  <button onClick={() => handleMainModuleClick('settings')} title="Settings">
                     <span className="nav-icon"><IoSettingsSharp /></span>
                     <span className="nav-text">Settings</span>
                   </button>
@@ -474,14 +484,12 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
                       </li>
                     <li className={activeTab === 'company-settings' ? 'active' : ''}>
                       <button onClick={() => navigateToTab('company-settings')}>
-                        <span className="app-icon"><HiOutlineWrenchScrewdriver /></span>
-                        Salary Format
+                        <span className="dropdown-text">Salary Format</span>
                       </button>
                     </li>
                     <li className={activeTab === 'leavepolicy' ? 'active' : ''}>
                       <button onClick={() => navigateToTab('leavepolicy')}>
-                        <span className="app-icon"><HiOutlineWrenchScrewdriver /></span>
-                        Leave Policy
+                        <span className="dropdown-text">Leave Policy</span>
                       </button>
                     </li>
                     <li className={activeTab === 'smtpconfig' ? 'active' : ''}>

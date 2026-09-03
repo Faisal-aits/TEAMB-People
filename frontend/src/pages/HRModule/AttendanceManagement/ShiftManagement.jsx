@@ -92,7 +92,8 @@ const ShiftManagement = () => {
                 check_out_time: newShift.check_out_time,
                 grace_period_minutes: newShift.grace_period_minutes || 15,
                 is_default: newShift.is_default || false,
-                employees: newShift.employees || []
+                employees: newShift.employees || [],
+                assignAllPermanently: newShift.assignAllPermanently || false
             };
             
             await shiftAPI.create(saveData);
@@ -180,7 +181,8 @@ const ShiftManagement = () => {
                 check_in_time: newShift.check_in_time,
                 check_out_time: newShift.check_out_time,
                 grace_period_minutes: newShift.grace_period_minutes || 15,
-                employees: newShift.employees || []
+                employees: newShift.employees || [],
+                assignAllPermanently: newShift.assignAllPermanently || false
             };
             
             await shiftAPI.update(selectedShift.shift_id, updateData);
@@ -442,6 +444,16 @@ const ShiftManagement = () => {
                     ))}
                   </select>
                   <small>Hold Ctrl/Cmd to select multiple employees. Employees will be assigned to this shift for today only.</small>
+                </div>
+                <div className="lm-form-field" style={{marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px', padding: '10px', background: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0'}}>
+                  <input
+                    type="checkbox"
+                    id="assignAllPermanently"
+                    checked={newShift.assignAllPermanently || false}
+                    onChange={(e) => setNewShift(prev => ({...prev, assignAllPermanently: e.target.checked}))}
+                    style={{width: 'auto', margin: 0}}
+                  />
+                  <label htmlFor="assignAllPermanently" style={{margin: 0, cursor: 'pointer', fontWeight: 600, color: '#334155'}}>Assign as DEFAULT shift to ALL active employees</label>
                 </div>
               </div>
 

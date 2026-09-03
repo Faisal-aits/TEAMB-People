@@ -49,7 +49,12 @@ const decryptSecret = (value) => {
 
 const toPublicSmtpConfig = (row) => {
   if (!row) return null;
+  const provider = row.mail_provider || (row.azure_client_id ? 'outlook_graph' : (row.smtp_host?.includes('gmail') ? 'gmail' : (row.smtp_host?.includes('office365') ? 'outlook_graph' : 'outlook_graph')));
   return {
+    provider,
+    azure_tenant_id: row.azure_tenant_id || '',
+    azure_client_id: row.azure_client_id || '',
+    has_azure_client_secret: Boolean(row.azure_client_secret),
     host: row.smtp_host || '',
     port: row.smtp_port || '',
     username: row.smtp_user || '',
@@ -64,6 +69,7 @@ const toPrivateSmtpConfig = (row) => {
   if (!row) return null;
   return {
     ...toPublicSmtpConfig(row),
+    azure_client_secret: decryptSecret(row.azure_client_secret),
     password: decryptSecret(row.smtp_password)
   };
 };
@@ -151,8 +157,13 @@ const ServiceSetting = {
     const existing = await getSetting(tenantId, SMTP_SETTING_TYPE);
     const encryption = data.encryption || 'tls';
     const smtpPort = Number(data.port);
+    const provider = data.provider || 'outlook_graph';
 
     await upsertSetting(tenantId, SMTP_SETTING_TYPE, {
+      mail_provider: provider,
+      azure_tenant_id: data.azure_tenant_id || null,
+      azure_client_id: data.azure_client_id || null,
+      azure_client_secret: data.azure_client_secret ? encryptSecret(data.azure_client_secret) : existing?.azure_client_secret || null,
       smtp_host: data.host || null,
       smtp_port: Number.isFinite(smtpPort) ? smtpPort : null,
       smtp_user: data.username || null,

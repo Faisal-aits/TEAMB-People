@@ -3,9 +3,9 @@ import { expenseAPI } from '../../services/expenseAPI';
 import './MasterSettings.css';
 
 const emptyExpenseCategory = {
-  name: '',
-  limit_amount: '',
-  description: ''
+  name: 'Food',
+  limit_amount: '2000',
+  description: 'Food & Meals reimbursement'
 };
 
 const ExpenseCategorySettings = () => {

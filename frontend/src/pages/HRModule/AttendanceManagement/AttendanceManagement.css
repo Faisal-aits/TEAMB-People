@@ -44,18 +44,21 @@
   box-shadow: 0 4px 12px rgba(109, 106, 184, 0.2);
 }
 
+.attendance-action-btn.change-attendance-btn,
 .attendance-action-btn.mark-halfday-btn {
-  background: #fffbebf5;
-  border: 1px solid #fcd34d;
-  color: #b45309;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  font-weight: 600;
 }
 
+.attendance-action-btn.change-attendance-btn:hover,
 .attendance-action-btn.mark-halfday-btn:hover {
-  background: #fef3c7;
-  color: #92400e;
-  border-color: #f59e0b;
+  background: #dbeafe;
+  color: #1e40af;
+  border-color: #93c5fd;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
 }
 
 /* Update table header to accommodate the new button */

@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { HiOutlineEye, HiOutlineTrash, HiArrowLeft, HiOutlineDownload } from 'react-icons/hi';
 import './Employee.css';
+import { API_BASE_URL, getFileUrl } from '../../../services/api';
 
 const SalarySlipRecord = () => {
   const location = useLocation();
@@ -15,7 +16,7 @@ const SalarySlipRecord = () => {
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState(null);
   const [pdfPreviewTitle, setPdfPreviewTitle] = useState('Salary Slip');
 
-  const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+  const API_URL = API_BASE_URL;
   const getAuthHeaders = () => ({
     Authorization: `Bearer ${localStorage.getItem('token')}`
   });
@@ -51,9 +52,7 @@ const SalarySlipRecord = () => {
   const handleView = (doc) => {
     let url = doc.file_url || doc.file_path || doc.url || doc.pdf_url;
     if (url) {
-      if (!url.startsWith('http')) {
-        url = `${API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
-      }
+      url = getFileUrl(url);
       setPdfPreviewTitle(doc.title || 'Salary Slip');
       setPdfPreviewUrl(url);
     } else {

@@ -341,10 +341,11 @@ const EmployeeAttendance = () => {
 
   // ==================== HELPER FUNCTIONS ====================
   const getStatusBadge = (status) => {
-    let displayStatus = status === 'Half Day' ? 'Delayed' : status;
+    let displayStatus = status;
     const statusClasses = {
       'Present': 'status-approved',
       'Delayed': 'status-pending',
+      'Half Day': 'status-pending',
       'Late': 'status-pending',
       'Absent': 'status-rejected',
       'Holiday': 'status-holiday',
@@ -564,10 +565,10 @@ const EmployeeAttendance = () => {
                         </div>
                       </td>
                       <td>
-                        <div className="time-cell">{record.checkIn}</div>
+                        <div className="time-cell">{record.status === 'Half Day' ? '' : record.checkIn}</div>
                       </td>
                       <td>
-                        <div className="time-cell">{record.checkOut}</div>
+                        <div className="time-cell">{record.status === 'Half Day' ? '' : record.checkOut}</div>
                       </td>
                       <td>{getStatusBadge(record.status)}</td>
                       <td>

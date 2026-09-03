@@ -31,6 +31,7 @@ export const TAB_TO_MODULE = {
   quotation: 'quotation_management',
   'employee-attendance': 'employee_attendance',
   'employee-break': 'employee_attendance',
+  'employee-holiday': 'employee_attendance',
   'employee-leave': 'employee_attendance',
   'employee-expense': 'employee_expense',
   'employee-projects': 'employee_projects',
@@ -64,6 +65,7 @@ export const MODULE_DEFAULT_TAB = {
   quotation_management: 'quotation',
   employee_attendance: 'employee-attendance',
   employee_break: 'employee-break',
+  employee_holiday: 'employee-holiday',
   employee_expense: 'employee-expense',
   employee_projects: 'employee-projects',
 };

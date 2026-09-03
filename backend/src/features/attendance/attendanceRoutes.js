@@ -56,6 +56,9 @@ router.post('/mark', requireModuleAccess('attendance_management', 'write'), atte
 // POST /api/attendance/mark-half-day - Mark half day for employee or all employees
 router.post('/mark-half-day', requireModuleAccess('attendance_management', 'write'), attendanceController.markHalfDay);
 
+// POST /api/attendance/change-status - Change attendance status (Present, Half Day, Delayed, Absent, On Leave)
+router.post('/change-status', requireModuleAccess('attendance_management', 'write'), attendanceController.changeAttendanceStatus);
+
 // ==================== EMPLOYEE-SPECIFIC ROUTES ====================
 
 // GET /api/attendance/my/today - Get current user's today attendance

@@ -47,11 +47,11 @@ const superAdminController = {
                     is_super_admin: true
                 },
                 process.env.JWT_SECRET,
-                { expiresIn: '24h' }
+                { expiresIn: '12h' }
             );
 
             res.cookie('auth_token', token, {
-                maxAge: 24 * 60 * 60 * 1000,
+                maxAge: 12 * 60 * 60 * 1000,
                 httpOnly: false,
                 sameSite: 'lax',
                 path: '/'
@@ -238,6 +238,20 @@ const superAdminController = {
                 [tenantId, finalAdminFirstName, finalAdminLastName, finalAdminEmail, passwordHash]
             );
 
+            // Create default BIM department for new tenant
+            await connection.execute(
+                `INSERT INTO departments (tenant_id, name, description) 
+                 VALUES (?, ?, ?)`,
+                [tenantId, 'BIM', 'Building Information Modeling']
+            );
+
+            // Create default Food reimbursement category for new tenant (limit 2000)
+            await connection.execute(
+                `INSERT INTO expense_categories (tenant_id, name, limit_amount, description) 
+                 VALUES (?, ?, ?, ?)`,
+                [tenantId, 'Food', 2000, 'Food & Meals reimbursement']
+            );
+
             await connection.commit();
 
 
@@ -312,25 +326,25 @@ const superAdminController = {
         }
     },
 
-    // Delete (Deactivate) Tenant
+    // Permanently Delete Tenant and all associated data
     deleteTenant: async (req, res) => {
         try {
-            const deleted = await Tenant.delete(req.params.id);
+            const deleted = await Tenant.hardDelete(req.params.id);
             if (!deleted) {
                 return res.status(404).json({ 
                     success: false,
-                    message: 'Tenant not found' 
+                    message: 'Organization not found' 
                 });
             }
             res.json({ 
                 success: true,
-                message: 'Tenant deactivated successfully' 
+                message: 'Organization and all associated data permanently deleted from database' 
             });
         } catch (error) {
-            console.error('Delete tenant error:', error);
+            console.error('Permanent delete tenant error:', error);
             res.status(500).json({ 
                 success: false,
-                message: 'Server error' 
+                message: 'Failed to permanently delete organization: ' + error.message 
             });
         }
     },

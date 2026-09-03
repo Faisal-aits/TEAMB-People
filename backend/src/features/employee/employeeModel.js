@@ -1,6 +1,7 @@
 // backend/src/features/employee/employeeModel.js
 const { query, pool } = require('../../config/db');
 const { calculatePayroll } = require('./employeePayroll');
+const Shift = require('../shift/shiftModel');
 
 const employeeDetailSelectColumns = `
           ed.department_id,
@@ -152,6 +153,10 @@ ${employeeDetailSelectColumns},
 
       const payroll = calculatePayroll(employeeData);
 
+      // Fetch default shift
+      const defaultShift = await Shift.getDefaultShift(tenantId);
+      const defaultShiftId = defaultShift ? defaultShift.shift_id : null;
+
       // Create employee details with tenant_id
       await connection.execute(
         `INSERT INTO employee_details 
@@ -161,8 +166,8 @@ ${employeeDetailSelectColumns},
          salary_total_deduction, salary_net, employer_pf, employer_esic,
          joining_date, last_working_date, date_of_birth, address, emergency_contact,
          bank_account_number, ifsc_code, pan_number, aadhar_number, status,
-         is_on_probation, probation_end_date, salary_after_probation, salary_during_probation)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         is_on_probation, probation_end_date, salary_after_probation, salary_during_probation, default_shift_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           employeeId,
           tenantId,
@@ -198,7 +203,8 @@ ${employeeDetailSelectColumns},
           employeeData.is_on_probation ? 1 : 0,
           employeeData.probation_end_date || null,
           employeeData.salary_after_probation || null,
-          employeeData.salary_during_probation || null
+          employeeData.salary_during_probation || null,
+          defaultShiftId
         ]
       );
 
@@ -260,10 +266,14 @@ ${employeeDetailSelectColumns},
           u.is_active,
           u.created_at,
 ${employeeDetailSelectColumns},
-          d.name as department_name
+          d.name as department_name,
+          s.shift_name,
+          s.check_in_time as shift_start,
+          s.check_out_time as shift_end
         FROM employee_details ed
         JOIN users u ON u.id = ed.employee_id AND u.tenant_id = ed.tenant_id
         LEFT JOIN departments d ON ed.department_id = d.id
+        LEFT JOIN tb_shifts s ON ed.default_shift_id = s.shift_id
         WHERE u.id = ? AND u.tenant_id = ?`,
         [userId, tenantId]
       );
@@ -516,6 +526,14 @@ ${employeeDetailSelectColumns},
   getDepartments: async (tenantId) => {
     try {
       const [rows] = await pool.execute('SELECT * FROM departments WHERE tenant_id = ? ORDER BY name', [tenantId]);
+      if (rows.length === 0) {
+        await pool.execute(
+          'INSERT INTO departments (tenant_id, name, description) VALUES (?, ?, ?)',
+          [tenantId, 'BIM', 'Building Information Modeling']
+        );
+        const [seededRows] = await pool.execute('SELECT * FROM departments WHERE tenant_id = ? ORDER BY name', [tenantId]);
+        return seededRows;
+      }
       return rows;
     } catch (error) {
       console.error('Error in Employee.getDepartments:', error);
@@ -652,6 +670,10 @@ ${employeeDetailSelectColumns},
     try {
       await connection.beginTransaction();
 
+      // Fetch default shift
+      const defaultShift = await Shift.getDefaultShift(tenantId);
+      const defaultShiftId = defaultShift ? defaultShift.shift_id : null;
+
       const [lastEmployee] = await connection.execute(
         `SELECT id FROM employee_details
          WHERE tenant_id = ? AND id LIKE 'AITS%'
@@ -752,7 +774,8 @@ ${employeeDetailSelectColumns},
           employee.is_on_probation ? 1 : 0,
           employee.probation_end_date || null,
           employee.salary_after_probation || null,
-          employee.salary_during_probation || null
+          employee.salary_during_probation || null,
+          defaultShiftId
         ];
       });
 
@@ -764,7 +787,7 @@ ${employeeDetailSelectColumns},
           salary_total_deduction, salary_net, employer_pf, employer_esic,
           joining_date, last_working_date, date_of_birth, address, emergency_contact,
           bank_account_number, ifsc_code, pan_number, aadhar_number, status,
-          is_on_probation, probation_end_date, salary_after_probation, salary_during_probation)
+          is_on_probation, probation_end_date, salary_after_probation, salary_during_probation, default_shift_id)
          VALUES ?`,
         [employeeDetailValues]
       );

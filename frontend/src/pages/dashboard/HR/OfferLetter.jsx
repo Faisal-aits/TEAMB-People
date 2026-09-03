@@ -319,16 +319,38 @@ const OfferLetter = () => {
 
     setIsGenerating(true);
     try {
-      await offerLetterAPI.save({
+      let pdfBase64 = null;
+      try {
+        pdfBase64 = await offerLetterPDFService.getBase64OfferLetter(formData);
+      } catch (pdfErr) {
+        console.warn("Could not generate PDF base64:", pdfErr);
+      }
+
+      const res = await offerLetterAPI.save({
         employee_id: selectedUserId,
         form_data: formData,
-        issue_date: formData.issueDate
+        issue_date: formData.issueDate,
+        pdf_base64: pdfBase64
       });
-      alert("Offer letter successfully saved to employee's dashboard!");
+      alert(res.data?.message || "Offer letter successfully saved to employee's dashboard!");
       fetchHistory(); // Refresh history
     } catch (err) {
       console.error("Error saving to database:", err);
-      alert("Failed to save. Please try again.");
+      const isSmtpMissing = err.response?.status === 428 ||
+        err.response?.data?.code === 'SMTP_NOT_CONFIGURED' ||
+        err.response?.data?.smtp_not_configured ||
+        err.response?.data?.message?.includes('SMTP_NOT_CONFIGURED');
+
+      if (isSmtpMissing) {
+        if (window.confirm("SMTP Email Setup Required: Your organization has not configured email (SMTP) settings yet. Would you like to go to Settings → SMTP Config now to set it up?")) {
+          localStorage.setItem("activeTab", "smtpconfig");
+          window.location.href = '/admin?tab=smtpconfig';
+        }
+        return;
+      }
+
+      const msg = err.response?.data?.message || err.message || "Failed to save. Please try again.";
+      alert(msg);
     } finally {
       setIsGenerating(false);
     }

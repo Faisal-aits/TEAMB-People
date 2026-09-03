@@ -226,7 +226,7 @@ const generatePage1HTML = ({
   const formattedIssueDate = formatDateWithOrdinal(dateOfIssue);
   const formattedEffectiveDate = formatDateWithOrdinal(effectiveDate);
   
-  const companyName = company?.name || "";
+  const companyName = (company?.name || "").trim();
   const companyAddress = company?.address || "Ahmednagar, Maharashtra, 414001";
   const companyPhone = company?.phone || "+918580788923";
   const hrName = hr?.name || "Imran Shaikh";
@@ -325,7 +325,7 @@ const generatePage2HTML = ({ revisedCtc, currency, company }) => {
   const safeRevisedCtc = Number(revisedCtc) || 540000;
   const comp = calculateCompensationStructure(safeRevisedCtc);
   
-  const companyName = company?.name || "";
+  const companyName = (company?.name || "").trim();
   const companyAddress = company?.address || "Ahmednagar, Maharashtra, 414001";
   const companyPhone = company?.phone || "+918580788923";
   

@@ -20,6 +20,110 @@ const splitFullName = (fullName) => {
   };
 };
 
+const MONTH_NAME_TO_NUMBER = {
+  jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
+  jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12',
+  january: '01', february: '02', march: '03', april: '04', june: '06',
+  july: '07', august: '08', september: '09', october: '10', november: '11', december: '12'
+};
+
+const normalizeDate = (value) => {
+  if (value === null || value === undefined) return '';
+
+  // 1. Native Date Object
+  if (value instanceof Date) {
+    if (isNaN(value.getTime())) return '';
+    const y = value.getFullYear();
+    const m = String(value.getMonth() + 1).padStart(2, '0');
+    const d = String(value.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  let str = String(value).trim();
+  if (!str || str === '-' || str === 'null' || str === 'undefined') return '';
+
+  // 2. Already YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    return str;
+  }
+
+  // 3. YYYY/MM/DD or YYYY.MM.DD
+  const ymdMatch = str.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+  if (ymdMatch) {
+    const y = ymdMatch[1];
+    const m = ymdMatch[2].padStart(2, '0');
+    const d = ymdMatch[3].padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  // 4. Day-Month-Year with Month Name (e.g. "23-May-2026", "23 May 2026", "01-Sep-2026")
+  const namedMonthMatch = str.match(/^(\d{1,2})[-/\s]([A-Za-z]+)[-/\s](\d{2,4})$/);
+  if (namedMonthMatch) {
+    const d = namedMonthMatch[1].padStart(2, '0');
+    const mon = namedMonthMatch[2].toLowerCase();
+    let y = namedMonthMatch[3];
+    if (y.length === 2) y = `20${y}`;
+    const m = MONTH_NAME_TO_NUMBER[mon];
+    if (m) return `${y}-${m}-${d}`;
+  }
+
+  // 5. Month-Day-Year with Month Name (e.g. "May 23, 2026", "Sep 1 2026")
+  const monFirstMatch = str.match(/^([A-Za-z]+)[-/\s](\d{1,2})[,\s]+(\d{2,4})$/);
+  if (monFirstMatch) {
+    const mon = monFirstMatch[1].toLowerCase();
+    const d = monFirstMatch[2].padStart(2, '0');
+    let y = monFirstMatch[3];
+    if (y.length === 2) y = `20${y}`;
+    const m = MONTH_NAME_TO_NUMBER[mon];
+    if (m) return `${y}-${m}-${d}`;
+  }
+
+  // 6. Day-Month-Year Numeric: DD-MM-YYYY, DD/MM/YYYY, DD.MM.YYYY, D-M-YYYY
+  const dmyMatch = str.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})$/);
+  if (dmyMatch) {
+    let dayNum = parseInt(dmyMatch[1], 10);
+    let monthNum = parseInt(dmyMatch[2], 10);
+    let y = dmyMatch[3];
+    if (y.length === 2) y = `20${y}`;
+
+    // If monthNum > 12 and dayNum <= 12, the input was MM-DD-YYYY
+    if (monthNum > 12 && dayNum <= 12) {
+      const temp = dayNum;
+      dayNum = monthNum;
+      monthNum = temp;
+    }
+
+    const d = String(dayNum).padStart(2, '0');
+    const m = String(monthNum).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  // 7. Excel Serial Number (e.g. 45234 or "45234.00")
+  if (/^\d{4,5}(\.\d+)?$/.test(str)) {
+    const num = parseFloat(str);
+    if (num > 1000 && num < 90000) {
+      const date = new Date(Math.round((num - 25569) * 86400 * 1000));
+      if (!isNaN(date.getTime())) {
+        const y = date.getUTCFullYear();
+        const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const d = String(date.getUTCDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      }
+    }
+  }
+
+  // 8. General Date parsing fallback
+  const parsed = new Date(str);
+  if (!isNaN(parsed.getTime())) {
+    const y = parsed.getFullYear();
+    const m = String(parsed.getMonth() + 1).padStart(2, '0');
+    const d = String(parsed.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  return str;
+};
+
 const isValidDate = (value) => {
   if (!value) return true;
   if (!dateRegex.test(value)) return false;
@@ -128,17 +232,17 @@ const validateEmployeeRows = (rows, departments, existingEmails, existingEmploye
       normalized[field] = value;
     });
 
-    normalized.joining_date = String(data.joining_date || '').trim();
+    normalized.joining_date = normalizeDate(data.joining_date);
     if (!isValidDate(normalized.joining_date)) {
       rowErrors.push('joining_date must use YYYY-MM-DD format');
     }
 
-    normalized.last_working_date = String(data.last_working_date || '').trim();
+    normalized.last_working_date = normalizeDate(data.last_working_date);
     if (!isValidDate(normalized.last_working_date)) {
       rowErrors.push('last_working_date must use YYYY-MM-DD format');
     }
 
-    normalized.date_of_birth = String(data.date_of_birth || '').trim();
+    normalized.date_of_birth = normalizeDate(data.date_of_birth);
     if (!isValidDate(normalized.date_of_birth)) {
       rowErrors.push('date_of_birth must use YYYY-MM-DD format');
     }
@@ -161,10 +265,17 @@ const validateEmployeeRows = (rows, departments, existingEmails, existingEmploye
     let departmentId = null;
     const uploadedDepartmentId = String(data.department_id || '').trim();
     const uploadedDepartment = String(data.department || '').trim();
-    if (uploadedDepartmentId) {
+    if (uploadedDepartmentId && uploadedDepartmentId !== '-') {
       departmentId = departmentById.get(uploadedDepartmentId) || null;
-    } else if (uploadedDepartment) {
+    } else if (uploadedDepartment && uploadedDepartment !== '-') {
       departmentId = departmentByName.get(uploadedDepartment.toLowerCase()) || null;
+    }
+
+    if (!departmentId && (uploadedDepartment.toLowerCase() === 'beam' || uploadedDepartment.toLowerCase() === 'bim' || !uploadedDepartment || uploadedDepartment === '-')) {
+      const defaultDept = departments.find(d => ['bim', 'beam'].includes(String(d.name || '').toLowerCase())) || departments[0];
+      if (defaultDept) {
+        departmentId = defaultDept.id;
+      }
     }
 
     if (!departmentId) {

@@ -31,8 +31,118 @@ const canonicalizeHeader = (header) => aliasToColumn.get(normalizeHeader(header)
 
 const sanitizeCell = (value) => {
   if (value === null || value === undefined) return '';
-  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  if (value instanceof Date) {
+    if (isNaN(value.getTime())) return '';
+    const y = value.getFullYear();
+    const m = String(value.getMonth() + 1).padStart(2, '0');
+    const d = String(value.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
   return String(value).trim();
+};
+
+const MONTH_NAME_TO_NUMBER = {
+  jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
+  jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12',
+  january: '01', february: '02', march: '03', april: '04', june: '06',
+  july: '07', august: '08', september: '09', october: '10', november: '11', december: '12'
+};
+
+const normalizeDate = (value) => {
+  if (value === null || value === undefined) return '';
+
+  // 1. Native Date Object
+  if (value instanceof Date) {
+    if (isNaN(value.getTime())) return '';
+    const y = value.getFullYear();
+    const m = String(value.getMonth() + 1).padStart(2, '0');
+    const d = String(value.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  let str = String(value).trim();
+  if (!str || str === '-' || str === 'null' || str === 'undefined') return '';
+
+  // 2. Already YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    return str;
+  }
+
+  // 3. YYYY/MM/DD or YYYY.MM.DD
+  const ymdMatch = str.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+  if (ymdMatch) {
+    const y = ymdMatch[1];
+    const m = ymdMatch[2].padStart(2, '0');
+    const d = ymdMatch[3].padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  // 4. Day-Month-Year with Month Name (e.g. "23-May-2026", "23 May 2026", "01-Sep-2026")
+  const namedMonthMatch = str.match(/^(\d{1,2})[-/\s]([A-Za-z]+)[-/\s](\d{2,4})$/);
+  if (namedMonthMatch) {
+    const d = namedMonthMatch[1].padStart(2, '0');
+    const mon = namedMonthMatch[2].toLowerCase();
+    let y = namedMonthMatch[3];
+    if (y.length === 2) y = `20${y}`;
+    const m = MONTH_NAME_TO_NUMBER[mon];
+    if (m) return `${y}-${m}-${d}`;
+  }
+
+  // 5. Month-Day-Year with Month Name (e.g. "May 23, 2026", "Sep 1 2026")
+  const monFirstMatch = str.match(/^([A-Za-z]+)[-/\s](\d{1,2})[,\s]+(\d{2,4})$/);
+  if (monFirstMatch) {
+    const mon = monFirstMatch[1].toLowerCase();
+    const d = monFirstMatch[2].padStart(2, '0');
+    let y = monFirstMatch[3];
+    if (y.length === 2) y = `20${y}`;
+    const m = MONTH_NAME_TO_NUMBER[mon];
+    if (m) return `${y}-${m}-${d}`;
+  }
+
+  // 6. Day-Month-Year Numeric: DD-MM-YYYY, DD/MM/YYYY, DD.MM.YYYY, D-M-YYYY
+  const dmyMatch = str.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})$/);
+  if (dmyMatch) {
+    let dayNum = parseInt(dmyMatch[1], 10);
+    let monthNum = parseInt(dmyMatch[2], 10);
+    let y = dmyMatch[3];
+    if (y.length === 2) y = `20${y}`;
+
+    // If monthNum > 12 and dayNum <= 12, the input was MM-DD-YYYY
+    if (monthNum > 12 && dayNum <= 12) {
+      const temp = dayNum;
+      dayNum = monthNum;
+      monthNum = temp;
+    }
+
+    const d = String(dayNum).padStart(2, '0');
+    const m = String(monthNum).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  // 7. Excel Serial Number (e.g. 45234 or "45234.00")
+  if (/^\d{4,5}(\.\d+)?$/.test(str)) {
+    const num = parseFloat(str);
+    if (num > 1000 && num < 90000) {
+      const date = new Date(Math.round((num - 25569) * 86400 * 1000));
+      if (!isNaN(date.getTime())) {
+        const y = date.getUTCFullYear();
+        const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const d = String(date.getUTCDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      }
+    }
+  }
+
+  // 8. General Date parsing fallback
+  const parsed = new Date(str);
+  if (!isNaN(parsed.getTime())) {
+    const y = parsed.getFullYear();
+    const m = String(parsed.getMonth() + 1).padStart(2, '0');
+    const d = String(parsed.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  return str;
 };
 
 const parseCsvText = (text) => {
@@ -112,6 +222,18 @@ const rowsFromGrid = (gridRows) => {
         if (!canonical) return;
         data[canonical] = sanitizeCell(cells[headerCellIndex]);
       });
+
+      // Default department to BIM (or BEAM) if missing, empty or '-'
+      const dept = String(data.department || '').trim().toLowerCase();
+      if (!dept || dept === '-' || dept === 'beam' || dept === 'bim') {
+        data.department = 'BIM';
+      }
+
+      // Automatically normalize date formats to YYYY-MM-DD
+      if (data.joining_date) data.joining_date = normalizeDate(data.joining_date);
+      if (data.last_working_date) data.last_working_date = normalizeDate(data.last_working_date);
+      if (data.date_of_birth) data.date_of_birth = normalizeDate(data.date_of_birth);
+
       return { rowNumber: headerIndex + index + 2, data };
     })
     .filter((row) => Object.values(row.data).some((value) => String(value || '').trim() !== ''));
@@ -165,7 +287,14 @@ const validatePreviewRows = (rows) => {
       }
     });
 
+    if (!data.department || data.department === '-' || ['beam', 'bim'].includes(String(data.department).trim().toLowerCase())) {
+      data.department = 'BIM';
+    }
+
     ['joining_date', 'last_working_date', 'date_of_birth'].forEach((field) => {
+      if (data[field]) {
+        data[field] = normalizeDate(data[field]);
+      }
       const value = String(data[field] || '').trim();
       if (value && !dateRegex.test(value)) rowErrors.push(`${field} must use YYYY-MM-DD`);
     });
@@ -306,9 +435,9 @@ const BulkUploadModal = ({ isOpen, onClose, onUploadComplete }) => {
     const sampleRow = BULK_UPLOAD_COLUMNS.map((column) => BULK_UPLOAD_SAMPLE_ROW[column.key] ?? '');
     const instructionRows = [
       ['Use the Employees sheet for upload data.'],
-      ['Do not remove required columns (Emp Id, First Name, Last Name, Email, Department, Designation, Employment Type, Joining Date, Salary During Probation, Salary After Probation).'],
-      ['Dates must use YYYY-MM-DD format (e.g. 2026-05-23).'],
-      ['Create departments in the system first, or use a valid Department ID.'],
+      ['Required columns: Emp Id, First Name, Last Name, Email, Designation, Employment Type, Joining Date.'],
+      ['Department defaults to BIM (or BEAM) if left blank.'],
+      ['Dates can use YYYY-MM-DD (e.g. 2026-05-23), DD-MM-YYYY, or standard Excel date format.'],
       ['Salary During Probation = employee basic (in-hand) salary during probation.'],
       ['Salary After Probation = employee basic (in-hand) salary after probation.'],
       ['All salary allowances (HRA, Medical, Travel, Other) and Probation Months are optional.'],

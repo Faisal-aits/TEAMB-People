@@ -12,6 +12,9 @@ export const offerLetterAPI = {
 
   // HR: Update offer letter status
   updateStatus: (id, data) => api.put(`/offer-letters/${id}/status`, data),
+
+  // HR: Resend offer letter email
+  resendEmail: (id, data) => api.post(`/offer-letters/${id}/resend`, data),
 };
 
 export default offerLetterAPI;

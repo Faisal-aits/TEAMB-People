@@ -165,11 +165,11 @@ const authController = {
             tenant_id: tenant.id
           },
           process.env.JWT_SECRET,
-          { expiresIn: '24h' }
+          { expiresIn: '12h' }
         );
 
         res.cookie('auth_token', token, {
-          maxAge: 24 * 60 * 60 * 1000,
+          maxAge: 12 * 60 * 60 * 1000,
           httpOnly: false,
           sameSite: 'lax',
           path: '/'

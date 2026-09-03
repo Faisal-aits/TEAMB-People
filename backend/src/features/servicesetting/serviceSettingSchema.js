@@ -54,6 +54,18 @@ const ensureServiceSettingSchema = () => {
       if (!columnNames.has('smtp_encryption')) {
         alterStatements.push("ADD COLUMN smtp_encryption ENUM('none', 'tls', 'ssl') NOT NULL DEFAULT 'tls'");
       }
+      if (!columnNames.has('mail_provider')) {
+        alterStatements.push("ADD COLUMN mail_provider VARCHAR(50) NOT NULL DEFAULT 'outlook_graph'");
+      }
+      if (!columnNames.has('azure_tenant_id')) {
+        alterStatements.push('ADD COLUMN azure_tenant_id VARCHAR(255) NULL');
+      }
+      if (!columnNames.has('azure_client_id')) {
+        alterStatements.push('ADD COLUMN azure_client_id VARCHAR(255) NULL');
+      }
+      if (!columnNames.has('azure_client_secret')) {
+        alterStatements.push('ADD COLUMN azure_client_secret VARCHAR(1024) NULL');
+      }
 
       if (alterStatements.length > 0) {
         await pool.execute(`ALTER TABLE service_settings ${alterStatements.join(', ')}`);
