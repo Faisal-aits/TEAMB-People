@@ -273,7 +273,7 @@ ${employeeDetailSelectColumns},
         FROM employee_details ed
         JOIN users u ON u.id = ed.employee_id AND u.tenant_id = ed.tenant_id
         LEFT JOIN departments d ON ed.department_id = d.id
-        LEFT JOIN tb_shifts s ON ed.default_shift_id = s.shift_id
+        LEFT JOIN tb_shifts s ON s.shift_id = COALESCE(ed.default_shift_id, (SELECT shift_id FROM tb_employee_shifts WHERE employee_id = u.id AND tenant_id = ed.tenant_id ORDER BY assigned_date DESC LIMIT 1))
         WHERE u.id = ? AND u.tenant_id = ?`,
         [userId, tenantId]
       );

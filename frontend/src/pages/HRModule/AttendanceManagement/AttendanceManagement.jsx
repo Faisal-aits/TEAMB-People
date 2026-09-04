@@ -797,7 +797,8 @@ const getUserAttendance = (user) => {
           row.PSL = casualLeaveDays;
           row['W/O'] = weeklyOffDays;
           row.UL = lwpDays;
-          row['Payable Days'] = presentDays + paidLeaveDays + casualLeaveDays + weeklyOffDays;
+          row['Holiday'] = holidayDays;
+          row['Payable Days'] = presentDays + paidLeaveDays + casualLeaveDays + weeklyOffDays + holidayDays;
 
           return {
             row,
