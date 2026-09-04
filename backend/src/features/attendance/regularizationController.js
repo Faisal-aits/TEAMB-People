@@ -1,5 +1,6 @@
 // backend/src/features/attendance/regularizationController.js
 const Regularization = require('./regularizationModel');
+const Notification = require('../notifications/notificationModel');
 const { pool } = require('../../config/db');
 
 const regularizationController = {
@@ -99,6 +100,11 @@ const regularizationController = {
         reviewedBy,
         admin_remarks
       );
+      
+      const [[reqUser]] = await pool.execute(SELECT u.id as user_id FROM tb_regularizations r JOIN employee_details ed ON ed.id = r.employee_id JOIN users u ON u.id = ed.employee_id WHERE r.id = ? AND r.tenant_id = ?, [parseInt(id), req.tenantId]);
+      if (reqUser && reqUser.user_id) {
+          await Notification.create(req.tenantId, reqUser.user_id, 'attendance', 'Attendance Correction Approved', Your attendance correction request for  was approved., parseInt(id));
+      }
 
       res.json({ success: true, message: 'Request approved and attendance updated', request: updated });
     } catch (error) {
@@ -125,6 +131,11 @@ const regularizationController = {
         reviewedBy,
         admin_remarks
       );
+
+      const [[reqUser]] = await pool.execute(SELECT u.id as user_id FROM tb_regularizations r JOIN employee_details ed ON ed.id = r.employee_id JOIN users u ON u.id = ed.employee_id WHERE r.id = ? AND r.tenant_id = ?, [parseInt(id), req.tenantId]);
+      if (reqUser && reqUser.user_id) {
+          await Notification.create(req.tenantId, reqUser.user_id, 'attendance', 'Attendance Correction Rejected', Your attendance correction request for  was rejected., parseInt(id));
+      }
 
       res.json({ success: true, message: 'Request rejected', request: updated });
     } catch (error) {
@@ -266,6 +277,8 @@ const regularizationController = {
         requested_status: requested_status || null,
         reason,
       });
+
+      await Notification.notifyAdmins(req.tenantId, 'attendance', 'New Attendance Correction', A new attendance correction was requested for ., newRequest.id);
 
       res.status(201).json({
         success: true,

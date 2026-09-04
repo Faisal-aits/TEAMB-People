@@ -208,6 +208,20 @@ ${employeeDetailSelectColumns},
         ]
       );
 
+      // Auto-allocate leaves for the new employee
+      const [leaveTypes] = await connection.execute(
+          'SELECT name, max_days FROM leave_types WHERE tenant_id = ? AND is_active = 1',
+          [tenantId]
+      );
+      if (leaveTypes.length > 0) {
+          const currentYear = new Date().getFullYear();
+          const leaveValues = leaveTypes.map(lt => [tenantId, employeeId, lt.name, currentYear, lt.max_days, 0, 0]);
+          await connection.query(
+              'INSERT IGNORE INTO leave_balances (tenant_id, employee_id, leave_type, year, allocated, used, pending) VALUES ?',
+              [leaveValues]
+          );
+      }
+
       await connection.commit();
       
       return {
@@ -804,13 +818,33 @@ ${employeeDetailSelectColumns},
             [departmentValues]
           );
         }
-      } catch (tableError) {
-        if (tableError.code !== 'ER_NO_SUCH_TABLE') {
-          throw tableError;
+        } catch (tableError) {
+          if (tableError.code !== 'ER_NO_SUCH_TABLE') {
+            throw tableError;
+          }
         }
-      }
 
-      await connection.commit();
+        // Auto-allocate leaves for bulk created employees
+        const [leaveTypes] = await connection.execute(
+            'SELECT name, max_days FROM leave_types WHERE tenant_id = ? AND is_active = 1',
+            [tenantId]
+        );
+        
+        if (leaveTypes.length > 0 && employeesWithIds.length > 0) {
+            const currentYear = new Date().getFullYear();
+            const leaveValues = [];
+            for (const emp of employeesWithIds) {
+                for (const lt of leaveTypes) {
+                    leaveValues.push([tenantId, emp.employee_id, lt.name, currentYear, lt.max_days, 0, 0]);
+                }
+            }
+            await connection.query(
+                'INSERT IGNORE INTO leave_balances (tenant_id, employee_id, leave_type, year, allocated, used, pending) VALUES ?',
+                [leaveValues]
+            );
+        }
+
+        await connection.commit();
 
       return employeesWithIds.map((employee) => ({
         rowNumber: employee.rowNumber,
