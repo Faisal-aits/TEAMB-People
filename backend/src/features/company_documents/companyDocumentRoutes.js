@@ -9,7 +9,7 @@ const fs = require('fs');
 // Configure multer for document uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const dest = path.join(__dirname, '..', 'uploads', 'documents');
+    const dest = path.join(__dirname, '..', '..', '..', 'uploads', 'documents');
     // Ensure directory exists
     if (!fs.existsSync(dest)) {
       fs.mkdirSync(dest, { recursive: true });
@@ -36,3 +36,4 @@ router.post('/', authorizeRoles('admin', 'hr'), upload.single('file'), compressU
 router.delete('/:id', authorizeRoles('admin', 'hr'), companyDocumentController.deleteDocument);
 
 module.exports = router;
+

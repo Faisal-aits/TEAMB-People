@@ -8,7 +8,7 @@ const multer = require('multer');
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         const tenantId = req.tenantId;
-        const uploadDir = path.join(__dirname, '..', 'uploads', 'branding', String(tenantId), 'letters', 'resignation');
+        const uploadDir = path.join(__dirname, '..', '..', '..', 'uploads', 'branding', String(tenantId), 'letters', 'resignation');
         
         // Ensure directory exists
         if (!fs.existsSync(uploadDir)) {

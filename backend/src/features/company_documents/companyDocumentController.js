@@ -82,7 +82,7 @@ exports.deleteDocument = async (req, res) => {
       // If it's a file, try to delete the physical file
       if (doc.type === 'file' && doc.file_url) {
         try {
-          const filePath = path.join(__dirname, '../../../../', doc.file_url);
+          const filePath = path.join(__dirname, '../../../', doc.file_url);
           if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
           }

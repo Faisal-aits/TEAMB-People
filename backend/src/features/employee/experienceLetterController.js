@@ -7,7 +7,7 @@ const multer = require('multer');
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         const tenantId = req.tenantId;
-        const uploadDir = path.join(__dirname, '..', 'uploads', 'branding', String(tenantId), 'letters', 'experience');
+        const uploadDir = path.join(__dirname, '..', '..', '..', 'uploads', 'branding', String(tenantId), 'letters', 'experience');
         
         if (!fs.existsSync(uploadDir)) {
             fs.mkdirSync(uploadDir, { recursive: true });
@@ -147,3 +147,4 @@ const experienceLetterController = {
 };
 
 module.exports = experienceLetterController;
+

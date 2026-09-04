@@ -8,7 +8,7 @@ const multer = require('multer');
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         const tenantId = req.tenantId;
-        const uploadDir = path.join(__dirname, '..', 'uploads', 'branding', String(tenantId));
+        const uploadDir = path.join(__dirname, '..', '..', '..', 'uploads', 'branding', String(tenantId));
         
         // Create directory if it doesn't exist
         if (!fs.existsSync(uploadDir)) {
@@ -129,7 +129,7 @@ const brandingController = {
             if (existing) {
                 const oldUrl = existing[fieldToColumn[field]];
                 if (oldUrl) {
-                    const oldPath = path.join(__dirname, '..', oldUrl);
+                    const oldPath = path.join(__dirname, '../../..', oldUrl);
                     if (fs.existsSync(oldPath)) {
                         fs.unlinkSync(oldPath);
                     }
@@ -171,7 +171,7 @@ const brandingController = {
             if (existing) {
                 const oldUrl = existing[fieldToColumn[field]];
                 if (oldUrl) {
-                    const oldPath = path.join(__dirname, '..', oldUrl);
+                    const oldPath = path.join(__dirname, '../../..', oldUrl);
                     if (fs.existsSync(oldPath)) {
                         fs.unlinkSync(oldPath);
                     }
@@ -192,3 +192,4 @@ const brandingController = {
 };
 
 module.exports = brandingController;
+

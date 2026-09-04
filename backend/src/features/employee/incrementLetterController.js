@@ -7,7 +7,7 @@ const multer = require('multer');
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         const tenantId = req.tenantId;
-        const uploadDir = path.join(__dirname, '..', 'uploads', 'branding', String(tenantId), 'letters', 'increment');
+        const uploadDir = path.join(__dirname, '..', '..', '..', 'uploads', 'branding', String(tenantId), 'letters', 'increment');
         
         if (!fs.existsSync(uploadDir)) {
             fs.mkdirSync(uploadDir, { recursive: true });
@@ -214,3 +214,4 @@ const incrementLetterController = {
 };
 
 module.exports = incrementLetterController;
+

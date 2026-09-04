@@ -5,7 +5,7 @@ const { parseDocx } = require('./aiDocumentParser');
 const { analyzeDocument } = require('./aiDocumentAnalyzer');
 const model = require('./aiDocumentGeneratorModel');
 
-const uploadRoot = path.join(__dirname, '..', 'uploads', 'ai-documents');
+const uploadRoot = path.join(__dirname, '..', '..', '..', 'uploads', 'ai-documents');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -175,3 +175,4 @@ const controller = {
 };
 
 module.exports = controller;
+
