@@ -245,6 +245,13 @@ const superAdminController = {
                 [tenantId, 'BIM', 'Building Information Modeling']
             );
 
+            // Create default Food reimbursement category for new tenant (limit 2000)
+            await connection.execute(
+                `INSERT INTO expense_categories (tenant_id, name, limit_amount, description) 
+                 VALUES (?, ?, ?, ?)`,
+                [tenantId, 'Food', 2000, 'Food & Meals reimbursement']
+            );
+
             await connection.commit();
 
 
