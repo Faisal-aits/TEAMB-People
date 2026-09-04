@@ -101,9 +101,9 @@ const regularizationController = {
         admin_remarks
       );
       
-      const [[reqUser]] = await pool.execute(SELECT u.id as user_id FROM tb_regularizations r JOIN employee_details ed ON ed.id = r.employee_id JOIN users u ON u.id = ed.employee_id WHERE r.id = ? AND r.tenant_id = ?, [parseInt(id), req.tenantId]);
+      const [[reqUser]] = await pool.execute(`SELECT u.id as user_id FROM tb_regularizations r JOIN employee_details ed ON ed.id = r.employee_id JOIN users u ON u.id = ed.employee_id WHERE r.id = ? AND r.tenant_id = ?`, [parseInt(id), req.tenantId]);
       if (reqUser && reqUser.user_id) {
-          await Notification.create(req.tenantId, reqUser.user_id, 'attendance', 'Attendance Correction Approved', Your attendance correction request for  was approved., parseInt(id));
+          await Notification.create(req.tenantId, reqUser.user_id, 'attendance', 'Attendance Correction Approved', `Your attendance correction request for ${updated.request_date} was approved.`, parseInt(id));
       }
 
       res.json({ success: true, message: 'Request approved and attendance updated', request: updated });
@@ -132,9 +132,9 @@ const regularizationController = {
         admin_remarks
       );
 
-      const [[reqUser]] = await pool.execute(SELECT u.id as user_id FROM tb_regularizations r JOIN employee_details ed ON ed.id = r.employee_id JOIN users u ON u.id = ed.employee_id WHERE r.id = ? AND r.tenant_id = ?, [parseInt(id), req.tenantId]);
+      const [[reqUser]] = await pool.execute(`SELECT u.id as user_id FROM tb_regularizations r JOIN employee_details ed ON ed.id = r.employee_id JOIN users u ON u.id = ed.employee_id WHERE r.id = ? AND r.tenant_id = ?`, [parseInt(id), req.tenantId]);
       if (reqUser && reqUser.user_id) {
-          await Notification.create(req.tenantId, reqUser.user_id, 'attendance', 'Attendance Correction Rejected', Your attendance correction request for  was rejected., parseInt(id));
+          await Notification.create(req.tenantId, reqUser.user_id, 'attendance', 'Attendance Correction Rejected', `Your attendance correction request for ${updated.request_date} was rejected.`, parseInt(id));
       }
 
       res.json({ success: true, message: 'Request rejected', request: updated });
@@ -278,7 +278,7 @@ const regularizationController = {
         reason,
       });
 
-      await Notification.notifyAdmins(req.tenantId, 'attendance', 'New Attendance Correction', A new attendance correction was requested for ., newRequest.id);
+      await Notification.notifyAdmins(req.tenantId, 'attendance', 'New Attendance Correction', `A new attendance correction was requested for ${request_date}.`, newRequest.id);
 
       res.status(201).json({
         success: true,

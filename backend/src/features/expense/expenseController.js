@@ -1,5 +1,6 @@
 // backend/controllers/expenseController.js
 const Expense = require('./expenseModel');
+const Notification = require('../notifications/notificationModel');
 const fs = require('fs');
 const path = require('path');
 
@@ -140,6 +141,7 @@ const expenseController = {
                 description: description,
                 image: imagePath
             });
+            await Notification.notifyAdmins(req.tenantId, 'reimbursement', 'New Reimbursement', `A new reimbursement for amount ${amountNum} has been submitted.`, expenseId);
 
             res.status(201).json({ 
                 success: true,
@@ -171,6 +173,10 @@ const expenseController = {
             }
 
             const affectedRows = await Expense.updateStatus(req.tenantId, expenseId, status, req.user.id);
+            const expense = await Expense.getById(req.tenantId, expenseId);
+            if (expense) {
+                await Notification.create(req.tenantId, expense.employee_id, 'reimbursement', 'Reimbursement Status Updated', `Your reimbursement request is now ${status}.`, expenseId);
+            }
 
             if (affectedRows === 0) {
                 return res.status(404).json({ message: 'Expense not found' });
