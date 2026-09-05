@@ -149,47 +149,70 @@ const AddExpenseModal = ({ isOpen, onClose, onExpenseAdded }) => {
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      backgroundColor: 'rgba(15, 23, 42, 0.65)',
+      backdropFilter: 'blur(4px)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      zIndex: 1000
+      zIndex: 1000,
+      padding: '1rem'
     }}>
       <div style={{
-        background: 'white',
+        background: '#ffffff',
         padding: '2rem',
-        borderRadius: '12px',
-        boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)',
-        width: '90%',
-        maxWidth: '500px',
+        borderRadius: '16px',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+        width: '100%',
+        maxWidth: '520px',
         maxHeight: '90vh',
-        overflowY: 'auto'
+        overflowY: 'auto',
+        border: '1px solid #f1f5f9'
       }}>
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center',
+          alignItems: 'flex-start',
+          paddingBottom: '1.25rem',
+          borderBottom: '1px solid #f1f5f9',
           marginBottom: '1.5rem'
         }}>
-          <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '600', color: '#2d3748' }}>
-            Submit New Expense
-          </h2>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.35rem', fontWeight: '700', color: '#1e293b' }}>
+              Submit New Expense
+            </h2>
+            <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+              Fill in the details below to claim your reimbursement.
+            </p>
+          </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Close"
             style={{
-              background: 'none',
+              background: '#f1f5f9',
               border: 'none',
-              fontSize: '1.5rem',
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               cursor: 'pointer',
-              color: '#718096'
+              color: '#64748b',
+              fontSize: '1rem',
+              fontWeight: 'bold',
+              transition: 'all 0.2s ease',
+              flexShrink: 0
             }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#e2e8f0'; e.currentTarget.style.color = '#0f172a'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#64748b'; }}
           >
-            Ã—
+            ✕
           </button>
         </div>
 
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '1.5rem' }}>
+          <div style={{ marginBottom: '1.25rem' }}>
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
@@ -197,10 +220,11 @@ const AddExpenseModal = ({ isOpen, onClose, onExpenseAdded }) => {
               marginBottom: '0.5rem'
             }}>
               <label style={{
-                fontWeight: '500',
-                color: '#4a5568'
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                color: '#334155'
               }}>
-                Expense Category *
+                Expense Category <span style={{ color: '#ef4444' }}>*</span>
               </label>
               <button
                 type="button"
@@ -210,13 +234,15 @@ const AddExpenseModal = ({ isOpen, onClose, onExpenseAdded }) => {
                   border: 'none',
                   color: '#6d6ab8',
                   cursor: 'pointer',
-                  fontSize: '0.9rem',
-                  textDecoration: 'underline',
-                  fontWeight: '500',
-                  padding: 0
+                  fontSize: '0.825rem',
+                  fontWeight: '600',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
                 }}
               >
-                {showAddCategory ? 'âœ• Cancel' : '+ Add Category'}
+                {showAddCategory ? '✕ Cancel' : '+ Add Category'}
               </button>
             </div>
 
@@ -228,62 +254,72 @@ const AddExpenseModal = ({ isOpen, onClose, onExpenseAdded }) => {
                 required
                 style={{
                   width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '6px',
-                  fontSize: '1rem',
-                  backgroundColor: 'white'
+                  padding: '0.7rem 0.85rem',
+                  border: '1.5px solid #e2e8f0',
+                  borderRadius: '8px',
+                  fontSize: '0.925rem',
+                  backgroundColor: '#ffffff',
+                  color: '#1e293b',
+                  outline: 'none',
+                  transition: 'border-color 0.2s',
+                  cursor: 'pointer'
                 }}
+                onFocus={(e) => e.target.style.borderColor = '#6d6ab8'}
+                onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
               >
-                <option value="">Select a category</option>
+                <option value="">Select an expense category</option>
                 {categories.map(category => (
                   <option key={category.id} value={category.id}>
-                    {category.name} {category.limit_amount > 0 && `(Limit: \u20B9${category.limit_amount})`}
+                    {category.name} {category.limit_amount > 0 ? `(Limit: ₹${category.limit_amount})` : ''}
                   </option>
                 ))}
               </select>
             ) : (
               <div style={{
-                border: '1px solid #cbd5e0',
-                borderRadius: '6px',
-                padding: '1rem',
-                backgroundColor: '#f7fafc'
+                border: '1px solid #e2e8f0',
+                borderRadius: '10px',
+                padding: '1.1rem',
+                backgroundColor: '#f8fafc',
+                boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)'
               }}>
-                <div style={{ marginBottom: '1rem' }}>
+                <div style={{ marginBottom: '0.85rem' }}>
                   <label style={{
                     display: 'block',
-                    marginBottom: '0.4rem',
-                    fontWeight: '500',
-                    fontSize: '0.9rem',
-                    color: '#4a5568'
+                    marginBottom: '0.35rem',
+                    fontWeight: '600',
+                    fontSize: '0.825rem',
+                    color: '#475569'
                   }}>
-                    Category Name *
+                    Category Name <span style={{ color: '#ef4444' }}>*</span>
                   </label>
                   <input
                     type="text"
                     name="name"
                     value={newCategoryData.name}
                     onChange={handleNewCategoryChange}
-                    placeholder="e.g., Travel, Food, Office Supplies"
+                    placeholder="e.g. Travel, Food, Internet"
                     style={{
                       width: '100%',
-                      padding: '0.5rem',
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '4px',
-                      fontSize: '0.9rem'
+                      padding: '0.6rem 0.75rem',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '6px',
+                      fontSize: '0.875rem',
+                      outline: 'none',
+                      background: '#ffffff',
+                      boxSizing: 'border-box'
                     }}
                   />
                 </div>
 
-                <div style={{ marginBottom: '1rem' }}>
+                <div style={{ marginBottom: '0.85rem' }}>
                   <label style={{
                     display: 'block',
-                    marginBottom: '0.4rem',
-                    fontWeight: '500',
-                    fontSize: '0.9rem',
-                    color: '#4a5568'
+                    marginBottom: '0.35rem',
+                    fontWeight: '600',
+                    fontSize: '0.825rem',
+                    color: '#475569'
                   }}>
-                    Limit Amount (&#8377;) (Optional)
+                    Limit Amount (₹) <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 400 }}>(Optional)</span>
                   </label>
                   <input
                     type="number"
@@ -295,10 +331,13 @@ const AddExpenseModal = ({ isOpen, onClose, onExpenseAdded }) => {
                     step="0.01"
                     style={{
                       width: '100%',
-                      padding: '0.5rem',
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '4px',
-                      fontSize: '0.9rem'
+                      padding: '0.6rem 0.75rem',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '6px',
+                      fontSize: '0.875rem',
+                      outline: 'none',
+                      background: '#ffffff',
+                      boxSizing: 'border-box'
                     }}
                   />
                 </div>
@@ -306,27 +345,30 @@ const AddExpenseModal = ({ isOpen, onClose, onExpenseAdded }) => {
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={{
                     display: 'block',
-                    marginBottom: '0.4rem',
-                    fontWeight: '500',
-                    fontSize: '0.9rem',
-                    color: '#4a5568'
+                    marginBottom: '0.35rem',
+                    fontWeight: '600',
+                    fontSize: '0.825rem',
+                    color: '#475569'
                   }}>
-                    Description (Optional)
+                    Description <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 400 }}>(Optional)</span>
                   </label>
                   <textarea
                     name="description"
                     value={newCategoryData.description}
                     onChange={handleNewCategoryChange}
-                    placeholder="Category description..."
+                    placeholder="Brief description of this category..."
                     rows="2"
                     style={{
                       width: '100%',
-                      padding: '0.5rem',
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '4px',
-                      fontSize: '0.9rem',
+                      padding: '0.6rem 0.75rem',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '6px',
+                      fontSize: '0.875rem',
                       fontFamily: 'inherit',
-                      resize: 'vertical'
+                      resize: 'vertical',
+                      outline: 'none',
+                      background: '#ffffff',
+                      boxSizing: 'border-box'
                     }}
                   />
                 </div>
@@ -337,86 +379,119 @@ const AddExpenseModal = ({ isOpen, onClose, onExpenseAdded }) => {
                   disabled={addingCategory}
                   style={{
                     width: '100%',
-                    padding: '0.6rem',
-                    background: addingCategory ? '#cbd5e0' : '#48bb78',
-                    color: 'white',
+                    padding: '0.65rem',
+                    background: addingCategory ? '#cbd5e1' : '#10b981',
+                    color: '#ffffff',
                     border: 'none',
-                    borderRadius: '4px',
+                    borderRadius: '6px',
                     cursor: addingCategory ? 'not-allowed' : 'pointer',
-                    fontSize: '0.9rem',
-                    fontWeight: '500'
+                    fontSize: '0.875rem',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    boxShadow: '0 2px 6px rgba(16, 185, 129, 0.25)'
                   }}
                 >
-                  {addingCategory ? 'Creating...' : 'âœ“ Create Category'}
+                  {addingCategory ? 'Creating...' : '✓ Create Category'}
                 </button>
               </div>
             )}
           </div>
 
-          <div style={{ marginBottom: '1.5rem' }}>
+          <div style={{ marginBottom: '1.25rem' }}>
             <label style={{
               display: 'block',
               marginBottom: '0.5rem',
-              fontWeight: '500',
-              color: '#4a5568'
+              fontWeight: '600',
+              fontSize: '0.875rem',
+              color: '#334155'
             }}>
-              Amount (&#8377;) *
+              Amount (₹) <span style={{ color: '#ef4444' }}>*</span>
             </label>
-            <input
-              type="number"
-              name="amount"
-              value={formData.amount}
-              onChange={handleChange}
-              placeholder="0.00"
-              min="0.01"
-              step="0.01"
-              required
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #e2e8f0',
-                borderRadius: '6px',
+            <div style={{ position: 'relative' }}>
+              <span style={{
+                position: 'absolute',
+                left: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: '#64748b',
+                fontWeight: '600',
                 fontSize: '1rem'
-              }}
-            />
+              }}>
+                ₹
+              </span>
+              <input
+                type="number"
+                name="amount"
+                value={formData.amount}
+                onChange={handleChange}
+                placeholder="0.00"
+                min="0.01"
+                step="0.01"
+                required
+                style={{
+                  width: '100%',
+                  padding: '0.7rem 0.85rem 0.7rem 2rem',
+                  border: '1.5px solid #e2e8f0',
+                  borderRadius: '8px',
+                  fontSize: '0.95rem',
+                  color: '#1e293b',
+                  outline: 'none',
+                  transition: 'border-color 0.2s',
+                  boxSizing: 'border-box'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#6d6ab8'}
+                onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
+              />
+            </div>
           </div>
 
-          <div style={{ marginBottom: '1.5rem' }}>
+          <div style={{ marginBottom: '1.25rem' }}>
             <label style={{
               display: 'block',
               marginBottom: '0.5rem',
-              fontWeight: '500',
-              color: '#4a5568'
+              fontWeight: '600',
+              fontSize: '0.875rem',
+              color: '#334155'
             }}>
-              Description *
+              Description <span style={{ color: '#ef4444' }}>*</span>
             </label>
             <textarea
               name="description"
               value={formData.description}
               onChange={handleChange}
               placeholder="Describe the expense purpose..."
-              rows="4"
+              rows="3"
               required
               style={{
                 width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #e2e8f0',
-                borderRadius: '6px',
-                fontSize: '1rem',
+                padding: '0.7rem 0.85rem',
+                border: '1.5px solid #e2e8f0',
+                borderRadius: '8px',
+                fontSize: '0.925rem',
+                color: '#1e293b',
                 resize: 'vertical',
-                fontFamily: 'inherit'
+                fontFamily: 'inherit',
+                outline: 'none',
+                transition: 'border-color 0.2s',
+                boxSizing: 'border-box'
               }}
+              onFocus={(e) => e.target.style.borderColor = '#6d6ab8'}
+              onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
             />
           </div>
 
-          <div style={{ marginBottom: '2rem' }}>
+          <div style={{ marginBottom: '1.75rem' }}>
             <label style={{
               display: 'block',
               marginBottom: '0.5rem',
-              fontWeight: '500',
-              color: '#4a5568'
+              fontWeight: '600',
+              fontSize: '0.875rem',
+              color: '#334155'
             }}>
-              Receipt URL (Optional)
+              Receipt URL <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 400 }}>(Optional)</span>
             </label>
             <input
               type="url"
@@ -426,32 +501,43 @@ const AddExpenseModal = ({ isOpen, onClose, onExpenseAdded }) => {
               placeholder="https://example.com/receipt.jpg"
               style={{
                 width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #e2e8f0',
-                borderRadius: '6px',
-                fontSize: '1rem'
+                padding: '0.7rem 0.85rem',
+                border: '1.5px solid #e2e8f0',
+                borderRadius: '8px',
+                fontSize: '0.925rem',
+                color: '#1e293b',
+                outline: 'none',
+                transition: 'border-color 0.2s',
+                boxSizing: 'border-box'
               }}
+              onFocus={(e) => e.target.style.borderColor = '#6d6ab8'}
+              onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
             />
           </div>
 
           <div style={{
             display: 'flex',
-            gap: '1rem',
-            justifyContent: 'flex-end'
+            gap: '0.75rem',
+            justifyContent: 'flex-end',
+            paddingTop: '1.25rem',
+            borderTop: '1px solid #f1f5f9'
           }}>
             <button
               type="button"
               onClick={onClose}
               style={{
-                padding: '0.75rem 1.5rem',
-                background: 'white',
-                color: '#4a5568',
+                padding: '0.65rem 1.4rem',
+                background: '#f8fafc',
+                color: '#475569',
                 border: '1px solid #e2e8f0',
-                borderRadius: '6px',
+                borderRadius: '8px',
                 cursor: 'pointer',
-                fontSize: '1rem',
-                fontWeight: '500'
+                fontSize: '0.925rem',
+                fontWeight: '600',
+                transition: 'all 0.2s ease'
               }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#1e293b'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = '#475569'; }}
             >
               Cancel
             </button>
@@ -459,14 +545,16 @@ const AddExpenseModal = ({ isOpen, onClose, onExpenseAdded }) => {
               type="submit"
               disabled={loading}
               style={{
-                padding: '0.75rem 1.5rem',
-                background: loading ? '#cbd5e0' : '#6d6ab8',
-                color: 'white',
+                padding: '0.65rem 1.6rem',
+                background: loading ? '#94a3b8' : '#6d6ab8',
+                color: '#ffffff',
                 border: 'none',
-                borderRadius: '6px',
+                borderRadius: '8px',
                 cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: '1rem',
-                fontWeight: '500'
+                fontSize: '0.925rem',
+                fontWeight: '600',
+                boxShadow: '0 4px 12px rgba(109, 106, 184, 0.35)',
+                transition: 'all 0.2s ease'
               }}
             >
               {loading ? 'Submitting...' : 'Submit Expense'}
@@ -627,11 +715,11 @@ const ExpenseManagement = () => {
             <button
               onClick={() => setIsAddModalOpen(true)}
               style={{
-                background: '#E6E6FA',
-                color: '#000000',
+                background: '#e0e7ff',
+                color: '#3730a3',
                 border: '1px solid #c7d2fe',
-                padding: '0.6rem 1.25rem',
-                borderRadius: '10px',
+                padding: '0.65rem 1.3rem',
+                borderRadius: '8px',
                 cursor: 'pointer',
                 fontFamily: 'inherit',
                 fontWeight: 600,
@@ -639,14 +727,16 @@ const ExpenseManagement = () => {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.5rem',
-                transition: 'all 0.3s ease',
-                boxShadow: '0 4px 12px rgba(138, 135, 201, 0.3)',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 2px 8px rgba(99, 102, 241, 0.2)',
               }}
+              onMouseEnter={(e) => e.currentTarget.style.background = '#c7d2fe'}
+              onMouseLeave={(e) => e.currentTarget.style.background = '#e0e7ff'}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 6V12M12 12V18M12 12H18M12 12H6" stroke="black" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M12 5V19M5 12H19" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
               </svg>
-              + Add Reimbursement
+              Add Reimbursement
             </button>
           </div>
         </div>

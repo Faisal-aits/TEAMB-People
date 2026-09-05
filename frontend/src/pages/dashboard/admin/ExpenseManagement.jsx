@@ -151,9 +151,9 @@ const ExpenseManagement = () => {
               }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 6V12M12 12V18M12 12H18M12 12H6" stroke="black" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M12 5V19M5 12H19" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
               </svg>
-              + Add Reimbursement
+              Add Reimbursement
             </button>
           </div>
         </div>
