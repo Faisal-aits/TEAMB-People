@@ -1,4 +1,5 @@
 const reportModel = require('./reportModel');
+const Notification = require('../notifications/notificationModel');
 
 const getTenantId = (req) => req.tenantId || req.user?.tenant_id || 1;
 
@@ -20,6 +21,8 @@ const reportController = {
         report_text: text,
         report_date: req.body.report_date || req.body.date,
       });
+
+      await Notification.notifyAdmins(getTenantId(req), 'report', 'New Employee Notification', `An employee submitted a new notification/report.`, report.id);
 
       return res.status(201).json({ success: true, data: report, report });
     } catch (error) {
@@ -59,6 +62,10 @@ const reportController = {
 
       if (!report) {
         return res.status(404).json({ success: false, message: 'Report not found.' });
+      }
+
+      if (report.user_id) {
+          await Notification.create(getTenantId(req), report.user_id, 'report', 'Admin Remark Added', `Admin added a remark to your notification.`, report.id);
       }
 
       return res.json({ success: true, data: report, report });
