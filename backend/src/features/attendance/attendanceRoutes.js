@@ -169,11 +169,10 @@ router.post(
   regularizationController.reject
 );
 
-// ── Admin: delete ─────────────────────────────────────────────────
+// ── Delete request (Admin or Employee own pending request) ────────
 // DELETE /api/attendance/regularization/:id
 router.delete(
   '/regularization/:id',
-  requireModuleAccess('attendance_management', 'write'),
   regularizationController.deleteRequest
 );
 

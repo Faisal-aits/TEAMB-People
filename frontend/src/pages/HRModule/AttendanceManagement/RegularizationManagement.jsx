@@ -394,32 +394,29 @@ const RegularizationManagement = () => {
                       {fmtDate(r.created_at)}
                     </td>
                     <td>
-                      <div className="reg-action-btns">
-                        {r.status === 'Pending' && (
+                      <div className="reg-action-btns" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        {r.status === 'Pending' ? (
                           <>
                             <button
                               className="reg-btn approve"
                               title="Approve"
                               onClick={() => setModalData({ open: true, request: r, action: 'approve' })}
+                              style={{ padding: '6px 14px', borderRadius: '6px', fontSize: '0.85rem' }}
                             >
-                              <FaCheck />
+                              <FaCheck style={{ marginRight: '4px' }} /> Approve
                             </button>
                             <button
                               className="reg-btn reject"
                               title="Reject"
                               onClick={() => setModalData({ open: true, request: r, action: 'reject' })}
+                              style={{ padding: '6px 14px', borderRadius: '6px', fontSize: '0.85rem' }}
                             >
-                              <FaTimes />
+                              <FaTimes style={{ marginRight: '4px' }} /> Reject
                             </button>
                           </>
+                        ) : (
+                          <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Processed</span>
                         )}
-                        <button
-                          className="reg-btn delete"
-                          title="Delete"
-                          onClick={() => handleDelete(r.id)}
-                        >
-                          <FaTrash />
-                        </button>
                       </div>
                     </td>
                   </tr>

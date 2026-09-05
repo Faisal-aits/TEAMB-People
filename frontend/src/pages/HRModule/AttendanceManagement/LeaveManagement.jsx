@@ -479,13 +479,6 @@ const LeaveManagement = () => {
                             >
                               Reject
                             </button>
-                            <button
-                              onClick={(e) => handleQuickDelete(leave, e)}
-                              className="leave-action-btn leave-delete-btn quick-action"
-                              title="Delete Leave"
-                            >
-                              Delete
-                            </button>
                           </>
                         )}
                         {leave.status !== 'Pending' && (

@@ -161,6 +161,17 @@ const EmployeeRegularization = () => {
     }
   };
 
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this pending request?')) return;
+    try {
+      await regularizationAPI.deleteRequest(id);
+      showToast('Request deleted successfully');
+      fetchData();
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Failed to delete request', 'error');
+    }
+  };
+
   const handleFormChange = (field, value) => {
     setForm((p) => ({ ...p, [field]: value }));
     if (formErrors[field]) setFormErrors((p) => { const n = { ...p }; delete n[field]; return n; });
@@ -356,12 +367,31 @@ const EmployeeRegularization = () => {
                   </div>
                 )}
 
-                <div className="rc-footer">
-                  <span className="rc-submitted">Submitted: {fmtDate(r.created_at)}</span>
-                  {r.reviewed_by_name && (
-                    <span className="rc-reviewed">
-                      Reviewed by {r.reviewed_by_name} · {fmtDate(r.reviewed_at)}
-                    </span>
+                <div className="rc-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <span className="rc-submitted">Submitted: {fmtDate(r.created_at)}</span>
+                    {r.reviewed_by_name && (
+                      <span className="rc-reviewed" style={{ marginLeft: '10px' }}>
+                        Reviewed by {r.reviewed_by_name} &middot; {fmtDate(r.reviewed_at)}
+                      </span>
+                    )}
+                  </div>
+                  {r.status === 'Pending' && (
+                    <button
+                      onClick={() => handleDelete(r.id)}
+                      style={{
+                        background: '#fee2e2',
+                        color: '#dc2626',
+                        border: 'none',
+                        padding: '4px 12px',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontWeight: '600'
+                      }}
+                    >
+                      Delete
+                    </button>
                   )}
                 </div>
               </div>

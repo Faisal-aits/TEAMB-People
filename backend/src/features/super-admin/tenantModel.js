@@ -149,6 +149,7 @@ const Tenant = {
                 'tb_breaks',
                 'tb_regularizations',
                 'attendance_regularizations',
+                'attendance_regularization_requests',
                 'tb_employee_shifts',
                 'tb_shifts',
                 'tb_holidays',

@@ -101,9 +101,20 @@ const regularizationController = {
         admin_remarks
       );
       
-      const [[reqUser]] = await pool.execute(`SELECT u.id as user_id FROM tb_regularizations r JOIN employee_details ed ON ed.id = r.employee_id JOIN users u ON u.id = ed.employee_id WHERE r.id = ? AND r.tenant_id = ?`, [parseInt(id), req.tenantId]);
-      if (reqUser && reqUser.user_id) {
+      try {
+        const [[reqUser]] = await pool.execute(
+          `SELECT u.id as user_id 
+           FROM attendance_regularization_requests r 
+           JOIN employee_details ed ON ed.id = r.employee_id AND ed.tenant_id = r.tenant_id 
+           JOIN users u ON u.id = ed.employee_id 
+           WHERE r.id = ? AND r.tenant_id = ?`,
+          [parseInt(id), req.tenantId]
+        );
+        if (reqUser && reqUser.user_id) {
           await Notification.create(req.tenantId, reqUser.user_id, 'attendance', 'Attendance Correction Approved', `Your attendance correction request for ${updated.request_date} was approved.`, parseInt(id));
+        }
+      } catch (notifErr) {
+        console.error('Failed to send approval notification:', notifErr);
       }
 
       res.json({ success: true, message: 'Request approved and attendance updated', request: updated });
@@ -132,9 +143,20 @@ const regularizationController = {
         admin_remarks
       );
 
-      const [[reqUser]] = await pool.execute(`SELECT u.id as user_id FROM tb_regularizations r JOIN employee_details ed ON ed.id = r.employee_id JOIN users u ON u.id = ed.employee_id WHERE r.id = ? AND r.tenant_id = ?`, [parseInt(id), req.tenantId]);
-      if (reqUser && reqUser.user_id) {
+      try {
+        const [[reqUser]] = await pool.execute(
+          `SELECT u.id as user_id 
+           FROM attendance_regularization_requests r 
+           JOIN employee_details ed ON ed.id = r.employee_id AND ed.tenant_id = r.tenant_id 
+           JOIN users u ON u.id = ed.employee_id 
+           WHERE r.id = ? AND r.tenant_id = ?`,
+          [parseInt(id), req.tenantId]
+        );
+        if (reqUser && reqUser.user_id) {
           await Notification.create(req.tenantId, reqUser.user_id, 'attendance', 'Attendance Correction Rejected', `Your attendance correction request for ${updated.request_date} was rejected.`, parseInt(id));
+        }
+      } catch (notifErr) {
+        console.error('Failed to send rejection notification:', notifErr);
       }
 
       res.json({ success: true, message: 'Request rejected', request: updated });
@@ -148,11 +170,29 @@ const regularizationController = {
 
   /**
    * DELETE /api/attendance/regularization/:id
-   * Admin: delete a request record.
+   * Admin or Employee (if pending and own request): delete a request record.
    */
   deleteRequest: async (req, res) => {
     try {
-      const deleted = await Regularization.deleteRequest(req.tenantId, parseInt(req.params.id));
+      const requestId = parseInt(req.params.id);
+      const request = await Regularization.getRequestById(req.tenantId, requestId);
+      if (!request) return res.status(404).json({ success: false, message: 'Request not found' });
+
+      // If not admin/hr, can only delete own request while status is 'Pending'
+      const userRole = (req.user.position || req.user.role || '').toLowerCase();
+      const isAdminOrHr = ['admin', 'hr', 'super_admin'].includes(userRole);
+
+      if (!isAdminOrHr) {
+        const employeeId = await getEmployeeIdFromUser(req.user.id, req.tenantId);
+        if (!employeeId || request.employee_id !== employeeId) {
+          return res.status(403).json({ success: false, message: 'You can only delete your own requests' });
+        }
+        if (request.status !== 'Pending') {
+          return res.status(400).json({ success: false, message: 'Only pending requests can be deleted' });
+        }
+      }
+
+      const deleted = await Regularization.deleteRequest(req.tenantId, requestId);
       if (!deleted) return res.status(404).json({ success: false, message: 'Request not found' });
       res.json({ success: true, message: 'Request deleted' });
     } catch (error) {
