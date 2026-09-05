@@ -280,7 +280,9 @@ useEffect(() => {
           <aside className="primary-sidebar">
             <div className="sidebar-header">
               <div className="header-content">
-                <img src={worklyShortLogo} alt="W Logo" style={{ maxHeight: '52px', maxWidth: '52px', objectFit: 'contain', transform: 'scale(1.4)' }} />
+                <div style={{ background: '#ffffff', borderRadius: '8px', padding: '4px 8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <img src={worklyShortLogo} alt="TEAM B People Logo" style={{ maxHeight: '28px', maxWidth: '44px', objectFit: 'contain' }} />
+                </div>
               </div>
             </div>
 
