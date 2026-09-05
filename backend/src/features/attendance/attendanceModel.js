@@ -901,46 +901,70 @@ getByEmployeeAndDate: async (tenantId, employeeId, date) => {
                 return `${date} ${hh}:${mm}:00`;
             };
 
-            let checkIn = checkInTime ? formatTime(checkInTime) : formatTime('09:30:00');
-            let checkOut = checkOutTime ? formatTime(checkOutTime) : formatTime('18:30:00');
+            // Default checkIn / checkOut will be calculated per-employee in the loop based on their shift
 
-                        if (rawStatus === 'half day' || rawStatus === 'half-day') {
+
+            if (rawStatus === 'half day' || rawStatus === 'half-day') {
                 finalStatus = 'Half Day';
                 isHalfDay = 1;
                 workedHours = 4.0;
-                if (!checkOutTime) checkOut = formatTime('13:30:00');
             } else if (rawStatus === 'delayed' || rawStatus === 'late') {
                 finalStatus = 'Delayed';
                 isLate = 1;
                 workedHours = 8.0;
-                if (!checkInTime) checkIn = formatTime('10:30:00');
             } else if (rawStatus === 'absent') {
                 finalStatus = 'Absent';
                 workedHours = 0.0;
-                checkIn = null;
-                checkOut = null;
             } else if (rawStatus === 'leave_pl') {
                 finalStatus = 'On Leave';
                 finalLeaveType = 'PL';
                 workedHours = 0.0;
-                checkIn = null;
-                checkOut = null;
             } else if (rawStatus === 'leave_psl') {
                 finalStatus = 'On Leave';
                 finalLeaveType = 'PSL';
                 workedHours = 0.0;
-                checkIn = null;
-                checkOut = null;
             } else if (rawStatus === 'on leave' || rawStatus === 'leave') {
                 finalStatus = 'On Leave';
                 workedHours = 0.0;
-                checkIn = null;
-                checkOut = null;
             }
             
             const remarks = reason || `Marked ${finalStatus} by Admin`;
 
             for (const empId of targetEmployeeIds) {
+                // Get employee's shift
+                const shift = await getEmployeeShiftForDateHelper(connection, tenantId, empId, date);
+                const shiftCheckIn = shift ? shift.check_in_time : '09:30:00';
+                const shiftCheckOut = shift ? shift.check_out_time : '18:30:00';
+                
+                let checkIn = null;
+                let checkOut = null;
+                
+                if (finalStatus !== 'Absent' && finalStatus !== 'On Leave') {
+                    checkIn = checkInTime ? formatTime(checkInTime) : formatTime(shiftCheckIn);
+                    checkOut = checkOutTime ? formatTime(checkOutTime) : formatTime(shiftCheckOut);
+                    
+                    if (finalStatus === 'Half Day' && !checkOutTime) {
+                         // Default check-out for half day is check-in + 4 hours
+                         if (checkIn) {
+                             const ci = new Date(checkIn);
+                             ci.setHours(ci.getHours() + 4);
+                             const hh = String(ci.getHours()).padStart(2, '0');
+                             const mm = String(ci.getMinutes()).padStart(2, '0');
+                             checkOut = formatTime(`${hh}:${mm}:00`);
+                         }
+                    }
+                    if (finalStatus === 'Delayed' && !checkInTime) {
+                        // Default check-in for delayed is shift check-in + 1 hour
+                        if (checkIn) {
+                            const ci = new Date(checkIn);
+                            ci.setHours(ci.getHours() + 1);
+                            const hh = String(ci.getHours()).padStart(2, '0');
+                            const mm = String(ci.getMinutes()).padStart(2, '0');
+                            checkIn = formatTime(`${hh}:${mm}:00`);
+                        }
+                    }
+                }
+
                 // --- NEW LEAVE BALANCE CHECK ---
                 if (finalLeaveType) {
                     const year = date.split('-')[0];

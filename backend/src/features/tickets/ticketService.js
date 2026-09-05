@@ -2,7 +2,9 @@ const ticketModel = require('./ticketModel');
 
 const ticketService = {
   createTicket: async (tenantId, raisedByUserId, data) => {
-    return await ticketModel.create(tenantId, raisedByUserId, data);
+    const ticketId = await ticketModel.create(tenantId, raisedByUserId, data);
+    await Notification.notifyAdmins(tenantId, 'ticket', 'New Ticket Raised', `A new ticket '${data.subject}' has been raised.`, ticketId);
+    return ticketId;
   },
 
   listTickets: async (tenantId, user, filters = {}) => {
@@ -30,6 +32,19 @@ const ticketService = {
     }
 
     return ticket;
+  },
+
+  updateTicketStatus: async (tenantId, id, status, updatedByUserId) => {
+    const validStatuses = ['open', 'in_progress', 'resolved', 'closed'];
+    if (!validStatuses.includes(status)) {
+      const error = new Error('Invalid status value');
+      error.statusCode = 400;
+      throw error;
+    }
+    const result = await ticketModel.updateStatus(tenantId, id, status, updatedByUserId);
+    const ticket = await ticketModel.getById(tenantId, id);
+    await Notification.create(tenantId, ticket.raised_by_user_id, 'ticket', 'Ticket Status Updated', `Your ticket '${ticket.subject}' is now ${status}.`, id);
+    return result;
   },
 
   updateTicket: async (tenantId, id, user, data) => {

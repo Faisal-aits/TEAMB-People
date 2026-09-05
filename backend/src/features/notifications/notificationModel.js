@@ -11,6 +11,16 @@ const Notification = {
     return result.insertId;
   },
 
+  notifyAdmins: async (tenantId, type, title, message = '', referenceId = null) => {
+    const [admins] = await pool.execute(
+      `SELECT id FROM users WHERE tenant_id = ? AND position IN ('admin', 'hr') AND is_active = 1`,
+      [tenantId]
+    );
+    for (const admin of admins) {
+      await Notification.create(tenantId, admin.id, type, title, message, referenceId);
+    }
+  },
+
   getForUser: async (tenantId, userId, limit = 50) => {
     const limitNum = Number(limit) || 50;
     const [rows] = await pool.execute(

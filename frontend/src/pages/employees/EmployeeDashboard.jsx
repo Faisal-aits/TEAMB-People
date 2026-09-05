@@ -218,6 +218,7 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const [dashboardData, setDashboardData] = useState({
     profile: null,
     todayAttendance: null,
@@ -399,6 +400,8 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
         longitude: location.longitude,
       };
       await attendanceAPI.markMyAttendance(attendanceData);
+      setSuccessMsg(type === 'check_in' ? '✅ Checked In Successfully!' : '✅ Checked Out Successfully!');
+      setTimeout(() => setSuccessMsg(''), 4000);
       await loadDashboard(true);
     } catch (err) {
       console.error(`Error during ${type}:`, err);
@@ -559,6 +562,7 @@ const EmployeeDashboard = ({ user, navigateToTab, onOpenModule }) => {
       </header>
 
       {error && <div className="employee-dashboard-alert">{error}</div>}
+      {successMsg && <div style={{background:'#d1fae5',color:'#065f46',border:'1px solid #6ee7b7',borderRadius:'8px',padding:'12px 20px',margin:'0 0 12px 0',fontWeight:600,fontSize:'1rem',textAlign:'center'}}>{successMsg}</div>}
 
       <section className="employee-overview-grid" aria-label="Employee overview">
         {summaryCards.map((card) => (

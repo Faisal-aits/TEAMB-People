@@ -125,8 +125,8 @@ const AttendanceManagement = () => {
           date: getTodayIST(),
           employee_id: 'all',
           status: 'Present',
-          check_in_time: '09:30 AM',
-          check_out_time: '06:30 PM',
+          check_in_time: '',
+          check_out_time: '',
           reason: ''
         });
         await handleRefresh();

@@ -1,6 +1,7 @@
 // backend/controllers/leaveController.js
 const Leave = require('./leaveModel');
 const { pool } = require('../../config/db'); 
+const Notification = require('../notifications/notificationModel');
 
 const leaveController = {
     // Get all leave requests (admin)
@@ -110,6 +111,9 @@ const leaveController = {
                 end_date
             });
 
+            // Notify admins about new leave request
+            await Notification.notifyAdmins(req.tenantId, 'leave', 'New Leave Request', `A new ${leave_type || 'Casual'} leave request has been submitted for ${start_date} to ${end_date}.`, leaveId);
+
             res.status(201).json({
                 message: 'Leave request submitted successfully!',
                 leave_id: leaveId
@@ -178,6 +182,15 @@ const leaveController = {
 
           await Leave.approve(req.tenantId, leaveId, approved_by);
 
+          // Notify the requesting employee
+          const [leaveOwnerRows] = await connection.execute(
+            `SELECT u.id as user_id FROM leave_requests lr JOIN employee_details ed ON ed.id = lr.employee_id JOIN users u ON u.id = ed.employee_id WHERE lr.leave_id = ? AND lr.tenant_id = ?`,
+            [leaveId, req.tenantId]
+          );
+          if (leaveOwnerRows.length > 0) {
+            await Notification.create(req.tenantId, leaveOwnerRows[0].user_id, 'leave', 'Leave Approved', `Your leave request has been approved.`, parseInt(leaveId));
+          }
+
           await connection.commit();
           res.json({ message: 'Leave approved successfully!' });
         } catch (err) {
@@ -210,6 +223,15 @@ const leaveController = {
                 : null;
 
             await Leave.reject(req.tenantId, leaveId, approved_by);
+
+            // Notify the requesting employee
+            const [leaveOwnerRows] = await pool.execute(
+              `SELECT u.id as user_id FROM leave_requests lr JOIN employee_details ed ON ed.id = lr.employee_id JOIN users u ON u.id = ed.employee_id WHERE lr.leave_id = ? AND lr.tenant_id = ?`,
+              [leaveId, req.tenantId]
+            );
+            if (leaveOwnerRows.length > 0) {
+              await Notification.create(req.tenantId, leaveOwnerRows[0].user_id, 'leave', 'Leave Rejected', `Your leave request has been rejected.`, parseInt(leaveId));
+            }
 
             res.json({ message: 'Leave rejected successfully!' });
         } catch (error) {

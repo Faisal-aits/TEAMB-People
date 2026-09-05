@@ -445,16 +445,6 @@ const ShiftManagement = () => {
                   </select>
                   <small>Hold Ctrl/Cmd to select multiple employees. Employees will be assigned to this shift for today only.</small>
                 </div>
-                <div className="lm-form-field" style={{marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px', padding: '10px', background: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0'}}>
-                  <input
-                    type="checkbox"
-                    id="assignAllPermanently"
-                    checked={newShift.assignAllPermanently || false}
-                    onChange={(e) => setNewShift(prev => ({...prev, assignAllPermanently: e.target.checked}))}
-                    style={{width: 'auto', margin: 0}}
-                  />
-                  <label htmlFor="assignAllPermanently" style={{margin: 0, cursor: 'pointer', fontWeight: 600, color: '#334155'}}>Assign as DEFAULT shift to ALL active employees</label>
-                </div>
               </div>
 
               <div className="lm-form-actions">
