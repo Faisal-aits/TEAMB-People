@@ -340,7 +340,7 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
             <ul>
               {/* Dashboard */}
               <li className={activeMainModule === 'dashboard' ? 'active' : ''}>
-                <button onClick={() => handleMainModuleClick('dashboard')} title="Dashboard">
+                <button onMouseEnter={() => handleMainModuleHover('dashboard')} onClick={() => handleMainModuleClick('dashboard')} title="Dashboard">
                   <span className="nav-icon"><DashboardIcon /></span>
                   <span className="nav-text">Dashboard</span>
                 </button>
@@ -349,7 +349,7 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
               {/* HR Module */}
               {canAccessHr && (
                 <li className={activeMainModule === 'hr' ? 'active' : ''}>
-                  <button onClick={() => handleMainModuleClick('hr')} title="HR Module">
+                  <button onMouseEnter={() => handleMainModuleHover('hr')} onClick={() => handleMainModuleClick('hr')} title="HR Module">
                     <span className="nav-icon"><BsFillPersonLinesFill /></span>
                     <span className="nav-text">HR Module</span>
                   </button>
@@ -358,7 +358,7 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
 
               {/* Tickets Module */}
               <li className={activeMainModule === 'tickets' ? 'active' : ''}>
-                <button onClick={() => handleMainModuleClick('tickets')} title="Tickets Module">
+                <button onMouseEnter={() => handleMainModuleHover('tickets')} onClick={() => handleMainModuleClick('tickets')} title="Tickets Module">
                   <span className="nav-icon"><TicketsIcon /></span>
                   <span className="nav-text">Tickets</span>
                 </button>
@@ -366,7 +366,7 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
 
               {/* Company Documents Module */}
               <li className={activeMainModule === 'company-documents' ? 'active' : ''}>
-                <button onClick={() => handleMainModuleClick('company-documents')} title="Company Documents">
+                <button onMouseEnter={() => handleMainModuleHover('company-documents')} onClick={() => handleMainModuleClick('company-documents')} title="Company Documents">
                   <span className="nav-icon"><FolderIcon /></span>
                   <span className="nav-text">Documents</span>
                 </button>
@@ -375,7 +375,7 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
               {/* Settings Dropdown - Admin only */}
               {isAdmin && (
                 <li className={activeMainModule === 'settings' ? 'active' : ''}>
-                  <button onClick={() => handleMainModuleClick('settings')} title="Settings">
+                  <button onMouseEnter={() => handleMainModuleHover('settings')} onClick={() => handleMainModuleClick('settings')} title="Settings">
                     <span className="nav-icon"><IoSettingsSharp /></span>
                     <span className="nav-text">Settings</span>
                   </button>
