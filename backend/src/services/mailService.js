@@ -144,11 +144,18 @@ const createTransportForTenant = async (tenantId) => {
               const attachments = [];
               if (options.attachments && options.attachments.length > 0) {
                   for (const att of options.attachments) {
+                      let base64Content = '';
+                      if (Buffer.isBuffer(att.content)) {
+                          base64Content = att.content.toString('base64');
+                      } else if (typeof att.content === 'string') {
+                          // Check if it's already base64 string
+                          base64Content = att.content.includes('base64,') ? att.content.split('base64,')[1] : att.content;
+                      }
                       attachments.push({
                           "@odata.type": "#microsoft.graph.fileAttachment",
                           "name": att.filename,
-                          "contentType": att.contentType,
-                          "contentBytes": att.content.toString('base64')
+                          "contentType": att.contentType || 'application/pdf',
+                          "contentBytes": base64Content
                       });
                   }
               }
@@ -304,7 +311,7 @@ const buildPasswordResetTemplate = ({ userName, resetLink }) => {
   `;
 };
 
-const sendMail = async (tenantId, { to, subject, html, text }) => {
+const sendMail = async (tenantId, { to, subject, html, text, attachments }) => {
   const { transporter, config } = await createTransportForTenant(tenantId);
   const fromName = config.from_name || APP_NAME;
   const fromEmail = config.from_email || config.username;
@@ -315,7 +322,8 @@ const sendMail = async (tenantId, { to, subject, html, text }) => {
       to,
       subject,
       html,
-      text
+      text,
+      attachments
     });
   } catch (err) {
     console.error('[mailService] sendMail failed:', {
@@ -384,10 +392,16 @@ const sendOfferLetter = async (tenantId, offer) => sendMail(tenantId, {
     `Annual CTC: ${offer.formData.ctc || offer.formData.salaryBreakup?.ctc?.annual || '-'}`,
     '',
     'Please review the offer and contact HR for acceptance or any clarification.',
-    '',
     'Regards,',
     `${APP_NAME} Team`
-  ].join('\n')
+  ].join('\n'),
+  attachments: offer.pdfBase64 ? [
+    {
+      filename: `Offer_Letter_${(offer.candidateName || offer.formData.fullName || 'Candidate').replace(/\s+/g, '_')}.pdf`,
+      content: offer.pdfBase64.includes('base64,') ? offer.pdfBase64.split('base64,')[1] : offer.pdfBase64,
+      encoding: 'base64'
+    }
+  ] : []
 });
 
 const sendSalarySlip = async (tenantId, { to, name, monthName, year, pdfBuffer }) => {
