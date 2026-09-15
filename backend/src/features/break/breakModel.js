@@ -4,12 +4,18 @@ async function breakIn(tenantId, employeeId, breakDate, breakInTime) {
     try {
         // Check if employee has checked in today and has not checked out yet
         const [attendance] = await pool.execute(
-            'SELECT * FROM tb_attendance WHERE tenant_id = ? AND employee_id = ? AND date = ? AND check_in IS NOT NULL',
-            [tenantId, employeeId, breakDate]
+            `SELECT a.* FROM tb_attendance a
+             LEFT JOIN employee_details ed ON ed.tenant_id = a.tenant_id 
+               AND (CAST(ed.id AS CHAR) = CAST(a.employee_id AS CHAR) OR CAST(ed.employee_id AS CHAR) = CAST(a.employee_id AS CHAR))
+             WHERE a.tenant_id = ? 
+               AND (CAST(a.employee_id AS CHAR) = ? OR CAST(ed.id AS CHAR) = ? OR CAST(ed.employee_id AS CHAR) = ?) 
+               AND a.date = ? 
+               AND a.check_in IS NOT NULL`,
+            [tenantId, String(employeeId), String(employeeId), String(employeeId), breakDate]
         );
 
         if (attendance.length === 0) {
-            throw new Error('You must check in first before taking a break');
+            throw new Error('Employee must check in first before taking a break');
         }
 
         if (attendance[0].check_out) {
@@ -18,17 +24,26 @@ async function breakIn(tenantId, employeeId, breakDate, breakInTime) {
 
         // Check if there is already an active break
         const [activeBreak] = await pool.execute(
-            'SELECT * FROM tb_breaks WHERE tenant_id = ? AND employee_id = ? AND break_date = ? AND status = "Active"',
-            [tenantId, employeeId, breakDate]
+            `SELECT b.* FROM tb_breaks b
+             LEFT JOIN employee_details ed ON ed.tenant_id = b.tenant_id 
+               AND (CAST(ed.id AS CHAR) = CAST(b.employee_id AS CHAR) OR CAST(ed.employee_id AS CHAR) = CAST(b.employee_id AS CHAR))
+             WHERE b.tenant_id = ? 
+               AND (CAST(b.employee_id AS CHAR) = ? OR CAST(ed.id AS CHAR) = ? OR CAST(ed.employee_id AS CHAR) = ?) 
+               AND b.break_date = ? 
+               AND b.status = "Active"`,
+            [tenantId, String(employeeId), String(employeeId), String(employeeId), breakDate]
         );
 
         if (activeBreak.length > 0) {
-            throw new Error('You are already on an active break');
+            throw new Error('Employee is already on an active break');
         }
+
+        // Use the actual employee_details.id for inserting
+        const finalEmpId = attendance[0].employee_id || employeeId;
 
         const [result] = await pool.execute(
             'INSERT INTO tb_breaks (tenant_id, employee_id, break_date, break_in_time, status) VALUES (?, ?, ?, ?, "Active")',
-            [tenantId, employeeId, breakDate, breakInTime]
+            [tenantId, finalEmpId, breakDate, breakInTime]
         );
 
         return result.insertId;
@@ -42,8 +57,15 @@ async function breakOut(tenantId, employeeId, breakDate, breakOutTime) {
     try {
         // Find the active break
         const [activeBreak] = await pool.execute(
-            'SELECT * FROM tb_breaks WHERE tenant_id = ? AND employee_id = ? AND break_date = ? AND status = "Active" ORDER BY break_in_time DESC LIMIT 1',
-            [tenantId, employeeId, breakDate]
+            `SELECT b.* FROM tb_breaks b
+             LEFT JOIN employee_details ed ON ed.tenant_id = b.tenant_id 
+               AND (CAST(ed.id AS CHAR) = CAST(b.employee_id AS CHAR) OR CAST(ed.employee_id AS CHAR) = CAST(b.employee_id AS CHAR))
+             WHERE b.tenant_id = ? 
+               AND (CAST(b.employee_id AS CHAR) = ? OR CAST(ed.id AS CHAR) = ? OR CAST(ed.employee_id AS CHAR) = ?) 
+               AND b.break_date = ? 
+               AND b.status = "Active" 
+             ORDER BY b.break_in_time DESC LIMIT 1`,
+            [tenantId, String(employeeId), String(employeeId), String(employeeId), breakDate]
         );
 
         if (activeBreak.length === 0) {
@@ -53,7 +75,7 @@ async function breakOut(tenantId, employeeId, breakDate, breakOutTime) {
         const breakRecord = activeBreak[0];
         const inTime = new Date(breakRecord.break_in_time);
         const outTime = new Date(breakOutTime);
-        const durationMinutes = Math.round((outTime - inTime) / (1000 * 60)); // Duration in minutes
+        const durationMinutes = Math.max(0, Math.round((outTime - inTime) / (1000 * 60)));
 
         await pool.execute(
             'UPDATE tb_breaks SET break_out_time = ?, duration_minutes = ?, status = "Completed" WHERE id = ?',

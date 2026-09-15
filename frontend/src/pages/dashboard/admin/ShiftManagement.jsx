@@ -545,17 +545,33 @@ const ShiftManagement = () => {
                   <table className="lm-data-table" style={{tableLayout: 'fixed', width: '100%'}}>
                     <thead>
                       <tr>
-                        <th style={{width: '100%'}}>Employee Name</th>
+                        <th style={{width: '45%'}}>Employee Name</th>
+                        <th style={{width: '25%'}}>Employee ID</th>
+                        <th style={{width: '30%'}}>Department</th>
                       </tr>
                     </thead>
                     <tbody>
                       {selectedShift.employeesInShift && selectedShift.employeesInShift.length > 0 ? (
                         selectedShift.employeesInShift.map((employee) => (
                           <tr key={employee.employee_id}>
-                            <td style={{width: '100%'}}>
+                            <td style={{width: '45%'}}>
                               <div className="lm-cell-content">
-                                <div className="lm-primary-text">
+                                <div className="lm-primary-text" style={{ fontWeight: '600' }}>
                                   {employee.employee_name}
+                                </div>
+                              </div>
+                            </td>
+                            <td style={{width: '25%'}}>
+                              <div className="lm-cell-content">
+                                <div className="lm-primary-text" style={{ color: '#4b5563' }}>
+                                  {employee.employee_id || '-'}
+                                </div>
+                              </div>
+                            </td>
+                            <td style={{width: '30%'}}>
+                              <div className="lm-cell-content">
+                                <div className="lm-primary-text" style={{ color: '#4b5563' }}>
+                                  {employee.department || employee.designation || '-'}
                                 </div>
                               </div>
                             </td>
@@ -563,7 +579,7 @@ const ShiftManagement = () => {
                         ))
                       ) : (
                         <tr>
-                          <td colSpan="1" style={{textAlign: 'center', color: '#666'}}>
+                          <td colSpan="3" style={{textAlign: 'center', color: '#666', padding: '16px'}}>
                             No employees assigned to this shift for today
                           </td>
                         </tr>

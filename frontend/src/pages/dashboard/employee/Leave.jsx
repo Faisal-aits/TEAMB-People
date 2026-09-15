@@ -235,7 +235,8 @@ const LeaveManagement = () => {
     const statusClasses = {
       'Approved': 'leave-status--approved',
       'Pending': 'leave-status--pending',
-      'Rejected': 'leave-status--rejected'
+      'Rejected': 'leave-status--rejected',
+      'Revoked': 'leave-status--revoked'
     };
     
     return (

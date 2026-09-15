@@ -388,3 +388,7 @@
     width: 100%;
   }
 }
+.leave-status--revoked {
+  background: rgba(237, 137, 54, 0.2);
+  color: #c05621;
+}

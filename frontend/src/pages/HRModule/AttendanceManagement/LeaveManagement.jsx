@@ -191,34 +191,141 @@ const LeaveManagement = () => {
     }
   };
 
+  // Helper to get all dates between startDate and endDate (YYYY-MM-DD)
+  const getDatesInRange = (startDate, endDate) => {
+    if (!startDate || !endDate) return [];
+    const dates = [];
+    const current = new Date(startDate);
+    const end = new Date(endDate);
+    while (current <= end) {
+      const year = current.getFullYear();
+      const month = String(current.getMonth() + 1).padStart(2, '0');
+      const day = String(current.getDate()).padStart(2, '0');
+      dates.push(`${year}-${month}-${day}`);
+      current.setDate(current.getDate() + 1);
+    }
+    return dates;
+  };
+
+  const formatDisplayDateWithDay = (dateStr) => {
+    if (!dateStr) return '';
+    const [y, m, d] = dateStr.split('-');
+    const date = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+    const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+    return `${d}-${m}-${y} (${dayName})`;
+  };
+
   // State for approve modal
   const [isApproveModalOpen, setIsApproveModalOpen] = React.useState(false);
-  const [selectedLeaveId, setSelectedLeaveId] = React.useState(null);
+  const [selectedLeave, setSelectedLeave] = React.useState(null);
   const [selectedCategory, setSelectedCategory] = React.useState('');
+  const [leaveDates, setLeaveDates] = React.useState([]);
+  const [selectedDates, setSelectedDates] = React.useState([]);
+  const [isApproving, setIsApproving] = React.useState(false);
+  const [isRevokeConfirmOpen, setIsRevokeConfirmOpen] = React.useState(false);
+  const [selectedLeaveForRevoke, setSelectedLeaveForRevoke] = React.useState(null);
+  const [isRevoking, setIsRevoking] = React.useState(false);
 
-  const handleOpenApproveModal = (leaveId, defaultCategory = '') => {
-    setSelectedLeaveId(leaveId);
-    setSelectedCategory(defaultCategory);
-    setIsApproveModalOpen(true);
+  const handleToggleDate = (dateStr) => {
+    setSelectedDates(prev =>
+      prev.includes(dateStr) ? prev.filter(d => d !== dateStr) : [...prev, dateStr]
+    );
+  };
+
+  const handleSelectAllDates = () => {
+    setSelectedDates([...leaveDates]);
+  };
+
+  const handleDeselectAllDates = () => {
+    setSelectedDates([]);
   };
 
   const handleConfirmApprove = async () => {
+    if (!selectedLeave) return;
+    if (leaveDates.length > 1 && selectedDates.length === 0) {
+      showToast('Please select at least one date to approve.', 'danger');
+      return;
+    }
     try {
-      await leaveAPI.approve(selectedLeaveId, { category: selectedCategory });
+      setIsApproving(true);
+      const datesToApprove = leaveDates.length > 1 ? selectedDates : leaveDates;
+      await leaveAPI.approve(selectedLeave.leave_id, {
+        category: selectedCategory || selectedLeave.leave_type,
+        selectedDates: datesToApprove
+      });
       showToast('Leave approved successfully!', 'success');
       setIsApproveModalOpen(false);
+      setSelectedLeave(null);
       loadLeaveData();
+
+      if (employeeBalances[selectedLeave.employee_id]) {
+        loadEmployeeBalances(selectedLeave.employee_id);
+      }
     } catch (error) {
-      console.error('Error approving leave with category:', error);
+      console.error('Error approving leave:', error);
       const errorMessage = error.response?.data?.message || 'Error approving leave. Please try again.';
       showToast(errorMessage, 'danger');
+    } finally {
+      setIsApproving(false);
     }
   };
 
-  // Replace quick approve usage
-  const handleQuickApprove = (leave, e) => {
+  // Quick approve: 1 day -> immediate approve, 2+ days -> date selection modal
+  const handleQuickApprove = async (leave, e) => {
     e.stopPropagation();
-    handleOpenApproveModal(leave.leave_id, leave.leave_type || '');
+    const dates = getDatesInRange(leave.start_date, leave.end_date);
+    if (dates.length <= 1) {
+      // Single day leave: approve immediately without showing modal
+      try {
+        await leaveAPI.approve(leave.leave_id, {
+          category: leave.leave_type,
+          selectedDates: dates.length === 1 ? dates : [leave.start_date]
+        });
+        showToast('Leave approved successfully!', 'success');
+        loadLeaveData();
+        if (employeeBalances[leave.employee_id]) {
+          loadEmployeeBalances(leave.employee_id);
+        }
+      } catch (error) {
+        console.error('Error approving leave:', error);
+        const errorMessage = error.response?.data?.message || 'Error approving leave. Please try again.';
+        showToast(errorMessage, 'danger');
+      }
+    } else {
+      // Two or more leave dates: open modal to select which date(s) to approve
+      setSelectedLeave(leave);
+      setSelectedCategory(leave.leave_type || '');
+      setLeaveDates(dates);
+      setSelectedDates(dates); // default select all
+      setIsApproveModalOpen(true);
+    }
+  };
+
+    const handleOpenRevokeModal = (leave, e) => {
+    e.stopPropagation();
+    setSelectedLeaveForRevoke(leave);
+    setIsRevokeConfirmOpen(true);
+  };
+
+  const handleConfirmRevoke = async () => {
+    if (!selectedLeaveForRevoke) return;
+    setIsRevoking(true);
+    try {
+      await leaveAPI.revoke(selectedLeaveForRevoke.leave_id);
+      showToast('Leave revoked successfully and balance restored!', 'success');
+      setIsRevokeConfirmOpen(false);
+      setSelectedLeaveForRevoke(null);
+      loadLeaveData();
+      if (selectedLeaveForRevoke.employee_id) {
+        loadEmployeeBalances(selectedLeaveForRevoke.employee_id);
+      }
+    } catch (error) {
+      console.error('Error revoking leave:', error);
+      const errorMessage = error.response?.data?.message || 'Error revoking leave. Please try again.';
+      showToast(errorMessage, 'danger');
+    } finally {
+      setIsRevoking(false);
+    }
   };
 
   const handleQuickReject = (leave, e) => {
@@ -334,6 +441,7 @@ const LeaveManagement = () => {
             <option value="all">All Status</option>
             <option value="Pending">Pending</option>
             <option value="Approved">Approved</option>
+            <option value="Revoked">Revoked</option>
             <option value="Rejected">Rejected</option>
           </select>
           <select
@@ -481,7 +589,26 @@ const LeaveManagement = () => {
                             </button>
                           </>
                         )}
-                        {leave.status !== 'Pending' && (
+                        {leave.status === 'Approved' && (
+                          <button
+                            onClick={(e) => handleOpenRevokeModal(leave, e)}
+                            className="leave-action-btn leave-revoke-btn quick-action"
+                            title="Revoke Leave and Refill Balance"
+                          >
+                            Revoke
+                          </button>
+                        )}
+                        {leave.status === 'Revoked' && (
+                          <span className="leave-processed-text leave-revoked-text">
+                            Revoked
+                          </span>
+                        )}
+                        {leave.status === 'Rejected' && (
+                          <span className="leave-processed-text">
+                            Rejected
+                          </span>
+                        )}
+                        {leave.status !== 'Pending' && leave.status !== 'Approved' && leave.status !== 'Revoked' && leave.status !== 'Rejected' && (
                           <span className="leave-processed-text">
                             Processed on {formatDate(leave.approved_at)}
                           </span>
@@ -617,34 +744,194 @@ const LeaveManagement = () => {
         </div>
       )}
 
+      {/* ==================== REVOKE CONFIRMATION MODAL ==================== */}
+      {isRevokeConfirmOpen && selectedLeaveForRevoke && (
+        <div className="leave-modal-overlay">
+          <div className="leave-modal-content">
+            <div className="leave-delete-confirmation">
+              <div className="leave-delete-icon" style={{ background: '#fef3c7', color: '#d97706' }}>
+                <FaExclamationTriangle />
+              </div>
+              <h3 className="leave-delete-title">
+                Revoke Approved Leave?
+              </h3>
+              <p className="leave-delete-message">
+                Are you sure you want to revoke the approved leave for <strong>{selectedLeaveForRevoke.employee_name}</strong>?
+              </p>
+              <div style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                padding: '12px 16px',
+                margin: '12px 0 16px 0',
+                textAlign: 'left',
+                fontSize: '0.875rem'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <span style={{ color: '#64748b' }}>Leave Type:</span>
+                  <span style={{ fontWeight: 600, color: '#334155' }}>{selectedLeaveForRevoke.leave_type || 'PL'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <span style={{ color: '#64748b' }}>Dates:</span>
+                  <span style={{ fontWeight: 600, color: '#334155' }}>{formatDate(selectedLeaveForRevoke.start_date)} - {formatDate(selectedLeaveForRevoke.end_date)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#64748b' }}>Duration:</span>
+                  <span style={{ fontWeight: 600, color: '#334155' }}>{selectedLeaveForRevoke.total_days || calculateDuration(selectedLeaveForRevoke.start_date, selectedLeaveForRevoke.end_date)}</span>
+                </div>
+              </div>
+              <p style={{ fontSize: '0.8rem', color: '#059669', marginBottom: '16px' }}>
+                ✓ The employee's leave balance will be refilled ({selectedLeaveForRevoke.total_days || calculateDuration(selectedLeaveForRevoke.start_date, selectedLeaveForRevoke.end_date)} restored).<br/>
+                ✓ The 'On Leave' attendance history records will be cleared.
+              </p>
+
+              <div className="leave-delete-actions">
+                <button
+                  type="button"
+                  onClick={() => { setIsRevokeConfirmOpen(false); setSelectedLeaveForRevoke(null); }}
+                  className="leave-cancel-btn"
+                  disabled={isRevoking}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmRevoke}
+                  className="leave-modal-red-btn"
+                  disabled={isRevoking}
+                  style={{ background: '#d97706', borderColor: '#d97706' }}
+                >
+                  {isRevoking ? 'Revoking...' : 'Confirm Revoke'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ==================== APPROVE CONFIRMATION MODAL ==================== */}
 
-      {isApproveModalOpen && selectedLeaveId && (
+      {isApproveModalOpen && selectedLeave && (
         <div className="leave-modal-overlay">
-          <div className="leave-modal-content leave-approve-confirmation">
-            <div className="leave-delete-confirmation">
-              <div className="leave-approve-icon">
-                <FaCheckCircle />
+          <div className="leave-modal-content leave-approve-confirmation" style={{ maxWidth: '520px' }}>
+            <div className="leave-approve-dialog" style={{ padding: '1.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1rem' }}>
+                <div className="leave-approve-icon" style={{ margin: 0 }}>
+                  <FaCheckCircle />
+                </div>
+                <div>
+                  <h3 className="leave-delete-title" style={{ margin: 0, textAlign: 'left', fontSize: '1.2rem' }}>
+                    Approve Leave Request
+                  </h3>
+                  <p style={{ margin: '2px 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+                    {selectedLeave.employee_name} ({selectedLeave.employee_code})
+                  </p>
+                </div>
               </div>
-              <h3 className="leave-delete-title">Approve Leave Request</h3>
-              <p className="leave-delete-message">
-                Please select the leave category before approving.
-              </p>
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="leave-approve-select-box"
-              >
-                <option value="" disabled>Select Category</option>
-                {leaveTypes.filter(type => type.is_active).map(type => (
-                  <option key={type.id} value={type.name}>{type.name}</option>
-                ))}
-              </select>
-              <div className="leave-delete-actions" style={{ marginTop: '1rem' }}>
+
+              <div style={{ marginBottom: '1rem', background: '#f8fafc', padding: '10px 14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
+                  <span style={{ color: '#64748b' }}>Duration:</span>
+                  <span style={{ fontWeight: 600, color: '#1e293b' }}>
+                    {formatDate(selectedLeave.start_date)} - {formatDate(selectedLeave.end_date)} ({leaveDates.length} days)
+                  </span>
+                </div>
+                {selectedLeave.description && (
+                  <div style={{ fontSize: '0.85rem', color: '#475569', marginTop: '4px', fontStyle: 'italic' }}>
+                    "{selectedLeave.description}"
+                  </div>
+                )}
+              </div>
+
+              <div style={{ marginBottom: '1.25rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label style={{ fontWeight: 600, fontSize: '0.9rem', color: '#334155' }}>
+                    Select Dates to Approve:
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={handleSelectAllDates}
+                      style={{ background: 'none', border: 'none', color: '#6366f1', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                    >
+                      Select All
+                    </button>
+                    <span style={{ color: '#cbd5e1' }}>|</span>
+                    <button
+                      type="button"
+                      onClick={handleDeselectAllDates}
+                      style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '6px' }}>
+                  {leaveDates.map((dateStr) => {
+                    const isChecked = selectedDates.includes(dateStr);
+                    return (
+                      <label
+                        key={dateStr}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '8px 12px',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          backgroundColor: isChecked ? '#f0fdf4' : 'transparent',
+                          border: isChecked ? '1px solid #bbf7d0' : '1px solid transparent',
+                          marginBottom: '4px',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => handleToggleDate(dateStr)}
+                          style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#10b981' }}
+                        />
+                        <span style={{ fontSize: '0.9rem', fontWeight: isChecked ? 600 : 500, color: isChecked ? '#166534' : '#334155' }}>
+                          {formatDisplayDateWithDay(dateStr)}
+                        </span>
+                        {isChecked ? (
+                          <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#16a34a', fontWeight: 600 }}>Approve</span>
+                        ) : (
+                          <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#ef4444', fontWeight: 500 }}>Reject</span>
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
+                <div style={{ marginTop: '6px', fontSize: '0.8rem', color: '#64748b', textAlign: 'right' }}>
+                  {selectedDates.length} of {leaveDates.length} date(s) selected
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', color: '#334155', marginBottom: '6px' }}>
+                  Leave Category:
+                </label>
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="leave-approve-select-box"
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                >
+                  <option value="" disabled>Select Category</option>
+                  {leaveTypes.filter(type => type.is_active).map(type => (
+                    <option key={type.id} value={type.name}>{type.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="leave-delete-actions" style={{ marginTop: '1.5rem', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                 <button
                   type="button"
                   onClick={() => setIsApproveModalOpen(false)}
                   className="leave-cancel-btn"
+                  disabled={isApproving}
                 >
                   Cancel
                 </button>
@@ -652,9 +939,10 @@ const LeaveManagement = () => {
                   type="button"
                   onClick={handleConfirmApprove}
                   className="leave-approve-btn"
-                  disabled={!selectedCategory}
+                  disabled={isApproving || selectedDates.length === 0 || !selectedCategory}
+                  style={{ opacity: (isApproving || selectedDates.length === 0 || !selectedCategory) ? 0.6 : 1 }}
                 >
-                  Approve
+                  {isApproving ? 'Approving...' : `Approve (${selectedDates.length} ${selectedDates.length === 1 ? 'Date' : 'Dates'})`}
                 </button>
               </div>
             </div>

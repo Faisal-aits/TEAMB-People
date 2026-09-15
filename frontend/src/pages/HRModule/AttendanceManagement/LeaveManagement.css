@@ -1277,3 +1277,28 @@
   color: #1e293b;
 }
 
+
+.leave-status-revoked {
+  background: rgba(245, 158, 11, 0.18);
+  color: #b45309;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.leave-revoke-btn {
+  background: rgba(245, 158, 11, 0.15);
+  color: #b45309;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.leave-revoke-btn:hover {
+  background: #d97706;
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.25);
+}
+
+.leave-revoked-text {
+  color: #b45309;
+  font-weight: 500;
+  font-size: 0.8rem;
+}

@@ -19,6 +19,9 @@ export const leaveAPI = {
   // Reject leave request (admin)
   reject: (leaveId) => api.post(`/leaves/${leaveId}/reject`),
 
+  // Revoke approved leave request (admin)
+  revoke: (leaveId) => api.post(`/leaves/${leaveId}/revoke`),
+
   // Get leave statistics (admin)
   getStats: () => api.get('/leaves/stats'),
 

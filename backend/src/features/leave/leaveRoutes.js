@@ -32,6 +32,9 @@ router.post('/:leaveId/approve', requireModuleAccess('leave_management', 'write'
 // POST /api/leaves/:leaveId/reject - Reject leave request (admin)
 router.post('/:leaveId/reject', requireModuleAccess('leave_management', 'write'), leaveController.rejectLeave);
 
+// POST /api/leaves/:leaveId/revoke - Revoke approved leave request (admin)
+router.post('/:leaveId/revoke', requireModuleAccess('leave_management', 'write'), leaveController.revokeLeave);
+
 // DELETE /api/leaves/:leaveId - Delete leave request
 router.delete('/:leaveId', leaveController.deleteLeave);
 

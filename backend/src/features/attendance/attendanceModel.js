@@ -624,6 +624,40 @@ updateCheckOut: async (tenantId, employeeId, date, checkOutTime, latitude = null
             [checkOutTime, status, isHalfDay ? 1 : 0, workedHours, getIndiaDateTime(), latitude, longitude, nextRemarks, employeeId, date, tenantId]
         );
         
+                // Auto-end active break if employee forgot to end break before checkout
+        try {
+            const [activeBreaks] = await connection.execute(
+                `SELECT b.id, b.break_in_time 
+                 FROM tb_breaks b
+                 LEFT JOIN employee_details ed ON ed.tenant_id = b.tenant_id 
+                   AND (CAST(ed.id AS CHAR) = CAST(b.employee_id AS CHAR) OR CAST(ed.employee_id AS CHAR) = CAST(b.employee_id AS CHAR))
+                 WHERE b.tenant_id = ? 
+                   AND (
+                     CAST(b.employee_id AS CHAR) = ? 
+                     OR CAST(ed.id AS CHAR) = ? 
+                     OR CAST(ed.employee_id AS CHAR) = ?
+                   )
+                   AND b.break_date = ? 
+                   AND b.status = 'Active'
+                 ORDER BY b.break_in_time DESC`,
+                [tenantId, String(employeeId), String(employeeId), String(employeeId), date]
+            );
+
+            for (const activeBreak of activeBreaks) {
+                const inTime = new Date(activeBreak.break_in_time);
+                const outTime = new Date(checkOutTime);
+                const durationMinutes = Math.max(0, Math.round((outTime - inTime) / (1000 * 60)));
+                await connection.execute(
+                    `UPDATE tb_breaks 
+                     SET break_out_time = ?, duration_minutes = ?, status = 'Completed' 
+                     WHERE id = ?`,
+                    [checkOutTime, durationMinutes, activeBreak.id]
+                );
+            }
+        } catch (breakErr) {
+            console.error('Error auto-ending break at checkout:', breakErr);
+        }
+
         await connection.commit();
         return { 
             employee_id: employeeId, 

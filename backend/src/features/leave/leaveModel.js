@@ -599,7 +599,7 @@ const Leave = {
                 params.push(filters.leave_type);
             }
 
-            query += ' ORDER BY lr.created_at DESC, FIELD(lr.status, "Pending", "Approved", "Rejected")';
+            query += ' ORDER BY lr.created_at DESC, FIELD(lr.status, "Pending", "Approved", "Revoked", "Rejected")';
 
             const [rows] = await pool.execute(query, params);
             return rows || [];
@@ -617,16 +617,17 @@ const Leave = {
                     COUNT(*) as total,
                     SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pending,
                     SUM(CASE WHEN status = 'Approved' THEN 1 ELSE 0 END) as approved,
-                    SUM(CASE WHEN status = 'Rejected' THEN 1 ELSE 0 END) as rejected
+                    SUM(CASE WHEN status = 'Rejected' THEN 1 ELSE 0 END) as rejected,
+                    SUM(CASE WHEN status = 'Revoked' THEN 1 ELSE 0 END) as revoked
                 FROM leave_requests
                 WHERE tenant_id = ?
             `;
             
             const [rows] = await pool.execute(query, [tenantId]);
-            return rows[0] || { total: 0, pending: 0, approved: 0, rejected: 0 };
+            return rows[0] || { total: 0, pending: 0, approved: 0, rejected: 0, revoked: 0 };
         } catch (error) {
             console.error('Error in Leave.getStatistics:', error);
-            return { total: 0, pending: 0, approved: 0, rejected: 0 };
+            return { total: 0, pending: 0, approved: 0, rejected: 0, revoked: 0 };
         }
     },
 
@@ -677,7 +678,8 @@ const Leave = {
     },
 
     // Approve leave request (single-level approval by any HR admin)
-    approve: async (tenantId, leaveId, approvedBy) => {
+    // Approve leave request (single-level approval with multi-date selection support)
+    approve: async (tenantId, leaveId, approvedBy, selectedDates = null, category = null) => {
         const connection = await pool.getConnection();
         
         try {
@@ -695,64 +697,154 @@ const Leave = {
                 throw new Error('Leave request not found');
             }
 
-            const { employee_id, leave_type, is_paid, start_date, end_date, description, status } = leave[0];
-            const isPaidLeave = await Leave.resolveLeavePaidFlag(connection, tenantId, leave_type, is_paid);
+            let { employee_id, leave_type, is_paid, start_date, end_date, description, status } = leave[0];
 
             if (status !== 'Pending') {
                 throw new Error('Leave request is already processed');
             }
 
-            // Update leave status
-            await connection.execute(
-                `UPDATE leave_requests 
-                 SET status = 'Approved', approved_by = ?, approved_at = NOW() 
-                 WHERE leave_id = ? AND tenant_id = ?`,
-                [approvedBy, leaveId, tenantId]
-            );
+            // Update leave_type if category provided and differs
+            if (category && category !== leave_type) {
+                await connection.execute(
+                    `UPDATE leave_requests SET leave_type = ? WHERE leave_id = ? AND tenant_id = ?`,
+                    [category, leaveId, tenantId]
+                );
+                leave_type = category;
+            }
 
-            // Calculate duration
-            const start = new Date(start_date);
-            const end = new Date(end_date);
-            const total_days = Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24)) + 1;
-            const year = start.getFullYear();
+            const isPaidLeave = await Leave.resolveLeavePaidFlag(connection, tenantId, leave_type, is_paid);
 
-            // Update balances: subtract from pending and add to used
+            // Format date helper (YYYY-MM-DD)
+            const formatDateLocal = (d) => {
+                const dt = new Date(d);
+                const y = dt.getFullYear();
+                const m = String(dt.getMonth() + 1).padStart(2, '0');
+                const day = String(dt.getDate()).padStart(2, '0');
+                return `${y}-${m}-${day}`;
+            };
+
+            const startStr = typeof start_date === 'string' && start_date.includes('-')
+                ? start_date.split('T')[0]
+                : formatDateLocal(start_date);
+            const endStr = typeof end_date === 'string' && end_date.includes('-')
+                ? end_date.split('T')[0]
+                : formatDateLocal(end_date);
+
+            const [sy, sm, sd] = startStr.split('-').map(Number);
+            const [ey, em, ed] = endStr.split('-').map(Number);
+
+            const allRequestedDates = [];
+            let cur = new Date(sy, sm - 1, sd, 12, 0, 0);
+            const end = new Date(ey, em - 1, ed, 12, 0, 0);
+
+            while (cur <= end) {
+                allRequestedDates.push(formatDateLocal(cur));
+                cur.setDate(cur.getDate() + 1);
+            }
+
+            const totalRequestedDays = allRequestedDates.length;
+            const year = sy;
+
+            // Determine approved date list
+            let approvedDateList = allRequestedDates;
+            if (Array.isArray(selectedDates) && selectedDates.length > 0) {
+                const cleanSelected = selectedDates.map(d => String(d).split('T')[0]);
+                approvedDateList = allRequestedDates.filter(d => cleanSelected.includes(d));
+            }
+
+            if (approvedDateList.length === 0) {
+                throw new Error('Please select at least one date to approve');
+            }
+
+            const unapprovedDateList = allRequestedDates.filter(d => !approvedDateList.includes(d));
+            const approvedDaysCount = approvedDateList.length;
+            const unapprovedDaysCount = unapprovedDateList.length;
+
+            // Balance update:
+            // When leave was requested, pending increased by totalRequestedDays.
+            // We subtract totalRequestedDays from pending.
+            // We add ONLY approvedDaysCount to used.
+            // The unapproved days are not added to used, so employee's remaining balance is intact!
             if (isPaidLeave) {
                 await connection.execute(
                     `UPDATE leave_balances 
-                     SET pending = pending - ?, used = used + ? 
+                     SET pending = GREATEST(0, pending - ?), used = used + ? 
                      WHERE tenant_id = ? AND employee_id = ? AND leave_type = ? AND year = ?`,
-                    [total_days, total_days, tenantId, employee_id, leave_type, year]
+                    [totalRequestedDays, approvedDaysCount, tenantId, employee_id, leave_type, year]
                 );
             }
 
-            // Helper to format local date
-            const formatDateLocal = (date) => {
-                const y = date.getFullYear();
-                const m = String(date.getMonth() + 1).padStart(2, '0');
-                const d = String(date.getDate()).padStart(2, '0');
-                return `${y}-${m}-${d}`;
+            // Group contiguous dates into ranges
+            const groupContiguous = (dateList) => {
+                if (!dateList || dateList.length === 0) return [];
+                const sorted = [...dateList].sort();
+                const ranges = [];
+                let rStart = sorted[0];
+                let rEnd = sorted[0];
+
+                for (let i = 1; i < sorted.length; i++) {
+                    const [py, pm, pd] = rEnd.split('-').map(Number);
+                    const [cy, cm, cd] = sorted[i].split('-').map(Number);
+                    const prevD = new Date(py, pm - 1, pd, 12, 0, 0);
+                    const currD = new Date(cy, cm - 1, cd, 12, 0, 0);
+                    const diff = Math.round((currD - prevD) / (1000 * 60 * 60 * 24));
+                    if (diff === 1) {
+                        rEnd = sorted[i];
+                    } else {
+                        ranges.push({ start: rStart, end: rEnd });
+                        rStart = sorted[i];
+                        rEnd = sorted[i];
+                    }
+                }
+                ranges.push({ start: rStart, end: rEnd });
+                return ranges;
             };
-            
-            // Add to attendance history for each day of leave
-            let currentDate = new Date(start_date);
-            const lastDate = new Date(end_date);
-            
-            while (currentDate <= lastDate) {
-                const dateStr = formatDateLocal(currentDate);
-                
+
+            const approvedRanges = groupContiguous(approvedDateList);
+            const unapprovedRanges = groupContiguous(unapprovedDateList);
+
+            // Update primary leave request with the FIRST approved range
+            await connection.execute(
+                `UPDATE leave_requests 
+                 SET start_date = ?, end_date = ?, status = 'Approved', approved_by = ?, approved_at = NOW() 
+                 WHERE leave_id = ? AND tenant_id = ?`,
+                [approvedRanges[0].start, approvedRanges[0].end, approvedBy, leaveId, tenantId]
+            );
+
+            // If there are additional non-contiguous approved ranges, insert them as Approved
+            for (let i = 1; i < approvedRanges.length; i++) {
+                await connection.execute(
+                    `INSERT INTO leave_requests (tenant_id, employee_id, leave_type, is_paid, description, start_date, end_date, status, approved_by, approved_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, 'Approved', ?, NOW())`,
+                    [tenantId, employee_id, leave_type, isPaidLeave ? 1 : 0, description, approvedRanges[i].start, approvedRanges[i].end, approvedBy]
+                );
+            }
+
+            // Insert unapproved ranges as Rejected so the employee sees them as Rejected
+            for (const unapp of unapprovedRanges) {
+                await connection.execute(
+                    `INSERT INTO leave_requests (tenant_id, employee_id, leave_type, is_paid, description, start_date, end_date, status, approved_by, approved_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, 'Rejected', ?, NOW())`,
+                    [tenantId, employee_id, leave_type, isPaidLeave ? 1 : 0, `${description || leave_type} (Unapproved dates)`, unapp.start, unapp.end, approvedBy]
+                );
+            }
+
+            // Add to attendance history ONLY for approved dates
+            for (const dateStr of approvedDateList) {
                 await connection.execute(
                     `INSERT INTO attendance_history (tenant_id, employee_id, date, description, status)
                      VALUES (?, ?, ?, ?, 'On Leave')
                      ON DUPLICATE KEY UPDATE description = VALUES(description), status = VALUES(status)`,
                     [tenantId, employee_id, dateStr, description || `${leave_type} Leave`]
                 );
-                
-                currentDate.setDate(currentDate.getDate() + 1);
             }
 
             await connection.commit();
-            return true;
+            return {
+                approvedDays: approvedDaysCount,
+                unapprovedDays: unapprovedDaysCount,
+                approvedDates: approvedDateList
+            };
         } catch (error) {
             await connection.rollback();
             console.error('Error in Leave.approve:', error);
@@ -901,6 +993,90 @@ const Leave = {
         } catch (error) {
             await connection.rollback();
             console.error('Error in Leave.delete:', error);
+            throw error;
+        } finally {
+            connection.release();
+        }
+    },
+
+    // Revoke approved leave request (restore used balance and remove attendance history entries)
+    revoke: async (tenantId, leaveId, revokedBy) => {
+        const connection = await pool.getConnection();
+        try {
+            await connection.beginTransaction();
+
+            const [leave] = await connection.execute(
+                `SELECT employee_id, leave_type, is_paid, start_date, end_date, status
+                 FROM leave_requests
+                 WHERE leave_id = ? AND tenant_id = ?`,
+                [leaveId, tenantId]
+            );
+
+            if (leave.length === 0) {
+                throw new Error('Leave request not found');
+            }
+
+            const { employee_id, leave_type, is_paid, start_date, end_date, status } = leave[0];
+
+            if (status !== 'Approved') {
+                throw new Error('Only approved leaves can be revoked');
+            }
+
+            const isPaidLeave = await Leave.resolveLeavePaidFlag(connection, tenantId, leave_type, is_paid);
+
+            const start = new Date(start_date);
+            const end = new Date(end_date);
+            const total_days = Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24)) + 1;
+            const year = start.getFullYear();
+
+            // 1. Refill leave balance (restore used balance)
+            if (isPaidLeave) {
+                await connection.execute(
+                    `UPDATE leave_balances 
+                     SET used = GREATEST(0, used - ?) 
+                     WHERE tenant_id = ? AND employee_id = ? AND leave_type = ? AND year = ?`,
+                    [total_days, tenantId, employee_id, leave_type, year]
+                );
+            }
+
+            // 2. Remove entries from attendance_history for the dates
+            const formatDateLocal = (date) => {
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const d = String(date.getDate()).padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            };
+
+            let currentDate = new Date(start_date);
+            const lastDate = new Date(end_date);
+
+            while (currentDate <= lastDate) {
+                const dateStr = formatDateLocal(currentDate);
+                await connection.execute(
+                    `DELETE FROM attendance_history 
+                     WHERE tenant_id = ? AND employee_id = ? AND date = ? AND status = 'On Leave'`,
+                    [tenantId, employee_id, dateStr]
+                );
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+
+            // 3. Mark leave request as Revoked
+            await connection.execute(
+                `UPDATE leave_requests 
+                 SET status = 'Revoked', approved_by = ?, approved_at = NOW() 
+                 WHERE leave_id = ? AND tenant_id = ?`,
+                [revokedBy, leaveId, tenantId]
+            );
+
+            await connection.commit();
+            return {
+                employee_id,
+                refundedDays: total_days,
+                leave_type
+            };
+        } catch (error) {
+            await connection.rollback();
+            console.error('Error in Leave.revoke:', error);
             throw error;
         } finally {
             connection.release();

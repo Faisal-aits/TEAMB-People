@@ -143,11 +143,12 @@ const leaveController = {
     },
 
     // Approve leave request
+        // Approve leave request (handles single or multi-date selection)
     approveLeave: async (req, res) => {
       try {
         const { leaveId } = req.params;
         const user_id = req.user.id;
-        const { category } = req.body;
+        const { category, selectedDates } = req.body;
 
         const [adminEmployeeRows] = await pool.execute(
           `SELECT ed.id as employee_id 
@@ -160,45 +161,29 @@ const leaveController = {
           ? adminEmployeeRows[0].employee_id
           : null;
 
-        const connection = await pool.getConnection();
+        const result = await Leave.approve(req.tenantId, leaveId, approved_by, selectedDates, category);
+
+        // Notify the requesting employee
         try {
-          await connection.beginTransaction();
-
-          // Fetch current leave data
-          const [leaveRows] = await connection.execute(
-            `SELECT leave_type FROM leave_requests WHERE leave_id = ? AND tenant_id = ?`,
+          const [leaveOwnerRows] = await pool.execute(
+            `SELECT u.id as user_id 
+             FROM leave_requests lr 
+             JOIN employee_details ed ON (BINARY lr.employee_id = BINARY ed.id OR (lr.employee_id REGEXP '^[0-9]+$' AND CAST(lr.employee_id AS UNSIGNED) = ed.employee_id))
+             JOIN users u ON u.id = ed.employee_id 
+             WHERE lr.leave_id = ? AND lr.tenant_id = ?`,
             [leaveId, req.tenantId]
           );
-          if (leaveRows.length === 0) {
-            throw new Error('Leave request not found');
+          if (leaveOwnerRows.length > 0 && leaveOwnerRows[0].user_id) {
+            const msg = result && result.unapprovedDays > 0
+              ? `Your leave request was partially approved for ${result.approvedDays} date(s).`
+              : `Your leave request has been approved.`;
+            await Notification.create(req.tenantId, leaveOwnerRows[0].user_id, 'leave', 'Leave Approved', msg, parseInt(leaveId));
           }
-          // Update leave_type if category provided and differs
-          if (category && category !== leaveRows[0].leave_type) {
-            await connection.execute(
-              `UPDATE leave_requests SET leave_type = ? WHERE leave_id = ? AND tenant_id = ?`,
-              [category, leaveId, req.tenantId]
-            );
-          }
-
-          await Leave.approve(req.tenantId, leaveId, approved_by);
-
-          // Notify the requesting employee
-          const [leaveOwnerRows] = await connection.execute(
-            `SELECT u.id as user_id FROM leave_requests lr JOIN employee_details ed ON ed.id = lr.employee_id JOIN users u ON u.id = ed.employee_id WHERE lr.leave_id = ? AND lr.tenant_id = ?`,
-            [leaveId, req.tenantId]
-          );
-          if (leaveOwnerRows.length > 0) {
-            await Notification.create(req.tenantId, leaveOwnerRows[0].user_id, 'leave', 'Leave Approved', `Your leave request has been approved.`, parseInt(leaveId));
-          }
-
-          await connection.commit();
-          res.json({ message: 'Leave approved successfully!' });
-        } catch (err) {
-          await connection.rollback();
-          throw err;
-        } finally {
-          connection.release();
+        } catch (notifErr) {
+          console.error('Failed to notify employee of leave approval:', notifErr);
         }
+
+        res.json({ message: 'Leave approved successfully!', result });
       } catch (error) {
         console.error('Approve leave error:', error);
         res.status(500).json({ message: error.message || 'Server error while approving leave' });
@@ -237,6 +222,56 @@ const leaveController = {
         } catch (error) {
             console.error('Reject leave error:', error);
             res.status(500).json({ message: error.message || 'Server error while rejecting leave' });
+        }
+    },
+
+    // Revoke approved leave request (admin)
+    revokeLeave: async (req, res) => {
+        try {
+            const { leaveId } = req.params;
+            const user_id = req.user.id;
+
+            const [adminEmployeeRows] = await pool.execute(
+                `SELECT ed.id as employee_id 
+                 FROM employee_details ed 
+                 WHERE ed.employee_id = ? AND ed.tenant_id = ?`,
+                [user_id, req.tenantId]
+            );
+
+            const revoked_by = adminEmployeeRows.length > 0
+                ? adminEmployeeRows[0].employee_id
+                : null;
+
+            const result = await Leave.revoke(req.tenantId, leaveId, revoked_by);
+
+            // Notify the requesting employee
+            try {
+                const [leaveOwnerRows] = await pool.execute(
+                    `SELECT u.id as user_id 
+                     FROM leave_requests lr 
+                     JOIN employee_details ed ON (BINARY lr.employee_id = BINARY ed.id OR (lr.employee_id REGEXP '^[0-9]+$' AND CAST(lr.employee_id AS UNSIGNED) = ed.employee_id))
+                     JOIN users u ON u.id = ed.employee_id 
+                     WHERE lr.leave_id = ? AND lr.tenant_id = ?`,
+                    [leaveId, req.tenantId]
+                );
+                if (leaveOwnerRows.length > 0 && leaveOwnerRows[0].user_id) {
+                    await Notification.create(
+                        req.tenantId,
+                        leaveOwnerRows[0].user_id,
+                        'leave',
+                        'Leave Revoked',
+                        `Your approved leave request has been revoked. ${result.refundedDays} day(s) have been restored to your leave balance.`,
+                        parseInt(leaveId)
+                    );
+                }
+            } catch (notifErr) {
+                console.error('Failed to notify employee of leave revocation:', notifErr);
+            }
+
+            res.json({ message: 'Leave revoked successfully and balance restored!', result });
+        } catch (error) {
+            console.error('Revoke leave error:', error);
+            res.status(500).json({ message: error.message || 'Server error while revoking leave' });
         }
     },
 

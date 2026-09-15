@@ -10,6 +10,16 @@ const ensureLeaveSchema = () => {
       await addColumnIfMissing('leave_requests', 'leave_type', "leave_type VARCHAR(50) NOT NULL DEFAULT 'PL' AFTER employee_id");
       await addColumnIfMissing('leave_requests', 'is_paid', 'is_paid TINYINT(1) NULL AFTER leave_type');
 
+      // Ensure 'Revoked' exists in leave_requests status ENUM
+      try {
+        await pool.execute(`
+          ALTER TABLE leave_requests 
+          MODIFY COLUMN status ENUM('Pending', 'Approved', 'Rejected', 'Revoked') DEFAULT 'Pending'
+        `);
+      } catch (enumErr) {
+        // Safe to ignore if already updated or handled
+      }
+
       // 2. Create leave_types table
       await pool.execute(`
         CREATE TABLE IF NOT EXISTS leave_types (

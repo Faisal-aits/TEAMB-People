@@ -41,6 +41,7 @@ const { ensureServiceSettingSchema } = require('./src/features/servicesetting/se
 const { ensureEmployeeSchema } = require('./src/features/employee/employeeSchema');
 const { ensureSalarySchema } = require('./src/features/salary/salarySchema');
 const { ensureLeaveSchema } = require('./src/features/leave/leaveSchema');
+const { ensureExpenseSchema } = require('./src/features/expense/expenseSchema');
 const { ensureAttendanceSchema } = require('./src/features/attendance/attendanceSchema');
 const { ensureRegularizationSchema } = require('./src/features/attendance/regularizationSchema');
 const { ensureBreakSchema } = require('./src/features/break/breakSchema');
@@ -158,6 +159,7 @@ const startServer = async () => {
     await ensureSalarySchema();
     await ensureServiceSettingSchema();
     await ensureLeaveSchema();
+    await ensureExpenseSchema();
     await brandingModel.ensureSchema();
     if (aiDocumentGeneratorRoutes.ensureSchema) {
       await aiDocumentGeneratorRoutes.ensureSchema();

@@ -94,15 +94,39 @@ const Shift = {
                     s.is_default,
                     s.created_at,
                     s.updated_at,
-                    COUNT(DISTINCT ed.id) as employee_count
+                    COUNT(DISTINCT emp_sub.id) as employee_count
                 FROM tb_shifts s
-                LEFT JOIN employee_details ed ON s.shift_id = ed.default_shift_id 
+                LEFT JOIN (
+                    SELECT 
+                        ed.id,
+                        ed.tenant_id,
+                        COALESCE(
+                            (SELECT es.shift_id FROM tb_employee_shifts es 
+                             WHERE es.tenant_id = ed.tenant_id 
+                               AND (CAST(es.employee_id AS CHAR) = CAST(ed.id AS CHAR) OR CAST(es.employee_id AS CHAR) = CAST(ed.employee_id AS CHAR))
+                               AND DATE(es.assigned_date) = CURDATE()
+                             ORDER BY es.emp_shift_id DESC LIMIT 1),
+                            ed.default_shift_id,
+                            (SELECT es2.shift_id FROM tb_employee_shifts es2 
+                             WHERE es2.tenant_id = ed.tenant_id 
+                               AND (CAST(es2.employee_id AS CHAR) = CAST(ed.id AS CHAR) OR CAST(es2.employee_id AS CHAR) = CAST(ed.employee_id AS CHAR))
+                             ORDER BY es2.assigned_date DESC, es2.emp_shift_id DESC LIMIT 1),
+                            (SELECT def.shift_id FROM tb_shifts def 
+                             WHERE def.tenant_id = ed.tenant_id AND def.is_default = 1 
+                             LIMIT 1)
+                        ) AS current_shift_id
+                    FROM employee_details ed
+                    JOIN users u ON (CAST(ed.employee_id AS CHAR) = CAST(u.id AS CHAR) OR CAST(ed.id AS CHAR) = CAST(u.id AS CHAR))
+                    WHERE ed.tenant_id = ?
+                      AND (ed.status = 'active' OR ed.status IS NULL)
+                      AND (u.is_active = 1 OR u.is_active IS NULL)
+                ) emp_sub ON emp_sub.current_shift_id = s.shift_id AND emp_sub.tenant_id = s.tenant_id
                 WHERE s.tenant_id = ?
-                GROUP BY s.shift_id
+                GROUP BY s.shift_id, s.shift_name, s.check_in_time, s.check_out_time, s.grace_period_minutes, s.is_default, s.created_at, s.updated_at
                 ORDER BY s.is_default DESC, s.shift_name
             `;
             
-            const [rows] = await pool.execute(query, [tenantId]);
+            const [rows] = await pool.execute(query, [tenantId, tenantId]);
             return rows;
         } catch (error) {
             console.error('Error in Shift.getAll:', error);
@@ -315,16 +339,34 @@ const Shift = {
                     ed.id,
                     u.first_name,
                     u.last_name,
-                    CONCAT(u.first_name, ' ', u.last_name) as employee_name
+                    CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, '')) as employee_name,
+                    ed.position as designation,
+                    d.name as department
                 FROM employee_details ed
-                JOIN users u ON ed.employee_id = u.id
-                WHERE ed.default_shift_id = ? 
-                    AND ed.tenant_id = ?
-                    AND u.tenant_id = ?
+                JOIN users u ON (CAST(ed.employee_id AS CHAR) = CAST(u.id AS CHAR) OR CAST(ed.id AS CHAR) = CAST(u.id AS CHAR))
+                LEFT JOIN departments d ON ed.department_id = d.id
+                WHERE ed.tenant_id = ?
+                  AND (ed.status = 'active' OR ed.status IS NULL)
+                  AND (u.is_active = 1 OR u.is_active IS NULL)
+                  AND ? = COALESCE(
+                        (SELECT es.shift_id FROM tb_employee_shifts es 
+                         WHERE es.tenant_id = ed.tenant_id 
+                           AND (CAST(es.employee_id AS CHAR) = CAST(ed.id AS CHAR) OR CAST(es.employee_id AS CHAR) = CAST(ed.employee_id AS CHAR))
+                           AND DATE(es.assigned_date) = CURDATE()
+                         ORDER BY es.emp_shift_id DESC LIMIT 1),
+                        ed.default_shift_id,
+                        (SELECT es2.shift_id FROM tb_employee_shifts es2 
+                         WHERE es2.tenant_id = ed.tenant_id 
+                           AND (CAST(es2.employee_id AS CHAR) = CAST(ed.id AS CHAR) OR CAST(es2.employee_id AS CHAR) = CAST(ed.employee_id AS CHAR))
+                         ORDER BY es2.assigned_date DESC, es2.emp_shift_id DESC LIMIT 1),
+                        (SELECT def.shift_id FROM tb_shifts def 
+                         WHERE def.tenant_id = ed.tenant_id AND def.is_default = 1 
+                         LIMIT 1)
+                  )
                 ORDER BY employee_name
             `;
             
-            const [rows] = await pool.execute(query, [shiftId, tenantId, tenantId]);
+            const [rows] = await pool.execute(query, [tenantId, shiftId]);
             
             console.log(`✅ Found ${rows.length} employees for shift ${shiftId}`);
             return rows;
@@ -347,14 +389,17 @@ const Shift = {
                     ed.status,
                     u.first_name,
                     u.last_name,
-                    CONCAT(u.first_name, ' ', u.last_name) as employee_name
+                    CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, '')) as employee_name
                 FROM employee_details ed
-                INNER JOIN users u ON ed.employee_id = u.id
-                LEFT JOIN tb_shifts s ON ed.default_shift_id = s.shift_id
-                WHERE ed.status = 'active'
+                INNER JOIN users u ON (CAST(ed.employee_id AS CHAR) = CAST(u.id AS CHAR) OR CAST(ed.id AS CHAR) = CAST(u.id AS CHAR))
+                LEFT JOIN tb_shifts s ON s.shift_id = COALESCE(
+                    ed.default_shift_id,
+                    (SELECT def.shift_id FROM tb_shifts def WHERE def.tenant_id = ed.tenant_id AND def.is_default = 1 LIMIT 1)
+                )
+                WHERE (ed.status = 'active' OR ed.status IS NULL)
                     AND ed.tenant_id = ?
-                    AND u.tenant_id = ?
-                    AND u.is_active = 1
+                    AND (u.tenant_id = ? OR u.tenant_id IS NULL)
+                    AND (u.is_active = 1 OR u.is_active IS NULL)
                 ORDER BY u.first_name, u.last_name
             `;
             

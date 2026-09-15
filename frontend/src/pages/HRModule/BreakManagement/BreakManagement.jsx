@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaSync, FaExclamationTriangle, FaFileExport, FaHistory } from 'react-icons/fa';
+import { FaSync, FaExclamationTriangle, FaFileExport, FaHistory, FaCoffee, FaStopCircle } from 'react-icons/fa';
 import { breakAPI } from '../../../services/breakAPI';
 import { employeeAPI } from '../../../services/employeeAPI';
 import * as XLSX from 'xlsx';
@@ -16,6 +16,7 @@ const getMonthStartIST = () => {
 
 const BreakManagement = () => {
   const [users, setUsers] = useState([]);
+  const [actionLoading, setActionLoading] = useState({});
   const [breaks, setBreaks] = useState([]);
   const [mergedData, setMergedData] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -163,6 +164,26 @@ const BreakManagement = () => {
   const renderSortIcon = (key) => {
     if (sortConfig.key !== key) return null;
     return sortConfig.direction === 'asc' ? '↑' : '↓';
+  };
+
+    const handleAdminBreakAction = async (employee, actionType) => {
+    const empId = employee.employee_id || employee.id;
+    const key = employee.id;
+    try {
+      setActionLoading(prev => ({ ...prev, [key]: true }));
+      if (actionType === 'in') {
+        await breakAPI.adminBreakIn(empId);
+      } else {
+        await breakAPI.adminBreakOut(empId);
+      }
+      await initializeData();
+    } catch (err) {
+      console.error(`Error during admin ${actionType} break:`, err);
+      const msg = err.response?.data?.message || `Failed to ${actionType === 'in' ? 'start' : 'end'} break`;
+      alert(msg);
+    } finally {
+      setActionLoading(prev => ({ ...prev, [key]: false }));
+    }
   };
 
   const handleRefresh = () => {
@@ -503,7 +524,7 @@ const BreakManagement = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="6" className="text-center loading-cell" style={{textAlign: 'center', padding: '20px'}}>
+                  <td colSpan="7" className="text-center loading-cell" style={{textAlign: 'center', padding: '20px'}}>
                     <FaSync className="spinning" /> Loading data...
                   </td>
                 </tr>
@@ -521,20 +542,41 @@ const BreakManagement = () => {
                     <td>{b.duration_minutes}</td>
                     <td>{getStatusBadge(b.status)}</td>
                     <td>
-                      <button
-                        className="btn-page"
-                        title="View History"
-                        onClick={() => handleViewHistory(b)}
-                        style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#4f46e5' }}
-                      >
-                        <FaHistory /> History
-                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {b.status === 'Active' ? (
+                          <button
+                            className="btn-end-break"
+                            title="End Break"
+                            onClick={() => handleAdminBreakAction(b, 'out')}
+                            disabled={actionLoading[b.id]}
+                          >
+                            <FaStopCircle /> {actionLoading[b.id] ? 'Ending...' : 'End Break'}
+                          </button>
+                        ) : (
+                          <button
+                            className="btn-take-break"
+                            title="Take Break"
+                            onClick={() => handleAdminBreakAction(b, 'in')}
+                            disabled={actionLoading[b.id]}
+                          >
+                            <FaCoffee /> {actionLoading[b.id] ? 'Starting...' : 'Take Break'}
+                          </button>
+                        )}
+                        <button
+                          className="btn-page"
+                          title="View History"
+                          onClick={() => handleViewHistory(b)}
+                          style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#4f46e5' }}
+                        >
+                          <FaHistory /> History
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className="text-center" style={{textAlign: 'center', padding: '20px'}}>No records found.</td>
+                  <td colSpan="7" className="text-center" style={{textAlign: 'center', padding: '20px'}}>No records found.</td>
                 </tr>
               )}
             </tbody>

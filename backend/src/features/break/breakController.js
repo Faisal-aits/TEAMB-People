@@ -16,7 +16,40 @@ const getEmployeeId = async (userId, tenantId) => {
 const breakIn = async (req, res) => {
     try {
         const tenantId = req.tenantId;
-        const employeeId = await getEmployeeId(req.user.id, tenantId);
+        let employeeId;
+
+        if (req.body && req.body.employeeId) {
+            const isSelf = String(req.user.id) === String(req.body.employeeId);
+            const userRole = String(req.user.role || req.user.position || '').toLowerCase();
+            if (!isSelf && userRole !== 'admin' && userRole !== 'superadmin') {
+                const [accessRows] = await pool.execute(
+                    "SELECT access_level FROM user_module_access WHERE user_id = ? AND tenant_id = ? AND module_key IN ('attendance_management', 'hr')",
+                    [req.user.id, tenantId]
+                );
+                const canWrite = accessRows.some(r => r.access_level === 'write');
+                if (!canWrite) {
+                    return sendResponse(res, 403, false, 'You do not have permission to manage breaks for other employees');
+                }
+            }
+
+            const target = req.body.employeeId;
+            const [emps] = await pool.execute(
+                `SELECT ed.id FROM employee_details ed 
+                 WHERE ed.tenant_id = ? AND (
+                     CAST(ed.id AS CHAR) = ? 
+                     OR CAST(ed.employee_id AS CHAR) = ? 
+                     OR (ed.employee_id REGEXP '^[0-9]+$' AND CAST(ed.employee_id AS UNSIGNED) = ?)
+                 )`,
+                [tenantId, String(target), String(target), isNaN(Number(target)) ? -1 : Number(target)]
+            );
+            if (emps.length === 0) {
+                return sendResponse(res, 404, false, 'Employee record not found');
+            }
+            employeeId = emps[0].id;
+        } else {
+            employeeId = await getEmployeeId(req.user.id, tenantId);
+        }
+
         const currentDate = getIndiaDate();
         const currentDateTime = getIndiaDateTime();
 
@@ -24,7 +57,9 @@ const breakIn = async (req, res) => {
 
         return sendResponse(res, 200, true, 'Break started successfully', { breakId });
     } catch (error) {
-        if (error.message.includes('already on an active break')) {
+        if (error.message.includes('already on an active break') || 
+            error.message.includes('must check in first') || 
+            error.message.includes('Cannot take a break after checking out')) {
             return sendResponse(res, 400, false, error.message);
         }
         console.error('Error in breakIn:', error);
@@ -35,7 +70,40 @@ const breakIn = async (req, res) => {
 const breakOut = async (req, res) => {
     try {
         const tenantId = req.tenantId;
-        const employeeId = await getEmployeeId(req.user.id, tenantId);
+        let employeeId;
+
+        if (req.body && req.body.employeeId) {
+            const isSelf = String(req.user.id) === String(req.body.employeeId);
+            const userRole = String(req.user.role || req.user.position || '').toLowerCase();
+            if (!isSelf && userRole !== 'admin' && userRole !== 'superadmin') {
+                const [accessRows] = await pool.execute(
+                    "SELECT access_level FROM user_module_access WHERE user_id = ? AND tenant_id = ? AND module_key IN ('attendance_management', 'hr')",
+                    [req.user.id, tenantId]
+                );
+                const canWrite = accessRows.some(r => r.access_level === 'write');
+                if (!canWrite) {
+                    return sendResponse(res, 403, false, 'You do not have permission to manage breaks for other employees');
+                }
+            }
+
+            const target = req.body.employeeId;
+            const [emps] = await pool.execute(
+                `SELECT ed.id FROM employee_details ed 
+                 WHERE ed.tenant_id = ? AND (
+                     CAST(ed.id AS CHAR) = ? 
+                     OR CAST(ed.employee_id AS CHAR) = ? 
+                     OR (ed.employee_id REGEXP '^[0-9]+$' AND CAST(ed.employee_id AS UNSIGNED) = ?)
+                 )`,
+                [tenantId, String(target), String(target), isNaN(Number(target)) ? -1 : Number(target)]
+            );
+            if (emps.length === 0) {
+                return sendResponse(res, 404, false, 'Employee record not found');
+            }
+            employeeId = emps[0].id;
+        } else {
+            employeeId = await getEmployeeId(req.user.id, tenantId);
+        }
+
         const currentDate = getIndiaDate();
         const currentDateTime = getIndiaDateTime();
 
