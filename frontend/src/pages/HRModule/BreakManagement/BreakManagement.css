@@ -163,6 +163,7 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
 }
 
 .sortable-th {
@@ -180,6 +181,7 @@
   color: #1f2937;
   border-bottom: 1px solid #e5e7eb;
   vertical-align: middle;
+  white-space: nowrap;
 }
 
 .attendance-main-table tbody tr:hover {
@@ -193,12 +195,18 @@
 
 /* Status Badges */
 .break-status-badge {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  border-radius: 6px;
   font-size: 12px;
   font-weight: 600;
   text-transform: capitalize;
+  white-space: nowrap;
+  min-width: 105px;
+  text-align: center;
+  box-sizing: border-box;
 }
 
 .break-status-active {

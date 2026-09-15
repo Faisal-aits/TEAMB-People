@@ -149,6 +149,7 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
     border-bottom: 1px solid #e5e7eb;
+    white-space: nowrap;
   }
   
   .sortable-th {
@@ -166,6 +167,7 @@
     color: #1f2937;
     border-bottom: 1px solid #e5e7eb;
     vertical-align: middle;
+    white-space: nowrap;
   }
   
   .attendance-table tbody tr:hover {
@@ -186,12 +188,17 @@
   .status-badge {
     display: inline-flex;
     align-items: center;
-    padding: 4px 10px;
-    border-radius: 9999px;
+    justify-content: center;
+    padding: 6px 14px;
+    border-radius: 6px;
     font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    white-space: nowrap;
+    min-width: 100px;
+    text-align: center;
+    box-sizing: border-box;
   }
   
   .status-approved {
