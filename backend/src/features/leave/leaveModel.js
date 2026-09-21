@@ -44,6 +44,16 @@ const Leave = {
     // Initialize leave balances for an employee for a specific year
     initBalances: async (connection, tenantId, employeeId, year) => {
         try {
+            // Resolve employeeId to employee_details.id to ensure foreign key validity
+            let resolvedEmployeeId = employeeId;
+            const [empMatch] = await connection.execute(
+                'SELECT id FROM employee_details WHERE tenant_id = ? AND (id = ? OR employee_id = ?)',
+                [tenantId, employeeId, employeeId]
+            );
+            if (empMatch.length > 0) {
+                resolvedEmployeeId = empMatch[0].id;
+            }
+
             // First, make sure leave types exist for this tenant
             await Leave.initLeaveTypes(connection, tenantId);
 
@@ -56,7 +66,7 @@ const Leave = {
             // Check if balances already exist for this year
             const [existingBalances] = await connection.execute(
                 'SELECT leave_type FROM leave_balances WHERE tenant_id = ? AND employee_id = ? AND year = ?',
-                [tenantId, employeeId, year]
+                [tenantId, resolvedEmployeeId, year]
             );
             const existingTypes = new Set(existingBalances.map(b => b.leave_type));
 
@@ -64,7 +74,7 @@ const Leave = {
             const prevYear = year - 1;
             const [prevBalances] = await connection.execute(
                 'SELECT leave_type, allocated, used FROM leave_balances WHERE tenant_id = ? AND employee_id = ? AND year = ?',
-                [tenantId, employeeId, prevYear]
+                [tenantId, resolvedEmployeeId, prevYear]
             );
             const prevBalancesMap = new Map(prevBalances.map(b => [b.leave_type, b]));
 
@@ -83,7 +93,7 @@ const Leave = {
                     await connection.execute(
                         `INSERT INTO leave_balances (tenant_id, employee_id, leave_type, year, allocated, used, pending) 
                          VALUES (?, ?, ?, ?, ?, 0, 0)`,
-                        [tenantId, employeeId, type.name, year, allocated]
+                        [tenantId, resolvedEmployeeId, type.name, year, allocated]
                     );
                 }
             }
@@ -330,7 +340,16 @@ const Leave = {
         try {
             const connection = await pool.getConnection();
             try {
-                await Leave.initBalances(connection, tenantId, employeeId, year);
+                let resolvedEmployeeId = employeeId;
+                const [empMatch] = await connection.execute(
+                    'SELECT id FROM employee_details WHERE tenant_id = ? AND (id = ? OR employee_id = ?)',
+                    [tenantId, employeeId, employeeId]
+                );
+                if (empMatch.length > 0) {
+                    resolvedEmployeeId = empMatch[0].id;
+                }
+
+                await Leave.initBalances(connection, tenantId, resolvedEmployeeId, year);
                 const [rows] = await connection.execute(
                     `SELECT lb.leave_type, lb.allocated, lb.used, lb.pending, 
                             lt.allocation_frequency, lt.max_days,
@@ -339,7 +358,7 @@ const Leave = {
                      JOIN leave_types lt ON lt.tenant_id = lb.tenant_id AND lt.name = lb.leave_type
                      WHERE lb.tenant_id = ? AND lb.employee_id = ? AND lb.year = ? AND lt.is_active = 1
                      ORDER BY lt.name`,
-                    [tenantId, employeeId, year]
+                    [tenantId, resolvedEmployeeId, year]
                 );
                 
                 for (let row of rows) {
@@ -352,9 +371,9 @@ const Leave = {
                                 SUM(CASE WHEN status = 'Approved' THEN DATEDIFF(end_date, start_date) + 1 ELSE 0 END) as period_used,
                                 SUM(CASE WHEN status = 'Pending' THEN DATEDIFF(end_date, start_date) + 1 ELSE 0 END) as period_pending
                             FROM leave_requests 
-                            WHERE tenant_id = ? AND employee_id = ? AND leave_type = ? 
+                            WHERE tenant_id = ? AND (employee_id = ? OR employee_id = ?) AND leave_type = ? 
                             AND YEAR(start_date) = ? AND QUARTER(start_date) = QUARTER(CURRENT_DATE)
-                        `, [tenantId, employeeId, row.leave_type, year]);
+                        `, [tenantId, resolvedEmployeeId, employeeId, row.leave_type, year]);
                         
                         row.used = Number(stats[0]?.period_used || 0);
                         row.pending = Number(stats[0]?.period_pending || 0);
@@ -366,9 +385,9 @@ const Leave = {
                                 SUM(CASE WHEN status = 'Approved' THEN DATEDIFF(end_date, start_date) + 1 ELSE 0 END) as period_used,
                                 SUM(CASE WHEN status = 'Pending' THEN DATEDIFF(end_date, start_date) + 1 ELSE 0 END) as period_pending
                             FROM leave_requests 
-                            WHERE tenant_id = ? AND employee_id = ? AND leave_type = ? 
+                            WHERE tenant_id = ? AND (employee_id = ? OR employee_id = ?) AND leave_type = ? 
                             AND YEAR(start_date) = ? AND MONTH(start_date) = MONTH(CURRENT_DATE)
-                        `, [tenantId, employeeId, row.leave_type, year]);
+                        `, [tenantId, resolvedEmployeeId, employeeId, row.leave_type, year]);
                         
                         row.used = Number(stats[0]?.period_used || 0);
                         row.pending = Number(stats[0]?.period_pending || 0);

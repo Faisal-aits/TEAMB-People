@@ -964,9 +964,19 @@ getByEmployeeAndDate: async (tenantId, employeeId, date) => {
             
             const remarks = reason || `Marked ${finalStatus} by Admin`;
 
-            for (const empId of targetEmployeeIds) {
+                for (const empId of targetEmployeeIds) {
+                // Resolve employee ID to employee_details.id to ensure consistency across leave_balances and leave_requests
+                let resolvedEmpId = empId;
+                const [matchedEmp] = await connection.execute(
+                    `SELECT id FROM employee_details WHERE tenant_id = ? AND (id = ? OR employee_id = ?)`,
+                    [tenantId, empId, empId]
+                );
+                if (matchedEmp.length > 0) {
+                    resolvedEmpId = matchedEmp[0].id;
+                }
+
                 // Get employee's shift
-                const shift = await getEmployeeShiftForDateHelper(connection, tenantId, empId, date);
+                const shift = await getEmployeeShiftForDateHelper(connection, tenantId, resolvedEmpId, date);
                 const shiftCheckIn = shift ? shift.check_in_time : '09:30:00';
                 const shiftCheckOut = shift ? shift.check_out_time : '18:30:00';
                 
@@ -999,45 +1009,84 @@ getByEmployeeAndDate: async (tenantId, employeeId, date) => {
                     }
                 }
 
-                // --- NEW LEAVE BALANCE CHECK ---
+                // --- FREQUENCY-AWARE LEAVE BALANCE CHECK ---
                 if (finalLeaveType) {
+                    const Leave = require('../leave/leaveModel');
                     const year = date.split('-')[0];
-                    const [balanceRows] = await connection.execute(
-                        `SELECT allocated, used, pending FROM leave_balances 
-                         WHERE tenant_id = ? AND employee_id = ? AND year = ? AND leave_type = ?`,
-                        [tenantId, empId, year, finalLeaveType]
-                    );
-                    if (balanceRows.length === 0) {
-                        throw new Error(`Employee ID ${empId} does not have any ${finalLeaveType} balance initialized.`);
-                    }
-                    const b = balanceRows[0];
-                    const remaining = b.allocated - b.used;
-                    if (remaining < 1) {
-                        throw new Error(`Employee ID ${empId} does not have enough ${finalLeaveType} balance (Remaining: ${remaining}).`);
+
+                    // 1. Auto-initialize balances if not yet initialized for this employee & year
+                    await Leave.initBalances(connection, tenantId, resolvedEmpId, year);
+
+                    // 2. Fetch leave type policy
+                    const leavePolicy = await Leave.getLeaveTypePolicy(connection, tenantId, finalLeaveType);
+                    const freq = leavePolicy.allocation_frequency || 'Yearly';
+
+                    let remaining = 0;
+                    let periodLabel = 'year';
+
+                    if (freq === 'Quarterly') {
+                        periodLabel = 'quarter';
+                        const [stats] = await connection.execute(`
+                            SELECT 
+                                SUM(CASE WHEN status IN ('Approved', 'Pending') THEN DATEDIFF(end_date, start_date) + 1 ELSE 0 END) as period_taken
+                            FROM leave_requests 
+                            WHERE tenant_id = ? AND (employee_id = ? OR employee_id = ?) AND leave_type = ? 
+                            AND YEAR(start_date) = YEAR(?) AND QUARTER(start_date) = QUARTER(?)
+                            AND NOT (start_date <= ? AND end_date >= ? AND status = 'Approved')
+                        `, [tenantId, resolvedEmpId, empId, finalLeaveType, date, date, date, date]);
+                        
+                        const periodTaken = Number(stats[0]?.period_taken || 0);
+                        remaining = leavePolicy.max_days - periodTaken;
+                    } else if (freq === 'Monthly') {
+                        periodLabel = 'month';
+                        const [stats] = await connection.execute(`
+                            SELECT 
+                                SUM(CASE WHEN status IN ('Approved', 'Pending') THEN DATEDIFF(end_date, start_date) + 1 ELSE 0 END) as period_taken
+                            FROM leave_requests 
+                            WHERE tenant_id = ? AND (employee_id = ? OR employee_id = ?) AND leave_type = ? 
+                            AND YEAR(start_date) = YEAR(?) AND MONTH(start_date) = MONTH(?)
+                            AND NOT (start_date <= ? AND end_date >= ? AND status = 'Approved')
+                        `, [tenantId, resolvedEmpId, empId, finalLeaveType, date, date, date, date]);
+                        
+                        const periodTaken = Number(stats[0]?.period_taken || 0);
+                        remaining = leavePolicy.max_days - periodTaken;
+                    } else if (freq === 'None') {
+                        remaining = 365;
+                    } else {
+                        // Yearly
+                        const [balanceRows] = await connection.execute(
+                            `SELECT allocated, used, pending FROM leave_balances 
+                             WHERE tenant_id = ? AND employee_id = ? AND year = ? AND leave_type = ?`,
+                            [tenantId, resolvedEmpId, year, finalLeaveType]
+                        );
+                        const b = balanceRows[0] || { allocated: leavePolicy.max_days, used: 0, pending: 0 };
+                        remaining = b.allocated - b.used - b.pending;
                     }
 
-                    // -- NEW: APPROVE OVERLAPPING PENDING LEAVE REQUEST --
+                    if (remaining < 1 && freq !== 'None') {
+                        throw new Error(`Employee ${resolvedEmpId} has exhausted ${finalLeaveType} balance for this ${periodLabel}. Remaining: ${remaining} day(s).`);
+                    }
+
+                    // -- APPROVE OVERLAPPING PENDING LEAVE REQUEST IF PRESENT --
                     const [pendingReqs] = await connection.execute(
-                        `SELECT leave_id FROM leave_requests WHERE tenant_id = ? AND employee_id = ? AND status = 'Pending' AND leave_type = ? AND start_date = ? AND end_date = ?`,
-                        [tenantId, empId, finalLeaveType, date, date]
+                        `SELECT leave_id FROM leave_requests WHERE tenant_id = ? AND (employee_id = ? OR employee_id = ?) AND status = 'Pending' AND leave_type = ? AND start_date = ? AND end_date = ?`,
+                        [tenantId, resolvedEmpId, empId, finalLeaveType, date, date]
                     );
                     if (pendingReqs.length > 0) {
                         await connection.execute(
                             `UPDATE leave_requests SET status = 'Approved', approved_by = ?, approved_at = NOW() WHERE leave_id = ?`,
                             [approverEmpId, pendingReqs[0].leave_id]
                         );
-                        // Decrease pending by 1 since it's approved. 
-                        // (The +1 to used will happen normally in the loop below)
                         await connection.execute(
                             `UPDATE leave_balances SET pending = GREATEST(0, pending - 1) WHERE tenant_id = ? AND employee_id = ? AND year = ? AND leave_type = ?`,
-                            [tenantId, empId, year, finalLeaveType]
+                            [tenantId, resolvedEmpId, year, finalLeaveType]
                         );
                     }
                 }
                 
                 const [existing] = await connection.execute(
-                    `SELECT attendance_id, status, leave_type FROM tb_attendance WHERE (tenant_id = ? OR tenant_id IS NULL) AND employee_id = ? AND date = ?`,
-                    [tenantId, empId, date]
+                    `SELECT attendance_id, status, leave_type FROM tb_attendance WHERE (tenant_id = ? OR tenant_id IS NULL) AND (employee_id = ? OR employee_id = ?) AND date = ?`,
+                    [tenantId, resolvedEmpId, empId, date]
                 );
 
                 let prevLeaveType = null;
@@ -1051,28 +1100,28 @@ getByEmployeeAndDate: async (tenantId, employeeId, date) => {
                     if (finalLeaveType) {
                         await connection.execute(
                             `UPDATE leave_balances SET used = used + 1 WHERE tenant_id = ? AND employee_id = ? AND year = ? AND leave_type = ?`,
-                            [tenantId, empId, year, finalLeaveType]
+                            [tenantId, resolvedEmpId, year, finalLeaveType]
                         );
                         const [existingReqs] = await connection.execute(
-                            `SELECT leave_id FROM leave_requests WHERE tenant_id = ? AND employee_id = ? AND leave_type = ? AND start_date <= ? AND end_date >= ? AND status = 'Approved'`,
-                            [tenantId, empId, finalLeaveType, date, date]
+                            `SELECT leave_id FROM leave_requests WHERE tenant_id = ? AND (employee_id = ? OR employee_id = ?) AND leave_type = ? AND start_date <= ? AND end_date >= ? AND status = 'Approved'`,
+                            [tenantId, resolvedEmpId, empId, finalLeaveType, date, date]
                         );
                         if (existingReqs.length === 0) {
                             await connection.execute(
                                 `INSERT INTO leave_requests (tenant_id, employee_id, leave_type, is_paid, description, start_date, end_date, status, approved_by, approved_at, created_at, updated_at)
                                  VALUES (?, ?, ?, 1, 'Marked On Leave by Admin from Attendance', ?, ?, 'Approved', ?, NOW(), NOW(), NOW())`,
-                                [tenantId, empId, finalLeaveType, date, date, approverEmpId]
+                                [tenantId, resolvedEmpId, finalLeaveType, date, date, approverEmpId]
                             );
                         }
                     }
                     if (prevLeaveType) {
                         await connection.execute(
                             `UPDATE leave_balances SET used = GREATEST(0, used - 1) WHERE tenant_id = ? AND employee_id = ? AND year = ? AND leave_type = ?`,
-                            [tenantId, empId, year, prevLeaveType]
+                            [tenantId, resolvedEmpId, year, prevLeaveType]
                         );
                         await connection.execute(
-                            `DELETE FROM leave_requests WHERE tenant_id = ? AND employee_id = ? AND leave_type = ? AND start_date = ? AND end_date = ? AND status = 'Approved'`,
-                            [tenantId, empId, prevLeaveType, date, date]
+                            `DELETE FROM leave_requests WHERE tenant_id = ? AND (employee_id = ? OR employee_id = ?) AND leave_type = ? AND start_date = ? AND end_date = ? AND status = 'Approved'`,
+                            [tenantId, resolvedEmpId, empId, prevLeaveType, date, date]
                         );
                     }
                 }
@@ -1087,7 +1136,7 @@ getByEmployeeAndDate: async (tenantId, employeeId, date) => {
                     );
                     updatedCount++;
                                     } else {
-                    const shift = await getEmployeeShiftForDateHelper(connection, tenantId, empId, date);
+                    const shift = await getEmployeeShiftForDateHelper(connection, tenantId, resolvedEmpId, date);
                     const shiftId = shift ? shift.shift_id : 1;
 
                     await connection.execute(
@@ -1095,7 +1144,7 @@ getByEmployeeAndDate: async (tenantId, employeeId, date) => {
                          (tenant_id, employee_id, shift_id, date, status, is_half_day, is_late, worked_hours, 
                           check_in, check_out, remarks, approved_by, leave_type, created_at, updated_at) 
                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-                        [tenantId, empId, shiftId, date, finalStatus, isHalfDay, isLate, workedHours, checkIn, checkOut, remarks, approverEmpId, finalLeaveType]
+                        [tenantId, resolvedEmpId, shiftId, date, finalStatus, isHalfDay, isLate, workedHours, checkIn, checkOut, remarks, approverEmpId, finalLeaveType]
                     );
                     insertedCount++;
                 }

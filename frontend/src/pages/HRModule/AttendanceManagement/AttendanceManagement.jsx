@@ -37,6 +37,47 @@ const AttendanceManagement = () => {
     check_out_time: '',
     reason: ''
   });
+  const [employeeLeaveBalances, setEmployeeLeaveBalances] = useState(null);
+  const [leaveBalanceLoading, setLeaveBalanceLoading] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchBalances = async () => {
+      if (!isChangeAttendanceModalOpen || !changeAttendanceForm.employee_id || changeAttendanceForm.employee_id === 'all') {
+        setEmployeeLeaveBalances(null);
+        return;
+      }
+      if (!changeAttendanceForm.status?.startsWith('Leave_')) {
+        return;
+      }
+      try {
+        setLeaveBalanceLoading(true);
+        const year = changeAttendanceForm.date ? new Date(changeAttendanceForm.date).getFullYear() : new Date().getFullYear();
+        const res = await leaveAPI.getBalances(changeAttendanceForm.employee_id, year);
+        if (isMounted) {
+          if (res.data?.success && Array.isArray(res.data?.balances)) {
+            setEmployeeLeaveBalances(res.data.balances);
+          } else {
+            setEmployeeLeaveBalances([]);
+          }
+        }
+      } catch (err) {
+        if (isMounted) {
+          console.error('Error fetching employee leave balances:', err);
+          setEmployeeLeaveBalances([]);
+        }
+      } finally {
+        if (isMounted) {
+          setLeaveBalanceLoading(false);
+        }
+      }
+    };
+
+    fetchBalances();
+    return () => {
+      isMounted = false;
+    };
+  }, [isChangeAttendanceModalOpen, changeAttendanceForm.employee_id, changeAttendanceForm.date, changeAttendanceForm.status]);
   const [reportData, setReportData] = useState([]);
   const [reportFilters, setReportFilters] = useState({
     startDate: getMonthStartIST(),
@@ -1428,6 +1469,64 @@ const getUserAttendance = (user) => {
                   <option value="Leave_PL">🏖️ On Leave - PL (Paid Privilege Leave)</option>
                   <option value="Leave_PSL">🤒 On Leave - PSL (Paid Sick Leave)</option>
                 </select>
+
+                {changeAttendanceForm.status?.startsWith('Leave_') && (
+                  <div style={{ marginTop: '10px', padding: '10px 14px', borderRadius: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: '0.84rem' }}>
+                    {changeAttendanceForm.employee_id === 'all' ? (
+                      <span style={{ color: '#475569' }}>
+                        ℹ️ <strong>All Employees:</strong> Quarterly & yearly leave balances will be automatically validated individually for each employee upon marking.
+                      </span>
+                    ) : leaveBalanceLoading ? (
+                      <span style={{ color: '#64748b' }}>⏳ Fetching leave quota and balance for selected employee...</span>
+                    ) : (() => {
+                      const code = changeAttendanceForm.status === 'Leave_PL' ? 'PL' : 'PSL';
+                      const bal = employeeLeaveBalances?.find(b => b.leave_type_code === code);
+                      const targetYear = changeAttendanceForm.date ? new Date(changeAttendanceForm.date).getFullYear() : new Date().getFullYear();
+
+                      if (!bal) {
+                        return (
+                          <span style={{ color: '#0369a1' }}>
+                            ℹ️ Leave balance will be auto-initialized according to standard company policy ({code === 'PL' ? 'Quarterly: 3 days' : 'Yearly: 5 days'}).
+                          </span>
+                        );
+                      }
+
+                      if (bal.allocation_frequency === 'Quarterly') {
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', color: '#1e293b' }}>
+                            <div style={{ fontWeight: '600', color: '#0f766e', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span>🏖️ {bal.leave_type_name || 'Privilege Leave'} ({bal.leave_type_code})</span>
+                              <span style={{ background: '#ccfbf1', color: '#0f766e', padding: '1px 8px', borderRadius: '9999px', fontSize: '0.72rem', fontWeight: 'bold' }}>
+                                Quarterly Policy
+                              </span>
+                            </div>
+                            <span style={{ color: '#334155' }}>
+                              Quota: <strong>{bal.max_days || 3} days / quarter</strong> (up to 12 days / year).
+                            </span>
+                            <span style={{ color: '#64748b', fontSize: '0.78rem' }}>
+                              Total leaves registered in {targetYear}: <strong>{bal.used || 0} day(s)</strong>.
+                            </span>
+                          </div>
+                        );
+                      } else {
+                        const remaining = Math.max(0, (bal.allocated || 0) - (bal.used || 0));
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', color: '#1e293b' }}>
+                            <div style={{ fontWeight: '600', color: remaining > 0 ? '#15803d' : '#b91c1c', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span>{code === 'PSL' ? '🤒' : '📋'} {bal.leave_type_name || 'Sick Leave'} ({bal.leave_type_code})</span>
+                              <span style={{ background: remaining > 0 ? '#dcfce7' : '#fee2e2', color: remaining > 0 ? '#15803d' : '#b91c1c', padding: '1px 8px', borderRadius: '9999px', fontSize: '0.72rem', fontWeight: 'bold' }}>
+                                {remaining > 0 ? `${remaining} day(s) available` : 'No balance available'}
+                              </span>
+                            </div>
+                            <span style={{ color: '#334155' }}>
+                              Allocated: <strong>{bal.allocated || 0} days</strong> | Used: <strong>{bal.used || 0} days</strong>
+                            </span>
+                          </div>
+                        );
+                      }
+                    })()}
+                  </div>
+                )}
               </div>
 
               {['Present', 'Half Day', 'Delayed'].includes(changeAttendanceForm.status) && (
