@@ -443,8 +443,8 @@ create: async (tenantId, attendanceData) => {
                 
                 lateStreak = consecutiveCount;
                 
-                // IMPORTANT: Salary deduction for 3+ consecutive late days (but status remains "Delayed")
-                if (lateStreak >= 3) {
+                // IMPORTANT: Salary deduction for 3+ consecutive late days (DISABLED per user request)
+                if (false && lateStreak >= 3) {
                     shouldDeductSalary = true;
                     const dailySalary = employeeSalary / 30;
                     deductionAmount = dailySalary * 0.5;
