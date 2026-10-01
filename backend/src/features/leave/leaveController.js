@@ -393,7 +393,7 @@ const leaveController = {
         try {
             const { employeeId } = req.params;
             const year = req.query.year || new Date().getFullYear();
-            const balances = await Leave.getBalances(req.tenantId, employeeId, year);
+            const date = req.query.date || null; const balances = await Leave.getBalances(req.tenantId, employeeId, year, date);
             res.json({ success: true, balances });
         } catch (error) {
             console.error('Get leave balances error:', error);

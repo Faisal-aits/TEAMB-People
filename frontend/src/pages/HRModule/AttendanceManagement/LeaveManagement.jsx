@@ -145,8 +145,8 @@ const LeaveManagement = () => {
 
       // Update balance drawer for this employee if expanded
       const leaveItem = leaveData.find(item => item.leave_id === leaveId);
-      if (leaveItem && employeeBalances[leaveItem.employee_id]) {
-        loadEmployeeBalances(leaveItem.employee_id);
+      if (leaveItem && employeeBalances[leaveItem.leave_id]) {
+        loadEmployeeBalances(leaveItem.employee_id, leaveItem.leave_id, leaveItem.start_date);
       }
     } catch (error) {
       console.error('Error approving leave:', error);
@@ -163,8 +163,8 @@ const LeaveManagement = () => {
       loadLeaveData();
 
       const leaveItem = leaveData.find(item => item.leave_id === leaveId);
-      if (leaveItem && employeeBalances[leaveItem.employee_id]) {
-        loadEmployeeBalances(leaveItem.employee_id);
+      if (leaveItem && employeeBalances[leaveItem.leave_id]) {
+        loadEmployeeBalances(leaveItem.employee_id, leaveItem.leave_id, leaveItem.start_date);
       }
     } catch (error) {
       console.error('Error rejecting leave:', error);
@@ -181,8 +181,8 @@ const LeaveManagement = () => {
       loadLeaveData();
 
       const leaveItem = leaveData.find(item => item.leave_id === leaveId);
-      if (leaveItem && employeeBalances[leaveItem.employee_id]) {
-        loadEmployeeBalances(leaveItem.employee_id);
+      if (leaveItem && employeeBalances[leaveItem.leave_id]) {
+        loadEmployeeBalances(leaveItem.employee_id, leaveItem.leave_id, leaveItem.start_date);
       }
     } catch (error) {
       console.error('Error deleting leave:', error);
@@ -258,8 +258,8 @@ const LeaveManagement = () => {
       setSelectedLeave(null);
       loadLeaveData();
 
-      if (employeeBalances[selectedLeave.employee_id]) {
-        loadEmployeeBalances(selectedLeave.employee_id);
+      if (employeeBalances[selectedLeave.leave_id]) {
+        loadEmployeeBalances(selectedLeave.employee_id, selectedLeave.leave_id, selectedLeave.start_date);
       }
     } catch (error) {
       console.error('Error approving leave:', error);
@@ -283,8 +283,8 @@ const LeaveManagement = () => {
         });
         showToast('Leave approved successfully!', 'success');
         loadLeaveData();
-        if (employeeBalances[leave.employee_id]) {
-          loadEmployeeBalances(leave.employee_id);
+        if (employeeBalances[leave.leave_id]) {
+          loadEmployeeBalances(leave.employee_id, leave.leave_id, leave.start_date);
         }
       } catch (error) {
         console.error('Error approving leave:', error);
@@ -316,8 +316,8 @@ const LeaveManagement = () => {
       setIsRevokeConfirmOpen(false);
       setSelectedLeaveForRevoke(null);
       loadLeaveData();
-      if (selectedLeaveForRevoke.employee_id) {
-        loadEmployeeBalances(selectedLeaveForRevoke.employee_id);
+      if (selectedLeaveForRevoke.employee_id && employeeBalances[selectedLeaveForRevoke.leave_id]) {
+        loadEmployeeBalances(selectedLeaveForRevoke.employee_id, selectedLeaveForRevoke.leave_id, selectedLeaveForRevoke.start_date);
       }
     } catch (error) {
       console.error('Error revoking leave:', error);
@@ -340,24 +340,25 @@ const LeaveManagement = () => {
     setIsDeleteConfirmOpen(true);
   };
 
-  const toggleRowExpand = (leaveId, employeeId) => {
+  const toggleRowExpand = (leaveId, employeeId, startDate) => {
     // Toggle expansion: collapse if same row, otherwise expand new row
     setExpandedLeaveId(prev => (prev === leaveId ? null : leaveId));
-    // Load balances for the employee if not already fetched
-    if (!employeeBalances[employeeId]) {
-      loadEmployeeBalances(employeeId);
+    // Load balances for the employee based on leave's start date
+    if (!employeeBalances[leaveId]) {
+      loadEmployeeBalances(employeeId, leaveId, startDate);
     }
   };
 
-  const loadEmployeeBalances = async (employeeId) => {
+  const loadEmployeeBalances = async (employeeId, cacheKey, startDate) => {
     try {
-      setBalancesLoading(prev => ({ ...prev, [employeeId]: true }));
-      const response = await leaveAPI.getBalances(employeeId);
-      setEmployeeBalances(prev => ({ ...prev, [employeeId]: response.data?.balances || [] }));
+      setBalancesLoading(prev => ({ ...prev, [cacheKey]: true }));
+      const year = startDate ? new Date(startDate).getFullYear() : new Date().getFullYear();
+      const response = await leaveAPI.getBalances(employeeId, year, startDate);
+      setEmployeeBalances(prev => ({ ...prev, [cacheKey]: response.data?.balances || [] }));
     } catch (error) {
       console.error('Error loading employee balances:', error);
     } finally {
-      setBalancesLoading(prev => ({ ...prev, [employeeId]: false }));
+      setBalancesLoading(prev => ({ ...prev, [cacheKey]: false }));
     }
   };
 
@@ -540,7 +541,7 @@ const LeaveManagement = () => {
                           {leave.employee_name}
                         </div>
                         <div className="leave-employee-id">
-                          ID: {leave.employee_code} | <span className="leave-balances-toggle" onClick={(e) => { e.stopPropagation(); toggleRowExpand(leave.leave_id, leave.employee_id); }}>
+                          ID: {leave.employee_code} | <span className="leave-balances-toggle" onClick={(e) => { e.stopPropagation(); toggleRowExpand(leave.leave_id, leave.employee_id, leave.start_date); }}>
                             {expandedLeaveId === leave.leave_id ? 'Hide Balances' : 'Show Balances'}
                           </span>
                         </div>
@@ -625,7 +626,7 @@ const LeaveManagement = () => {
                             <div className="balances-loading">Loading balances...</div>
                           ) : (
                             (() => {
-                              const balances = employeeBalances[leave.employee_id] || [];
+                              const balances = employeeBalances[leave.leave_id] || [];
                               const relevantBalances = balances.filter(b => b.leave_type === 'PL' || b.leave_type === 'SPL' || b.leave_type === 'PSL');
                               
                               if (relevantBalances.length === 0) {
@@ -639,7 +640,7 @@ const LeaveManagement = () => {
                                     const isExceeded = remaining === 0;
                                     return (
                                       <div key={b.leave_type} className={isExceeded ? "monthly-limit-note monthly-limit-exceeded" : "monthly-limit-note monthly-limit-ok"} style={{ marginBottom: '4px' }}>
-                                        • {b.leave_type} Limit ({b.allocated} days): {isExceeded ? `Limit reached (${b.used} days used)` : `Within limit (${b.used} days used, ${remaining} remaining)`}
+                                        {b.leave_type} Limit ({b.allocated} days): {isExceeded ? `Limit reached (${b.used} days used)` : `Within limit (${b.used} days used, ${remaining} remaining)`}
                                       </div>
                                     );
                                   })}

@@ -336,7 +336,7 @@ const Leave = {
         }
     },
 
-    getBalances: async (tenantId, employeeId, year) => {
+    getBalances: async (tenantId, employeeId, year, targetDate = null) => {
         try {
             const connection = await pool.getConnection();
             try {
@@ -366,28 +366,42 @@ const Leave = {
                     
                     if (freq === 'Quarterly') {
                         row.allocated = row.max_days;
+                        const quarterCheckSql = targetDate 
+                            ? `QUARTER(start_date) = QUARTER(?)` 
+                            : `QUARTER(start_date) = QUARTER(CURRENT_DATE)`;
+                        const quarterParams = targetDate 
+                            ? [tenantId, resolvedEmployeeId, employeeId, row.leave_type, year, targetDate]
+                            : [tenantId, resolvedEmployeeId, employeeId, row.leave_type, year];
+
                         const [stats] = await connection.execute(`
                             SELECT 
                                 SUM(CASE WHEN status = 'Approved' THEN DATEDIFF(end_date, start_date) + 1 ELSE 0 END) as period_used,
                                 SUM(CASE WHEN status = 'Pending' THEN DATEDIFF(end_date, start_date) + 1 ELSE 0 END) as period_pending
                             FROM leave_requests 
                             WHERE tenant_id = ? AND (employee_id = ? OR employee_id = ?) AND leave_type = ? 
-                            AND YEAR(start_date) = ? AND QUARTER(start_date) = QUARTER(CURRENT_DATE)
-                        `, [tenantId, resolvedEmployeeId, employeeId, row.leave_type, year]);
+                            AND YEAR(start_date) = ? AND ${quarterCheckSql}
+                        `, quarterParams);
                         
                         row.used = Number(stats[0]?.period_used || 0);
                         row.pending = Number(stats[0]?.period_pending || 0);
                         row.remaining = row.allocated - row.used - row.pending;
                     } else if (freq === 'Monthly') {
                         row.allocated = row.max_days;
+                        const monthCheckSql = targetDate 
+                            ? `MONTH(start_date) = MONTH(?)` 
+                            : `MONTH(start_date) = MONTH(CURRENT_DATE)`;
+                        const monthParams = targetDate 
+                            ? [tenantId, resolvedEmployeeId, employeeId, row.leave_type, year, targetDate]
+                            : [tenantId, resolvedEmployeeId, employeeId, row.leave_type, year];
+
                         const [stats] = await connection.execute(`
                             SELECT 
                                 SUM(CASE WHEN status = 'Approved' THEN DATEDIFF(end_date, start_date) + 1 ELSE 0 END) as period_used,
                                 SUM(CASE WHEN status = 'Pending' THEN DATEDIFF(end_date, start_date) + 1 ELSE 0 END) as period_pending
                             FROM leave_requests 
                             WHERE tenant_id = ? AND (employee_id = ? OR employee_id = ?) AND leave_type = ? 
-                            AND YEAR(start_date) = ? AND MONTH(start_date) = MONTH(CURRENT_DATE)
-                        `, [tenantId, resolvedEmployeeId, employeeId, row.leave_type, year]);
+                            AND YEAR(start_date) = ? AND ${monthCheckSql}
+                        `, monthParams);
                         
                         row.used = Number(stats[0]?.period_used || 0);
                         row.pending = Number(stats[0]?.period_pending || 0);

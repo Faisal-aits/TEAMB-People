@@ -37,8 +37,11 @@ export const leaveAPI = {
     api.put(`/leaves/balances/${employeeId}`, { balances, year }),
 
   // Get leave balances for a specific employee (admin)
-  getBalances: (employeeId, year = new Date().getFullYear()) => 
-    api.get(`/leaves/balances/${employeeId}?year=${year}`),
+  getBalances: (employeeId, year = new Date().getFullYear(), targetDate = null) => {
+    let url = `/leaves/balances/${employeeId}?year=${year}`;
+    if (targetDate) url += `&date=${targetDate}`;
+    return api.get(url);
+  },
 
   // Get all leave types for HR settings
   getLeaveTypeSettings: () => api.get('/leaves/types/settings'),
