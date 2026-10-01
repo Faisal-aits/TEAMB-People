@@ -352,8 +352,21 @@ const LeaveManagement = () => {
   const loadEmployeeBalances = async (employeeId, cacheKey, startDate) => {
     try {
       setBalancesLoading(prev => ({ ...prev, [cacheKey]: true }));
-      const year = startDate ? new Date(startDate).getFullYear() : new Date().getFullYear();
-      const response = await leaveAPI.getBalances(employeeId, year, startDate);
+      let year = new Date().getFullYear();
+      let localDateStr = null;
+      
+      if (startDate) {
+        const d = new Date(startDate);
+        year = d.getFullYear();
+        // Format as YYYY-MM-DD using local time to prevent timezone shift in MySQL
+        localDateStr = [
+          d.getFullYear(),
+          String(d.getMonth() + 1).padStart(2, '0'),
+          String(d.getDate()).padStart(2, '0')
+        ].join('-');
+      }
+      
+      const response = await leaveAPI.getBalances(employeeId, year, localDateStr || null);
       setEmployeeBalances(prev => ({ ...prev, [cacheKey]: response.data?.balances || [] }));
     } catch (error) {
       console.error('Error loading employee balances:', error);
@@ -630,7 +643,7 @@ const LeaveManagement = () => {
                               const relevantBalances = balances.filter(b => b.leave_type === 'PL' || b.leave_type === 'SPL' || b.leave_type === 'PSL');
                               
                               if (relevantBalances.length === 0) {
-                                return <div className="monthly-limit-note monthly-limit-ok">• No leave balances found for this year.</div>;
+                                return <div className="monthly-limit-note monthly-limit-ok">No leave balances found for this year.</div>;
                               }
 
                               return (

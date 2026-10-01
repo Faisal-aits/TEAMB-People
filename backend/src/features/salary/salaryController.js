@@ -187,7 +187,6 @@ const salaryController = {
             
             const employee = employees[0];
             const annualSalary = Math.round(parseFloat(employee.annual_salary) || 0);
-            const monthlySalary = Math.round(annualSalary / 12);
 
             const salaryCalculation = await Salary.calculateSalary(
                 tenantId,
@@ -196,6 +195,7 @@ const salaryController = {
                 parseInt(year),
                 annualSalary
             );
+            const monthlySalary = salaryCalculation.basic_salary;
             const details = salaryCalculation.details || {};
             
             res.json({

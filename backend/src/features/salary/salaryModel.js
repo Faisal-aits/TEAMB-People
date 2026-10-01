@@ -300,9 +300,8 @@ const Salary = {
                     deductionDays += 1;
                 }
 
-                if (attendance.should_deduct_salary && attStatus !== 'delayed' && attStatus !== 'late') {
-                    attendanceDeductions += parseFloat(attendance.deduction_amount) || 0;
-                }
+                // Ignore legacy should_deduct_salary from old late streak logic
+                // to prevent unjustified deductions on 'Present' days.
             } else {
                 absentDays++;
                 deductionDays += 1;
