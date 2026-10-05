@@ -104,7 +104,7 @@ const EmployeeLayout = () => {
   
   const getMainModuleFromTab = (tab) => {
     const hrTabs = ['hrdashboard', 'employee', 'attendance', 'leave', 'shift', 'salary', 'holiday', 'aiDocumentGenerator'];
-    const ticketsTabs = ['employee-leave', 'employee-regularization', 'employee-expense', 'employee-report'];
+    const ticketsTabs = ['employee-leave', 'employee-regularization', 'employee-expense', 'employee-report', 'resignation-requests'];
     const attendanceTabs = ['employee-attendance', 'employee-break', 'employee-holiday'];
 
     if (hrTabs.includes(tab)) return 'hr';
@@ -152,7 +152,7 @@ const EmployeeLayout = () => {
     else if (moduleName === 'employee_projects') navigateToTab('employee-projects');
     else if (moduleName === 'tickets') {
       setSecondarySidebarOpen(true);
-      const ticketsTabs = ['employee-leave', 'employee-regularization', 'employee-expense', 'employee-report'];
+      const ticketsTabs = ['employee-leave', 'employee-regularization', 'employee-expense', 'employee-report', 'resignation-requests'];
       if (!ticketsTabs.includes(activeTab)) {
         if (canAccessEmployeeLeave) navigateToTab('employee-leave');
         else if (canAccessEmployeeAttendance) navigateToTab('employee-regularization');
@@ -468,6 +468,11 @@ useEffect(() => {
                           <span className="dropdown-text">Reimbursements</span>
                         </button>
                       </li>}
+                      <li className={activeTab === 'resignation-requests' ? 'active' : ''}>
+                        <button onClick={() => navigateToTab('resignation-requests')}>
+                          <span className="dropdown-text">My Resignations</span>
+                        </button>
+                      </li>
                     </>
                   )}
                 </ul>

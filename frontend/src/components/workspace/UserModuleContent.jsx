@@ -26,6 +26,7 @@ import EmployeeExpense from '../../pages/employees/EmployeeExpense';
 import EmployeeProjects from '../../pages/employees/EmployeeProjects';
 import EmployeeRegularization from '../../pages/employees/EmployeeRegularization';
 import EmployeeReport from '../../pages/employees/EmployeeReport';
+import EmployeeResignations from '../../pages/employees/EmployeeResignations';
 import EmployeeSalarySlips from '../../pages/employees/EmployeeSalarySlips';
 import CompanyDocuments from '../../pages/CompanyDocuments/CompanyDocuments';
 
@@ -101,6 +102,9 @@ const UserModuleContent = ({ activeTab, navigateToTab, DashboardComponent }) => 
       )}
       {activeTab === 'employee-report' && (
         <EmployeeReport />
+      )}
+      {activeTab === 'resignation-requests' && (
+        <EmployeeResignations />
       )}
       {activeTab === 'employee-salary' && (
         <EmployeeSalarySlips />
