@@ -3,6 +3,7 @@ const {pool} = require('../../config/db');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
+const Notification = require('../notifications/notificationModel');
 
 // Configure multer for PDF uploads
 const storage = multer.diskStorage({
@@ -175,7 +176,7 @@ const resignationController = {
 
             // First, check if the request exists and is pending
             const [checkResult] = await pool.execute(
-                'SELECT id, status FROM resignation_requests WHERE id = ? AND tenant_id = ?',
+                'SELECT id, status, employee_id FROM resignation_requests WHERE id = ? AND tenant_id = ?',
                 [id, tenantId]
             );
 
@@ -203,6 +204,20 @@ const resignationController = {
 
             if (result.affectedRows === 0) {
                 return res.status(404).json({ success: false, message: 'Failed to update request' });
+            }
+
+            // Notify Employee
+            try {
+                await Notification.create(
+                    tenantId, 
+                    checkResult[0].employee_id, 
+                    'resignation', 
+                    'Resignation Approved', 
+                    'Your resignation request has been accepted. You can view your approved letter.', 
+                    id
+                );
+            } catch (notifyErr) {
+                console.error('Failed to send notification:', notifyErr);
             }
 
             // Return success with the letter URL
@@ -236,6 +251,15 @@ const resignationController = {
                 return res.status(400).json({ success: false, message: 'Rejection reason is required' });
             }
 
+            const [checkResult] = await pool.execute(
+                'SELECT id, status, employee_id FROM resignation_requests WHERE id = ? AND tenant_id = ?',
+                [id, tenantId]
+            );
+
+            if (checkResult.length === 0 || checkResult[0].status !== 'pending') {
+                return res.status(404).json({ success: false, message: 'Request not found or not in pending state' });
+            }
+
             const [result] = await pool.execute(
                 `UPDATE resignation_requests 
                  SET status = 'rejected', rejection_reason = ? 
@@ -244,7 +268,21 @@ const resignationController = {
             );
 
             if (result.affectedRows === 0) {
-                return res.status(404).json({ success: false, message: 'Request not found or not in pending state' });
+                return res.status(404).json({ success: false, message: 'Failed to update request' });
+            }
+
+            // Notify Employee
+            try {
+                await Notification.create(
+                    tenantId, 
+                    checkResult[0].employee_id, 
+                    'resignation', 
+                    'Resignation Rejected', 
+                    'Your resignation request was rejected by HR.', 
+                    id
+                );
+            } catch (notifyErr) {
+                console.error('Failed to send notification:', notifyErr);
             }
 
             res.json({ success: true, message: 'Resignation rejected.' });

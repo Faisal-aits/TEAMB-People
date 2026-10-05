@@ -8,6 +8,14 @@ const EmployeeResignations = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const [showResignationModal, setShowResignationModal] = useState(false);
+  const [resignationData, setResignationData] = useState({
+    requested_last_day: '',
+    reason: '',
+    additional_note: ''
+  });
+  const [resignationSubmitting, setResignationSubmitting] = useState(false);
+
   useEffect(() => {
     fetchMyRequests();
   }, []);
@@ -26,6 +34,25 @@ const EmployeeResignations = () => {
     }
   };
 
+  const handleResignationSubmit = async (e) => {
+    e.preventDefault();
+    setResignationSubmitting(true);
+    try {
+      const res = await resignationAPI.submitRequest(resignationData);
+      if (res.data?.success) {
+        alert('Resignation request submitted successfully.');
+        setShowResignationModal(false);
+        setResignationData({ requested_last_day: '', reason: '', additional_note: '' });
+        fetchMyRequests(); // Refresh list
+      }
+    } catch (err) {
+      console.error('Error submitting resignation:', err);
+      alert(err.response?.data?.message || 'Failed to submit resignation request.');
+    } finally {
+      setResignationSubmitting(false);
+    }
+  };
+
   const viewLetter = (url) => {
     window.open(url, "_blank");
   };
@@ -40,10 +67,18 @@ const EmployeeResignations = () => {
 
   return (
     <div style={{ padding: "30px", background: "#f8fafc", minHeight: "100vh" }}>
-      <h2 style={{ fontSize: "24px", fontWeight: "bold", color: "#1e293b", marginBottom: "20px", display: "flex", alignItems: "center", gap: "10px" }}>
-        <HiOutlineDocumentText size={28} color="#4f46e5" />
-        My Resignation Requests
-      </h2>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+        <h2 style={{ fontSize: "24px", fontWeight: "bold", color: "#1e293b", margin: 0, display: "flex", alignItems: "center", gap: "10px" }}>
+          <HiOutlineDocumentText size={28} color="#4f46e5" />
+          My Resignation Requests
+        </h2>
+        <button 
+          onClick={() => setShowResignationModal(true)}
+          style={{ padding: "10px 20px", background: "#4f46e5", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}
+        >
+          <span style={{ fontSize: "1.2rem", lineHeight: 1 }}>+</span> Apply Resignation
+        </button>
+      </div>
 
       <div style={{ background: "white", borderRadius: "12px", boxShadow: "0 4px 6px rgba(0,0,0,0.05)", overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
@@ -91,6 +126,51 @@ const EmployeeResignations = () => {
           </table>
         </div>
       </div>
+
+      {showResignationModal && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999 }}>
+          <div style={{ background: "white", padding: "24px", borderRadius: "12px", width: "500px", maxWidth: "90%" }}>
+            <h3 style={{ margin: "0 0 20px 0", color: "#dc2626", fontSize: "20px" }}>Apply for Resignation</h3>
+            <form onSubmit={handleResignationSubmit}>
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 'bold', color: "#334155" }}>Requested Last Working Day *</label>
+                <input 
+                  type="date" 
+                  value={resignationData.requested_last_day}
+                  onChange={(e) => setResignationData({...resignationData, requested_last_day: e.target.value})}
+                  required 
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: "border-box" }} 
+                />
+              </div>
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 'bold', color: "#334155" }}>Reason for Resignation *</label>
+                <textarea 
+                  value={resignationData.reason}
+                  onChange={(e) => setResignationData({...resignationData, reason: e.target.value})}
+                  required 
+                  rows="3"
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: "border-box", fontFamily: "inherit" }}
+                />
+              </div>
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 'bold', color: "#334155" }}>Additional Note (Optional)</label>
+                <textarea 
+                  value={resignationData.additional_note}
+                  onChange={(e) => setResignationData({...resignationData, additional_note: e.target.value})}
+                  rows="2"
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: "border-box", fontFamily: "inherit" }}
+                />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button type="button" onClick={() => setShowResignationModal(false)} style={{ padding: '10px 16px', borderRadius: '6px', background: '#f1f5f9', color: '#475569', border: 'none', cursor: 'pointer', fontWeight: "bold" }}>Cancel</button>
+                <button type="submit" disabled={resignationSubmitting} style={{ padding: '10px 16px', borderRadius: '6px', background: '#dc2626', color: 'white', border: 'none', cursor: 'pointer', fontWeight: "bold", opacity: resignationSubmitting ? 0.7 : 1 }}>
+                  {resignationSubmitting ? 'Submitting...' : 'Submit Resignation'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
