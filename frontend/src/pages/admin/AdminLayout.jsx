@@ -136,7 +136,7 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
   
   const getMainModuleFromTab = (tab) => {
     const hrTabs = ['employee', 'attendance', 'break', 'shift', 'salary', 'holiday', 'aiDocumentGenerator', 'offerletter', 'declaration', 'resignation', 'salaryslip', 'experienceletters', 'incrementletters'];
-    const ticketsTabs = ['leave', 'regularization', 'reports', 'expenses'];
+    const ticketsTabs = ['leave', 'regularization', 'reports', 'expenses', 'resignation'];
     const settingsTabs = ['modulemanagement', 'branding', 'department', 'expensecategory', 'smtpconfig', 'leavepolicy', 'company-settings'];
 
     if (hrTabs.includes(tab)) return 'hr';
@@ -176,7 +176,7 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
       navigateToTab('company-documents');
     } else if (moduleName === 'tickets') {
       setSecondarySidebarOpen(true);
-      const ticketsTabs = ['leave', 'regularization', 'reports', 'expenses'];
+      const ticketsTabs = ['leave', 'regularization', 'reports', 'expenses', 'resignation'];
       if (!ticketsTabs.includes(activeTab)) {
         if (canAccessLeaveManagement) navigateToTab('leave');
         else if (canAccessAttendanceManagement) navigateToTab('regularization');
@@ -518,6 +518,11 @@ const AdminLayout = ({ initialTab, initialState = null }) => {
                     {canAccessExpenseManagement && <li className={activeTab === 'expenses' ? 'active' : ''}>
                       <button onClick={() => navigateToTab('expenses')}>
                         <span className="dropdown-text">Reimbursements</span>
+                      </button>
+                    </li>}
+                    {canAccessResignations && <li className={activeTab === 'resignation' ? 'active' : ''}>
+                      <button onClick={() => navigateToTab('resignation')}>
+                        <span className="dropdown-text">Resignations</span>
                       </button>
                     </li>}
                   </>
