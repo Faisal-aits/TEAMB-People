@@ -6,7 +6,7 @@ import OfferLetter from '../HRModule/EmployeeManagement/OfferLetter';
 import ExperienceLetters from '../HRModule/EmployeeManagement/ExperienceLetters';
 import IncrementLetters from '../HRModule/EmployeeManagement/IncrementLetters';
 import DeclarationForm from '../HRModule/EmployeeManagement/DeclarationForm';
-import ResignationRequests from '../HRModule/EmployeeManagement/ResignationRequests';
+import EmployeeResignations from './EmployeeResignations';
 import EmployeeAttendance from './EmployeeAttendance';
 import EmployeeRegularization from './EmployeeRegularization';
 
@@ -19,7 +19,7 @@ const EmployeeApp = () => (
       <Route path="/experience-letters" element={<ExperienceLetters />} />
       <Route path="/increment-letters" element={<IncrementLetters />} />
       <Route path="/declaration-form" element={<DeclarationForm />} />
-      <Route path="/resignation-requests" element={<ResignationRequests />} />
+      <Route path="/resignation-requests" element={<EmployeeResignations />} />
       <Route path="/employee-attendance" element={<EmployeeAttendance />} />
       <Route path="/regularization" element={<EmployeeRegularization />} />
 
