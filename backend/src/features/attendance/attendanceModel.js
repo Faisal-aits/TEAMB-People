@@ -609,7 +609,7 @@ updateCheckOut: async (tenantId, employeeId, date, checkOutTime, latitude = null
 
 
 
-        }
+
         
         const nextRemarks = remarks
             ? [record.remarks, remarks].filter(Boolean).join(' | ')
