@@ -55,16 +55,16 @@
                 return { isHalfDay: true, reason: '3 consecutive late days' };
             }
             
-            // Check 2: If worked hours are less than 4 hours
-            if (checkInTime && checkOutTime) {
-                const checkIn = new Date(checkInTime);
-                const checkOut = new Date(checkOutTime);
-                const workedHours = (checkOut - checkIn) / (1000 * 60 * 60);
-                
-                if (workedHours < 4 && workedHours > 0) {
-                  return { isHalfDay: true, reason: `Worked only ${workedHours.toFixed(1)} hours` };
-                }
-            }
+
+
+
+
+
+
+
+
+
+
             
             return { isHalfDay: false, reason: null };
         } catch (error) {
@@ -464,13 +464,13 @@ create: async (tenantId, attendanceData) => {
             const checkOut = new Date(attendanceData.check_out);
             workedHours = parseFloat(((checkOut - checkIn) / (1000 * 60 * 60)).toFixed(2));
             
-            // Salary deduction for short hours, but status remains Delayed or Present
-            if (workedHours < 4 && workedHours > 0 && status !== 'Half Day') {
-                shouldDeductSalary = true;
-                const dailySalary = employeeSalary / 30;
-                deductionAmount = dailySalary * 0.5;
-                deductionReason = `Worked only ${workedHours} hours - Half day deduction`;
-            }
+
+
+
+
+
+
+
         }
 
         // Prepare remarks
@@ -587,28 +587,28 @@ updateCheckOut: async (tenantId, employeeId, date, checkOutTime, latitude = null
         let status = record.status;
         let isHalfDay = record.is_half_day || false;
         
-        // Check if worked hours are less than 4 (half day)
-        if (workedHours < 4 && workedHours > 0 && status !== 'Half Day') {
-            isHalfDay = true;
-            status = 'Half Day';
-            
-            // Get employee salary for deduction
-            const [empCheck] = await connection.execute(
-                'SELECT salary FROM employee_details WHERE id = ? AND tenant_id = ?',
-                [employeeId, tenantId]
-            );
-            
-            if (empCheck.length > 0) {
-                const dailySalary = empCheck[0].salary / 30;
-                const deductionAmount = dailySalary * 0.5;
-                
-                await connection.execute(
-                    `UPDATE tb_attendance 
-                    SET should_deduct_salary = 1, deduction_amount = ?, deduction_reason = ?
-                    WHERE employee_id = ? AND date = ? AND tenant_id = ?`,
-                    [deductionAmount, `Worked only ${workedHours} hours - Half day deduction`, employeeId, date, tenantId]
-                );
-            }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         }
         
         const nextRemarks = remarks
