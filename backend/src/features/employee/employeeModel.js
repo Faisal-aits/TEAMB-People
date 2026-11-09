@@ -490,35 +490,46 @@ ${employeeDetailSelectColumns},
         'UPDATE tb_salary_records           SET employee_id = ? WHERE employee_id = ?',
       ];
 
-      for (const sql of childTableUpdates) {
-        try {
-          await connection.execute(sql, [exId, originalId]);
-        } catch (childErr) {
-          // Ignore if the table doesn't exist in this environment
-          if (childErr.code !== 'ER_NO_SUCH_TABLE') throw childErr;
+      // Disable FK checks so we can freely rename the parent + children
+      // without circular "parent must exist first" violations
+      await connection.execute('SET FOREIGN_KEY_CHECKS = 0');
+
+      try {
+        for (const sql of childTableUpdates) {
+          try {
+            await connection.execute(sql, [exId, originalId]);
+          } catch (childErr) {
+            if (childErr.code !== 'ER_NO_SUCH_TABLE') throw childErr;
+          }
         }
+
+        // Rename employee_details.id → EX-{id}  (frees up original ID for a new employee)
+        const [result] = await connection.execute(
+          `UPDATE employee_details SET id = ?, status = 'inactive', updated_at = NOW()
+           WHERE id = ? AND tenant_id = ?`,
+          [exId, id, tenantId]
+        );
+
+        // Rename email → ex.{email} and deactivate  (frees up original email for a new employee)
+        await connection.execute(
+          'UPDATE users SET is_active = 0, email = ?, updated_at = NOW() WHERE id = ? AND tenant_id = ?',
+          [exEmail, userId, tenantId]
+        );
+
+        await connection.execute(
+          'DELETE FROM user_module_access WHERE user_id = ? AND tenant_id = ?',
+          [userId, tenantId]
+        );
+
+        await connection.execute('SET FOREIGN_KEY_CHECKS = 1');
+        await connection.commit();
+        return result.affectedRows;
+
+      } catch (innerErr) {
+        await connection.execute('SET FOREIGN_KEY_CHECKS = 1');
+        throw innerErr;
       }
 
-      // Now rename employee_details.id → EX-{id}  (frees up original ID for a new employee)
-      const [result] = await connection.execute(
-        `UPDATE employee_details SET id = ?, status = 'inactive', updated_at = NOW()
-         WHERE id = ? AND tenant_id = ?`,
-        [exId, id, tenantId]
-      );
-
-      // Rename email → ex.{email} and deactivate  (frees up original email for a new employee)
-      await connection.execute(
-        'UPDATE users SET is_active = 0, email = ?, updated_at = NOW() WHERE id = ? AND tenant_id = ?',
-        [exEmail, userId, tenantId]
-      );
-
-      await connection.execute(
-        'DELETE FROM user_module_access WHERE user_id = ? AND tenant_id = ?',
-        [userId, tenantId]
-      );
-
-      await connection.commit();
-      return result.affectedRows;
     } catch (error) {
       await connection.rollback();
       console.error('Error in Employee.delete:', error);
