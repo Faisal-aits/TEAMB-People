@@ -461,15 +461,30 @@ ${employeeDetailSelectColumns},
 
       const userId = employeeRows[0].employee_id;
 
-      const [result] = await connection.execute(
-        `UPDATE employee_details SET status = 'inactive', updated_at = NOW() 
-         WHERE id = ? AND tenant_id = ?`,
-        [id, tenantId]
+      // Fetch the user's current email so we can free it up
+      const [userRows] = await connection.execute(
+        'SELECT email FROM users WHERE id = ? AND tenant_id = ?',
+        [userId, tenantId]
       );
 
+      const originalEmail = userRows.length > 0 ? userRows[0].email : null;
+      const originalId = String(id);
+
+      // Build EX-prefixed values to free up the original ID and email for reuse
+      const exId    = originalId.startsWith('EX-')     ? originalId    : `EX-${originalId}`;
+      const exEmail = originalEmail && !originalEmail.startsWith('ex.') ? `ex.${originalEmail}` : originalEmail;
+
+      // Rename employee_details.id → EX-{id}  (frees up original ID for a new employee)
+      const [result] = await connection.execute(
+        `UPDATE employee_details SET id = ?, status = 'inactive', updated_at = NOW()
+         WHERE id = ? AND tenant_id = ?`,
+        [exId, id, tenantId]
+      );
+
+      // Rename email → ex.{email} and deactivate  (frees up original email for a new employee)
       await connection.execute(
-        'UPDATE users SET is_active = 0, updated_at = NOW() WHERE id = ? AND tenant_id = ?',
-        [userId, tenantId]
+        'UPDATE users SET is_active = 0, email = ?, updated_at = NOW() WHERE id = ? AND tenant_id = ?',
+        [exEmail, userId, tenantId]
       );
 
       await connection.execute(
@@ -628,11 +643,11 @@ ${employeeDetailSelectColumns},
     return result.affectedRows;
   },
 
-  // Check if employee ID exists (tenant-scoped)
+  // Check if employee ID exists (tenant-scoped) — excludes EX-prefixed (ex-employee) records
   checkEmployeeIdExists: async (tenantId, employeeId) => {
     try {
       const [rows] = await pool.execute(
-        'SELECT id FROM employee_details WHERE UPPER(id) = UPPER(?)',
+        "SELECT id FROM employee_details WHERE UPPER(id) = UPPER(?) AND UPPER(id) NOT LIKE 'EX-%'",
         [employeeId]
       );
       return rows.length > 0;
@@ -642,6 +657,7 @@ ${employeeDetailSelectColumns},
     }
   },
 
+  // Returns emails already in use — excludes ex. prefixed (ex-employee) emails
   getExistingEmails: async (emails = []) => {
     const uniqueEmails = [...new Set(emails.filter(Boolean).map((email) => email.toLowerCase()))];
     if (uniqueEmails.length === 0) return new Set();
@@ -649,7 +665,7 @@ ${employeeDetailSelectColumns},
     try {
       const placeholders = uniqueEmails.map(() => '?').join(',');
       const [rows] = await pool.execute(
-        `SELECT LOWER(email) as email FROM users WHERE LOWER(email) IN (${placeholders})`,
+        `SELECT LOWER(email) as email FROM users WHERE LOWER(email) IN (${placeholders}) AND is_active = 1 AND email NOT LIKE 'ex.%'`,
         uniqueEmails
       );
       return new Set(rows.map((row) => row.email));
@@ -659,6 +675,7 @@ ${employeeDetailSelectColumns},
     }
   },
 
+  // Returns employee IDs already in use — excludes EX- prefixed (ex-employee) records
   getExistingEmployeeIds: async (tenantId, employeeIds = []) => {
     const uniqueEmployeeIds = [...new Set(employeeIds.filter(Boolean).map((id) => id.toUpperCase()))];
     if (uniqueEmployeeIds.length === 0) return new Set();
@@ -666,7 +683,7 @@ ${employeeDetailSelectColumns},
     try {
       const placeholders = uniqueEmployeeIds.map(() => '?').join(',');
       const [rows] = await pool.execute(
-        `SELECT UPPER(id) as employee_id FROM employee_details WHERE UPPER(id) IN (${placeholders})`,
+        `SELECT UPPER(id) as employee_id FROM employee_details WHERE UPPER(id) IN (${placeholders}) AND UPPER(id) NOT LIKE 'EX-%'`,
         [...uniqueEmployeeIds]
       );
       return new Set(rows.map((row) => row.employee_id));
