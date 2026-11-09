@@ -474,7 +474,32 @@ ${employeeDetailSelectColumns},
       const exId    = originalId.startsWith('EX-')     ? originalId    : `EX-${originalId}`;
       const exEmail = originalEmail && !originalEmail.startsWith('ex.') ? `ex.${originalEmail}` : originalEmail;
 
-      // Rename employee_details.id → EX-{id}  (frees up original ID for a new employee)
+      // Update all child tables that FK-reference employee_details.id BEFORE renaming the parent
+      // (MySQL enforces referential integrity so child rows must be updated first)
+      const childTableUpdates = [
+        'UPDATE tb_attendance               SET employee_id = ? WHERE employee_id = ?',
+        'UPDATE tb_attendance               SET approved_by = ? WHERE approved_by = ?',
+        'UPDATE attendance_history          SET employee_id = ? WHERE employee_id = ?',
+        'UPDATE attendance_regularization_requests SET employee_id = ? WHERE employee_id = ?',
+        'UPDATE leave_balances              SET employee_id = ? WHERE employee_id = ?',
+        'UPDATE leave_requests              SET employee_id = ? WHERE employee_id = ?',
+        'UPDATE leave_requests              SET approved_by = ? WHERE approved_by = ?',
+        'UPDATE resignation_requests        SET employee_id = ? WHERE employee_id = ?',
+        'UPDATE experience_letters          SET employee_id = ? WHERE employee_id = ?',
+        'UPDATE tb_employee_shifts          SET employee_id = ? WHERE employee_id = ?',
+        'UPDATE tb_salary_records           SET employee_id = ? WHERE employee_id = ?',
+      ];
+
+      for (const sql of childTableUpdates) {
+        try {
+          await connection.execute(sql, [exId, originalId]);
+        } catch (childErr) {
+          // Ignore if the table doesn't exist in this environment
+          if (childErr.code !== 'ER_NO_SUCH_TABLE') throw childErr;
+        }
+      }
+
+      // Now rename employee_details.id → EX-{id}  (frees up original ID for a new employee)
       const [result] = await connection.execute(
         `UPDATE employee_details SET id = ?, status = 'inactive', updated_at = NOW()
          WHERE id = ? AND tenant_id = ?`,
@@ -502,6 +527,7 @@ ${employeeDetailSelectColumns},
       connection.release();
     }
   },
+
 
   // Hard delete employee (tenant-scoped)
   hardDelete: async (tenantId, id) => {
