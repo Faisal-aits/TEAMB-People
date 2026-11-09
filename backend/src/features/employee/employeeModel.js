@@ -470,9 +470,56 @@ ${employeeDetailSelectColumns},
       const originalEmail = userRows.length > 0 ? userRows[0].email : null;
       const originalId = String(id);
 
-      // Build EX-prefixed values to free up the original ID and email for reuse
-      const exId    = originalId.startsWith('EX-')     ? originalId    : `EX-${originalId}`;
-      const exEmail = originalEmail && !originalEmail.startsWith('ex.') ? `ex.${originalEmail}` : originalEmail;
+      // Find a unique EX- id that isn't already taken
+      // e.g. EX-TEAMB04, then EX1-TEAMB04, then EX2-TEAMB04 ...
+      let exId;
+      {
+        const base = `EX-${originalId}`;
+        const [taken] = await connection.execute(
+          "SELECT id FROM employee_details WHERE id = ?",
+          [base]
+        );
+        if (taken.length === 0) {
+          exId = base;
+        } else {
+          let counter = 1;
+          while (true) {
+            const candidate = `EX${counter}-${originalId}`;
+            const [check] = await connection.execute(
+              "SELECT id FROM employee_details WHERE id = ?",
+              [candidate]
+            );
+            if (check.length === 0) { exId = candidate; break; }
+            counter++;
+          }
+        }
+      }
+
+      // Find a unique ex. email that isn't already taken
+      // e.g. ex.email@x.com, then ex1.email@x.com, then ex2.email@x.com ...
+      let exEmail = originalEmail;
+      if (originalEmail && !originalEmail.startsWith('ex.')) {
+        const baseEmail = `ex.${originalEmail}`;
+        const [takenEmail] = await connection.execute(
+          "SELECT id FROM users WHERE email = ?",
+          [baseEmail]
+        );
+        if (takenEmail.length === 0) {
+          exEmail = baseEmail;
+        } else {
+          let counter = 1;
+          while (true) {
+            const candidate = `ex${counter}.${originalEmail}`;
+            const [check] = await connection.execute(
+              "SELECT id FROM users WHERE email = ?",
+              [candidate]
+            );
+            if (check.length === 0) { exEmail = candidate; break; }
+            counter++;
+          }
+        }
+      }
+
 
       // Update all child tables that FK-reference employee_details.id BEFORE renaming the parent
       // (MySQL enforces referential integrity so child rows must be updated first)
