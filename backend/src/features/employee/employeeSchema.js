@@ -1,4 +1,5 @@
 const { pool } = require('../../config/db');
+const { migrateInactiveEmployees } = require('../../../migrate_ex_employees');
 
 let schemaReady;
 
@@ -59,6 +60,11 @@ const ensureEmployeeSchema = () => {
       await addColumnIfMissing('employee_details', "employer_esic DECIMAL(12,2) NOT NULL DEFAULT 0");
       await addColumnIfMissing('employee_details', "auto_checkout_enabled BOOLEAN NOT NULL DEFAULT FALSE");
       await createEmployeeDepartmentsIfMissing();
+      try {
+        await migrateInactiveEmployees();
+      } catch (migErr) {
+        console.warn('[Schema] Auto-migration of inactive employees warning:', migErr.message);
+      }
     })();
   }
 

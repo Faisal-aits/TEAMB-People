@@ -533,8 +533,13 @@ ${employeeDetailSelectColumns},
         'UPDATE leave_requests              SET approved_by = ? WHERE approved_by = ?',
         'UPDATE resignation_requests        SET employee_id = ? WHERE employee_id = ?',
         'UPDATE experience_letters          SET employee_id = ? WHERE employee_id = ?',
+        'UPDATE increment_letters           SET employee_id = ? WHERE employee_id = ?',
+        'UPDATE employee_documents          SET employee_id = ? WHERE employee_id = ?',
+        'UPDATE employee_departments        SET employee_id = ? WHERE employee_id = ?',
         'UPDATE tb_employee_shifts          SET employee_id = ? WHERE employee_id = ?',
         'UPDATE tb_salary_records           SET employee_id = ? WHERE employee_id = ?',
+        'UPDATE tb_breaks                   SET employee_id = ? WHERE employee_id = ?',
+        'UPDATE ai_document_generated_documents SET employee_id = ? WHERE employee_id = ?',
       ];
 
       // Disable FK checks so we can freely rename the parent + children
@@ -731,7 +736,7 @@ ${employeeDetailSelectColumns},
   checkEmployeeIdExists: async (tenantId, employeeId) => {
     try {
       const [rows] = await pool.execute(
-        "SELECT id FROM employee_details WHERE UPPER(id) = UPPER(?) AND UPPER(id) NOT LIKE 'EX-%'",
+        "SELECT id FROM employee_details WHERE UPPER(id) = UPPER(?) AND UPPER(id) NOT REGEXP '^EX[0-9]*-'",
         [employeeId]
       );
       return rows.length > 0;
@@ -749,7 +754,7 @@ ${employeeDetailSelectColumns},
     try {
       const placeholders = uniqueEmails.map(() => '?').join(',');
       const [rows] = await pool.execute(
-        `SELECT LOWER(email) as email FROM users WHERE LOWER(email) IN (${placeholders}) AND is_active = 1 AND email NOT LIKE 'ex.%'`,
+        `SELECT LOWER(email) as email FROM users WHERE LOWER(email) IN (${placeholders}) AND is_active = 1 AND email NOT REGEXP '^ex[0-9]*\\.'`,
         uniqueEmails
       );
       return new Set(rows.map((row) => row.email));
@@ -767,7 +772,7 @@ ${employeeDetailSelectColumns},
     try {
       const placeholders = uniqueEmployeeIds.map(() => '?').join(',');
       const [rows] = await pool.execute(
-        `SELECT UPPER(id) as employee_id FROM employee_details WHERE UPPER(id) IN (${placeholders}) AND UPPER(id) NOT LIKE 'EX-%'`,
+        `SELECT UPPER(id) as employee_id FROM employee_details WHERE UPPER(id) IN (${placeholders}) AND UPPER(id) NOT REGEXP '^EX[0-9]*-'`,
         [...uniqueEmployeeIds]
       );
       return new Set(rows.map((row) => row.employee_id));

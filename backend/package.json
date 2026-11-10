@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "dev": "nodemon server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "migrate:ex-employees": "node migrate_ex_employees.js"
   },
   "keywords": [
     "express",
